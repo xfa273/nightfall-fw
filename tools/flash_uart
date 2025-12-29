@@ -191,11 +191,20 @@ def detect_port() -> str:
 
 
 def default_bin_path() -> str:
-    p = "build/Debug/HM_Nightfall-mini_v1.1.bin"
-    if os.path.isfile(p):
-        return p
+    preferred = [
+        "build/Debug/nightfall_mini_v1_1.bin",
+        "build/Debug/nightfall_classic_v2.bin",
+    ]
+    for p in preferred:
+        if os.path.isfile(p):
+            return p
+
     hits = []
-    for pat in ("build/*/HM_Nightfall-mini_v1.1.bin", "build/*/*.bin"):
+    for pat in (
+        "build/*/nightfall_mini_v1_1.bin",
+        "build/*/nightfall_classic_v2.bin",
+        "build/*/*.bin",
+    ):
         hits.extend(glob.glob(pat))
     hits = [h for h in hits if os.path.isfile(h)]
     if not hits:

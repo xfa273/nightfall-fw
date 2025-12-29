@@ -10,9 +10,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-# Set the project name
-set(CMAKE_PROJECT_NAME nightfall_mini_v1_1)
-
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
 
@@ -20,20 +17,13 @@ include("cmake/gcc-arm-none-eabi.cmake")
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Core project settings
-project(${CMAKE_PROJECT_NAME})
+project(nightfall-fw C ASM)
 message("Build type: " ${CMAKE_BUILD_TYPE})
-
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
-
-# Create an executable object type
-add_executable(${CMAKE_PROJECT_NAME})
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+set(NIGHTFALL_USER_SOURCES
     platform/stm32f405/Core/Src/auxiliary.c
     platform/stm32f405/Core/Src/control.c
     platform/stm32f405/Core/Src/distance_params.c
@@ -62,32 +52,38 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     platform/stm32f405/Core/Src/test_mode.c
 )
 
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-)
+function(nightfall_add_firmware target variant variant_define)
+    add_executable(${target})
 
-# Add project symbols (macros)
-target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-)
+    target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES})
 
-# Add linked libraries
-target_link_libraries(${CMAKE_PROJECT_NAME}
-    stm32cubemx
-)
+    nightfall_apply_stm32f405(${target})
 
-# Enable printf float support
-target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
-    -u _printf_float
-)
+    target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_SOURCE_DIR}/params/${variant}
+    )
 
-# Generate .bin file for UART flashing with CubeProgrammer
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.bin
-    COMMENT "Generating binary file for UART flashing: ${CMAKE_PROJECT_NAME}.bin"
-)
+    target_compile_definitions(${target} PRIVATE
+        ${variant_define}
+    )
 
-# Generate .hex file (optional)
-add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.hex
-    COMMENT "Generating hex file: ${CMAKE_PROJECT_NAME}.hex"
-)
+    target_link_options(${target} PRIVATE
+        -u _printf_float
+        -Wl,-Map=${target}.map
+    )
+
+    set_target_properties(${target} PROPERTIES ADDITIONAL_CLEAN_FILES ${target}.map)
+
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${target}> ${target}.bin
+        COMMENT "Generating binary file for UART flashing: ${target}.bin"
+    )
+
+    add_custom_command(TARGET ${target} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${target}> ${target}.hex
+        COMMENT "Generating hex file: ${target}.hex"
+    )
+endfunction()
+
+nightfall_add_firmware(nightfall_mini_v1_1 mini_v1_1 ROBOT_MINI_V1_1)
+nightfall_add_firmware(nightfall_classic_v2 classic_v2 ROBOT_CLASSIC_V2)
