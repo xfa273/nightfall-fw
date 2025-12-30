@@ -19,8 +19,6 @@ CMD_WRITEMEM = 0x31
 CMD_EXT_ERASE = 0x44
 
 
-# STM32F405 internal Flash sector map (Bank1)
-# Sector 0..3: 16KB, Sector 4: 64KB, Sector 5..11: 128KB
 _F405_SECTORS = [
     (0, 0x08000000, 16 * 1024),
     (1, 0x08004000, 16 * 1024),
@@ -36,10 +34,6 @@ _F405_SECTORS = [
     (11, 0x080E0000, 128 * 1024),
 ]
 
-# Persistent data sectors (do NOT erase during normal firmware update)
-# - Sector 9 : distance_params (0x080A0000)
-# - Sector 10: flash_params (0x080C0000)
-# - Sector 11: maze EEPROM emulation (0x080E0000)
 _PROTECTED_SECTORS_DEFAULT = {9, 10, 11}
 
 
@@ -197,8 +191,6 @@ def extended_erase_sectors(fd: int, sectors: list[int]) -> None:
     send_cmd(fd, CMD_EXT_ERASE)
     expect_ack(fd, "EXT_ERASE ack1", 2.0)
 
-    # AN3155: payload = N(16-bit) + page numbers (16-bit each) + checksum
-    # N = number_of_pages - 1
     n = len(sectors) - 1
     payload = struct.pack(">H", n)
     for s in sectors:
