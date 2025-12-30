@@ -9,6 +9,100 @@
 #include "maze_grid.h"
 #include <math.h>
 
+#define ENABLE_SEARCH_TIMING_MEASURE 1
+
+#if ENABLE_SEARCH_TIMING_MEASURE
+typedef struct {
+    uint32_t count;
+    uint32_t smap_count;
+    uint32_t route_count;
+    uint32_t max_conf_cycles;
+    uint32_t max_smap_cycles;
+    uint32_t max_route_cycles;
+    uint64_t sum_conf_cycles;
+    uint64_t sum_smap_cycles;
+    uint64_t sum_route_cycles;
+} SearchTiming_t;
+
+static SearchTiming_t s_search_timing;
+
+static inline void search_timing_enable_cycle_counter(void) {
+    static bool s_inited = false;
+    if (s_inited) return;
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+    s_inited = true;
+}
+
+static inline void search_timing_reset(void) {
+    s_search_timing.count = 0;
+    s_search_timing.smap_count = 0;
+    s_search_timing.route_count = 0;
+    s_search_timing.max_conf_cycles = 0;
+    s_search_timing.max_smap_cycles = 0;
+    s_search_timing.max_route_cycles = 0;
+    s_search_timing.sum_conf_cycles = 0;
+    s_search_timing.sum_smap_cycles = 0;
+    s_search_timing.sum_route_cycles = 0;
+}
+
+static inline uint32_t cycles_to_us_u32(uint32_t cycles, uint32_t freq_hz) {
+    if (freq_hz == 0) return 0;
+    return (uint32_t)(((uint64_t)cycles * 1000000ULL) / (uint64_t)freq_hz);
+}
+
+static void search_timing_print(void) {
+    uint32_t freq_hz = HAL_RCC_GetHCLKFreq();
+    uint32_t budget_us = 33333;
+
+    uint32_t avg_conf_cycles = 0;
+    uint32_t avg_smap_cycles = 0;
+    uint32_t avg_route_cycles = 0;
+
+    if (s_search_timing.count > 0) {
+        avg_conf_cycles = (uint32_t)(s_search_timing.sum_conf_cycles / s_search_timing.count);
+    }
+    if (s_search_timing.smap_count > 0) {
+        avg_smap_cycles = (uint32_t)(s_search_timing.sum_smap_cycles / s_search_timing.smap_count);
+    }
+    if (s_search_timing.route_count > 0) {
+        avg_route_cycles = (uint32_t)(s_search_timing.sum_route_cycles / s_search_timing.route_count);
+    }
+
+    printf("SEARCH_TIMING MAZE_SIZE=%u HCLK=%luHz budget_us=%lu\n",
+           (unsigned)MAZE_SIZE,
+           (unsigned long)freq_hz,
+           (unsigned long)budget_us);
+
+    printf("conf_route: n=%lu max=%lu cyc (%lu us) avg=%lu cyc (%lu us)\n",
+           (unsigned long)s_search_timing.count,
+           (unsigned long)s_search_timing.max_conf_cycles,
+           (unsigned long)cycles_to_us_u32(s_search_timing.max_conf_cycles, freq_hz),
+           (unsigned long)avg_conf_cycles,
+           (unsigned long)cycles_to_us_u32(avg_conf_cycles, freq_hz));
+
+    printf("make_smap : n=%lu max=%lu cyc (%lu us) avg=%lu cyc (%lu us)\n",
+           (unsigned long)s_search_timing.smap_count,
+           (unsigned long)s_search_timing.max_smap_cycles,
+           (unsigned long)cycles_to_us_u32(s_search_timing.max_smap_cycles, freq_hz),
+           (unsigned long)avg_smap_cycles,
+           (unsigned long)cycles_to_us_u32(avg_smap_cycles, freq_hz));
+
+    printf("make_route: n=%lu max=%lu cyc (%lu us) avg=%lu cyc (%lu us)\n",
+           (unsigned long)s_search_timing.route_count,
+           (unsigned long)s_search_timing.max_route_cycles,
+           (unsigned long)cycles_to_us_u32(s_search_timing.max_route_cycles, freq_hz),
+           (unsigned long)avg_route_cycles,
+           (unsigned long)cycles_to_us_u32(avg_route_cycles, freq_hz));
+
+    uint32_t max_conf_us = cycles_to_us_u32(s_search_timing.max_conf_cycles, freq_hz);
+    printf("budget_check: max_conf_us=%lu within_budget=%lu\n",
+           (unsigned long)max_conf_us,
+           (unsigned long)(max_conf_us <= budget_us));
+}
+#endif
+
 // 経路なし終了を検出する内部フラグ（adachi() 実行中のみ有効）
 static bool s_no_path_exit = false;
 
@@ -162,6 +256,11 @@ void adachi(void) {
 
     s_no_path_exit = false;
 
+#if ENABLE_SEARCH_TIMING_MEASURE
+    search_timing_enable_cycle_counter();
+    search_timing_reset();
+#endif
+
     // 探索時のみ制御周期を0.5kHzに間引く
     // MF.FLAG.SEARCH_HALF_RATE = 1;
 
@@ -196,8 +295,29 @@ void adachi(void) {
 
     //====歩数マップ・経路作成====
     r_cnt = 0;                 // 経路カウンタの初期化
+
+#if ENABLE_SEARCH_TIMING_MEASURE
+    {
+        uint32_t t0 = DWT->CYCCNT;
+        make_smap(goal_x, goal_y);
+        uint32_t t1 = DWT->CYCCNT;
+        uint32_t smap_cycles = t1 - t0;
+        if (smap_cycles > s_search_timing.max_smap_cycles) s_search_timing.max_smap_cycles = smap_cycles;
+        s_search_timing.sum_smap_cycles += smap_cycles;
+        s_search_timing.smap_count++;
+
+        uint32_t t2 = DWT->CYCCNT;
+        make_route();
+        uint32_t t3 = DWT->CYCCNT;
+        uint32_t route_cycles = t3 - t2;
+        if (route_cycles > s_search_timing.max_route_cycles) s_search_timing.max_route_cycles = route_cycles;
+        s_search_timing.sum_route_cycles += route_cycles;
+        s_search_timing.route_count++;
+    }
+#else
     make_smap(goal_x, goal_y); // 歩数マップ作成
     make_route(); // 最短経路探索（route配列に動作が格納される）
+#endif
 
     //====探索走行====
     do {
@@ -393,6 +513,10 @@ void adachi(void) {
 
     led_flash(2);
 
+#if ENABLE_SEARCH_TIMING_MEASURE
+    search_timing_print();
+#endif
+
     if (s_no_path_exit) {
         // 経路なし終了通知
         while(1){
@@ -437,42 +561,103 @@ void adv_pos() {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void conf_route() {
+#if ENABLE_SEARCH_TIMING_MEASURE
+    uint32_t conf_t0 = DWT->CYCCNT;
+#endif
     //----壁情報書き込み----
     write_map();
 
+#if ENABLE_SEARCH_TIMING_MEASURE
+    bool do_count_conf = true;
+#endif
+
+#if ENABLE_SEARCH_TIMING_MEASURE
+    uint32_t smap_t0 = DWT->CYCCNT;
     int mstep = make_smap(goal_x, goal_y);
+    uint32_t smap_t1 = DWT->CYCCNT;
+    uint32_t smap_cycles = smap_t1 - smap_t0;
+    if (smap_cycles > s_search_timing.max_smap_cycles) s_search_timing.max_smap_cycles = smap_cycles;
+    s_search_timing.sum_smap_cycles += smap_cycles;
+    s_search_timing.smap_count++;
+#else
+    int mstep = make_smap(goal_x, goal_y);
+#endif
 
     if (g_search_mode == SEARCH_MODE_GOAL) {
         // ゴールに到達したら終了（複数ゴール対応）
         // 復路(g_goal_is_start=true)ではスタート到達だけを判定対象にし、ゴール座標は無視
         if (g_goal_is_start && mouse.x == START_X && mouse.y == START_Y) {
             search_end = true;
+#if ENABLE_SEARCH_TIMING_MEASURE
+            goto conf_route_done;
+#else
             return;
+#endif
         }
         
         // 往路では複数ゴールのいずれかに到達したら終了
         if (!g_goal_is_start && is_in_goal_cells(mouse.x, mouse.y)) {
             search_end = true;
+#if ENABLE_SEARCH_TIMING_MEASURE
+            goto conf_route_done;
+#else
             return;
+#endif
         }
 
         // 経路が見つからない（壁で遮断）などの異常時も終了
         if (mstep > (MAZE_SIZE * MAZE_SIZE - (MAZE_SIZE - 1))) {
             search_end = true;
+#if ENABLE_SEARCH_TIMING_MEASURE
+            goto conf_route_done;
+#else
             return;
+#endif
         }
 
+#if ENABLE_SEARCH_TIMING_MEASURE
+        uint32_t route_t0 = DWT->CYCCNT;
         make_route(); // 最短経路を更新
+        uint32_t route_t1 = DWT->CYCCNT;
+        uint32_t route_cycles = route_t1 - route_t0;
+        if (route_cycles > s_search_timing.max_route_cycles) s_search_timing.max_route_cycles = route_cycles;
+        s_search_timing.sum_route_cycles += route_cycles;
+        s_search_timing.route_count++;
+#else
+        make_route(); // 最短経路を更新
+#endif
         r_cnt = 0;    // 経路カウンタを0に
     } else {
         // 全面探索モード（未探索セルに向かう）
         if (mstep > (MAZE_SIZE * MAZE_SIZE - (MAZE_SIZE - 1))) {
             search_end = true;
         } else {
+#if ENABLE_SEARCH_TIMING_MEASURE
+            uint32_t route_t0 = DWT->CYCCNT;
             make_route(); // 最短経路を更新
+            uint32_t route_t1 = DWT->CYCCNT;
+            uint32_t route_cycles = route_t1 - route_t0;
+            if (route_cycles > s_search_timing.max_route_cycles) s_search_timing.max_route_cycles = route_cycles;
+            s_search_timing.sum_route_cycles += route_cycles;
+            s_search_timing.route_count++;
+#else
+            make_route(); // 最短経路を更新
+#endif
             r_cnt = 0;    // 経路カウンタを0に
         }
     }
+
+#if ENABLE_SEARCH_TIMING_MEASURE
+conf_route_done:
+    ;
+    uint32_t conf_t1 = DWT->CYCCNT;
+    uint32_t conf_cycles = conf_t1 - conf_t0;
+    if (do_count_conf) {
+        s_search_timing.count++;
+        if (conf_cycles > s_search_timing.max_conf_cycles) s_search_timing.max_conf_cycles = conf_cycles;
+        s_search_timing.sum_conf_cycles += conf_cycles;
+    }
+#endif
 
     // buzzer_interrupt(300);
 

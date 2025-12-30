@@ -9,7 +9,7 @@
 #define INC_GLOBAL_H_
 
 #include "main.h"
-#include "params.h"
+#include <params.h>
 #include <stdbool.h>
 
 /*------------------------------------------------------------
