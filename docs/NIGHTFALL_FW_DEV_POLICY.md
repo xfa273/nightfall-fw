@@ -186,7 +186,7 @@ STM32F405 を共通で使う前提なので、platform（CubeMX生成物/HAL/sta
 `git wip` エイリアス（推奨）:
 - `git wip <message>` で `add -A` →（変更があれば）`commit` → `push` を1発で行う
 - コマンド（リポジトリ内ローカル設定）:
-  - `git config alias.wip '!f(){ msg="${1:-checkpoint}"; git add -A && (git diff --cached --quiet || git commit -m "wip: ${msg}") && git push; }; f'`
+  - `git config alias.wip '!f(){ msg="${1:-checkpoint}"; git add -A && (git diff --cached --quiet || git commit -m "wip: ${msg}") && (git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git push || git push -u origin HEAD); }; f'`
 - 補足:
   - エイリアスはこのリポジトリにのみ有効（他リポジトリでも使いたい場合は `--global` を付ける）
   - 変更が無い場合はcommitせずにpushだけ実行する
