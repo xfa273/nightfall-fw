@@ -392,35 +392,8 @@ void run(void) {
 }
 
 void run_shortest(uint8_t mode, uint8_t case_index) {
-    // case_index: 1..9 -> idx 0..8（mode2/3 は9要素、他は従来通り）
-    uint8_t idx = 0;
-    if (case_index >= 1 && case_index <= 9) {
-        idx = (uint8_t)(case_index - 1);
-    } else {
-        // フォールバック: 0 を使用
-        idx = 0;
-    }
-
-    const ShortestRunModeParams_t *pm = NULL;
-    const ShortestRunCaseParams_t *pcases = NULL;
-    switch (mode) {
-        case 2: pm = &shortestRunModeParams2; pcases = &shortestRunCaseParamsMode2[0]; break;
-        case 3: pm = &shortestRunModeParams3; pcases = &shortestRunCaseParamsMode3[0]; break;
-        case 4: pm = &shortestRunModeParams4; pcases = &shortestRunCaseParamsMode4[0]; break;
-        case 5: pm = &shortestRunModeParams5; pcases = &shortestRunCaseParamsMode5[0]; break;
-        case 6: pm = &shortestRunModeParams6; pcases = &shortestRunCaseParamsMode6[0]; break;
-        case 7: pm = &shortestRunModeParams7; pcases = &shortestRunCaseParamsMode7[0]; break;
-        default: pm = &shortestRunModeParams2; pcases = &shortestRunCaseParamsMode2[0]; break;
-    }
-
-    // モードごとのケース数でクランプ（mode2/3/4:9要素=idx0..8、その他:5要素=idx0..4）
-    uint8_t max_idx = 4;
-    if (mode == 2 || mode == 3 || mode == 4) {
-        max_idx = 8;
-    }
-    if (idx > max_idx) idx = max_idx;
-
-    const ShortestRunCaseParams_t *p = &pcases[idx];
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(mode);
+    const ShortestRunCaseParams_t *p = shortest_get_case_params(mode, case_index);
 
     printf("Mode %d-%d Shortest Run.\n", mode, case_index);
 

@@ -164,6 +164,33 @@ STM32F405 を共通で使う前提なので、platform（CubeMX生成物/HAL/sta
 - 参照（ブランチ名 or タグ名 or コミットID）
 - メモ（なぜ失敗したか）
 
+### 5.6 ローカル作業のバックアップ運用（標準：案2）
+
+目的:
+- 「戻したい状態が保存されていない」を無くす
+- “動いたらコミット”に頼らず、途中経過も含めてGitHubへ残す
+
+運用ルール（必須）:
+- 作業は原則ブランチで行う（`feature/*`, `fix/*`, `exp/*`）
+- ブランチを切ったら **早い段階で1回push** する（GitHubにバックアップを作る）
+- WIPでもコミットして良い（例: `wip: ...`）
+- pushタイミングは「判断」ではなく、以下で固定する
+  - 目安: 15〜30分に1回（進捗があれば）
+  - 危ない変更の前（大きいリファクタ、生成系、CMake、ファイル大量変更など）
+  - 作業終了前（その日の終わり）
+
+推奨:
+- ブランチを作ったら GitHub で **Draft PR** を作り、作業ログ兼バックアップとして運用する
+  - PRは「完成してから作る」ではなく、開始直後から作る
+
+`git wip` エイリアス（推奨）:
+- `git wip <message>` で `add -A` →（変更があれば）`commit` → `push` を1発で行う
+- コマンド（リポジトリ内ローカル設定）:
+  - `git config alias.wip '!f(){ msg="${1:-checkpoint}"; git add -A && (git diff --cached --quiet || git commit -m "wip: ${msg}") && (git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git push || git push -u origin HEAD); }; f'`
+- 補足:
+  - エイリアスはこのリポジトリにのみ有効（他リポジトリでも使いたい場合は `--global` を付ける）
+  - 変更が無い場合はcommitせずにpushだけ実行する
+
 ---
 
 ## 6. リリース（タグ付け）のルール

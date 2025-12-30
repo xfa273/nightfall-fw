@@ -2,6 +2,7 @@
 #include "../Inc/solver_params.h"
 
 // ========================= Mode 2 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
@@ -64,7 +65,9 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 2000.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     // case1 (index 0): independent (initially same as former case3)
     {
@@ -129,8 +132,10 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
         .velocity_d_straight = 3000.0f
     },
 };
+#endif
 
 // ========================= Mode 3 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams3 = {
     // 90deg
     .velocity_turn90    = 600.0f,
@@ -193,7 +198,9 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
     // case1 (index 0): independent (initially same as former case3)
     {
@@ -258,8 +265,10 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
         .velocity_d_straight = 2500.0f
     },
 };
+#endif
 
 // ========================= Mode 4 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams4 = {
     // 90deg
     .velocity_turn90    = 800.0f,
@@ -321,7 +330,9 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
     // case1 (index 0)
     {
@@ -353,7 +364,7 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
         .velocity_straight = 2500.0f, .kp_wall = 0.4f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
-    // case6 (index 5): 
+    // case6 (index 5)
     {
         .acceleration_straight = 7111.11f, .acceleration_straight_dash = 16000.0f,
         .velocity_straight = 3500.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
@@ -361,7 +372,7 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
         .acceleration_d_straight = 4000.0f, .acceleration_d_straight_dash = 8000.0f,
         .velocity_d_straight = 2000.0f
     },
-    // case7 (index 6): 
+    // case7 (index 6)
     {
         .acceleration_straight = 7111.11f, .acceleration_straight_dash = 18000.0f,
         .velocity_straight = 3500.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
@@ -386,8 +397,10 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
         .velocity_d_straight = 2000.0f
     },
 };
+#endif
 
 // ========================= Mode 5 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams5 = {
     // 90deg
     .velocity_turn90    = 1000.0f,
@@ -419,7 +432,9 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
     // case1 (index 0)
     {
@@ -484,8 +499,10 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
         .velocity_d_straight = 3500.0f
     },
 };
+#endif
 
 // ========================= Mode 6 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams6 = {
     // 90deg
     .velocity_turn90    = 1000.0f,
@@ -517,7 +534,9 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
     // case1 (index 0) - mode5と同じ値
     {
@@ -582,8 +601,10 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
         .velocity_d_straight = 3500.0f
     },
 };
+#endif
 
 // ========================= Mode 7 =========================
+#if 0
 const ShortestRunModeParams_t shortestRunModeParams7 = {
     .velocity_turn90    = 1400.0f,
     .alpha_turn90       = 50000.0f,
@@ -612,7 +633,9 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
     // 加速度切り替え速度
     .accel_switch_velocity = 2000.0f
 };
+#endif
 
+#if 0
 const ShortestRunCaseParams_t shortestRunCaseParamsMode7[5] = {
     {
         .acceleration_straight = 14222.2f, .acceleration_straight_dash = 25000.0f,
@@ -640,3 +663,4 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode7[5] = {
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
 };
+#endif
