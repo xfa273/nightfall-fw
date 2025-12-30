@@ -19,6 +19,30 @@ CMD_WRITEMEM = 0x31
 CMD_EXT_ERASE = 0x44
 
 
+# STM32F405 internal Flash sector map (Bank1)
+# Sector 0..3: 16KB, Sector 4: 64KB, Sector 5..11: 128KB
+_F405_SECTORS = [
+    (0, 0x08000000, 16 * 1024),
+    (1, 0x08004000, 16 * 1024),
+    (2, 0x08008000, 16 * 1024),
+    (3, 0x0800C000, 16 * 1024),
+    (4, 0x08010000, 64 * 1024),
+    (5, 0x08020000, 128 * 1024),
+    (6, 0x08040000, 128 * 1024),
+    (7, 0x08060000, 128 * 1024),
+    (8, 0x08080000, 128 * 1024),
+    (9, 0x080A0000, 128 * 1024),
+    (10, 0x080C0000, 128 * 1024),
+    (11, 0x080E0000, 128 * 1024),
+]
+
+# Persistent data sectors (do NOT erase during normal firmware update)
+# - Sector 9 : distance_params (0x080A0000)
+# - Sector 10: flash_params (0x080C0000)
+# - Sector 11: maze EEPROM emulation (0x080E0000)
+_PROTECTED_SECTORS_DEFAULT = {9, 10, 11}
+
+
 def xor_checksum(bs: bytes) -> int:
     x = 0
     for b in bs:
@@ -148,6 +172,43 @@ def extended_erase_all(fd: int) -> None:
     expect_ack(fd, "EXT_ERASE ack2", 40.0)
 
 
+def _f405_sector_for_addr(addr: int) -> int:
+    for sid, start, size in _F405_SECTORS:
+        if start <= addr < (start + size):
+            return sid
+    raise RuntimeError(f"address out of F405 flash range: 0x{addr:08X}")
+
+
+def _f405_sectors_cover_range(start_addr: int, size_bytes: int) -> list[int]:
+    if size_bytes <= 0:
+        return []
+    end_addr = start_addr + size_bytes - 1
+    s0 = _f405_sector_for_addr(start_addr)
+    s1 = _f405_sector_for_addr(end_addr)
+    return list(range(s0, s1 + 1))
+
+
+def extended_erase_sectors(fd: int, sectors: list[int]) -> None:
+    if not sectors:
+        return
+    if len(sectors) > 0x10000:
+        raise ValueError("too many sectors")
+
+    send_cmd(fd, CMD_EXT_ERASE)
+    expect_ack(fd, "EXT_ERASE ack1", 2.0)
+
+    # AN3155: payload = N(16-bit) + page numbers (16-bit each) + checksum
+    # N = number_of_pages - 1
+    n = len(sectors) - 1
+    payload = struct.pack(">H", n)
+    for s in sectors:
+        payload += struct.pack(">H", s & 0xFFFF)
+
+    send(fd, payload + bytes([xor_checksum(payload)]))
+    print(f"Erasing sectors: {sectors}")
+    expect_ack(fd, "EXT_ERASE ack2", 40.0)
+
+
 def write_memory(fd: int, addr: int, data: bytes) -> None:
     if not (1 <= len(data) <= 256):
         raise ValueError("chunk size must be 1..256")
@@ -218,6 +279,7 @@ def main() -> int:
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--bin", dest="bin_path", default=None)
     ap.add_argument("--no-erase", action="store_true")
+    ap.add_argument("--erase-all", action="store_true", help="DANGEROUS: full chip erase (will delete saved params/maze)")
     ap.add_argument("--no-go", action="store_true")
     ap.add_argument("--base", default="0x08000000")
     ap.add_argument("--timeout", type=float, default=30.0)
@@ -241,7 +303,18 @@ def main() -> int:
             print(f"Device ID: 0x{chip_id:04X}")
 
         if not args.no_erase:
-            extended_erase_all(fd)
+            if args.erase_all:
+                extended_erase_all(fd)
+            else:
+                sectors = _f405_sectors_cover_range(base, len(blob))
+                protected = _PROTECTED_SECTORS_DEFAULT
+                if any(s in protected for s in sectors):
+                    raise RuntimeError(
+                        "Firmware image overlaps protected Flash sectors (params/maze). "
+                        f"sectors_to_erase={sectors} protected={sorted(protected)}. "
+                        "Reduce firmware size or change flash layout, or use --erase-all (not recommended)."
+                    )
+                extended_erase_sectors(fd, sectors)
 
         chunk = 256
         t0 = time.time()
