@@ -632,6 +632,10 @@ int make_smap(uint8_t target_x, uint8_t target_y) {
     //====変数宣言====
     uint8_t x, y; // for文用変数
 
+    static uint16_t q[MAZE_SIZE * MAZE_SIZE];
+    uint16_t q_head = 0;
+    uint16_t q_tail = 0;
+
     //====歩数マップのクリア====
     for (y = 0; y <= (MAZE_SIZE - 1); y++) {     // 各Y座標で実行
         for (x = 0; x <= (MAZE_SIZE - 1); x++) { // 各X座標で実行
@@ -640,82 +644,78 @@ int make_smap(uint8_t target_x, uint8_t target_y) {
     }
 
     //====ゴール座標を0にする/未探索セルを0にする====
-    uint16_t m_step = 0; // 歩数カウンタを0にする
     if (g_search_mode == SEARCH_MODE_GOAL) {
-        // ゴールモード
         if (g_goal_is_start) {
-            // 復路: スタート座標を起点(0)にする（ゴール群は無視）
             smap[START_Y][START_X] = 0;
+            q[q_tail++] = (uint16_t)(START_Y * MAZE_SIZE + START_X);
         } else {
-            // 往路: params.h の複数ゴールを起点(0)にする
             seed_goals_zero_in_smap();
+            for (y = 0; y <= (MAZE_SIZE - 1); y++) {
+                for (x = 0; x <= (MAZE_SIZE - 1); x++) {
+                    if (smap[y][x] == 0) {
+                        q[q_tail++] = (uint16_t)(y * MAZE_SIZE + x);
+                    }
+                }
+            }
         }
     } else {
-        // 全面探索: 未探索セルを起点(0)にする
-        // スタート区画は強制的に既知扱い（無駄な帰還を防止）
         visited[START_Y][START_X] = true;
-        for (y = 0; y <= (MAZE_SIZE - 1); y++) {     // 各Y座標で実行
-            for (x = 0; x <= (MAZE_SIZE - 1); x++) { // 各X座標で実行
+        for (y = 0; y <= (MAZE_SIZE - 1); y++) {
+            for (x = 0; x <= (MAZE_SIZE - 1); x++) {
                 if (visited[y][x] == false) {
                     smap[y][x] = 0;
+                    q[q_tail++] = (uint16_t)(y * MAZE_SIZE + x);
                 }
             }
         }
     }
 
-    //====自分の座標にたどり着くまでループ====
-    do {
-        //----マップ全域を捜索----
-        for (y = 0; y <= (MAZE_SIZE - 1); y++) {     // 各Y座標で実行
-            for (x = 0; x <= (MAZE_SIZE - 1); x++) { // 各X座標で実行
-                //----現在最大の歩数を発見したとき----
-                if (smap[y][x] ==
-                    m_step) { // 歩数カウンタm_stepの値が現在最大の歩数
-                    uint8_t m_temp =
-                        map[y][x]; // map配列からマップデータを取り出す
-                    if (MF.FLAG
-                            .SCND) { // 二次走行用のマップを作成する場合（二次走行時はMF.FLAG.SCNDが立っている）
-                        m_temp >>=
-                            4; // 上位4bitを使うので4bit分右にシフトさせる
-                    }
-                    //----北壁についての処理----
-                    if (!(m_temp & 0x08) &&
-                        y != (MAZE_SIZE - 1)) { // 北壁がなく現在最北端でないとき
-                        if (smap[y + 1][x] == 0xffff) { // 北側が未記入なら
+    while (q_head < q_tail && smap[mouse.y][mouse.x] == 0xffff) {
+        uint16_t idx = q[q_head++];
+        uint8_t cy = (uint8_t)(idx / MAZE_SIZE);
+        uint8_t cx = (uint8_t)(idx - (uint16_t)(cy * MAZE_SIZE));
+        uint16_t m_step = smap[cy][cx];
 
-                            smap[y + 1][x] = m_step + 1; // 次の歩数を書き込む
-                        }
-                    }
-                    //----東壁についての処理----
-                    if (!(m_temp & 0x04) &&
-                        x != (MAZE_SIZE - 1)) { // 東壁がなく現在最東端でないとき
-                        if (smap[y][x + 1] == 0xffff) { // 東側が未記入なら
-                            smap[y][x + 1] = m_step + 1; // 次の歩数を書き込む
-                        }
-                    }
-                    //----南壁についての処理----
-                    if (!(m_temp & 0x02) &&
-                        y != 0) { // 南壁がなく現在最南端でないとき
-                        if (smap[y - 1][x] == 0xffff) { // 南側が未記入なら
-                            smap[y - 1][x] = m_step + 1; // 次の歩数を書き込む
-                        }
-                    }
-                    //----西壁についての処理----
-                    if (!(m_temp & 0x01) &&
-                        x != 0) { // 西壁がなく現在最西端でないとき
-                        if (smap[y][x - 1] == 0xffff) { // 西側が未記入なら
-                            smap[y][x - 1] = m_step + 1; // 次の歩数を書き込む
-                        }
-                    }
-                }
+        uint8_t m_temp = (uint8_t)map[cy][cx];
+        if (MF.FLAG.SCND) {
+            m_temp >>= 4;
+        }
+
+        if (!(m_temp & 0x08) && cy != (MAZE_SIZE - 1)) {
+            if (smap[cy + 1][cx] == 0xffff) {
+                smap[cy + 1][cx] = m_step + 1;
+                q[q_tail++] = (uint16_t)((cy + 1) * MAZE_SIZE + cx);
             }
         }
-        //====歩数カウンタのインクリメント====
-        m_step++;
-    } while (smap[mouse.y][mouse.x] == 0xffff &&
-             m_step < (MAZE_SIZE * MAZE_SIZE - 10)); // 現在座標が未記入ではなくなるまで実行
+        if (!(m_temp & 0x04) && cx != (MAZE_SIZE - 1)) {
+            if (smap[cy][cx + 1] == 0xffff) {
+                smap[cy][cx + 1] = m_step + 1;
+                q[q_tail++] = (uint16_t)(cy * MAZE_SIZE + (cx + 1));
+            }
+        }
+        if (!(m_temp & 0x02) && cy != 0) {
+            if (smap[cy - 1][cx] == 0xffff) {
+                smap[cy - 1][cx] = m_step + 1;
+                q[q_tail++] = (uint16_t)((cy - 1) * MAZE_SIZE + cx);
+            }
+        }
+        if (!(m_temp & 0x01) && cx != 0) {
+            if (smap[cy][cx - 1] == 0xffff) {
+                smap[cy][cx - 1] = m_step + 1;
+                q[q_tail++] = (uint16_t)(cy * MAZE_SIZE + (cx - 1));
+            }
+        }
+    }
 
-    return m_step;
+    if (smap[mouse.y][mouse.x] == 0xffff) {
+        return (MAZE_SIZE * MAZE_SIZE - 10);
+    }
+
+    if (smap[mouse.y][mouse.x] == 0) {
+        return 1;
+    }
+
+    return smap[mouse.y][mouse.x];
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
