@@ -719,10 +719,10 @@ static volatile uint32_t s_sensor_log_tick = 0;  // ログ用カウンタ（6kHz
 // センサログバッファを初期化
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void sensor_log_init(void) {
-    sensor_log_buffer.head = 0;
-    sensor_log_buffer.count = 0;
-    sensor_log_buffer.logging_active = 0;
-    sensor_log_buffer.start_tick = 0;
+    log_buffer2.head = 0;
+    log_buffer2.count = 0;
+    log_buffer2.logging_active = 0;
+    log_buffer2.start_time = 0;
     s_sensor_log_tick = 0;
 }
 
@@ -731,11 +731,11 @@ void sensor_log_init(void) {
 // センサログ取得を開始
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void sensor_log_start(void) {
-    sensor_log_buffer.head = 0;
-    sensor_log_buffer.count = 0;
-    sensor_log_buffer.start_tick = HAL_GetTick();
+    log_buffer2.head = 0;
+    log_buffer2.count = 0;
+    log_buffer2.start_time = HAL_GetTick();
     s_sensor_log_tick = 0;
-    sensor_log_buffer.logging_active = 1;
+    log_buffer2.logging_active = 1;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -743,7 +743,7 @@ void sensor_log_start(void) {
 // センサログ取得を停止
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void sensor_log_stop(void) {
-    sensor_log_buffer.logging_active = 0;
+    log_buffer2.logging_active = 0;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -751,23 +751,26 @@ void sensor_log_stop(void) {
 // センサ値を記録（ADCコールバックから呼ばれる、約6kHz）
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void sensor_log_capture(void) {
-    if (!sensor_log_buffer.logging_active) {
+    if (!log_buffer2.logging_active) {
         return;
     }
-    if (sensor_log_buffer.count >= SENSOR_LOG_MAX_ENTRIES) {
+    if (log_buffer2.count >= MAX_LOG_ENTRIES) {
         return;  // バッファフル
     }
     
-    uint16_t pos = sensor_log_buffer.head;
-    sensor_log_buffer.entries[pos].timestamp = s_sensor_log_tick;
-    sensor_log_buffer.entries[pos].ad_r = ad_r;
-    sensor_log_buffer.entries[pos].ad_l = ad_l;
-    sensor_log_buffer.entries[pos].ad_fr = ad_fr;
-    sensor_log_buffer.entries[pos].ad_fl = ad_fl;
-    sensor_log_buffer.entries[pos].distance = real_distance;
+    uint16_t pos = log_buffer2.head;
+    log_buffer2.entries[pos].count = (uint16_t)log_buffer2.count;
+    log_buffer2.entries[pos].target_omega = (float)ad_r;
+    log_buffer2.entries[pos].actual_omega = (float)ad_l;
+    log_buffer2.entries[pos].p_term_omega = (float)ad_fr;
+    log_buffer2.entries[pos].i_term_omega = (float)ad_fl;
+    log_buffer2.entries[pos].d_term_omega = real_distance;
+    log_buffer2.entries[pos].motor_out_r = 0.0f;
+    log_buffer2.entries[pos].motor_out_l = 0.0f;
+    log_buffer2.entries[pos].timestamp = s_sensor_log_tick;
     
-    sensor_log_buffer.head = (pos + 1) % SENSOR_LOG_MAX_ENTRIES;
-    sensor_log_buffer.count++;
+    log_buffer2.head = (pos + 1) % MAX_LOG_ENTRIES;
+    log_buffer2.count++;
     s_sensor_log_tick++;
 }
 
@@ -777,23 +780,22 @@ void sensor_log_capture(void) {
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void sensor_log_print(void) {
     printf("=== Sensor Log Data (CSV Format) ===\n");
-    printf("Total entries: %d\n", sensor_log_buffer.count);
+    printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,0,0\n");
     printf("--- CSV Data Start ---\n");
     
-    uint16_t count = sensor_log_buffer.count > SENSOR_LOG_MAX_ENTRIES 
-                     ? SENSOR_LOG_MAX_ENTRIES : sensor_log_buffer.count;
+    uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES 
+                     ? MAX_LOG_ENTRIES : log_buffer2.count;
     
     for (uint16_t i = 0; i < count; i++) {
-        SensorLogEntry *entry = (SensorLogEntry *)&sensor_log_buffer.entries[i];
-        // 既存フォーマットに合わせて7パラメータ出力（余りは0）
+        volatile LogEntry *entry = &log_buffer2.entries[i];
         printf("%lu,%d,%d,%d,%d,%.3f,0,0\n",
                entry->timestamp,
-               entry->ad_r,
-               entry->ad_l,
-               entry->ad_fr,
-               entry->ad_fl,
-               entry->distance);
+               (int)entry->target_omega,
+               (int)entry->actual_omega,
+               (int)entry->p_term_omega,
+               (int)entry->i_term_omega,
+               entry->d_term_omega);
     }
     
     printf("--- CSV Data End ---\n");

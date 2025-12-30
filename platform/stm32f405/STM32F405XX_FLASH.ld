@@ -178,12 +178,19 @@ SECTIONS
     . = ALIGN(4);
     _sccmram = .;       /* create a global symbol at ccmram start */
     *(.ccmram)
-    *(.ccmram*)
+    *(.ccmram.*)
 
     . = ALIGN(4);
     _eccmram = .;       /* create a global symbol at ccmram end */
   } >CCMRAM AT> FLASH
 
+  .ccmram_bss (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.ccmram_bss)
+    *(.ccmram_bss.*)
+    . = ALIGN(4);
+  } >CCMRAM
 
   /* Uninitialized data section */
   . = ALIGN(4);

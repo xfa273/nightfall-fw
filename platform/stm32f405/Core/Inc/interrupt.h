@@ -45,7 +45,7 @@ void tim1_wait_us(uint32_t us);
 
 #ifdef MAIN_C_ // main.cからこのファイルが呼ばれている場合
 volatile uint8_t ADC_task_counter; // ADCの振り分け用カウンタ
-volatile LogBuffer log_buffer;     // 主ログ（速度/角速度 等）
+volatile LogBuffer log_buffer __attribute__((section(".ccmram_bss")));     // 主ログ（速度/角速度 等）
 volatile LogBuffer log_buffer2;    // 副ログ（距離/角度 等）
 
 #else // main.c以外からこのファイルが呼ばれている場合

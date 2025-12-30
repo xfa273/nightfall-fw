@@ -242,7 +242,7 @@
 //----ゴール座標----
 #define GOAL_X   5 // 7
 #define GOAL_Y   6 // 7
-#define MAZE_SIZE 16
+#define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
 
