@@ -36,7 +36,7 @@ void led_write(uint8_t led_l, uint8_t led_r) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 
-void led_flash(uint8_t times) {
+void led_flash(uint16_t times) {
     for (int i = 0; i < times; i++) {
         HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
 

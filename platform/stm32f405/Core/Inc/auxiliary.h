@@ -12,7 +12,7 @@
 #define max(A, B) ((A) > (B)) ? (A) : (B)
 
 void led_write(uint8_t, uint8_t);
-void led_flash(uint8_t);
+void led_flash(uint16_t);
 void led_wait(void);
 void buzzer_beep(uint16_t);
 void buzzer_interrupt(uint16_t);

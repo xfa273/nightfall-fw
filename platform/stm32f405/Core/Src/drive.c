@@ -50,6 +50,21 @@ static volatile uint8_t s_motor_enabled = 0;
 // 最後にファンを停止した時刻（ms）: ブザー起動のクールダウン制御用
 volatile uint32_t fan_last_off_ms = 0;
 
+static inline float consume_search_coast_mm(float planned_mm) {
+    float dist = planned_mm;
+    if (planned_mm <= 0.0f) {
+        return 0.0f;
+    }
+    if (g_search_coast_mm > 0.0f) {
+        dist = planned_mm - g_search_coast_mm;
+        if (dist < 0.0f) {
+            dist = 0.0f;
+        }
+        g_search_coast_mm = 0.0f;
+    }
+    return dist;
+}
+
 /*==========================================================
     走行系 上位関数
 ==========================================================*/
@@ -165,9 +180,17 @@ void half_sectionD(uint16_t val) {
     
     float speed_out = 0;  // 減速停止
 
+    float dist = consume_search_coast_mm(DIST_HALF_SEC);
+    if (dist <= 0.0f) {
+        speed_now = speed_out;
+        velocity_interrupt = 0.0f;
+        acceleration_interrupt = 0.0f;
+        return;
+    }
+
     // 従来通りの動作（補正なし）
     MF.FLAG.CTRL = 1;
-    driveA(DIST_HALF_SEC, speed_now, speed_out, 0);
+    driveA(dist, speed_now, speed_out, 0);
     MF.FLAG.CTRL = 0;
     speed_now = speed_out;
 
@@ -314,10 +337,19 @@ void one_sectionU(float section, float spd_out) {
     (void)spd_out;
     
     const float v_const = speed_now;
-    const float dist_max = DIST_HALF_SEC * 2.0f;  // 90mm（1区画）
+    float dist_max = DIST_HALF_SEC * 2.0f;  // 90mm（1区画）
     // 壁切れ後の追加直進: 小回りターン用なので45mm + dist_wall_end
     // const float follow_dist = DIST_HALF_SEC + dist_wall_end;
     const float follow_dist = dist_wall_end;
+
+    dist_max = consume_search_coast_mm(dist_max);
+
+    if (dist_max <= 0.0f) {
+        MF.FLAG.CTRL = 0;
+        speed_now = v_const;
+        get_wall_info();
+        return;
+    }
     
     MF.FLAG.CTRL = 1;
     
@@ -488,19 +520,28 @@ void turn_R90(uint8_t fwall) {
     MF.FLAG.SLALOM_R = 1;
     MF.FLAG.CTRL = 1;
 
+    float dist_in = consume_search_coast_mm(dist_offset_in);
+ 
     // テスト動作フラグが立っている場合は前壁補正を無効化
-    if (fwall && !g_test_mode_run) {
-        if (MF.FLAG.F_WALL) {
-            driveFWall(dist_offset_in, speed_now, velocity_turn90);
+    if (dist_in > 0.0f) {
+        if (fwall && !g_test_mode_run) {
+            if (MF.FLAG.F_WALL) {
+                driveFWall(dist_in, speed_now, velocity_turn90);
+            } else {
+                driveA(dist_in, speed_now, velocity_turn90, 0);
+            }
         } else {
-            driveA(dist_offset_in, speed_now, velocity_turn90, 0);
+            driveA(dist_in, speed_now, velocity_turn90, 0);
         }
-    } else {
-        driveA(dist_offset_in, speed_now, velocity_turn90, 0);
     }
 
+    if (dist_in <= 0.0f) {
+        acceleration_interrupt = 0.0f;
+        velocity_interrupt = velocity_turn90;
+    }
+ 
     MF.FLAG.CTRL = 0;
-
+ 
     driveSR(angle_turn_90, alpha_turn90);
     MF.FLAG.CTRL = 1;
     driveA(dist_offset_out, velocity_turn90, speed_now, 0);
@@ -519,19 +560,28 @@ void turn_L90(uint8_t fwall) {
     MF.FLAG.SLALOM_L = 1;
     MF.FLAG.CTRL = 1;
 
+    float dist_in = consume_search_coast_mm(dist_offset_in);
+ 
     // テスト動作フラグが立っている場合は前壁補正を無効化
-    if (fwall && !g_test_mode_run) {
-        if (MF.FLAG.F_WALL) {
-            driveFWall(dist_offset_in, speed_now, velocity_turn90);
+    if (dist_in > 0.0f) {
+        if (fwall && !g_test_mode_run) {
+            if (MF.FLAG.F_WALL) {
+                driveFWall(dist_in, speed_now, velocity_turn90);
+            } else {
+                driveA(dist_in, speed_now, velocity_turn90, 0);
+            }
         } else {
-            driveA(dist_offset_in, speed_now, velocity_turn90, 0);
-        }
-    } else {
-        driveA(dist_offset_in, speed_now, velocity_turn90, 0);
-    }
+            driveA(dist_in, speed_now, velocity_turn90, 0);
+         }
+     }
 
-    MF.FLAG.CTRL = 0;
-
+     if (dist_in <= 0.0f) {
+         acceleration_interrupt = 0.0f;
+         velocity_interrupt = velocity_turn90;
+     }
+ 
+     MF.FLAG.CTRL = 0;
+ 
     driveSL(angle_turn_90, alpha_turn90);
     MF.FLAG.CTRL = 1;
     driveA(dist_offset_out, velocity_turn90, speed_now, 0);

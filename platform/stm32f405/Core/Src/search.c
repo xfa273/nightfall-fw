@@ -167,6 +167,7 @@ void search_init(void) {
     g_second_phase_search = false;
     g_goal_is_start = false; // 初期状態ではスタートをゴール扱いしない
     g_defer_save_until_end = false; // 迷路保存延期フラグ
+    g_search_coast_mm = 0.0f;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -514,6 +515,7 @@ void adachi(void) {
     led_flash(2);
 
 #if ENABLE_SEARCH_TIMING_MEASURE
+    led_flash(200);
     search_timing_print();
 #endif
 
@@ -564,6 +566,8 @@ void conf_route() {
 #if ENABLE_SEARCH_TIMING_MEASURE
     uint32_t conf_t0 = DWT->CYCCNT;
 #endif
+
+    float dist0 = real_distance;
     //----壁情報書き込み----
     write_map();
 
@@ -591,6 +595,7 @@ void conf_route() {
 #if ENABLE_SEARCH_TIMING_MEASURE
             goto conf_route_done;
 #else
+            g_search_coast_mm = real_distance - dist0;
             return;
 #endif
         }
@@ -601,6 +606,7 @@ void conf_route() {
 #if ENABLE_SEARCH_TIMING_MEASURE
             goto conf_route_done;
 #else
+            g_search_coast_mm = real_distance - dist0;
             return;
 #endif
         }
@@ -611,6 +617,7 @@ void conf_route() {
 #if ENABLE_SEARCH_TIMING_MEASURE
             goto conf_route_done;
 #else
+            g_search_coast_mm = real_distance - dist0;
             return;
 #endif
         }
@@ -658,6 +665,8 @@ conf_route_done:
         s_search_timing.sum_conf_cycles += conf_cycles;
     }
 #endif
+
+    g_search_coast_mm = real_distance - dist0;
 
     // buzzer_interrupt(300);
 

@@ -70,6 +70,7 @@ uint16_t goal_x, goal_y;      // ゴール座標
 uint16_t route[ROUTE_MAX_LEN];          // 最短経路格納配列
 uint16_t path[ROUTE_MAX_LEN];           // 最短経路パス配列
 uint16_t r_cnt;               // 経路カウンタ
+float g_search_coast_mm;
 
 /*直線加速用*/
 float strait_count; // 直線区画数
@@ -115,6 +116,7 @@ extern uint16_t goal_x, goal_y;      // ゴール座標
 extern uint16_t route[ROUTE_MAX_LEN];          // 最短経路格納配列
 extern uint16_t path[ROUTE_MAX_LEN];           // 最短経路パス配列
 extern uint16_t r_cnt;               // 経路カウンタ
+extern float g_search_coast_mm;
 
 /*直線加速用*/
 extern float strait_count; // 直線区画数
