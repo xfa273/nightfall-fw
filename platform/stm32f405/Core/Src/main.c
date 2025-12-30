@@ -30,6 +30,7 @@
 #include "mode4.h"
 #include "mode5.h"
 #include "distance_params.h"
+#include "build_info.h"
 
 /* Some build configurations missed the prototype; ensure it's visible */
 void mode5(void);
@@ -143,6 +144,8 @@ int main(void)
 
     // 起動メッセージとブザー（初期化で万一詰まっても起動を可視化）
     printf("Micro Mouse Nightfall 2025\n");
+    printf("[Build] target=%s variant=%s\r\n", NIGHTFALL_BUILD_TARGET, NIGHTFALL_BUILD_VARIANT);
+    printf("[Build] git=%s (%s)\r\n", NIGHTFALL_GIT_DESCRIBE, NIGHTFALL_GIT_SHA);
     for (uint16_t i = 1100; i > 300; i -= 150)
     {
         buzzer_beep(i);

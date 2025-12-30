@@ -58,6 +58,30 @@ function(nightfall_add_firmware target variant variant_define)
 
     target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES})
 
+    set(NIGHTFALL_BUILD_INFO_H ${CMAKE_BINARY_DIR}/generated/${variant}/build_info.h)
+    set(NIGHTFALL_BUILD_INFO_DEPS
+        ${CMAKE_SOURCE_DIR}/tools/gen_build_info.py
+    )
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.git/HEAD)
+        list(APPEND NIGHTFALL_BUILD_INFO_DEPS ${CMAKE_SOURCE_DIR}/.git/HEAD)
+    endif()
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.git/index)
+        list(APPEND NIGHTFALL_BUILD_INFO_DEPS ${CMAKE_SOURCE_DIR}/.git/index)
+    endif()
+    add_custom_command(
+        OUTPUT ${NIGHTFALL_BUILD_INFO_H}
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/gen_build_info.py
+            --out ${NIGHTFALL_BUILD_INFO_H}
+            --repo ${CMAKE_SOURCE_DIR}
+            --variant ${variant}
+            --target ${target}
+        DEPENDS
+            ${NIGHTFALL_BUILD_INFO_DEPS}
+        VERBATIM
+    )
+    add_custom_target(${target}_build_info DEPENDS ${NIGHTFALL_BUILD_INFO_H})
+    add_dependencies(${target} ${target}_build_info)
+
     set(NIGHTFALL_TURN_BANK_GEN_C ${CMAKE_BINARY_DIR}/generated/${variant}/shortest_turn_bank_gen.c)
     add_custom_command(
         OUTPUT ${NIGHTFALL_TURN_BANK_GEN_C}
@@ -89,6 +113,7 @@ function(nightfall_add_firmware target variant variant_define)
     nightfall_apply_stm32f405(${target})
 
     target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_BINARY_DIR}/generated/${variant}
         ${CMAKE_SOURCE_DIR}/params/${variant}
     )
 
