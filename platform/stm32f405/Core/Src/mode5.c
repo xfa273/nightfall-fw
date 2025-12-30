@@ -21,7 +21,7 @@ static void apply_case_params_mode5_idx(int idx) {
 }
 
 static void apply_turn_normal_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turn90 = m->velocity_turn90;
     alpha_turn90 = m->alpha_turn90;
     acceleration_turn = m->acceleration_turn;
@@ -33,7 +33,7 @@ static void apply_turn_normal_mode5(void) {
 }
 
 static void apply_turn_large90_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_l_turn_90 = m->velocity_l_turn_90;
     alpha_l_turn_90 = m->alpha_l_turn_90;
     angle_l_turn_90 = m->angle_l_turn_90;
@@ -42,7 +42,7 @@ static void apply_turn_large90_mode5(void) {
 }
 
 static void apply_turn_large180_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_l_turn_180 = m->velocity_l_turn_180;
     alpha_l_turn_180 = m->alpha_l_turn_180;
     angle_l_turn_180 = m->angle_l_turn_180;
@@ -51,7 +51,7 @@ static void apply_turn_large180_mode5(void) {
 }
 
 static void apply_turn_d45in_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turn45in = m->velocity_turn45in;
     alpha_turn45in = m->alpha_turn45in;
     angle_turn45in = m->angle_turn45in;
@@ -60,7 +60,7 @@ static void apply_turn_d45in_mode5(void) {
 }
 
 static void apply_turn_d45out_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turn45out = m->velocity_turn45out;
     alpha_turn45out = m->alpha_turn45out;
     angle_turn45out = m->angle_turn45out;
@@ -69,7 +69,7 @@ static void apply_turn_d45out_mode5(void) {
 }
 
 static void apply_turn_v90_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turnV90 = m->velocity_turnV90;
     alpha_turnV90 = m->alpha_turnV90;
     angle_turnV90 = m->angle_turnV90;
@@ -78,7 +78,7 @@ static void apply_turn_v90_mode5(void) {
 }
 
 static void apply_turn_d135in_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turn135in = m->velocity_turn135in;
     alpha_turn135in = m->alpha_turn135in;
     angle_turn135in = m->angle_turn135in;
@@ -87,7 +87,7 @@ static void apply_turn_d135in_mode5(void) {
 }
 
 static void apply_turn_d135out_mode5(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams5;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(5);
     velocity_turn135out = m->velocity_turn135out;
     alpha_turn135out = m->alpha_turn135out;
     angle_turn135out = m->angle_turn135out;
@@ -125,7 +125,7 @@ void mode5() {
                 apply_turn_normal_mode5();
                 printf("Loaded params: normal turn (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm0 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm0 = shortest_get_mode_params(5);
                     drive_fan(pm0->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -151,7 +151,7 @@ void mode5() {
                 apply_turn_large90_mode5();
                 printf("Loaded params: large 90deg (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm1 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm1 = shortest_get_mode_params(5);
                     drive_fan(pm1->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -176,7 +176,7 @@ void mode5() {
                 apply_turn_large180_mode5();
                 printf("Loaded params: large 180deg (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm2 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm2 = shortest_get_mode_params(5);
                     drive_fan(pm2->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -201,7 +201,7 @@ void mode5() {
                 apply_turn_d45in_mode5();
                 printf("Loaded params: diag 45-in (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm3 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm3 = shortest_get_mode_params(5);
                     drive_fan(pm3->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -227,7 +227,7 @@ void mode5() {
                 apply_turn_d45out_mode5();
                 printf("Loaded params: diag 45-out (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm4 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm4 = shortest_get_mode_params(5);
                     drive_fan(pm4->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -254,7 +254,7 @@ void mode5() {
                 apply_turn_v90_mode5();
                 printf("Loaded params: diag V90 (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm5 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm5 = shortest_get_mode_params(5);
                     drive_fan(pm5->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -281,7 +281,7 @@ void mode5() {
                 apply_turn_d135in_mode5();
                 printf("Loaded params: diag 135-in (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm6 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm6 = shortest_get_mode_params(5);
                     drive_fan(pm6->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -307,7 +307,7 @@ void mode5() {
                 apply_turn_d135out_mode5();
                 printf("Loaded params: diag 135-out (mode5).\n");
                 {
-                    const ShortestRunModeParams_t *pm7 = &shortestRunModeParams5;
+                    const ShortestRunModeParams_t *pm7 = shortest_get_mode_params(5);
                     drive_fan(pm7->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -333,7 +333,7 @@ void mode5() {
                 apply_case_params_mode5_idx(0);
                 kp_wall = 0.0f;
                 printf("Loaded params: straight test (mode5, case8 -> case1 params).\n");
-                drive_fan(shortestRunModeParams5.fan_power);
+                drive_fan(shortest_get_mode_params(5)->fan_power);
                 log_init();
                 log_set_profile(LOG_PROFILE_DISTANCE);
                 log_start(HAL_GetTick());
@@ -356,7 +356,7 @@ void mode5() {
                 apply_case_params_mode5_idx(4);
                 kp_wall = 0.0f;
                 printf("Loaded params: straight test (mode5, case9 -> case5 params).\n");
-                drive_fan(shortestRunModeParams5.fan_power);
+                drive_fan(shortest_get_mode_params(5)->fan_power);
                 log_init();
                 log_set_profile(LOG_PROFILE_VELOCITY);
                 log_start(HAL_GetTick());
