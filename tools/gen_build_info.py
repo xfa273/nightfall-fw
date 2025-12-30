@@ -13,6 +13,10 @@ def _run_git(repo: Path, args: list[str]) -> str:
         return ""
 
 
+def _c_escape_string(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ").replace("\r", " ")
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--out", required=True)
@@ -24,16 +28,18 @@ def main() -> int:
     out_path = Path(args.out)
     repo = Path(args.repo)
 
-    git_describe = _run_git(repo, ["describe", "--tags", "--dirty", "--always"]) or "nogit"
-    git_sha = _run_git(repo, ["rev-parse", "--short", "HEAD"]) or "nogit"
+    git_describe = _c_escape_string(_run_git(repo, ["describe", "--tags", "--dirty", "--always"]) or "nogit")
+    git_sha = _c_escape_string(_run_git(repo, ["rev-parse", "--short", "HEAD"]) or "nogit")
+    variant = _c_escape_string(args.variant)
+    target = _c_escape_string(args.target)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     content = (
         "#pragma once\n"
-        f"#define NIGHTFALL_BUILD_TARGET \\\"{args.target}\\\"\n"
-        f"#define NIGHTFALL_BUILD_VARIANT \\\"{args.variant}\\\"\n"
-        f"#define NIGHTFALL_GIT_DESCRIBE \\\"{git_describe}\\\"\n"
-        f"#define NIGHTFALL_GIT_SHA \\\"{git_sha}\\\"\n"
+        f"#define NIGHTFALL_BUILD_TARGET \"{target}\"\n"
+        f"#define NIGHTFALL_BUILD_VARIANT \"{variant}\"\n"
+        f"#define NIGHTFALL_GIT_DESCRIBE \"{git_describe}\"\n"
+        f"#define NIGHTFALL_GIT_SHA \"{git_sha}\"\n"
     )
 
     if out_path.exists():
