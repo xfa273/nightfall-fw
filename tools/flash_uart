@@ -19,6 +19,36 @@ CMD_WRITEMEM = 0x31
 CMD_EXT_ERASE = 0x44
 
 
+def stm32f405_flash_sector_of_address(addr: int) -> int:
+    if addr < 0x08000000:
+        raise ValueError(f"address out of flash: 0x{addr:08X}")
+    if addr < 0x08004000:
+        return 0
+    if addr < 0x08008000:
+        return 1
+    if addr < 0x0800C000:
+        return 2
+    if addr < 0x08010000:
+        return 3
+    if addr < 0x08020000:
+        return 4
+    if addr < 0x08040000:
+        return 5
+    if addr < 0x08060000:
+        return 6
+    if addr < 0x08080000:
+        return 7
+    if addr < 0x080A0000:
+        return 8
+    if addr < 0x080C0000:
+        return 9
+    if addr < 0x080E0000:
+        return 10
+    if addr < 0x08100000:
+        return 11
+    raise ValueError(f"address out of flash: 0x{addr:08X}")
+
+
 def xor_checksum(bs: bytes) -> int:
     x = 0
     for b in bs:
@@ -148,6 +178,44 @@ def extended_erase_all(fd: int) -> None:
     expect_ack(fd, "EXT_ERASE ack2", 40.0)
 
 
+def extended_erase_pages(fd: int, pages: list[int]) -> None:
+    if not pages:
+        return
+
+    send_cmd(fd, CMD_EXT_ERASE)
+    expect_ack(fd, "EXT_ERASE ack1", 2.0)
+
+    pages = sorted(set(int(p) for p in pages))
+    if any(p < 0 or p > 0xFFFD for p in pages):
+        raise ValueError(f"invalid page numbers: {pages}")
+
+    payload = struct.pack(">H", len(pages) - 1)
+    for p in pages:
+        payload += struct.pack(">H", p)
+
+    send(fd, payload + bytes([xor_checksum(payload)]))
+    print(f"Erasing pages: {pages}...")
+    expect_ack(fd, "EXT_ERASE ack2", 40.0)
+
+
+def compute_app_erase_pages(base: int, blob_len: int) -> list[int]:
+    if blob_len <= 0:
+        return []
+
+    end = base + blob_len - 1
+    first = stm32f405_flash_sector_of_address(base)
+    last = stm32f405_flash_sector_of_address(end)
+
+    pages = list(range(first, last + 1))
+    protected = {10, 11}
+    if any(p in protected for p in pages):
+        raise RuntimeError(
+            "書き込み範囲がSector10以降に到達します（Flash保存パラメータ領域を破壊する可能性）: "
+            f"base=0x{base:08X} len={blob_len} end=0x{end:08X} pages={pages}"
+        )
+    return pages
+
+
 def write_memory(fd: int, addr: int, data: bytes) -> None:
     if not (1 <= len(data) <= 256):
         raise ValueError("chunk size must be 1..256")
@@ -217,7 +285,9 @@ def main() -> int:
     ap.add_argument("--port", default=None)
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--bin", dest="bin_path", default=None)
+    ap.add_argument("--erase", choices=["app", "all", "none"], default="app")
     ap.add_argument("--no-erase", action="store_true")
+    ap.add_argument("--erase-all", action="store_true")
     ap.add_argument("--no-go", action="store_true")
     ap.add_argument("--base", default="0x08000000")
     ap.add_argument("--timeout", type=float, default=30.0)
@@ -240,8 +310,16 @@ def main() -> int:
             chip_id = (did[-2] << 8) | did[-1]
             print(f"Device ID: 0x{chip_id:04X}")
 
-        if not args.no_erase:
+        if args.no_erase:
+            args.erase = "none"
+        if args.erase_all:
+            args.erase = "all"
+
+        if args.erase == "all":
             extended_erase_all(fd)
+        elif args.erase == "app":
+            pages = compute_app_erase_pages(base, len(blob))
+            extended_erase_pages(fd, pages)
 
         chunk = 256
         t0 = time.time()
