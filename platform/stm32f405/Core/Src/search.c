@@ -73,6 +73,8 @@ void search_init(void) {
     g_second_phase_search = false;
     g_goal_is_start = false; // 初期状態ではスタートをゴール扱いしない
     g_defer_save_until_end = false; // 迷路保存延期フラグ
+
+    g_search_coast_mm = 0.0f;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -437,6 +439,8 @@ void adv_pos() {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void conf_route() {
+    float dist0 = real_distance;
+
     //----壁情報書き込み----
     write_map();
 
@@ -447,19 +451,19 @@ void conf_route() {
         // 復路(g_goal_is_start=true)ではスタート到達だけを判定対象にし、ゴール座標は無視
         if (g_goal_is_start && mouse.x == START_X && mouse.y == START_Y) {
             search_end = true;
-            return;
+            goto conf_route_end;
         }
         
         // 往路では複数ゴールのいずれかに到達したら終了
         if (!g_goal_is_start && is_in_goal_cells(mouse.x, mouse.y)) {
             search_end = true;
-            return;
+            goto conf_route_end;
         }
 
         // 経路が見つからない（壁で遮断）などの異常時も終了
         if (mstep > (MAZE_SIZE * MAZE_SIZE - (MAZE_SIZE - 1))) {
             search_end = true;
-            return;
+            goto conf_route_end;
         }
 
         make_route(); // 最短経路を更新
@@ -486,6 +490,13 @@ void conf_route() {
         }
     }
     */
+
+conf_route_end:;
+    float coast_mm = real_distance - dist0;
+    if (coast_mm < 0.0f) {
+        coast_mm = 0.0f;
+    }
+    g_search_coast_mm = coast_mm;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
