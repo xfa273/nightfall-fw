@@ -15,6 +15,17 @@
 #include <math.h>
 #include <stdlib.h>
 
+static inline float consume_search_coast_mm(float planned_mm) {
+    float dist = planned_mm;
+    if (planned_mm <= 0.0f) return 0.0f;
+    if (g_search_coast_mm > 0.0f) {
+        dist = planned_mm - g_search_coast_mm;
+        if (dist < 1e-3f) dist = 1e-3f;
+        g_search_coast_mm = 0.0f;
+    }
+    return dist;
+}
+
 // ==== Motor control params (sign-magnitude) ====
 // 周波数は TIM 設定に従う（本実装では変更しない）
 // ARR はランタイムで読み出して使用する（__HAL_TIM_GET_AUTORELOAD）
@@ -167,7 +178,8 @@ void half_sectionD(uint16_t val) {
 
     // 従来通りの動作（補正なし）
     MF.FLAG.CTRL = 1;
-    driveA(DIST_HALF_SEC, speed_now, speed_out, 0);
+    float dist = consume_search_coast_mm(DIST_HALF_SEC);
+    driveA(dist, speed_now, speed_out, 0);
     MF.FLAG.CTRL = 0;
     speed_now = speed_out;
 
@@ -314,7 +326,8 @@ void one_sectionU(float section, float spd_out) {
     (void)spd_out;
     
     const float v_const = speed_now;
-    const float dist_max = DIST_HALF_SEC * 2.0f;  // 90mm（1区画）
+    float dist_max = DIST_HALF_SEC * 2.0f;  // 90mm（1区画）
+    dist_max = consume_search_coast_mm(dist_max);
     // 壁切れ後の追加直進: 小回りターン用なので45mm + dist_wall_end
     // const float follow_dist = DIST_HALF_SEC + dist_wall_end;
     const float follow_dist = dist_wall_end;
@@ -488,15 +501,17 @@ void turn_R90(uint8_t fwall) {
     MF.FLAG.SLALOM_R = 1;
     MF.FLAG.CTRL = 1;
 
+    float dist_in = consume_search_coast_mm(dist_offset_in);
+
     // テスト動作フラグが立っている場合は前壁補正を無効化
     if (fwall && !g_test_mode_run) {
         if (MF.FLAG.F_WALL) {
-            driveFWall(dist_offset_in, speed_now, velocity_turn90);
+            driveFWall(dist_in, speed_now, velocity_turn90);
         } else {
-            driveA(dist_offset_in, speed_now, velocity_turn90, 0);
+            driveA(dist_in, speed_now, velocity_turn90, 0);
         }
     } else {
-        driveA(dist_offset_in, speed_now, velocity_turn90, 0);
+        driveA(dist_in, speed_now, velocity_turn90, 0);
     }
 
     MF.FLAG.CTRL = 0;
@@ -519,15 +534,17 @@ void turn_L90(uint8_t fwall) {
     MF.FLAG.SLALOM_L = 1;
     MF.FLAG.CTRL = 1;
 
+    float dist_in = consume_search_coast_mm(dist_offset_in);
+
     // テスト動作フラグが立っている場合は前壁補正を無効化
     if (fwall && !g_test_mode_run) {
         if (MF.FLAG.F_WALL) {
-            driveFWall(dist_offset_in, speed_now, velocity_turn90);
+            driveFWall(dist_in, speed_now, velocity_turn90);
         } else {
-            driveA(dist_offset_in, speed_now, velocity_turn90, 0);
+            driveA(dist_in, speed_now, velocity_turn90, 0);
         }
     } else {
-        driveA(dist_offset_in, speed_now, velocity_turn90, 0);
+        driveA(dist_in, speed_now, velocity_turn90, 0);
     }
 
     MF.FLAG.CTRL = 0;

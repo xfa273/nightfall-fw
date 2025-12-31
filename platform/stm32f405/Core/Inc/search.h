@@ -102,6 +102,9 @@ bool g_second_phase_search;
 /* 探索終了まで迷路保存を延期するフラグ（ゴール→全面探索で使用） */
 bool g_defer_save_until_end;
 
+/* conf_route() 計算中に進んだ距離[mm]（次の走行で1回だけ相殺する） */
+float g_search_coast_mm;
+
 #else // main.c以外からこのファイルが呼ばれている場合
 /*グローバル変数の宣言*/
 extern uint16_t map[MAZE_SIZE][MAZE_SIZE];         // マップ格納配列
@@ -145,6 +148,9 @@ extern bool g_second_phase_search;
 
 /* 探索終了まで迷路保存を延期するフラグ（ゴール→全面探索で使用） */
 extern bool g_defer_save_until_end;
+
+/* conf_route() 計算中に進んだ距離[mm]（次の走行で1回だけ相殺する） */
+extern float g_search_coast_mm;
 
 #endif
 
