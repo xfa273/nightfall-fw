@@ -19,6 +19,18 @@ static void print_wall_offsets(const char* label)
            (unsigned)wall_offset_fl);
 }
 
+void wall_end_set_detect_mode(uint8_t mode) {
+    if (mode == WALL_END_DETECT_MODE_DERIV) {
+        wall_end_detect_mode = WALL_END_DETECT_MODE_DERIV;
+    } else {
+        wall_end_detect_mode = WALL_END_DETECT_MODE_RAW;
+    }
+}
+
+uint8_t wall_end_get_detect_mode(void) {
+    return wall_end_detect_mode;
+}
+
 //+++++++++++++++++++++++++++++++++++++++++++++++
 // ADC DMA helpers (commit 89a941a based)
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -623,6 +635,12 @@ void detect_wall_end(void) {
     static bool s_prev_r = false;  // 前回の壁状態
     static bool s_prev_l = false;  // 前回の壁状態
 
+    static uint32_t s_prev_rl_seq = 0;
+    static uint16_t s_r_hist[4] = {0};
+    static uint16_t s_l_hist[4] = {0};
+    static int32_t s_deriv_r = 0;
+    static int32_t s_deriv_l = 0;
+
     // リセット要求があれば、現在の壁状態で初期化
     if (wall_end_reset_request) {
         // 初期化時はHighしきい値で判定
@@ -630,32 +648,80 @@ void detect_wall_end(void) {
         s_wall_l = (ad_l > (uint16_t)(thr_l_high * kx));
         s_prev_r = s_wall_r;
         s_prev_l = s_wall_l;
+
+        s_prev_rl_seq = wall_end_rl_update_seq;
+        for (int i = 0; i < 4; i++) {
+            s_r_hist[i] = ad_r;
+            s_l_hist[i] = ad_l;
+        }
+        s_deriv_r = 0;
+        s_deriv_l = 0;
         wall_end_reset_request = false;
     }
 
-    // ヒステリシス付き壁判定
-    // 右センサ
-    if (s_wall_r) {
-        // 現在「壁あり」→ Lowしきい値を下回ったら「壁なし」
-        if (ad_r < (uint16_t)(thr_r_low * kx)) {
+    if (wall_end_detect_mode == WALL_END_DETECT_MODE_DERIV) {
+        uint32_t seq = wall_end_rl_update_seq;
+        if (seq != s_prev_rl_seq) {
+            s_prev_rl_seq = seq;
+            s_r_hist[3] = s_r_hist[2];
+            s_r_hist[2] = s_r_hist[1];
+            s_r_hist[1] = s_r_hist[0];
+            s_r_hist[0] = ad_r;
+
+            s_l_hist[3] = s_l_hist[2];
+            s_l_hist[2] = s_l_hist[1];
+            s_l_hist[1] = s_l_hist[0];
+            s_l_hist[0] = ad_l;
+
+            s_deriv_r = (int32_t)s_r_hist[0] + (int32_t)s_r_hist[1] - (int32_t)s_r_hist[2] - (int32_t)s_r_hist[3];
+            s_deriv_l = (int32_t)s_l_hist[0] + (int32_t)s_l_hist[1] - (int32_t)s_l_hist[2] - (int32_t)s_l_hist[3];
+        }
+
+        if (s_wall_r) {
+            if (ad_r < (uint16_t)(thr_r_low * kx)) {
+                s_wall_r = false;
+            }
+        } else {
+            if (ad_r > (uint16_t)(thr_r_high * kx)) {
+                s_wall_r = true;
+            }
+        }
+        if (s_wall_l) {
+            if (ad_l < (uint16_t)(thr_l_low * kx)) {
+                s_wall_l = false;
+            }
+        } else {
+            if (ad_l > (uint16_t)(thr_l_high * kx)) {
+                s_wall_l = true;
+            }
+        }
+
+        uint16_t thr_d_fall = (uint16_t)(WALL_END_DERIV_FALL_THR * kx);
+
+        if (s_wall_r && (s_deriv_r < -(int32_t)thr_d_fall)) {
             s_wall_r = false;
         }
-    } else {
-        // 現在「壁なし」→ Highしきい値を超えたら「壁あり」
-        if (ad_r > (uint16_t)(thr_r_high * kx)) {
-            s_wall_r = true;
-        }
-    }
-    // 左センサ
-    if (s_wall_l) {
-        // 現在「壁あり」→ Lowしきい値を下回ったら「壁なし」
-        if (ad_l < (uint16_t)(thr_l_low * kx)) {
+        if (s_wall_l && (s_deriv_l < -(int32_t)thr_d_fall)) {
             s_wall_l = false;
         }
     } else {
-        // 現在「壁なし」→ Highしきい値を超えたら「壁あり」
-        if (ad_l > (uint16_t)(thr_l_high * kx)) {
-            s_wall_l = true;
+        if (s_wall_r) {
+            if (ad_r < (uint16_t)(thr_r_low * kx)) {
+                s_wall_r = false;
+            }
+        } else {
+            if (ad_r > (uint16_t)(thr_r_high * kx)) {
+                s_wall_r = true;
+            }
+        }
+        if (s_wall_l) {
+            if (ad_l < (uint16_t)(thr_l_low * kx)) {
+                s_wall_l = false;
+            }
+        } else {
+            if (ad_l > (uint16_t)(thr_l_high * kx)) {
+                s_wall_l = true;
+            }
         }
     }
 

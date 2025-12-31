@@ -9,6 +9,7 @@
 #define INC_SENSOR_H_
 
 #include <stdbool.h>
+#include <stdint.h>
 
 /*============================================================
     各種定数・変数宣言
@@ -54,6 +55,8 @@ uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値（右）
 uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）- 壁なしと判定
 uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）- 壁ありと判定
 uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（左）- 壁なしと判定
+volatile uint32_t wall_end_rl_update_seq;
+volatile uint8_t wall_end_detect_mode;
 
 #else // main.c以外からこのファイルが呼ばれている場合
 
@@ -88,6 +91,9 @@ extern uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値�
 extern uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）
 extern uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）
 extern uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（左）
+
+extern volatile uint32_t wall_end_rl_update_seq;
+extern volatile uint8_t wall_end_detect_mode;
 
 #endif
 
@@ -128,6 +134,12 @@ void indicate_sensor();
 void detect_wall_end(void);
 // 壁切れ検出フラグをリセット（直進開始時に呼び出す）
 void wall_end_reset(void);
+
+#define WALL_END_DETECT_MODE_RAW   0u
+#define WALL_END_DETECT_MODE_DERIV 1u
+
+void wall_end_set_detect_mode(uint8_t mode);
+uint8_t wall_end_get_detect_mode(void);
 
 //============================================================
 // センサログ機能（壁切れデバッグ用）

@@ -162,6 +162,10 @@
 #define WALL_END_THR_L_LOW   200
 #endif
 
+#ifndef WALL_END_DERIV_FALL_THR
+#define WALL_END_DERIV_FALL_THR  250
+#endif
+
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
 #define WALL_END_EXTEND_MAX_MM  0.0F
@@ -242,7 +246,7 @@
 //----ゴール座標----
 #define GOAL_X   5 // 7
 #define GOAL_Y   6 // 7
-#define MAZE_SIZE 16
+#define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
 

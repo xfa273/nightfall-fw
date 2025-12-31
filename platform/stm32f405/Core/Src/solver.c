@@ -39,8 +39,8 @@ typedef struct {
 } NodeCost;
 
 // 大きなワーキング領域はスタックを避け、静的に確保
-static NodeCost g_nodes[MAZE_SIZE][MAZE_SIZE];
-static Pos2D    g_path_buf[MAZE_SIZE * MAZE_SIZE * 2];
+static NodeCost g_nodes[MAZE_SIZE][MAZE_SIZE] __attribute__((section(".ccmram")));
+static Pos2D    g_path_buf[MAZE_SIZE * MAZE_SIZE * 2] __attribute__((section(".ccmram")));
 
 // 旧dijkstra.h への依存を避けるためのフォールバック定義
 #ifndef MOVE_NORTH

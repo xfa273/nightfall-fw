@@ -2454,7 +2454,11 @@ void reset_failed(void) {
 // 戻り値：壁切れを検出した場合true、未検出でdist_max走行した場合false
 //+++++++++++++++++++++++++++++++++++++++++++++++
 bool driveC_wallend(float dist_max, float spd) {
-    
+    uint8_t prev_mode = wall_end_get_detect_mode();
+    if (MF.FLAG.SCND) {
+        wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
+    }
+
     // 走行距離カウントをリセット
     real_distance = 0;
     encoder_distance_r = 0;
@@ -2497,6 +2501,8 @@ bool driveC_wallend(float dist_max, float spd) {
     real_distance = 0;
     encoder_distance_r = 0;
     encoder_distance_l = 0;
+
+    wall_end_set_detect_mode(prev_mode);
     
     return wall_end_detected;
 }
