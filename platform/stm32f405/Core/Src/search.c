@@ -22,6 +22,9 @@ typedef struct {
     uint64_t sum_conf_cycles;
     uint64_t sum_smap_cycles;
     uint64_t sum_route_cycles;
+    uint32_t coast_count;
+    uint32_t max_coast_um;
+    uint64_t sum_coast_um;
 } SearchTiming_t;
 
 static SearchTiming_t s_search_timing;
@@ -45,6 +48,9 @@ static inline void search_timing_reset(void) {
     s_search_timing.sum_conf_cycles = 0;
     s_search_timing.sum_smap_cycles = 0;
     s_search_timing.sum_route_cycles = 0;
+    s_search_timing.coast_count = 0;
+    s_search_timing.max_coast_um = 0;
+    s_search_timing.sum_coast_um = 0;
 }
 
 static inline uint32_t cycles_to_us_u32(uint32_t cycles, uint32_t freq_hz) {
@@ -68,6 +74,11 @@ static void search_timing_print(void) {
     }
     if (s_search_timing.route_count > 0) {
         avg_route_cycles = (uint32_t)(s_search_timing.sum_route_cycles / s_search_timing.route_count);
+    }
+
+    uint32_t avg_coast_um = 0;
+    if (s_search_timing.coast_count > 0) {
+        avg_coast_um = (uint32_t)(s_search_timing.sum_coast_um / s_search_timing.coast_count);
     }
 
     printf("SEARCH_TIMING MAZE_SIZE=%u HCLK=%luHz budget_us=%lu\n",
@@ -96,11 +107,21 @@ static void search_timing_print(void) {
            (unsigned long)avg_route_cycles,
            (unsigned long)cycles_to_us_u32(avg_route_cycles, freq_hz));
 
+    printf("coast_mm : n=%lu max=%lu.%03lumm avg=%lu.%03lumm sum=%lu.%03lumm\n",
+           (unsigned long)s_search_timing.coast_count,
+           (unsigned long)(s_search_timing.max_coast_um / 1000u),
+           (unsigned long)(s_search_timing.max_coast_um % 1000u),
+           (unsigned long)(avg_coast_um / 1000u),
+           (unsigned long)(avg_coast_um % 1000u),
+           (unsigned long)((uint32_t)(s_search_timing.sum_coast_um / 1000u)),
+           (unsigned long)((uint32_t)(s_search_timing.sum_coast_um % 1000u)));
+
     uint32_t max_conf_us = cycles_to_us_u32(s_search_timing.max_conf_cycles, freq_hz);
     printf("budget_check: max_conf_us=%lu within_budget=%lu\n",
            (unsigned long)max_conf_us,
            (unsigned long)(max_conf_us <= budget_us));
 }
+
 #endif
 
 // 経路なし終了を検出する内部フラグ（adachi() 実行中のみ有効）
@@ -666,7 +687,18 @@ conf_route_done:
     }
 #endif
 
-    g_search_coast_mm = real_distance - dist0;
+    float coast_mm = real_distance - dist0;
+    if (coast_mm < 0.0f) {
+        coast_mm = 0.0f;
+    }
+    g_search_coast_mm = coast_mm;
+
+#if ENABLE_SEARCH_TIMING_MEASURE
+    uint32_t coast_um = (uint32_t)(coast_mm * 1000.0f + 0.5f);
+    s_search_timing.coast_count++;
+    if (coast_um > s_search_timing.max_coast_um) s_search_timing.max_coast_um = coast_um;
+    s_search_timing.sum_coast_um += coast_um;
+#endif
 
     // buzzer_interrupt(300);
 
