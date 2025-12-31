@@ -9,7 +9,7 @@
 #include "maze_grid.h"
 #include <math.h>
 
-#define ENABLE_SEARCH_TIMING_MEASURE 1
+#define ENABLE_SEARCH_TIMING_MEASURE 0
 
 #if ENABLE_SEARCH_TIMING_MEASURE
 typedef struct {
