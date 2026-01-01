@@ -14,22 +14,44 @@ set -euo pipefail
 # 終了: Ctrl+C
 
 DEFAULT_SAVE_DIR="$HOME/STM32Workspace/micromouse_log_visualizer/logs"
-DEFAULT_UART_PORT="/dev/ttyUSB0"
+DEFAULT_UART_PORT=""
 DEFAULT_BAUD="115200"
 
 SAVE_DIR=${1:-$DEFAULT_SAVE_DIR}
 UART_PORT=${2:-$DEFAULT_UART_PORT}
 BAUD_RATE=${3:-$DEFAULT_BAUD}
 
+detect_uart_port() {
+  local os
+  os="$(uname -s)"
+  if [[ "$os" == "Darwin" ]]; then
+    ls -1 /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial* 2>/dev/null | head -n 1 || true
+  else
+    ls -1 /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1 || true
+  fi
+}
+
+if [[ -z "$UART_PORT" || "$UART_PORT" == "auto" ]]; then
+  UART_PORT="$(detect_uart_port)"
+fi
+
 mkdir -p "$SAVE_DIR"
 
 if [[ ! -e "$UART_PORT" ]]; then
   echo "[ERROR] UART port not found: $UART_PORT" >&2
+  echo "[HINT] Specify UART port as 2nd argument, or use 'auto'." >&2
+  echo "[HINT] Candidates (mac): ls /dev/cu.usbmodem* /dev/cu.usbserial*" >&2
   exit 1
 fi
 
 # シリアルポート設定
-stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if ! stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo raw; then
+    stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -echo raw
+  fi
+else
+  stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+fi
 
 cat <<EOF
 === Serial CSV Auto Capture ===
@@ -46,14 +68,14 @@ EOF
 # 受信 → CSV判定 → 出力
 # 改行に \r が混じるため除去し、8列数値のみをファイル保存＋同時に画面表示します。
 # 数値判定は整数/小数/負号を許可します。
-stdbuf -oL cat "$UART_PORT" \
-  | stdbuf -oL tr -d '\r' \
-  | stdbuf -oL awk -F',' -v SAVE_DIR="$SAVE_DIR" '
+cat "$UART_PORT" \
+  | tr -d '\r' \
+  | awk -F',' -v SAVE_DIR="$SAVE_DIR" '
     function isnum(x){ return x ~ /^-?[0-9]+(\.[0-9]+)?$/ }
     function newfile(){
       TIMESTAMP = strftime("%Y%m%d_%H%M%S");
       current_out = SAVE_DIR "/stm32_log_" TIMESTAMP ".csv";
-      print "\n[INFO] New capture file: " current_out > "/dev/stderr"; fflush("/dev/stderr");
+      print "\n[INFO] New capture file: " current_out > "/dev/stderr"; fflush();
     }
     BEGIN {
       prev_ts = -1;
@@ -65,7 +87,7 @@ stdbuf -oL cat "$UART_PORT" \
         newfile();
       }
       print $0; fflush();
-      print $0 >> current_out; fflush(current_out);
+      print $0 >> current_out; close(current_out);
       prev_ts = ts;
     }
   '
