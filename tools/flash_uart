@@ -44,6 +44,128 @@ def xor_checksum(bs: bytes) -> int:
     return x & 0xFF
 
 
+def open_uart_8e1(port: str, baud: int) -> int:
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+
+    attrs = termios.tcgetattr(fd)
+    attrs[0] = 0
+    attrs[1] = 0
+    attrs[3] = 0
+
+    cflag = attrs[2]
+    cflag |= (termios.CLOCAL | termios.CREAD)
+    cflag &= ~termios.CSIZE
+    cflag |= termios.CS8
+    cflag |= termios.PARENB
+    cflag &= ~termios.PARODD
+    cflag &= ~termios.CSTOPB
+    attrs[2] = cflag
+
+    if baud != 115200:
+        raise ValueError("Only 115200 is supported in this script")
+
+    attrs[4] = termios.B115200
+    attrs[5] = termios.B115200
+
+    attrs[6][termios.VMIN] = 0
+    attrs[6][termios.VTIME] = 3
+
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    try:
+        termios.tcflush(fd, termios.TCIOFLUSH)
+    except Exception:
+        pass
+
+    return fd
+
+
+def read_exact(fd: int, n: int, timeout_s: float) -> bytes:
+    out = b""
+    t0 = time.time()
+    while len(out) < n and (time.time() - t0) < timeout_s:
+        try:
+            chunk = os.read(fd, n - len(out))
+        except BlockingIOError:
+            chunk = b""
+        if chunk:
+            out += chunk
+        else:
+            time.sleep(0.01)
+    return out
+
+
+def read_byte(fd: int, timeout_s: float):
+    d = read_exact(fd, 1, timeout_s)
+    return d[0] if d else None
+
+
+def send(fd: int, data: bytes) -> None:
+    os.write(fd, data)
+
+
+def send_cmd(fd: int, cmd: int) -> None:
+    send(fd, bytes([cmd, cmd ^ 0xFF]))
+
+
+def expect_ack(fd: int, where: str, timeout_s: float) -> None:
+    b = read_byte(fd, timeout_s)
+    if b is None:
+        raise RuntimeError(f"{where}: timeout")
+    if b != ACK:
+        raise RuntimeError(f"{where}: expected ACK(0x79) got 0x{b:02X}")
+
+
+def render_bar(prefix: str, progress: float, suffix: str = "", width: int = 32) -> None:
+    if progress < 0:
+        progress = 0.0
+    if progress > 1:
+        progress = 1.0
+    filled = int(round(width * progress))
+    bar = "=" * filled + "-" * (width - filled)
+    sys.stdout.write(f"\r{prefix} [{bar}] {progress*100:6.2f}%{suffix}")
+    sys.stdout.flush()
+
+
+def get_id(fd: int) -> bytes:
+    send_cmd(fd, CMD_GETID)
+    expect_ack(fd, "GETID ack1", 2.0)
+    n = read_byte(fd, 2.0)
+    if n is None:
+        raise RuntimeError("GETID: no length")
+    data = read_exact(fd, n + 1, 2.0)
+    expect_ack(fd, "GETID ack2", 2.0)
+    return data
+
+
+def connect_or_reuse(fd: int, total_wait_s: float) -> bytes:
+    deadline = time.time() + total_wait_s
+    attempt = 0
+    while time.time() < deadline:
+        attempt += 1
+        send(fd, b"\x7F")
+        b = read_byte(fd, 0.6)
+        if b == ACK:
+            return get_id(fd)
+        if b == NACK:
+            try:
+                did = get_id(fd)
+                return did
+            except Exception:
+                pass
+        time.sleep(0.2)
+
+    raise RuntimeError("connect/reuse failed")
+
+
+def extended_erase_all(fd: int) -> None:
+    send_cmd(fd, CMD_EXT_ERASE)
+    expect_ack(fd, "EXT_ERASE ack1", 2.0)
+    payload = bytes([0xFF, 0xFF])
+    send(fd, payload + bytes([xor_checksum(payload)]))
+    print("Erasing...")
+    expect_ack(fd, "EXT_ERASE ack2", 40.0)
+
+
 def _f405_sector_for_addr(addr: int) -> int:
     for sid, start, size in _F405_SECTORS:
         if start <= addr < (start + size):
