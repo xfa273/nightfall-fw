@@ -57,6 +57,8 @@ uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）
 uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（左）- 壁なしと判定
 volatile uint32_t wall_end_rl_update_seq;
 volatile uint8_t wall_end_detect_mode;
+volatile int32_t wall_end_deriv_r;
+volatile int32_t wall_end_deriv_l;
 
 #else // main.c以外からこのファイルが呼ばれている場合
 
@@ -94,6 +96,8 @@ extern uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（
 
 extern volatile uint32_t wall_end_rl_update_seq;
 extern volatile uint8_t wall_end_detect_mode;
+extern volatile int32_t wall_end_deriv_r;
+extern volatile int32_t wall_end_deriv_l;
 
 #endif
 

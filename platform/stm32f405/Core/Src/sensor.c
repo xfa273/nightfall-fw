@@ -656,6 +656,8 @@ void detect_wall_end(void) {
         }
         s_deriv_r = 0;
         s_deriv_l = 0;
+        wall_end_deriv_r = 0;
+        wall_end_deriv_l = 0;
         wall_end_reset_request = false;
     }
 
@@ -676,6 +678,9 @@ void detect_wall_end(void) {
             s_deriv_r = (int32_t)s_r_hist[0] + (int32_t)s_r_hist[1] - (int32_t)s_r_hist[2] - (int32_t)s_r_hist[3];
             s_deriv_l = (int32_t)s_l_hist[0] + (int32_t)s_l_hist[1] - (int32_t)s_l_hist[2] - (int32_t)s_l_hist[3];
         }
+
+        wall_end_deriv_r = s_deriv_r;
+        wall_end_deriv_l = s_deriv_l;
 
         if (s_wall_r) {
             if (ad_r < (uint16_t)(thr_r_low * kx)) {
@@ -705,6 +710,8 @@ void detect_wall_end(void) {
             s_wall_l = false;
         }
     } else {
+        wall_end_deriv_r = 0;
+        wall_end_deriv_l = 0;
         if (s_wall_r) {
             if (ad_r < (uint16_t)(thr_r_low * kx)) {
                 s_wall_r = false;

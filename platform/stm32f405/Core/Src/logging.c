@@ -5,6 +5,7 @@
 
 // 現在のログプロファイル（取得内容の切替）
 static volatile LogProfile s_log_profile = LOG_PROFILE_OMEGA;
+static uint8_t s_wall_end_deriv_decim = 0;
 
 void log_set_profile(LogProfile profile) { s_log_profile = profile; }
 
@@ -119,6 +120,34 @@ void log_print_angle_all(void) {
     printf("--- CSV Data End ---\n");
     printf("=== End of Log ===\n");
 }
+
+void log_print_wall_end_deriv_all(void) {
+    printf("=== Micromouse Log Data (CSV Format, WALL_END_DERIV) ===\n");
+    printf("Total entries: %d\n", log_buffer2.count);
+    printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
+    printf("--- CSV Data Start ---\n");
+
+    uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
+    uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
+
+    for (uint16_t i = 0; i < count; i++) {
+        uint16_t idx = (start + i) % MAX_LOG_ENTRIES;
+        volatile LogEntry *entry = &log_buffer2.entries[idx];
+        printf("%lu,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+               entry->timestamp - log_buffer2.start_time,
+               entry->target_omega,
+               entry->actual_omega,
+               entry->p_term_omega,
+               entry->i_term_omega,
+               entry->d_term_omega,
+               entry->motor_out_r,
+               entry->motor_out_l);
+    }
+
+    printf("--- CSV Data End ---\n");
+    printf("=== End of Log ===\n");
+}
+
 LogProfile log_get_profile(void) { return s_log_profile; }
 
 /**
@@ -247,6 +276,32 @@ void log_capture_tick(void) {
             current_time
         );
         break;
+    case LOG_PROFILE_WALL_END_DERIV: {
+        const bool is_straight = (!MF.FLAG.SLALOM_R && !MF.FLAG.SLALOM_L);
+        if (!MF.FLAG.WALL_END || !is_straight) {
+            break;
+        }
+        s_wall_end_deriv_decim++;
+        if ((s_wall_end_deriv_decim & 0x03u) != 0u) {
+            break;
+        }
+
+        if (log_buffer2.logging_active && log_buffer2.count < MAX_LOG_ENTRIES) {
+            uint16_t pos2 = log_buffer2.head;
+            log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
+            log_buffer2.entries[pos2].target_omega = (float)wall_end_deriv_r;
+            log_buffer2.entries[pos2].actual_omega = (float)wall_end_deriv_l;
+            log_buffer2.entries[pos2].p_term_omega = 0.0f;
+            log_buffer2.entries[pos2].i_term_omega = 0.0f;
+            log_buffer2.entries[pos2].d_term_omega = 0.0f;
+            log_buffer2.entries[pos2].motor_out_r = 0.0f;
+            log_buffer2.entries[pos2].motor_out_l = 0.0f;
+            log_buffer2.entries[pos2].timestamp = current_time;
+            log_buffer2.head = (pos2 + 1) % MAX_LOG_ENTRIES;
+            log_buffer2.count++;
+        }
+        break;
+    }
     case LOG_PROFILE_CUSTOM:
     default:
         break;
@@ -270,6 +325,8 @@ void log_start(uint32_t start_time) {
     log_buffer2.count = 0;
     log_buffer2.logging_active = 1;
     log_buffer2.start_time = start_time;
+
+    s_wall_end_deriv_decim = 0;
 
     // ロギングフラグを設定
     MF.FLAG.GET_LOG_1 = 1;

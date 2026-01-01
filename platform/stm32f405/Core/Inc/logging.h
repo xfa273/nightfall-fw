@@ -10,7 +10,8 @@ typedef enum {
     LOG_PROFILE_OMEGA = 0,   // 角速度系（既定）
     LOG_PROFILE_VELOCITY = 1,// 並進速度系
     LOG_PROFILE_DISTANCE = 2,// 並進距離系
-    LOG_PROFILE_CUSTOM = 3   // カスタム（後で編集）
+    LOG_PROFILE_CUSTOM = 3,  // カスタム（後で編集）
+    LOG_PROFILE_WALL_END_DERIV = 4
 } LogProfile;
 
 void log_set_profile(LogProfile profile);
@@ -72,6 +73,8 @@ void log_print_omega_all(void);
  * @brief 角度ログ（log_buffer2）をCSV出力
  */
 void log_print_angle_all(void);
+
+void log_print_wall_end_deriv_all(void);
 
 /**
  * @brief ログデータを純粋なCSV形式で出力する（可視化ツール貼り付け用）
