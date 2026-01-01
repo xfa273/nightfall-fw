@@ -163,17 +163,7 @@ static int calc_goal_approach_straight(Pos2D *path_buf, int path_len) {
 
 void solver_build_path(uint8_t mode, uint8_t case_index) {
     // 最短走行パラメータからソルバプロファイルを設定
-    const ShortestRunCaseParams_t* cp = NULL;
-    uint8_t idx = (case_index >= 1) ? (case_index - 1) : 0;
-    switch (mode) {
-        case 2: cp = &shortestRunCaseParamsMode2[idx > 8 ? 8 : idx]; break;
-        case 3: cp = &shortestRunCaseParamsMode3[idx > 8 ? 8 : idx]; break;
-        case 4: cp = &shortestRunCaseParamsMode4[idx > 8 ? 8 : idx]; break;
-        case 5: cp = &shortestRunCaseParamsMode5[idx > 8 ? 8 : idx]; break;
-        case 6: cp = &shortestRunCaseParamsMode6[idx > 8 ? 8 : idx]; break;
-        case 7: cp = &shortestRunCaseParamsMode7[idx > 8 ? 8 : idx]; break;
-        default: cp = &shortestRunCaseParamsMode2[0]; break;
-    }
+    const ShortestRunCaseParams_t* cp = shortest_get_case_params(mode, case_index);
     solver_set_profile(cp->solver_profile);
 
     // 壁・迷路を構築
@@ -297,16 +287,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
 
     // makePath と同様の後段処理
     // モード共通パラメータから path_type を決定
-    const ShortestRunModeParams_t *pm = NULL;
-    switch (mode) {
-        case 2: pm = &shortestRunModeParams2; break;
-        case 3: pm = &shortestRunModeParams3; break;
-        case 4: pm = &shortestRunModeParams4; break;
-        case 5: pm = &shortestRunModeParams5; break;
-        case 6: pm = &shortestRunModeParams6; break;
-        case 7: pm = &shortestRunModeParams7; break;
-        default: pm = &shortestRunModeParams2; break;
-    }
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(mode);
     // case1 は小回り（makepath_type_case3）、case3 は大回り（makepath_type_case47）
     int path_type = (case_index == 1) ? pm->makepath_type_case3 : pm->makepath_type_case47;
     // case8/9 は斜め走行を有効化

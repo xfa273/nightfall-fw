@@ -47,6 +47,7 @@ set(NIGHTFALL_USER_SOURCES
     platform/stm32f405/Core/Src/search.c
     platform/stm32f405/Core/Src/sensor.c
     platform/stm32f405/Core/Src/sensor_distance.c
+    platform/stm32f405/Core/Src/shortest_run_params.c
     platform/stm32f405/Core/Src/shortest_run_params_split.c
     platform/stm32f405/Core/Src/search_run_params_split.c
     platform/stm32f405/Core/Src/test_mode.c
@@ -57,9 +58,62 @@ function(nightfall_add_firmware target variant variant_define)
 
     target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES})
 
+    set(NIGHTFALL_BUILD_INFO_H ${CMAKE_BINARY_DIR}/generated/${variant}/build_info.h)
+    set(NIGHTFALL_BUILD_INFO_DEPS
+        ${CMAKE_SOURCE_DIR}/tools/gen_build_info.py
+    )
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.git/HEAD)
+        list(APPEND NIGHTFALL_BUILD_INFO_DEPS ${CMAKE_SOURCE_DIR}/.git/HEAD)
+    endif()
+    if(EXISTS ${CMAKE_SOURCE_DIR}/.git/index)
+        list(APPEND NIGHTFALL_BUILD_INFO_DEPS ${CMAKE_SOURCE_DIR}/.git/index)
+    endif()
+    add_custom_command(
+        OUTPUT ${NIGHTFALL_BUILD_INFO_H}
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/gen_build_info.py
+            --out ${NIGHTFALL_BUILD_INFO_H}
+            --repo ${CMAKE_SOURCE_DIR}
+            --variant ${variant}
+            --target ${target}
+        DEPENDS
+            ${NIGHTFALL_BUILD_INFO_DEPS}
+        VERBATIM
+    )
+    add_custom_target(${target}_build_info DEPENDS ${NIGHTFALL_BUILD_INFO_H})
+    add_dependencies(${target} ${target}_build_info)
+
+    set(NIGHTFALL_TURN_BANK_GEN_C ${CMAKE_BINARY_DIR}/generated/${variant}/shortest_turn_bank_gen.c)
+    add_custom_command(
+        OUTPUT ${NIGHTFALL_TURN_BANK_GEN_C}
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/gen_shortest_turn_bank.py
+            --csv ${CMAKE_SOURCE_DIR}/params/${variant}/shortest_turn_bank.csv
+            --out ${NIGHTFALL_TURN_BANK_GEN_C}
+        DEPENDS
+            ${CMAKE_SOURCE_DIR}/tools/gen_shortest_turn_bank.py
+            ${CMAKE_SOURCE_DIR}/params/${variant}/shortest_turn_bank.csv
+        VERBATIM
+    )
+    set_source_files_properties(${NIGHTFALL_TURN_BANK_GEN_C} PROPERTIES GENERATED TRUE)
+    target_sources(${target} PRIVATE ${NIGHTFALL_TURN_BANK_GEN_C})
+
+    set(NIGHTFALL_CASE_PARAMS_GEN_C ${CMAKE_BINARY_DIR}/generated/${variant}/shortest_case_params_gen.c)
+    add_custom_command(
+        OUTPUT ${NIGHTFALL_CASE_PARAMS_GEN_C}
+        COMMAND python3 ${CMAKE_SOURCE_DIR}/tools/gen_shortest_case_params.py
+            --csv ${CMAKE_SOURCE_DIR}/params/${variant}/shortest_case_params.csv
+            --out ${NIGHTFALL_CASE_PARAMS_GEN_C}
+        DEPENDS
+            ${CMAKE_SOURCE_DIR}/tools/gen_shortest_case_params.py
+            ${CMAKE_SOURCE_DIR}/params/${variant}/shortest_case_params.csv
+        VERBATIM
+    )
+    set_source_files_properties(${NIGHTFALL_CASE_PARAMS_GEN_C} PROPERTIES GENERATED TRUE)
+    target_sources(${target} PRIVATE ${NIGHTFALL_CASE_PARAMS_GEN_C})
+
     nightfall_apply_stm32f405(${target})
 
     target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_BINARY_DIR}/generated/${variant}
         ${CMAKE_SOURCE_DIR}/params/${variant}
     )
 

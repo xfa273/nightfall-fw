@@ -13,7 +13,7 @@
 // mode6用パラメータ適用関数
 static void apply_case_params_mode6_idx(int idx) {
     const ShortestRunCaseParams_t *pc = &shortestRunCaseParamsMode6[idx];
-    const ShortestRunModeParams_t *pm = &shortestRunModeParams6;
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(6);
     // 直線（caseごと）
     acceleration_straight      = pc->acceleration_straight;
     acceleration_straight_dash = pc->acceleration_straight_dash;
@@ -48,7 +48,7 @@ static void apply_case_params_mode6_idx(int idx) {
 }
 
 static void apply_turn_normal_mode6(void) {
-    const ShortestRunModeParams_t *pm = &shortestRunModeParams6;
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(6);
     velocity_turn90    = pm->velocity_turn90;
     alpha_turn90       = pm->alpha_turn90;
     acceleration_turn  = pm->acceleration_turn;
@@ -59,7 +59,7 @@ static void apply_turn_normal_mode6(void) {
 }
 
 static void apply_turn_large90_mode6(void) {
-    const ShortestRunModeParams_t *pm = &shortestRunModeParams6;
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(6);
     velocity_l_turn_90  = pm->velocity_l_turn_90;
     alpha_l_turn_90     = pm->alpha_l_turn_90;
     angle_l_turn_90     = pm->angle_l_turn_90;
@@ -68,7 +68,7 @@ static void apply_turn_large90_mode6(void) {
 }
 
 static void apply_turn_large180_mode6(void) {
-    const ShortestRunModeParams_t *pm = &shortestRunModeParams6;
+    const ShortestRunModeParams_t *pm = shortest_get_mode_params(6);
     velocity_l_turn_180  = pm->velocity_l_turn_180;
     alpha_l_turn_180     = pm->alpha_l_turn_180;
     angle_l_turn_180     = pm->angle_l_turn_180;
@@ -103,7 +103,7 @@ void mode6() {
                 apply_turn_normal_mode6();
                 printf("Loaded params: normal turn (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm0 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm0 = shortest_get_mode_params(6);
                     drive_fan(pm0->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -128,7 +128,7 @@ void mode6() {
                 apply_turn_large90_mode6();
                 printf("Loaded params: large 90deg (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm1 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm1 = shortest_get_mode_params(6);
                     drive_fan(pm1->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -153,7 +153,7 @@ void mode6() {
                 apply_turn_large180_mode6();
                 printf("Loaded params: large 180deg (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm2 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm2 = shortest_get_mode_params(6);
                     drive_fan(pm2->fan_power);
                     log_init();
                     log_set_profile(LOG_PROFILE_OMEGA);
@@ -177,7 +177,7 @@ void mode6() {
                 apply_case_params_mode6_idx(idx_diag);
                 printf("Loaded params: diag 45-in (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm3 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm3 = shortest_get_mode_params(6);
                     drive_fan(pm3->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 3; // S3
@@ -191,7 +191,7 @@ void mode6() {
                 apply_case_params_mode6_idx(idx_diag);
                 printf("Loaded params: diag 45-out (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm4 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm4 = shortest_get_mode_params(6);
                     drive_fan(pm4->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 3;  // S3
@@ -206,7 +206,7 @@ void mode6() {
                 apply_case_params_mode6_idx(idx_diag);
                 printf("Loaded params: diag V90 (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm5 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm5 = shortest_get_mode_params(6);
                     drive_fan(pm5->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 3;  // S3
@@ -221,7 +221,7 @@ void mode6() {
                 apply_case_params_mode6_idx(idx_diag);
                 printf("Loaded params: diag 135-in (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm6 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm6 = shortest_get_mode_params(6);
                     drive_fan(pm6->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 3;  // S3
@@ -235,7 +235,7 @@ void mode6() {
                 apply_case_params_mode6_idx(idx_diag);
                 printf("Loaded params: diag 135-out (mode6).\n");
                 {
-                    const ShortestRunModeParams_t *pm7 = &shortestRunModeParams6;
+                    const ShortestRunModeParams_t *pm7 = shortest_get_mode_params(6);
                     drive_fan(pm7->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 3;  // S3
@@ -250,7 +250,7 @@ void mode6() {
                 apply_case_params_mode6_idx(0);
                 kp_wall = 0.0f;
                 printf("Loaded params: straight test (mode6, case8 -> case1 params).\n");
-                drive_fan(shortestRunModeParams6.fan_power);
+                drive_fan(shortest_get_mode_params(6)->fan_power);
                 log_init();
                 log_set_profile(LOG_PROFILE_DISTANCE);
                 log_start(HAL_GetTick());
@@ -273,7 +273,7 @@ void mode6() {
                 apply_case_params_mode6_idx(4);
                 kp_wall = 0.0f;
                 printf("Loaded params: straight test (mode6, case9 -> case5 params).\n");
-                drive_fan(shortestRunModeParams6.fan_power);
+                drive_fan(shortest_get_mode_params(6)->fan_power);
                 log_init();
                 log_set_profile(LOG_PROFILE_VELOCITY);
                 log_start(HAL_GetTick());

@@ -19,34 +19,22 @@ CMD_WRITEMEM = 0x31
 CMD_EXT_ERASE = 0x44
 
 
-def stm32f405_flash_sector_of_address(addr: int) -> int:
-    if addr < 0x08000000:
-        raise ValueError(f"address out of flash: 0x{addr:08X}")
-    if addr < 0x08004000:
-        return 0
-    if addr < 0x08008000:
-        return 1
-    if addr < 0x0800C000:
-        return 2
-    if addr < 0x08010000:
-        return 3
-    if addr < 0x08020000:
-        return 4
-    if addr < 0x08040000:
-        return 5
-    if addr < 0x08060000:
-        return 6
-    if addr < 0x08080000:
-        return 7
-    if addr < 0x080A0000:
-        return 8
-    if addr < 0x080C0000:
-        return 9
-    if addr < 0x080E0000:
-        return 10
-    if addr < 0x08100000:
-        return 11
-    raise ValueError(f"address out of flash: 0x{addr:08X}")
+_F405_SECTORS = [
+    (0, 0x08000000, 16 * 1024),
+    (1, 0x08004000, 16 * 1024),
+    (2, 0x08008000, 16 * 1024),
+    (3, 0x0800C000, 16 * 1024),
+    (4, 0x08010000, 64 * 1024),
+    (5, 0x08020000, 128 * 1024),
+    (6, 0x08040000, 128 * 1024),
+    (7, 0x08060000, 128 * 1024),
+    (8, 0x08080000, 128 * 1024),
+    (9, 0x080A0000, 128 * 1024),
+    (10, 0x080C0000, 128 * 1024),
+    (11, 0x080E0000, 128 * 1024),
+]
+
+_PROTECTED_SECTORS_DEFAULT = {9, 10, 11}
 
 
 def xor_checksum(bs: bytes) -> int:
@@ -56,165 +44,39 @@ def xor_checksum(bs: bytes) -> int:
     return x & 0xFF
 
 
-def open_uart_8e1(port: str, baud: int) -> int:
-    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
-
-    attrs = termios.tcgetattr(fd)
-    attrs[0] = 0
-    attrs[1] = 0
-    attrs[3] = 0
-
-    cflag = attrs[2]
-    cflag |= (termios.CLOCAL | termios.CREAD)
-    cflag &= ~termios.CSIZE
-    cflag |= termios.CS8
-    cflag |= termios.PARENB
-    cflag &= ~termios.PARODD
-    cflag &= ~termios.CSTOPB
-    attrs[2] = cflag
-
-    if baud != 115200:
-        raise ValueError("Only 115200 is supported in this script")
-
-    attrs[4] = termios.B115200
-    attrs[5] = termios.B115200
-
-    attrs[6][termios.VMIN] = 0
-    attrs[6][termios.VTIME] = 3
-
-    termios.tcsetattr(fd, termios.TCSANOW, attrs)
-    try:
-        termios.tcflush(fd, termios.TCIOFLUSH)
-    except Exception:
-        pass
-
-    return fd
+def _f405_sector_for_addr(addr: int) -> int:
+    for sid, start, size in _F405_SECTORS:
+        if start <= addr < (start + size):
+            return sid
+    raise RuntimeError(f"address out of F405 flash range: 0x{addr:08X}")
 
 
-def read_exact(fd: int, n: int, timeout_s: float) -> bytes:
-    out = b""
-    t0 = time.time()
-    while len(out) < n and (time.time() - t0) < timeout_s:
-        try:
-            chunk = os.read(fd, n - len(out))
-        except BlockingIOError:
-            chunk = b""
-        if chunk:
-            out += chunk
-        else:
-            time.sleep(0.01)
-    return out
-
-
-def read_byte(fd: int, timeout_s: float):
-    d = read_exact(fd, 1, timeout_s)
-    return d[0] if d else None
-
-
-def send(fd: int, data: bytes) -> None:
-    os.write(fd, data)
-
-
-def send_cmd(fd: int, cmd: int) -> None:
-    send(fd, bytes([cmd, cmd ^ 0xFF]))
-
-
-def expect_ack(fd: int, where: str, timeout_s: float) -> None:
-    b = read_byte(fd, timeout_s)
-    if b is None:
-        raise RuntimeError(f"{where}: timeout")
-    if b != ACK:
-        raise RuntimeError(f"{where}: expected ACK(0x79) got 0x{b:02X}")
-
-
-def render_bar(prefix: str, progress: float, suffix: str = "", width: int = 32) -> None:
-    if progress < 0:
-        progress = 0.0
-    if progress > 1:
-        progress = 1.0
-    filled = int(round(width * progress))
-    bar = "=" * filled + "-" * (width - filled)
-    sys.stdout.write(f"\r{prefix} [{bar}] {progress*100:6.2f}%{suffix}")
-    sys.stdout.flush()
-
-
-def get_id(fd: int) -> bytes:
-    send_cmd(fd, CMD_GETID)
-    expect_ack(fd, "GETID ack1", 2.0)
-    n = read_byte(fd, 2.0)
-    if n is None:
-        raise RuntimeError("GETID: no length")
-    data = read_exact(fd, n + 1, 2.0)
-    expect_ack(fd, "GETID ack2", 2.0)
-    return data
-
-
-def connect_or_reuse(fd: int, total_wait_s: float) -> bytes:
-    deadline = time.time() + total_wait_s
-    attempt = 0
-    while time.time() < deadline:
-        attempt += 1
-        send(fd, b"\x7F")
-        b = read_byte(fd, 0.6)
-        if b == ACK:
-            return get_id(fd)
-        if b == NACK:
-            try:
-                did = get_id(fd)
-                return did
-            except Exception:
-                pass
-        time.sleep(0.2)
-
-    raise RuntimeError("connect/reuse failed")
-
-
-def extended_erase_all(fd: int) -> None:
-    send_cmd(fd, CMD_EXT_ERASE)
-    expect_ack(fd, "EXT_ERASE ack1", 2.0)
-    payload = bytes([0xFF, 0xFF])
-    send(fd, payload + bytes([xor_checksum(payload)]))
-    print("Erasing...")
-    expect_ack(fd, "EXT_ERASE ack2", 40.0)
-
-
-def extended_erase_pages(fd: int, pages: list[int]) -> None:
-    if not pages:
-        return
-
-    send_cmd(fd, CMD_EXT_ERASE)
-    expect_ack(fd, "EXT_ERASE ack1", 2.0)
-
-    pages = sorted(set(int(p) for p in pages))
-    if any(p < 0 or p > 0xFFFD for p in pages):
-        raise ValueError(f"invalid page numbers: {pages}")
-
-    payload = struct.pack(">H", len(pages) - 1)
-    for p in pages:
-        payload += struct.pack(">H", p)
-
-    send(fd, payload + bytes([xor_checksum(payload)]))
-    print(f"Erasing pages: {pages}...")
-    expect_ack(fd, "EXT_ERASE ack2", 40.0)
-
-
-def compute_app_erase_pages(base: int, blob_len: int) -> list[int]:
-    if blob_len <= 0:
+def _f405_sectors_cover_range(start_addr: int, size_bytes: int) -> list[int]:
+    if size_bytes <= 0:
         return []
+    end_addr = start_addr + size_bytes - 1
+    s0 = _f405_sector_for_addr(start_addr)
+    s1 = _f405_sector_for_addr(end_addr)
+    return list(range(s0, s1 + 1))
 
-    end = base + blob_len - 1
-    first = stm32f405_flash_sector_of_address(base)
-    last = stm32f405_flash_sector_of_address(end)
 
-    pages = list(range(first, last + 1))
-    protected = {10, 11}
-    if any(p in protected for p in pages):
-        raise RuntimeError(
-            "書き込み範囲がSector10以降に到達します（Flash保存パラメータ領域を破壊する可能性）: "
-            f"base=0x{base:08X} len={blob_len} end=0x{end:08X} pages={pages}"
-        )
-    return pages
+def extended_erase_sectors(fd: int, sectors: list[int]) -> None:
+    if not sectors:
+        return
+    if len(sectors) > 0x10000:
+        raise ValueError("too many sectors")
 
+    send_cmd(fd, CMD_EXT_ERASE)
+    expect_ack(fd, "EXT_ERASE ack1", 2.0)
+
+    n = len(sectors) - 1
+    payload = struct.pack(">H", n)
+    for s in sectors:
+        payload += struct.pack(">H", s & 0xFFFF)
+
+    send(fd, payload + bytes([xor_checksum(payload)]))
+    print(f"Erasing sectors: {sectors}")
+    expect_ack(fd, "EXT_ERASE ack2", 40.0)
 
 def write_memory(fd: int, addr: int, data: bytes) -> None:
     if not (1 <= len(data) <= 256):
@@ -287,7 +149,7 @@ def main() -> int:
     ap.add_argument("--bin", dest="bin_path", default=None)
     ap.add_argument("--erase", choices=["app", "all", "none"], default="app")
     ap.add_argument("--no-erase", action="store_true")
-    ap.add_argument("--erase-all", action="store_true")
+    ap.add_argument("--erase-all", action="store_true", help="DANGEROUS: full chip erase (will delete saved params/maze)")
     ap.add_argument("--no-go", action="store_true")
     ap.add_argument("--base", default="0x08000000")
     ap.add_argument("--timeout", type=float, default=30.0)
@@ -318,8 +180,15 @@ def main() -> int:
         if args.erase == "all":
             extended_erase_all(fd)
         elif args.erase == "app":
-            pages = compute_app_erase_pages(base, len(blob))
-            extended_erase_pages(fd, pages)
+            sectors = _f405_sectors_cover_range(base, len(blob))
+            protected = _PROTECTED_SECTORS_DEFAULT
+            if any(s in protected for s in sectors):
+                raise RuntimeError(
+                    "Firmware image overlaps protected Flash sectors (params/maze). "
+                    f"sectors_to_erase={sectors} protected={sorted(protected)}. "
+                    "Reduce firmware size or change flash layout, or use --erase-all (not recommended)."
+                )
+            extended_erase_sectors(fd, sectors)
 
         chunk = 256
         t0 = time.time()

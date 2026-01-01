@@ -38,3 +38,6 @@ compile_commands.json
 *.su
 
 *.log
+
+*.csv.*.bak
+params/**/shortest_turn_bank_gen.c

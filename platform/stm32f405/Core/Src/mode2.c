@@ -24,7 +24,7 @@ static void apply_case_params_mode2_idx(int idx) {
 }
 
 static void apply_turn_normal_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turn90 = m->velocity_turn90;
     alpha_turn90 = m->alpha_turn90;
     acceleration_turn = m->acceleration_turn;
@@ -36,7 +36,7 @@ static void apply_turn_normal_mode2(void) {
 }
 
 static void apply_turn_large90_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_l_turn_90 = m->velocity_l_turn_90;
     alpha_l_turn_90 = m->alpha_l_turn_90;
     angle_l_turn_90 = m->angle_l_turn_90;
@@ -45,7 +45,7 @@ static void apply_turn_large90_mode2(void) {
 }
 
 static void apply_turn_large180_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_l_turn_180 = m->velocity_l_turn_180;
     alpha_l_turn_180 = m->alpha_l_turn_180;
     angle_l_turn_180 = m->angle_l_turn_180;
@@ -54,7 +54,7 @@ static void apply_turn_large180_mode2(void) {
 }
 
 static void apply_turn_d45in_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turn45in = m->velocity_turn45in;
     alpha_turn45in = m->alpha_turn45in;
     angle_turn45in = m->angle_turn45in;
@@ -63,7 +63,7 @@ static void apply_turn_d45in_mode2(void) {
 }
 
 static void apply_turn_d45out_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turn45out = m->velocity_turn45out;
     alpha_turn45out = m->alpha_turn45out;
     angle_turn45out = m->angle_turn45out;
@@ -72,7 +72,7 @@ static void apply_turn_d45out_mode2(void) {
 }
 
 static void apply_turn_v90_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turnV90 = m->velocity_turnV90;
     alpha_turnV90 = m->alpha_turnV90;
     angle_turnV90 = m->angle_turnV90;
@@ -81,7 +81,7 @@ static void apply_turn_v90_mode2(void) {
 }
 
 static void apply_turn_d135in_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turn135in = m->velocity_turn135in;
     alpha_turn135in = m->alpha_turn135in;
     angle_turn135in = m->angle_turn135in;
@@ -90,7 +90,7 @@ static void apply_turn_d135in_mode2(void) {
 }
 
 static void apply_turn_d135out_mode2(void) {
-    const ShortestRunModeParams_t *m = &shortestRunModeParams2;
+    const ShortestRunModeParams_t *m = shortest_get_mode_params(2);
     velocity_turn135out = m->velocity_turn135out;
     alpha_turn135out = m->alpha_turn135out;
     angle_turn135out = m->angle_turn135out;
@@ -129,7 +129,7 @@ void mode2() {
                 printf("Loaded params: normal turn (mode2).\n");
 
                 // fan_power を反映（代替案A）
-                const ShortestRunModeParams_t *pm0 = &shortestRunModeParams2;
+                const ShortestRunModeParams_t *pm0 = shortest_get_mode_params(2);
                 drive_fan(pm0->fan_power);
 
                 // ログ開始（角速度/角度）
@@ -173,7 +173,7 @@ void mode2() {
                 apply_turn_large90_mode2();
                 printf("Loaded params: large 90deg (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm1 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm1 = shortest_get_mode_params(2);
                     drive_fan(pm1->fan_power);
                     // ログ開始（角速度/角度）
                     log_init();
@@ -202,7 +202,7 @@ void mode2() {
                 apply_turn_large180_mode2();
                 printf("Loaded params: large 180deg (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm2 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm2 = shortest_get_mode_params(2);
                     drive_fan(pm2->fan_power);
                     // ログ開始（角速度/角度）
                     log_init();
@@ -231,7 +231,7 @@ void mode2() {
                 apply_turn_d45in_mode2();
                 printf("Loaded params: diag 45-in (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm3 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm3 = shortest_get_mode_params(2);
                     drive_fan(pm3->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     // 初期加速後に S3、その後 45°入り→斜めS1
@@ -247,7 +247,7 @@ void mode2() {
                 apply_turn_d45out_mode2();
                 printf("Loaded params: diag 45-out (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm4 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm4 = shortest_get_mode_params(2);
                     drive_fan(pm4->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     // 初期加速後に S3、その後 斜めS1 → 45°出 → 斜めS1
@@ -264,7 +264,7 @@ void mode2() {
                 apply_turn_v90_mode2();
                 printf("Loaded params: diag V90 (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm5 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm5 = shortest_get_mode_params(2);
                     drive_fan(pm5->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     // 初期加速後に S3、その後 斜めS1 → V90 → 斜めS1
@@ -281,7 +281,7 @@ void mode2() {
                 apply_turn_d135in_mode2();
                 printf("Loaded params: diag 135-in (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm6 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm6 = shortest_get_mode_params(2);
                     drive_fan(pm6->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     // 初期加速後に S3、その後 135°入り→斜めS1
@@ -297,7 +297,7 @@ void mode2() {
                 apply_turn_d135out_mode2();
                 printf("Loaded params: diag 135-out (mode2).\n");
                 {
-                    const ShortestRunModeParams_t *pm7 = &shortestRunModeParams2;
+                    const ShortestRunModeParams_t *pm7 = shortest_get_mode_params(2);
                     drive_fan(pm7->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     // 初期加速後に S3、その後 斜めS1 → 135°出 → 斜めS1
@@ -316,7 +316,7 @@ void mode2() {
                 printf("Loaded params: straight test (mode2, case8 -> case1 params).\n");
 
                 // fan_power を反映（代替案A）
-                const ShortestRunModeParams_t *pm8 = &shortestRunModeParams2;
+                const ShortestRunModeParams_t *pm8 = shortest_get_mode_params(2);
                 drive_fan(pm8->fan_power);
 
                 // ログ開始（距離プロファイル）
@@ -363,7 +363,7 @@ void mode2() {
                 printf("Loaded params: straight test (mode2, case9 -> case7 params).\n");
 
                 // fan_power を反映（代替案A）
-                const ShortestRunModeParams_t *pm9 = &shortestRunModeParams2;
+                const ShortestRunModeParams_t *pm9 = shortest_get_mode_params(2);
                 drive_fan(pm9->fan_power);
 
                 // ログ開始（速度プロファイル）

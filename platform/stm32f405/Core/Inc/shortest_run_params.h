@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#define SHORTEST_TURN_BANK_COUNT 5
+
 /**
  * @brief モード共通（ターン＋オフセット＋ファン）パラメータ
  */
@@ -94,13 +96,13 @@ typedef struct {
     uint8_t solver_profile;           ///< 経路導出プロファイル (0:標準, 1:強い直線優先, 2:弱い直線優先)
 } ShortestRunCaseParams_t;
 
-// モード共通パラメータ
-extern const ShortestRunModeParams_t shortestRunModeParams2;
-extern const ShortestRunModeParams_t shortestRunModeParams3;
-extern const ShortestRunModeParams_t shortestRunModeParams4;
-extern const ShortestRunModeParams_t shortestRunModeParams5;
-extern const ShortestRunModeParams_t shortestRunModeParams6;
-extern const ShortestRunModeParams_t shortestRunModeParams7;
+// ターンパラメータ（mode別、bank=5種）
+extern const ShortestRunModeParams_t* const shortestTurnBankMode2[SHORTEST_TURN_BANK_COUNT];
+extern const ShortestRunModeParams_t* const shortestTurnBankMode3[SHORTEST_TURN_BANK_COUNT];
+extern const ShortestRunModeParams_t* const shortestTurnBankMode4[SHORTEST_TURN_BANK_COUNT];
+extern const ShortestRunModeParams_t* const shortestTurnBankMode5[SHORTEST_TURN_BANK_COUNT];
+extern const ShortestRunModeParams_t* const shortestTurnBankMode6[SHORTEST_TURN_BANK_COUNT];
+extern const ShortestRunModeParams_t* const shortestTurnBankMode7[SHORTEST_TURN_BANK_COUNT];
 
 // ケース個別パラメータ（case3..N の順、要素数は実装依存）
 extern const ShortestRunCaseParams_t shortestRunCaseParamsMode2[];
@@ -109,5 +111,10 @@ extern const ShortestRunCaseParams_t shortestRunCaseParamsMode4[];
 extern const ShortestRunCaseParams_t shortestRunCaseParamsMode5[];
 extern const ShortestRunCaseParams_t shortestRunCaseParamsMode6[];
 extern const ShortestRunCaseParams_t shortestRunCaseParamsMode7[];
+
+uint8_t shortest_get_turn_bank_id(uint8_t mode);
+void shortest_set_turn_bank_id(uint8_t mode, uint8_t bank_id);
+const ShortestRunModeParams_t* shortest_get_mode_params(uint8_t mode);
+const ShortestRunCaseParams_t* shortest_get_case_params(uint8_t mode, uint8_t case_index);
 
 #endif // SHORTEST_RUN_PARAMS_H
