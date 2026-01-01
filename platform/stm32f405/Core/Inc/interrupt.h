@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 // New logging system - define max log entries and structure
-#define MAX_LOG_ENTRIES 1000
+#define MAX_LOG_ENTRIES 256
 
 // Log data structure for collecting control and sensor data
 typedef struct {
