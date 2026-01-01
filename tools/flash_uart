@@ -107,7 +107,9 @@ def detect_port() -> str:
     candidates = []
     for pat in (
         "/dev/cu.usbserial-*",
+        "/dev/cu.usbserial*",
         "/dev/cu.usbmodem-*",
+        "/dev/cu.usbmodem*",
         "/dev/cu.SLAB_USBtoUART*",
         "/dev/cu.wchusbserial*",
     ):
