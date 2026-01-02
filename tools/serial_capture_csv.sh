@@ -76,11 +76,11 @@ fi
 
 # シリアルポート設定
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  if ! stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo raw; then
-    stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -echo raw
+  if ! stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo raw min 1 time 0 clocal -hupcl; then
+    stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -echo raw min 1 time 0 clocal -hupcl
   fi
 else
-  stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+  stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw min 1 time 0 clocal -hupcl
 fi
 
 cat <<EOF
@@ -119,7 +119,15 @@ cat "$UART_PORT" \
       print $0; fflush();
       print $0 >> current_out; close(current_out);
       prev_ts = ts;
+      next;
+    }
+
+    # CSV以外の行も、状況確認のためにstderrへ流す（保存はしない）
+    {
+      if ($0 != "") {
+        print $0 > "/dev/stderr"; fflush();
+      }
     }
   '
 
-echo "\n[INFO] Capture finished. Saved files under: $SAVE_DIR"
+printf "\n[INFO] Capture finished. Saved files under: %s\n" "$SAVE_DIR"
