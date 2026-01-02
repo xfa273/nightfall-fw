@@ -69,7 +69,7 @@ EOF
 # 改行に \r が混じるため除去し、8列数値のみをファイル保存＋同時に画面表示します。
 # 数値判定は整数/小数/負号を許可します。
 cat "$UART_PORT" \
-  | tr -d '\r' \
+  | LC_ALL=C tr -d '\r' \
   | awk -F',' -v SAVE_DIR="$SAVE_DIR" '
     function isnum(x){ return x ~ /^-?[0-9]+(\.[0-9]+)?$/ }
     function newfile(){
