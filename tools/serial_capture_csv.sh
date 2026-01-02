@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export LC_ALL=C
+
 # Serial CSV Auto Capture
 # 指定シリアルポートから受信した 8列CSV 行のみを抽出して、
 # 指定ディレクトリに日時付きファイル名で保存します。
