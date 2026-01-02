@@ -24,17 +24,45 @@ UART_PORT=${2:-$DEFAULT_UART_PORT}
 BAUD_RATE=${3:-$DEFAULT_BAUD}
 
 detect_uart_port() {
+  local os p
+  os="$(uname -s)"
+  if [[ "$os" == "Darwin" ]]; then
+    for p in /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial*; do
+      if [[ -e "$p" ]]; then
+        echo "$p"
+        return 0
+      fi
+    done
+  else
+    for p in /dev/ttyUSB* /dev/ttyACM*; do
+      if [[ -e "$p" ]]; then
+        echo "$p"
+        return 0
+      fi
+    done
+  fi
+  return 0
+}
+
+list_uart_ports() {
   local os
   os="$(uname -s)"
   if [[ "$os" == "Darwin" ]]; then
-    ls -1 /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial* 2>/dev/null | head -n 1 || true
+    ls -1 /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial* 2>/dev/null || true
   else
-    ls -1 /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1 || true
+    ls -1 /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || true
   fi
 }
 
 if [[ -z "$UART_PORT" || "$UART_PORT" == "auto" ]]; then
   UART_PORT="$(detect_uart_port)"
+fi
+
+if [[ -z "$UART_PORT" ]]; then
+  echo "[ERROR] UART port not found." >&2
+  echo "[HINT] Candidates:" >&2
+  list_uart_ports >&2
+  exit 1
 fi
 
 mkdir -p "$SAVE_DIR"
@@ -71,7 +99,7 @@ EOF
 # 改行に \r が混じるため除去し、8列数値のみをファイル保存＋同時に画面表示します。
 # 数値判定は整数/小数/負号を許可します。
 cat "$UART_PORT" \
-  | LC_ALL=C tr -d '\r' \
+  | LC_ALL=C tr -cd '\11\12\40-\176' \
   | awk -F',' -v SAVE_DIR="$SAVE_DIR" '
     function isnum(x){ return x ~ /^-?[0-9]+(\.[0-9]+)?$/ }
     function newfile(){
