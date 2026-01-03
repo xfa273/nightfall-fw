@@ -14,6 +14,17 @@ from pathlib import Path
 _NUM_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
 
 
+def _default_save_dir() -> Path:
+    env = os.environ.get("MICROMOUSE_LOG_DIR")
+    if env:
+        return Path(env).expanduser()
+
+    if sys.platform == "darwin":
+        return Path.home() / "Documents/micromouse_logs"
+
+    return Path.home() / "micromouse_logs"
+
+
 def _is_num(s: str) -> bool:
     return bool(_NUM_RE.match(s))
 
@@ -88,13 +99,13 @@ def _new_output_file(save_dir: Path) -> Path:
 
 def main() -> int:
     ap = argparse.ArgumentParser(add_help=True)
-    ap.add_argument("save_dir", nargs="?", default=str(Path.home() / "STM32Workspace/micromouse_log_visualizer/logs"))
+    ap.add_argument("save_dir", nargs="?", default=None)
     ap.add_argument("port", nargs="?", default="auto")
     ap.add_argument("baud", nargs="?", type=int, default=115200)
     ap.add_argument("--show-noncsv", action="store_true")
     args = ap.parse_args()
 
-    save_dir = Path(args.save_dir).expanduser()
+    save_dir = _default_save_dir() if args.save_dir is None else Path(args.save_dir).expanduser()
     save_dir.mkdir(parents=True, exist_ok=True)
 
     port = args.port
