@@ -9,6 +9,7 @@ import termios
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 
 _NUM_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
@@ -135,8 +136,10 @@ def main() -> int:
         _configure_serial(fd, args.baud)
 
         buf = b""
-        out_path: Path | None = None
-        prev_ts: int | None = None
+        out_path: Optional[Path] = None
+        prev_ts: Optional[int] = None
+        pending_columns: Optional[str] = None
+        wrote_columns: bool = False
 
         while True:
             r, _, _ = select.select([fd], [], [], 0.25)
@@ -165,15 +168,31 @@ def main() -> int:
                 if not line:
                     continue
 
+                if line.startswith("#mm_columns="):
+                    pending_columns = line
+                    if out_path is not None and not wrote_columns:
+                        with out_path.open("a", encoding="ascii", newline="\n") as f:
+                            f.write(pending_columns + "\n")
+                        wrote_columns = True
+                    continue
+
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) == 8 and parts[0].isdigit() and all(_is_num(p) for p in parts[1:]):
                     ts = int(parts[0])
                     if out_path is None or (prev_ts is not None and ts < prev_ts):
                         out_path = _new_output_file(save_dir)
                         print(f"\n[INFO] New capture file: {out_path}", file=sys.stderr)
+                        wrote_columns = False
+                        if pending_columns is not None:
+                            with out_path.open("a", encoding="ascii", newline="\n") as f:
+                                f.write(pending_columns + "\n")
+                            wrote_columns = True
 
                     print(",".join(parts))
                     with out_path.open("a", encoding="ascii", newline="\n") as f:
+                        if pending_columns is not None and not wrote_columns:
+                            f.write(pending_columns + "\n")
+                            wrote_columns = True
                         f.write(",".join(parts) + "\n")
 
                     prev_ts = ts

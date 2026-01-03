@@ -7,6 +7,16 @@
 static volatile LogProfile s_log_profile = LOG_PROFILE_OMEGA;
 static uint8_t s_wall_end_deriv_decim = 0;
 
+static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_velocity,p_term_velocity,i_term_velocity,d_term_velocity,out_r,out_l";
+static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
+static const char *s_mm_columns_omega = "timestamp,omega_interrupt,real_omega,p_term_omega,i_term_omega,d_term_omega,out_r,out_l";
+static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_term_angle,i_term_angle,d_term_angle,out_r,out_l";
+static const char *s_mm_columns_wall_end_deriv = "timestamp,wall_end_deriv_r,wall_end_deriv_l,unused3,unused4,unused5,unused6,unused7";
+
+static void log_print_mm_columns(const char *cols) {
+    printf("#mm_columns=%s\n", cols);
+}
+
 void log_set_profile(LogProfile profile) { s_log_profile = profile; }
 
 // 速度ログ（log_buffer）をCSV出力
@@ -15,6 +25,7 @@ void log_print_velocity_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_velocity);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
@@ -43,6 +54,7 @@ void log_print_distance_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_distance);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
@@ -71,6 +83,7 @@ void log_print_omega_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_omega);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
@@ -99,6 +112,7 @@ void log_print_angle_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_angle);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
@@ -126,6 +140,7 @@ void log_print_wall_end_deriv_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_wall_end_deriv);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
@@ -392,6 +407,13 @@ void log_print_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,target_omega,actual_omega,p_term_omega,i_term_omega,d_term_omega,motor_out_r,motor_out_l\n");
     printf("--- CSV Data Start ---\n");
+    {
+        const char *cols = s_mm_columns_omega;
+        if (s_log_profile == LOG_PROFILE_VELOCITY || s_log_profile == LOG_PROFILE_DISTANCE) {
+            cols = s_mm_columns_velocity;
+        }
+        log_print_mm_columns(cols);
+    }
     
     // CSV形式でデータを出力（micromouse_log_visualizer用）
     // 形式: timestamp,target_omega,actual_omega,p_term_omega,i_term_omega,d_term_omega,motor_out_r,motor_out_l
@@ -433,6 +455,14 @@ void log_print_all(void) {
 void log_print_csv_only(void) {
     // 純粋なCSVデータのみを出力（説明行なし）
     // 可視化ツールのテキストエリアに直接貼り付け可能
+
+    {
+        const char *cols = s_mm_columns_omega;
+        if (s_log_profile == LOG_PROFILE_VELOCITY || s_log_profile == LOG_PROFILE_DISTANCE) {
+            cols = s_mm_columns_velocity;
+        }
+        log_print_mm_columns(cols);
+    }
     
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;

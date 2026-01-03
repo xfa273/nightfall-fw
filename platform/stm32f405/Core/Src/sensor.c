@@ -843,7 +843,6 @@ void sensor_log_capture(void) {
     sensor_log_buffer.count++;
     s_sensor_log_tick++;
 }
-
 //+++++++++++++++++++++++++++++++++++++++++++++++
 // sensor_log_print
 // センサログをCSV形式で出力
@@ -853,6 +852,7 @@ void sensor_log_print(void) {
     printf("Total entries: %d\n", sensor_log_buffer.count);
     printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,0,0\n");
     printf("--- CSV Data Start ---\n");
+    printf("#mm_columns=timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,unused6,unused7\n");
     
     uint16_t count = sensor_log_buffer.count > SENSOR_LOG_MAX_ENTRIES 
                      ? SENSOR_LOG_MAX_ENTRIES : sensor_log_buffer.count;
