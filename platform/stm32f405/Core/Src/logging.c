@@ -11,7 +11,7 @@ static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_ve
 static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
 static const char *s_mm_columns_omega = "timestamp,omega_interrupt,real_omega,p_term_omega,i_term_omega,d_term_omega,out_r,out_l";
 static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_term_angle,i_term_angle,d_term_angle,out_r,out_l";
-static const char *s_mm_columns_wall_end_deriv = "timestamp,wall_end_deriv_r,wall_end_deriv_l,unused3,unused4,unused5,unused6,unused7";
+static const char *s_mm_columns_wall_end_deriv = "timestamp,wall_end_deriv_r,wall_end_deriv_l,ad_r,ad_l,unused5,unused6,unused7";
 
 static void log_print_mm_columns(const char *cols) {
     printf("#mm_columns=%s\n", cols);
@@ -293,7 +293,8 @@ void log_capture_tick(void) {
         break;
     case LOG_PROFILE_WALL_END_DERIV: {
         const bool is_straight = (!MF.FLAG.SLALOM_R && !MF.FLAG.SLALOM_L);
-        if (!MF.FLAG.WALL_END || !is_straight) {
+        const bool gate_on = ((MF.FLAG.RUNNING || MF.FLAG.WALL_END) && is_straight);
+        if (!gate_on) {
             break;
         }
         s_wall_end_deriv_decim++;
@@ -306,8 +307,8 @@ void log_capture_tick(void) {
             log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
             log_buffer2.entries[pos2].target_omega = (float)wall_end_deriv_r;
             log_buffer2.entries[pos2].actual_omega = (float)wall_end_deriv_l;
-            log_buffer2.entries[pos2].p_term_omega = 0.0f;
-            log_buffer2.entries[pos2].i_term_omega = 0.0f;
+            log_buffer2.entries[pos2].p_term_omega = (float)ad_r;
+            log_buffer2.entries[pos2].i_term_omega = (float)ad_l;
             log_buffer2.entries[pos2].d_term_omega = 0.0f;
             log_buffer2.entries[pos2].motor_out_r = 0.0f;
             log_buffer2.entries[pos2].motor_out_l = 0.0f;
