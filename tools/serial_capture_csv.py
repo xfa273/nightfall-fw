@@ -98,6 +98,26 @@ def _new_output_file(save_dir: Path) -> Path:
     return save_dir / f"stm32_log_{ts}.csv"
 
 
+def _format_mm_columns(line: str) -> str:
+    s = line.strip()
+    if s.startswith("#mm_columns="):
+        s = s[len("#mm_columns=") :]
+    cols = [c.strip() for c in s.split(",") if c.strip()]
+    if not cols:
+        return ""
+    return ",".join(cols)
+
+
+def _print_mm_columns(line: str, out_path: Optional[Path]) -> None:
+    cols = _format_mm_columns(line)
+    if not cols:
+        return
+    if out_path is not None:
+        print(f"[INFO] Columns ({out_path.name}): {cols}", file=sys.stderr)
+    else:
+        print(f"[INFO] Columns: {cols}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("save_dir", nargs="?", default=None)
@@ -140,6 +160,8 @@ def main() -> int:
         prev_ts: Optional[int] = None
         pending_columns: Optional[str] = None
         wrote_columns: bool = False
+        last_printed_columns: Optional[str] = None
+        last_printed_file: Optional[Path] = None
 
         while True:
             r, _, _ = select.select([fd], [], [], 0.25)
@@ -170,6 +192,16 @@ def main() -> int:
 
                 if line.startswith("#mm_columns="):
                     pending_columns = line
+                    if out_path is None:
+                        if pending_columns != last_printed_columns:
+                            _print_mm_columns(pending_columns, None)
+                            last_printed_columns = pending_columns
+                            last_printed_file = None
+                    else:
+                        if pending_columns != last_printed_columns or out_path != last_printed_file:
+                            _print_mm_columns(pending_columns, out_path)
+                            last_printed_columns = pending_columns
+                            last_printed_file = out_path
                     if out_path is not None and not wrote_columns:
                         with out_path.open("a", encoding="ascii", newline="\n") as f:
                             f.write(pending_columns + "\n")
@@ -184,6 +216,9 @@ def main() -> int:
                         print(f"\n[INFO] New capture file: {out_path}", file=sys.stderr)
                         wrote_columns = False
                         if pending_columns is not None:
+                            _print_mm_columns(pending_columns, out_path)
+                            last_printed_columns = pending_columns
+                            last_printed_file = out_path
                             with out_path.open("a", encoding="ascii", newline="\n") as f:
                                 f.write(pending_columns + "\n")
                             wrote_columns = True
