@@ -5,7 +5,6 @@
 
 // 現在のログプロファイル（取得内容の切替）
 static volatile LogProfile s_log_profile = LOG_PROFILE_OMEGA;
-static uint8_t s_wall_end_deriv_decim = 0;
 
 static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_velocity,p_term_velocity,i_term_velocity,d_term_velocity,out_r,out_l";
 static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
@@ -292,13 +291,8 @@ void log_capture_tick(void) {
         );
         break;
     case LOG_PROFILE_WALL_END_DERIV: {
-        const bool is_straight = (!MF.FLAG.SLALOM_R && !MF.FLAG.SLALOM_L);
-        const bool gate_on = ((MF.FLAG.RUNNING || MF.FLAG.WALL_END) && is_straight);
+        const bool gate_on = (MF.FLAG.RUNNING || MF.FLAG.WALL_END);
         if (!gate_on) {
-            break;
-        }
-        s_wall_end_deriv_decim++;
-        if ((s_wall_end_deriv_decim & 0x03u) != 0u) {
             break;
         }
 
@@ -341,8 +335,6 @@ void log_start(uint32_t start_time) {
     log_buffer2.count = 0;
     log_buffer2.logging_active = 1;
     log_buffer2.start_time = start_time;
-
-    s_wall_end_deriv_decim = 0;
 
     // ロギングフラグを設定
     MF.FLAG.GET_LOG_1 = 1;
