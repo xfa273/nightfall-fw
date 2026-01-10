@@ -450,7 +450,13 @@ void mode4() {
             log_start(HAL_GetTick());
             g_sensor_log_enabled = true;
             g_disable_front_wall_correction = true;
+
+            uint8_t prev_wall_end_mode = wall_end_get_detect_mode();
+            wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
+            wall_end_reset();
             run_shortest(4, 2);
+
+            wall_end_set_detect_mode(prev_wall_end_mode);
             g_sensor_log_enabled = false;
             log_stop();
             g_disable_front_wall_correction = false;
