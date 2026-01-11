@@ -176,12 +176,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
             ad_r = max((int)ad_r_raw - (int)ad_r_off - (int)wall_offset_r, 0);
             ad_l = max((int)ad_l_raw - (int)ad_l_off - (int)wall_offset_l, 0);
 
+            wall_end_update_deriv();
             // LEDをOFFに戻す
             HAL_GPIO_WritePin(IR_R_GPIO_Port, IR_R_Pin, GPIO_PIN_RESET);
             HAL_GPIO_WritePin(IR_L_GPIO_Port, IR_L_Pin, GPIO_PIN_RESET);
-
-            // 横センサ更新完了時に壁切れ検出（約6kHz、高速検出）
-            detect_wall_end();
 
             // グループ識別（互換性: RL=0）
             ADC_task_counter = 0;

@@ -11,6 +11,10 @@
 #include "main.h"
 #include <stdint.h>
 
+#ifndef CCMRAM_ATTR
+#define CCMRAM_ATTR __attribute__((section(".ccmram")))
+#endif
+
 // New logging system - define max log entries and structure
 #define MAX_LOG_ENTRIES 1000
 
@@ -46,12 +50,12 @@ void tim1_wait_us(uint32_t us);
 #ifdef MAIN_C_ // main.cからこのファイルが呼ばれている場合
 volatile uint8_t ADC_task_counter; // ADCの振り分け用カウンタ
 volatile LogBuffer log_buffer;     // 主ログ（速度/角速度 等）
-volatile LogBuffer log_buffer2;    // 副ログ（距離/角度 等）
+CCMRAM_ATTR volatile LogBuffer log_buffer2;    // 副ログ（距離/角度 等）
 
 #else // main.c以外からこのファイルが呼ばれている場合
 extern volatile uint8_t ADC_task_counter; // ADCの振り分け用カウンタ
 extern volatile LogBuffer log_buffer;     // 主ログ
-extern volatile LogBuffer log_buffer2;    // 副ログ
+extern CCMRAM_ATTR volatile LogBuffer log_buffer2;    // 副ログ
 
 #endif
 
