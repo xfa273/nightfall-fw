@@ -19,6 +19,74 @@ static void print_wall_offsets(const char* label)
            (unsigned)wall_offset_fl);
 }
 
+void wall_end_set_detect_mode(uint8_t mode) {
+    if (mode == WALL_END_DETECT_MODE_DERIV) {
+        wall_end_detect_mode = WALL_END_DETECT_MODE_DERIV;
+    } else {
+        wall_end_detect_mode = WALL_END_DETECT_MODE_RAW;
+    }
+}
+
+uint8_t wall_end_get_detect_mode(void) {
+    return wall_end_detect_mode;
+}
+
+void wall_end_update_deriv(void) {
+    enum { W = 18, N = 36 };
+    static bool s_init = false;
+    static uint16_t s_buf_r[N] = {0};
+    static uint16_t s_buf_l[N] = {0};
+    static uint32_t s_sum_old_r = 0;
+    static uint32_t s_sum_new_r = 0;
+    static uint32_t s_sum_old_l = 0;
+    static uint32_t s_sum_new_l = 0;
+    static uint8_t s_idx = 0;
+
+    const uint16_t x_r = ad_r;
+    const uint16_t x_l = ad_l;
+
+    if (wall_end_deriv_reset_request || !s_init) {
+        s_init = true;
+        s_idx = 0;
+        for (int i = 0; i < N; i++) {
+            s_buf_r[i] = x_r;
+            s_buf_l[i] = x_l;
+        }
+        s_sum_old_r = (uint32_t)W * (uint32_t)x_r;
+        s_sum_new_r = (uint32_t)W * (uint32_t)x_r;
+        s_sum_old_l = (uint32_t)W * (uint32_t)x_l;
+        s_sum_new_l = (uint32_t)W * (uint32_t)x_l;
+        wall_end_deriv_reset_request = false;
+    } else {
+        const uint8_t idx = s_idx;
+        const uint8_t idx_move = (uint8_t)((uint16_t)idx + (uint16_t)W);
+        const uint8_t pos_move = (uint8_t)(idx_move % (uint8_t)N);
+
+        const uint16_t x_drop_r = s_buf_r[idx];
+        const uint16_t x_move_r = s_buf_r[pos_move];
+        s_sum_old_r = s_sum_old_r - (uint32_t)x_drop_r + (uint32_t)x_move_r;
+        s_sum_new_r = s_sum_new_r - (uint32_t)x_move_r + (uint32_t)x_r;
+
+        const uint16_t x_drop_l = s_buf_l[idx];
+        const uint16_t x_move_l = s_buf_l[pos_move];
+        s_sum_old_l = s_sum_old_l - (uint32_t)x_drop_l + (uint32_t)x_move_l;
+        s_sum_new_l = s_sum_new_l - (uint32_t)x_move_l + (uint32_t)x_l;
+
+        s_buf_r[idx] = x_r;
+        s_buf_l[idx] = x_l;
+        s_idx = (uint8_t)((uint8_t)(idx + 1u) % (uint8_t)N);
+    }
+
+    if (wall_end_detect_mode == WALL_END_DETECT_MODE_DERIV) {
+        const int32_t diff_r = (int32_t)s_sum_new_r - (int32_t)s_sum_old_r;
+        const int32_t diff_l = (int32_t)s_sum_new_l - (int32_t)s_sum_old_l;
+        wall_end_deriv_r = diff_r / (int32_t)(W / 2);
+        wall_end_deriv_l = diff_l / (int32_t)(W / 2);
+    } else {
+        wall_end_deriv_r = 0;
+        wall_end_deriv_l = 0;
+    }
+}
 //+++++++++++++++++++++++++++++++++++++++++++++++
 // ADC DMA helpers (commit 89a941a based)
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -623,6 +691,8 @@ void detect_wall_end(void) {
     static bool s_prev_r = false;  // 前回の壁状態
     static bool s_prev_l = false;  // 前回の壁状態
 
+    static uint8_t s_deriv_fall_cnt_r = 0;
+    static uint8_t s_deriv_fall_cnt_l = 0;
     // リセット要求があれば、現在の壁状態で初期化
     if (wall_end_reset_request) {
         // 初期化時はHighしきい値で判定
@@ -630,6 +700,9 @@ void detect_wall_end(void) {
         s_wall_l = (ad_l > (uint16_t)(thr_l_high * kx));
         s_prev_r = s_wall_r;
         s_prev_l = s_wall_l;
+
+        s_deriv_fall_cnt_r = 0;
+        s_deriv_fall_cnt_l = 0;
         wall_end_reset_request = false;
     }
 
@@ -657,6 +730,37 @@ void detect_wall_end(void) {
         if (ad_l > (uint16_t)(thr_l_high * kx)) {
             s_wall_l = true;
         }
+    }
+
+    if (wall_end_detect_mode == WALL_END_DETECT_MODE_DERIV) {
+        const uint16_t thr_d_fall = (uint16_t)(WALL_END_DERIV_FALL_THR * kx);
+
+        if (s_wall_r && (wall_end_deriv_r < -(int32_t)thr_d_fall)) {
+            if (s_deriv_fall_cnt_r < 255u) {
+                s_deriv_fall_cnt_r++;
+            }
+        } else {
+            s_deriv_fall_cnt_r = 0;
+        }
+        if (s_wall_l && (wall_end_deriv_l < -(int32_t)thr_d_fall)) {
+            if (s_deriv_fall_cnt_l < 255u) {
+                s_deriv_fall_cnt_l++;
+            }
+        } else {
+            s_deriv_fall_cnt_l = 0;
+        }
+
+        if (s_deriv_fall_cnt_r >= 2u) {
+            s_wall_r = false;
+            s_deriv_fall_cnt_r = 0;
+        }
+        if (s_deriv_fall_cnt_l >= 2u) {
+            s_wall_l = false;
+            s_deriv_fall_cnt_l = 0;
+        }
+    } else {
+        s_deriv_fall_cnt_r = 0;
+        s_deriv_fall_cnt_l = 0;
     }
 
     // ゲート条件:
@@ -706,6 +810,7 @@ void wall_end_reset(void) {
     MF.FLAG.L_WALL_END = 0;
     // detect_wall_end()内のs_prev_r/lを現在の壁状態で再初期化する要求
     wall_end_reset_request = true;
+    wall_end_deriv_reset_request = true;
 }
 
 //============================================================

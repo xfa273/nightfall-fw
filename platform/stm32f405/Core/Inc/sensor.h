@@ -50,6 +50,7 @@ volatile bool wall_end_detected_l;   // 左壁切れ検出済みフラグ
 volatile float wall_end_dist_r;      // 右壁切れ検出時の走行距離[mm]
 volatile float wall_end_dist_l;      // 左壁切れ検出時の走行距離[mm]
 volatile bool wall_end_reset_request; // 壁切れ検出状態リセット要求
+volatile bool wall_end_deriv_reset_request;
 uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値（右）- 壁ありと判定
 uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）- 壁なしと判定
 uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）- 壁ありと判定
@@ -84,6 +85,7 @@ extern volatile bool wall_end_detected_l;   // 左壁切れ検出済みフラグ
 extern volatile float wall_end_dist_r;      // 右壁切れ検出時の走行距離[mm]
 extern volatile float wall_end_dist_l;      // 左壁切れ検出時の走行距離[mm]
 extern volatile bool wall_end_reset_request; // 壁切れ検出状態リセット要求
+extern volatile bool wall_end_deriv_reset_request;
 extern uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値（右）
 extern uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）
 extern uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）
@@ -126,6 +128,7 @@ void get_wall_info(); // 壁情報を読む
 void indicate_sensor();
 // 壁切れ検知（横壁の立ち下がりエッジ検出）
 void detect_wall_end(void);
+void wall_end_update_deriv(void);
 // 壁切れ検出フラグをリセット（直進開始時に呼び出す）
 void wall_end_reset(void);
 
