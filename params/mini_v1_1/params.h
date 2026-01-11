@@ -163,7 +163,7 @@
 #endif
 
 #ifndef WALL_END_DERIV_FALL_THR
-#define WALL_END_DERIV_FALL_THR  250
+#define WALL_END_DERIV_FALL_THR  200
 #endif
 
 // 前壁補正：未検知時の最大延長距離[mm]
@@ -244,8 +244,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   2 // 7
-#define GOAL_Y   8 // 7
+#define GOAL_X   1 // 7
+#define GOAL_Y   0 // 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
