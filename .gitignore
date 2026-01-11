@@ -38,3 +38,5 @@ compile_commands.json
 *.su
 
 *.log
+
+*.bak
