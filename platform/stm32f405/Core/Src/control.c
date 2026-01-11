@@ -97,7 +97,7 @@ void velocity_PID(void) {
     }
 
     // I項（単純積分）
-    velocity_integral += velocity_error;
+    float v_i_next = velocity_integral + velocity_error;
 
     // D項
     velocity_error_error = velocity_error - previous_velocity_error;
@@ -108,6 +108,19 @@ void velocity_PID(void) {
     const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
 
     // モータ制御量を計算（純PID）
+    if (CTRL_ENABLE_ANTI_WINDUP) {
+        const float out_candidate = kp_v * velocity_error + ki_v * v_i_next + kd_v * velocity_error_error;
+        const float lim = CTRL_OUTPUT_MAX;
+        const int would_saturate = (fabsf(out_candidate) > lim) ? 1 : 0;
+        const int drives_further = ((out_candidate > 0.0f && velocity_error > 0.0f) ||
+                                   (out_candidate < 0.0f && velocity_error < 0.0f)) ? 1 : 0;
+        if (!(would_saturate && drives_further)) {
+            velocity_integral = v_i_next;
+        }
+    } else {
+        velocity_integral = v_i_next;
+    }
+
     out_translation =   kp_v * velocity_error
                       + ki_v * velocity_integral
                       + kd_v * velocity_error_error;
@@ -119,38 +132,43 @@ void velocity_PID(void) {
 /*並進距離のPID制御*/
 void distance_PID(void) {
     // 位置PID（距離誤差から目標速度を生成）
+    static uint16_t s_div = 0;
+    static float s_v_fb = 0.0f;
+
     // 誤差
     distance_error = target_distance - real_distance;
-    // I項
-    distance_integral += distance_error;
-    // D項
-    distance_error_error = distance_error - previous_distance_error;
 
     // 目標速度（プロファイル速度 + 位置PIDの補正）: 吸引ON/OFFでゲイン切替
     const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
     const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
     const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
 
-    float v_fb = (kp_d * distance_error)
+    s_div++;
+    if (s_div >= (uint16_t)CTRL_DISTANCE_OUTER_DIV) {
+        s_div = 0;
+        // I項
+        distance_integral += distance_error;
+        // D項
+        distance_error_error = distance_error - previous_distance_error;
+        // 誤差履歴更新
+        previous_distance_error = distance_error;
+
+        s_v_fb = (kp_d * distance_error)
                + (ki_d * distance_integral)
                + (kd_d * distance_error_error);
-    target_velocity = velocity_interrupt + v_fb;
+    }
 
-    // 誤差履歴更新
-    previous_distance_error = distance_error;
+    target_velocity = velocity_interrupt + s_v_fb;
 }
 
 /*角速度のPID制御*/
 void omega_PID(void) {
+    const float omega_outer = (CTRL_ENABLE_ANGLE_OUTER_LOOP ? target_omega : 0.0f);
+    const float omega_ref = omega_interrupt + omega_outer;
 
-    // P項
-    // omega_error = target_omega - real_omega;
+    omega_error = omega_ref - real_omega + wall_control + diagonal_control;
 
-    omega_error =
-        omega_interrupt - real_omega + wall_control + diagonal_control;
-
-    // I項
-    omega_integral += omega_error;
+    float o_i_next = omega_integral + omega_error;
 
     // D項（角速度誤差の差分）
     omega_error_error = omega_error - previous_omega_error;
@@ -161,8 +179,20 @@ void omega_PID(void) {
     const float kd_o = MF.FLAG.SUCTION ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
 
     // モータ制御量を計算
-    out_rotate = kp_o * omega_error + ki_o * omega_integral +
-                 kd_o * omega_error_error;
+    if (CTRL_ENABLE_ANTI_WINDUP) {
+        const float out_candidate = kp_o * omega_error + ki_o * o_i_next + kd_o * omega_error_error;
+        const float lim = CTRL_OUTPUT_MAX;
+        const int would_saturate = (fabsf(out_candidate) > lim) ? 1 : 0;
+        const int drives_further = ((out_candidate > 0.0f && omega_error > 0.0f) ||
+                                   (out_candidate < 0.0f && omega_error < 0.0f)) ? 1 : 0;
+        if (!(would_saturate && drives_further)) {
+            omega_integral = o_i_next;
+        }
+    } else {
+        omega_integral = o_i_next;
+    }
+
+    out_rotate = kp_o * omega_error + ki_o * omega_integral + kd_o * omega_error_error;
 
     // 角速度の偏差を保存
     previous_omega_error = omega_error;
@@ -170,22 +200,27 @@ void omega_PID(void) {
 
 /*角度のPID制御*/
 void angle_PID(void) {
+    static uint16_t s_div = 0;
 
     // P項
-    angle_error = target_angle - real_angle;
+    angle_error = (-target_angle) - real_angle;
 
-    // I項
-    angle_integral += angle_error;
+    s_div++;
+    if (s_div >= (uint16_t)CTRL_ANGLE_OUTER_DIV) {
+        s_div = 0;
 
-    // D項
-    angle_error_error = angle_error - previous_angle_error;
+        // I項
+        angle_integral += angle_error;
 
-    // 目標角速度を計算
-    target_omega = KP_ANGLE * angle_error + KI_ANGLE * angle_integral +
-                   KD_ANGLE * angle_error_error;
+        // D項
+        angle_error_error = angle_error - previous_angle_error;
 
-    // 角度の偏差を保存
-    previous_angle_error = angle_error;
+        // 角度の偏差を保存
+        previous_angle_error = angle_error;
+
+        // 目標角速度を計算
+        target_omega = -(KP_ANGLE * angle_error + KI_ANGLE * angle_integral + KD_ANGLE * angle_error_error);
+    }
 }
 
 /*壁のPID制御*/
