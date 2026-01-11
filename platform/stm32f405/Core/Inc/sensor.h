@@ -157,6 +157,8 @@ typedef struct {
     uint16_t ad_fr;      // 右前センサ
     uint16_t ad_fl;      // 左前センサ
     float distance;      // 走行距離[mm]
+    int32_t wall_end_deriv_r;
+    int32_t wall_end_deriv_l;
 } SensorLogEntry;
 
 typedef struct {

@@ -838,6 +838,8 @@ void sensor_log_capture(void) {
     sensor_log_buffer.entries[pos].ad_fr = ad_fr;
     sensor_log_buffer.entries[pos].ad_fl = ad_fl;
     sensor_log_buffer.entries[pos].distance = real_distance;
+    sensor_log_buffer.entries[pos].wall_end_deriv_r = (int32_t)wall_end_deriv_r;
+    sensor_log_buffer.entries[pos].wall_end_deriv_l = (int32_t)wall_end_deriv_l;
     
     sensor_log_buffer.head = (pos + 1) % SENSOR_LOG_MAX_ENTRIES;
     sensor_log_buffer.count++;
@@ -850,23 +852,24 @@ void sensor_log_capture(void) {
 void sensor_log_print(void) {
     printf("=== Sensor Log Data (CSV Format) ===\n");
     printf("Total entries: %d\n", sensor_log_buffer.count);
-    printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,0,0\n");
+    printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,wall_end_deriv_r,wall_end_deriv_l\n");
     printf("--- CSV Data Start ---\n");
-    printf("#mm_columns=timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,unused6,unused7\n");
+    printf("#mm_columns=timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,wall_end_deriv_r,wall_end_deriv_l\n");
     
     uint16_t count = sensor_log_buffer.count > SENSOR_LOG_MAX_ENTRIES 
                      ? SENSOR_LOG_MAX_ENTRIES : sensor_log_buffer.count;
     
     for (uint16_t i = 0; i < count; i++) {
         SensorLogEntry *entry = (SensorLogEntry *)&sensor_log_buffer.entries[i];
-        // 既存フォーマットに合わせて7パラメータ出力（余りは0）
-        printf("%lu,%d,%d,%d,%d,%.3f,0,0\n",
+        printf("%lu,%d,%d,%d,%d,%.3f,%ld,%ld\n",
                entry->timestamp,
                entry->ad_r,
                entry->ad_l,
                entry->ad_fr,
                entry->ad_fl,
-               entry->distance);
+               entry->distance,
+               (long)entry->wall_end_deriv_r,
+               (long)entry->wall_end_deriv_l);
     }
     
     printf("--- CSV Data End ---\n");
