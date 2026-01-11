@@ -396,7 +396,13 @@ void mode5() {
             sensor_log_init();
             g_sensor_log_enabled = true;
             g_disable_front_wall_correction = true;
+
+            uint8_t prev_wall_end_mode = wall_end_get_detect_mode();
+            wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
+            wall_end_reset();
             run_shortest(5, 2);
+
+            wall_end_set_detect_mode(prev_wall_end_mode);
             g_sensor_log_enabled = false;
             g_disable_front_wall_correction = false;
             printf("Sensor log recorded: %d entries\n", sensor_log_buffer.count);

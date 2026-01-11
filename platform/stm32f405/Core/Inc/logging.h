@@ -10,7 +10,7 @@ typedef enum {
     LOG_PROFILE_OMEGA = 0,   // 角速度系（既定）
     LOG_PROFILE_VELOCITY = 1,// 並進速度系
     LOG_PROFILE_DISTANCE = 2,// 並進距離系
-    LOG_PROFILE_CUSTOM = 3   // カスタム（後で編集）
+    LOG_PROFILE_CUSTOM = 3  // カスタム（後で編集）
 } LogProfile;
 
 void log_set_profile(LogProfile profile);
