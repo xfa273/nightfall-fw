@@ -10,7 +10,6 @@ static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_ve
 static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
 static const char *s_mm_columns_omega = "timestamp,omega_interrupt,real_omega,p_term_omega,i_term_omega,d_term_omega,out_r,out_l";
 static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_term_angle,i_term_angle,d_term_angle,out_r,out_l";
-static const char *s_mm_columns_wall_end_deriv = "timestamp,wall_end_deriv_r,wall_end_deriv_l,ad_r,ad_l,unused5,unused6,unused7";
 
 static void log_print_mm_columns(const char *cols) {
     printf("#mm_columns=%s\n", cols);
@@ -112,34 +111,6 @@ void log_print_angle_all(void) {
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
     log_print_mm_columns(s_mm_columns_angle);
-
-    uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
-    uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
-
-    for (uint16_t i = 0; i < count; i++) {
-        uint16_t idx = (start + i) % MAX_LOG_ENTRIES;
-        volatile LogEntry *entry = &log_buffer2.entries[idx];
-        printf("%lu,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
-               entry->timestamp - log_buffer2.start_time,
-               entry->target_omega,
-               entry->actual_omega,
-               entry->p_term_omega,
-               entry->i_term_omega,
-               entry->d_term_omega,
-               entry->motor_out_r,
-               entry->motor_out_l);
-    }
-
-    printf("--- CSV Data End ---\n");
-    printf("=== End of Log ===\n");
-}
-
-void log_print_wall_end_deriv_all(void) {
-    printf("=== Micromouse Log Data (CSV Format, WALL_END_DERIV) ===\n");
-    printf("Total entries: %d\n", log_buffer2.count);
-    printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
-    printf("--- CSV Data Start ---\n");
-    log_print_mm_columns(s_mm_columns_wall_end_deriv);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
@@ -290,28 +261,6 @@ void log_capture_tick(void) {
             current_time
         );
         break;
-    case LOG_PROFILE_WALL_END_DERIV: {
-        const bool gate_on = (MF.FLAG.RUNNING || MF.FLAG.WALL_END);
-        if (!gate_on) {
-            break;
-        }
-
-        if (log_buffer2.logging_active && log_buffer2.count < MAX_LOG_ENTRIES) {
-            uint16_t pos2 = log_buffer2.head;
-            log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
-            log_buffer2.entries[pos2].target_omega = (float)wall_end_deriv_r;
-            log_buffer2.entries[pos2].actual_omega = (float)wall_end_deriv_l;
-            log_buffer2.entries[pos2].p_term_omega = (float)ad_r;
-            log_buffer2.entries[pos2].i_term_omega = (float)ad_l;
-            log_buffer2.entries[pos2].d_term_omega = 0.0f;
-            log_buffer2.entries[pos2].motor_out_r = 0.0f;
-            log_buffer2.entries[pos2].motor_out_l = 0.0f;
-            log_buffer2.entries[pos2].timestamp = current_time;
-            log_buffer2.head = (pos2 + 1) % MAX_LOG_ENTRIES;
-            log_buffer2.count++;
-        }
-        break;
-    }
     case LOG_PROFILE_CUSTOM:
     default:
         break;

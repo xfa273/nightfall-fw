@@ -148,7 +148,7 @@ uint8_t wall_end_get_detect_mode(void);
 //============================================================
 // センサログ機能（壁切れデバッグ用）
 //============================================================
-#define SENSOR_LOG_MAX_ENTRIES 500  // 約83ms分（6kHz）
+#define SENSOR_LOG_MAX_ENTRIES 1000  // 約83ms分（6kHz）
 
 typedef struct {
     uint32_t timestamp;  // タイムスタンプ（us相当のカウンタ）

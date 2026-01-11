@@ -394,20 +394,17 @@ void mode5() {
         case 2:
             g_disable_front_wall_correction = true;  // 前壁補正無効（距離ベース走行）
             sensor_log_init();
-            log_init();
-            log_set_profile(LOG_PROFILE_WALL_END_DERIV);
-            log_start(HAL_GetTick());
             g_sensor_log_enabled = true;
             g_disable_front_wall_correction = true;
+
+            uint8_t prev_wall_end_mode = wall_end_get_detect_mode();
+            wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
+            wall_end_reset();
             run_shortest(5, 2);
+
+            wall_end_set_detect_mode(prev_wall_end_mode);
             g_sensor_log_enabled = false;
-            log_stop();
             g_disable_front_wall_correction = false;
-            printf("Wall-end deriv log recorded: %d entries\n", log_buffer2.count);
-            printf("Press button for wall-end deriv log output...\n");
-            while (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) != 0) { HAL_Delay(50); }
-            log_print_wall_end_deriv_all();
-            while (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == 0) { HAL_Delay(30); }
             printf("Sensor log recorded: %d entries\n", sensor_log_buffer.count);
             printf("Press button for sensor log output...\n");
             while (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) != 0) { HAL_Delay(50); }
