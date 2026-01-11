@@ -23,6 +23,7 @@ void log_print_velocity_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_velocity);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
@@ -51,6 +52,7 @@ void log_print_distance_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_distance);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;
@@ -79,6 +81,7 @@ void log_print_omega_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_omega);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
@@ -107,6 +110,7 @@ void log_print_angle_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_mm_columns(s_mm_columns_angle);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
     uint16_t start = log_buffer2.count > MAX_LOG_ENTRIES ? log_buffer2.head : 0;

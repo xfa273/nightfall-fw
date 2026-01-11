@@ -10,6 +10,17 @@
 
 #include <stdbool.h>
 
+#define WALL_END_DETECT_MODE_RAW 0u
+#define WALL_END_DETECT_MODE_DERIV 1u
+
+#ifndef WALL_END_DERIV_FALL_THR
+#define WALL_END_DERIV_FALL_THR 250
+#endif
+
+#ifndef CCMRAM_ATTR
+#define CCMRAM_ATTR __attribute__((section(".ccmram")))
+#endif
+
 /*============================================================
     各種定数・変数宣言
 ============================================================*/
@@ -55,6 +66,9 @@ uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値（右）
 uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）- 壁なしと判定
 uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）- 壁ありと判定
 uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（左）- 壁なしと判定
+volatile int32_t wall_end_deriv_r;
+volatile int32_t wall_end_deriv_l;
+volatile uint8_t wall_end_detect_mode;
 
 #else // main.c以外からこのファイルが呼ばれている場合
 
@@ -90,6 +104,9 @@ extern uint16_t wall_end_thr_r_high;        // 壁切れ検出Highしきい値�
 extern uint16_t wall_end_thr_r_low;         // 壁切れ検出Lowしきい値（右）
 extern uint16_t wall_end_thr_l_high;        // 壁切れ検出Highしきい値（左）
 extern uint16_t wall_end_thr_l_low;         // 壁切れ検出Lowしきい値（左）
+extern volatile int32_t wall_end_deriv_r;
+extern volatile int32_t wall_end_deriv_l;
+extern volatile uint8_t wall_end_detect_mode;
 
 #endif
 
@@ -128,6 +145,8 @@ void get_wall_info(); // 壁情報を読む
 void indicate_sensor();
 // 壁切れ検知（横壁の立ち下がりエッジ検出）
 void detect_wall_end(void);
+void wall_end_set_detect_mode(uint8_t mode);
+uint8_t wall_end_get_detect_mode(void);
 void wall_end_update_deriv(void);
 // 壁切れ検出フラグをリセット（直進開始時に呼び出す）
 void wall_end_reset(void);
@@ -157,9 +176,9 @@ typedef struct {
 } SensorLogBuffer;
 
 #ifdef MAIN_C_
-SensorLogBuffer sensor_log_buffer;
+CCMRAM_ATTR SensorLogBuffer sensor_log_buffer;
 #else
-extern SensorLogBuffer sensor_log_buffer;
+extern CCMRAM_ATTR SensorLogBuffer sensor_log_buffer;
 #endif
 
 // センサログ関数
