@@ -13,10 +13,6 @@
 #define WALL_END_DETECT_MODE_RAW 0u
 #define WALL_END_DETECT_MODE_DERIV 1u
 
-#ifndef WALL_END_DERIV_FALL_THR
-#define WALL_END_DERIV_FALL_THR 250
-#endif
-
 #ifndef CCMRAM_ATTR
 #define CCMRAM_ATTR __attribute__((section(".ccmram")))
 #endif

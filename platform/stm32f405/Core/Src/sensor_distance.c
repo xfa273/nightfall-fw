@@ -2,7 +2,7 @@
  * sensor_distance.c
  */
 #include "sensor_distance.h"
-#include "params.h"
+#include <params.h>
 #include <string.h>
 #include <math.h>
 

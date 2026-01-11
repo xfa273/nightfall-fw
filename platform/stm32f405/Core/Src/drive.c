@@ -7,7 +7,7 @@
 
 #include "global.h"
 #include "main.h"
-#include "params.h"
+#include <params.h>
 #include "drive.h"
 #include "sensor.h"
 #include "interrupt.h"

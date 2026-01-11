@@ -162,6 +162,8 @@
 #define WALL_END_THR_L_LOW   200
 #endif
 
+#define WALL_END_DERIV_FALL_THR 200
+
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
 #define WALL_END_EXTEND_MAX_MM  0.0F
