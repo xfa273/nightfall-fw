@@ -203,17 +203,22 @@ void log_capture_tick(void) {
 
     case LOG_PROFILE_VELOCITY:
         // 並進速度（主バッファ）
-        log_add_entry(
-            (uint16_t)log_buffer.count,
-            velocity_interrupt,
-            real_velocity,
-            KP_VELOCITY * velocity_error,
-            KI_VELOCITY * velocity_integral,
-            KD_VELOCITY * velocity_error_error,
-            (float)out_r,
-            (float)out_l,
-            current_time
-        );
+        {
+            const float kp_v = MF.FLAG.SUCTION ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+            const float ki_v = MF.FLAG.SUCTION ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+            const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+            log_add_entry(
+                (uint16_t)log_buffer.count,
+                velocity_interrupt,
+                real_velocity,
+                kp_v * velocity_error,
+                ki_v * velocity_integral,
+                kd_v * velocity_error_error,
+                (float)out_r,
+                (float)out_l,
+                current_time
+            );
+        }
 
         // 並進距離（副バッファ）
         if (log_buffer2.logging_active && log_buffer2.count < MAX_LOG_ENTRIES) {
@@ -221,9 +226,12 @@ void log_capture_tick(void) {
             log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
             log_buffer2.entries[pos2].target_omega = target_distance;
             log_buffer2.entries[pos2].actual_omega = real_distance;
-            log_buffer2.entries[pos2].p_term_omega = KP_DISTANCE * distance_error;
-            log_buffer2.entries[pos2].i_term_omega = KI_DISTANCE * distance_integral;
-            log_buffer2.entries[pos2].d_term_omega = KD_DISTANCE * distance_error_error;
+            const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+            const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+            const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+            log_buffer2.entries[pos2].p_term_omega = kp_d * distance_error;
+            log_buffer2.entries[pos2].i_term_omega = ki_d * distance_integral;
+            log_buffer2.entries[pos2].d_term_omega = kd_d * distance_error_error;
             log_buffer2.entries[pos2].motor_out_r = (float)out_r;
             log_buffer2.entries[pos2].motor_out_l = (float)out_l;
             log_buffer2.entries[pos2].timestamp = current_time;
@@ -239,9 +247,12 @@ void log_capture_tick(void) {
             log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
             log_buffer2.entries[pos2].target_omega = target_distance;
             log_buffer2.entries[pos2].actual_omega = real_distance;
-            log_buffer2.entries[pos2].p_term_omega = KP_DISTANCE * distance_error;
-            log_buffer2.entries[pos2].i_term_omega = KI_DISTANCE * distance_integral;
-            log_buffer2.entries[pos2].d_term_omega = KD_DISTANCE * distance_error_error;
+            const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+            const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+            const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+            log_buffer2.entries[pos2].p_term_omega = kp_d * distance_error;
+            log_buffer2.entries[pos2].i_term_omega = ki_d * distance_integral;
+            log_buffer2.entries[pos2].d_term_omega = kd_d * distance_error_error;
             log_buffer2.entries[pos2].motor_out_r = (float)out_r;
             log_buffer2.entries[pos2].motor_out_l = (float)out_l;
             log_buffer2.entries[pos2].timestamp = current_time;
@@ -249,17 +260,22 @@ void log_capture_tick(void) {
             log_buffer2.count++;
         }
         // 並進速度（主バッファ）も併記しておく（閲覧側でVELOCITYを選ばれても空にならないように）
-        log_add_entry(
-            (uint16_t)log_buffer.count,
-            velocity_interrupt,
-            real_velocity,
-            KP_VELOCITY * velocity_error,
-            KI_VELOCITY * velocity_integral,
-            KD_VELOCITY * velocity_error_error,
-            (float)out_r,
-            (float)out_l,
-            current_time
-        );
+        {
+            const float kp_v = MF.FLAG.SUCTION ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+            const float ki_v = MF.FLAG.SUCTION ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+            const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+            log_add_entry(
+                (uint16_t)log_buffer.count,
+                velocity_interrupt,
+                real_velocity,
+                kp_v * velocity_error,
+                ki_v * velocity_integral,
+                kd_v * velocity_error_error,
+                (float)out_r,
+                (float)out_l,
+                current_time
+            );
+        }
         break;
     case LOG_PROFILE_CUSTOM:
     default:

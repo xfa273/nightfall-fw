@@ -9,6 +9,7 @@
 #include "solver.h"
 #include "sensor_distance.h"
 #include "distance_params.h"
+#include "logging.h"
 
 // drive.c と同じ条件でPWM反転するための定義（DIR==Lowで反転が既定）
 #ifndef PWM_INVERT_DIR_LEVEL
@@ -74,7 +75,103 @@ void test_mode() {
         switch (mode) {
         case 0:
 
-            printf("Test Mode 0.\n");
+            printf("Test Mode 0: Inner loop tune (velocity/omega).\n");
+
+            {
+                int axis = 0;
+                int set = 0;
+                int pattern = 0;
+
+                printf("Select axis: 0=velocity, 1=omega\n");
+                axis = select_mode(axis);
+                if (axis != 0 && axis != 1) {
+                    axis = 0;
+                }
+
+                printf("Select set: 0=500, 1=1000, 2=2000 (fan ON for 1/2)\n");
+                set = select_mode(set);
+                if (set < 0) set = 0;
+                if (set > 2) set = 2;
+
+                printf("Select pattern: 0=step, 1=ramp(triangle), 2=trapezoid\n");
+                pattern = select_mode(pattern);
+                if (pattern < 0) pattern = 0;
+                if (pattern > 2) pattern = 2;
+
+                // 初期化
+                drive_reset_before_run();
+                IMU_GetOffset();
+
+                g_test_mode_run = true;
+                g_disable_front_wall_correction = false;
+
+                // モータ有効化
+                drive_enable_motor();
+                MF.FLAG.RUNNING = 1;
+
+                // ファン（set 0 は非吸引、それ以外は100%）
+                if (set == 0) {
+                    drive_fan(0);
+                } else {
+                    drive_fan(1000);
+                }
+
+                // ログ
+                log_init();
+                if (axis == 0) {
+                    log_set_profile(LOG_PROFILE_VELOCITY);
+                } else {
+                    log_set_profile(LOG_PROFILE_OMEGA);
+                }
+                log_start(HAL_GetTick());
+
+                inner_tune_test_clear_done();
+                inner_tune_test_start((uint8_t)axis, (uint8_t)set, (uint8_t)pattern);
+
+                // 完了待ち（割り込み側で800ms or 安全停止）
+                while (!inner_tune_test_is_done()) {
+                    HAL_Delay(10);
+                }
+
+                // 停止処理
+                log_stop();
+                drive_fan(0);
+                MF.FLAG.RUNNING = 0;
+                drive_stop();
+                drive_disable_motor();
+
+                // ログ出力
+                if (axis == 0) {
+                    printf("[test_mode-case0] Press RIGHT FRONT for VELOCITY (FR>%u), LEFT FRONT for DISTANCE (FL>%u) ...\n",
+                           (unsigned)WALL_BASE_FR, (unsigned)WALL_BASE_FL);
+                    while (1) {
+                        if (ad_fr > WALL_BASE_FR) {
+                            log_print_velocity_all();
+                            break;
+                        } else if (ad_fl > WALL_BASE_FL) {
+                            log_print_distance_all();
+                            break;
+                        }
+                        HAL_Delay(50);
+                    }
+                } else {
+                    printf("[test_mode-case0] Press RIGHT FRONT for OMEGA (FR>%u), LEFT FRONT for ANGLE (FL>%u) ...\n",
+                           (unsigned)WALL_BASE_FR, (unsigned)WALL_BASE_FL);
+                    while (1) {
+                        if (ad_fr > WALL_BASE_FR) {
+                            log_print_omega_all();
+                            break;
+                        } else if (ad_fl > WALL_BASE_FL) {
+                            log_print_angle_all();
+                            break;
+                        }
+                        HAL_Delay(50);
+                    }
+                }
+
+                g_test_mode_run = false;
+                led_flash(5);
+            }
 
             break;
 
