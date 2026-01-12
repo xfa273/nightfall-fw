@@ -12,7 +12,7 @@
     関数プロトタイプ宣言
 ============================================================*/
 #ifndef CTRL_ENABLE_ANTI_WINDUP
-#define CTRL_ENABLE_ANTI_WINDUP 0
+#define CTRL_ENABLE_ANTI_WINDUP 1
 #endif
 
 #ifndef CTRL_OUTPUT_MAX
@@ -20,11 +20,11 @@
 #endif
 
 #ifndef CTRL_ENABLE_ANGLE_OUTER_LOOP
-#define CTRL_ENABLE_ANGLE_OUTER_LOOP 0
+#define CTRL_ENABLE_ANGLE_OUTER_LOOP 1
 #endif
 
 #ifndef CTRL_DISTANCE_OUTER_DIV
-#define CTRL_DISTANCE_OUTER_DIV 1
+#define CTRL_DISTANCE_OUTER_DIV 4
 #endif
 
 #if (CTRL_DISTANCE_OUTER_DIV < 1)
@@ -33,7 +33,7 @@
 #endif
 
 #ifndef CTRL_ANGLE_OUTER_DIV
-#define CTRL_ANGLE_OUTER_DIV 1
+#define CTRL_ANGLE_OUTER_DIV 4
 #endif
 
 #if (CTRL_ANGLE_OUTER_DIV < 1)
