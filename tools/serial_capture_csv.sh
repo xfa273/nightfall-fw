@@ -29,7 +29,11 @@ if [[ ! -e "$UART_PORT" ]]; then
 fi
 
 # シリアルポート設定
-stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  stty -f "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+else
+  stty -F "$UART_PORT" "$BAUD_RATE" cs8 -cstopb -parenb -ixon -ixoff -crtscts -echo -echoe -echok -echoctl -echoke raw
+fi
 
 cat <<EOF
 === Serial CSV Auto Capture ===
