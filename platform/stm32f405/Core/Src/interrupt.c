@@ -147,10 +147,11 @@ static void inner_tune_tick_1khz(void) {
         wall_control = 0.0f;
         diagonal_control = 0.0f;
         omega_interrupt = 0.0f;
-        out_rotate = 0.0f;
+        target_omega = 0.0f;
         velocity_interrupt = v_ref;
         target_velocity = v_ref;
         velocity_PID();
+        omega_PID();
         drive_motor();
 
     } else {
