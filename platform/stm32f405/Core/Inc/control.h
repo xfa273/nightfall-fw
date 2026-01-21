@@ -11,6 +11,36 @@
 /*============================================================
     関数プロトタイプ宣言
 ============================================================*/
+#ifndef CTRL_ENABLE_ANTI_WINDUP
+#define CTRL_ENABLE_ANTI_WINDUP 0
+#endif
+
+#ifndef CTRL_OUTPUT_MAX
+#define CTRL_OUTPUT_MAX 1000.0f
+#endif
+
+#ifndef CTRL_ENABLE_ANGLE_OUTER_LOOP
+#define CTRL_ENABLE_ANGLE_OUTER_LOOP 0
+#endif
+
+#ifndef CTRL_DISTANCE_OUTER_DIV
+#define CTRL_DISTANCE_OUTER_DIV 1
+#endif
+
+#if (CTRL_DISTANCE_OUTER_DIV < 1)
+#undef CTRL_DISTANCE_OUTER_DIV
+#define CTRL_DISTANCE_OUTER_DIV 1
+#endif
+
+#ifndef CTRL_ANGLE_OUTER_DIV
+#define CTRL_ANGLE_OUTER_DIV 1
+#endif
+
+#if (CTRL_ANGLE_OUTER_DIV < 1)
+#undef CTRL_ANGLE_OUTER_DIV
+#define CTRL_ANGLE_OUTER_DIV 1
+#endif
+
 void read_encoder(void);
 void read_IMU(void);
 
