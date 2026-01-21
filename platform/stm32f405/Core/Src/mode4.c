@@ -152,8 +152,12 @@ void mode4() {
             case 8: { // Straight test using case1 params (index0)
                 // 直進テスト: mode4 の case1（index0）の直線パラメータを使用
                 apply_case_params_mode4_idx(0);
+                accel_switch_velocity = shortestRunModeParams4.accel_switch_velocity;
                 kp_wall = 0.0f; // テスト時は壁制御を無効化
                 printf("Loaded params: straight test (mode4, case8 -> case1 params).\n");
+                printf("Straight params: v=%.1f a=%.1f a_dash=%.1f v_sw=%.1f\n",
+                       velocity_straight, acceleration_straight, acceleration_straight_dash,
+                       accel_switch_velocity);
 
                 // fan_power を反映（代替案A）
                 drive_fan(shortestRunModeParams4.fan_power);
@@ -166,7 +170,7 @@ void mode4() {
                 // path を上書きして run()
                 for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                 // 直進：初期 half_sectionA(S2) + S3 + 最後の half_sectionD(S1) = 合計S6
-                path[0] = 200 + 5; // S3 (半区画×3)
+                path[0] = 200 + 9; // S3 (半区画×3)
                 path[1] = 0;
 
                 // 実行
@@ -198,8 +202,12 @@ void mode4() {
             case 9: { // Straight test using caseX params (fast)
                 // 直進テスト: mode4 の高速ケース（ここでは case7 相当として index6 がないため index4）
                 apply_case_params_mode4_idx(4);
+                accel_switch_velocity = shortestRunModeParams4.accel_switch_velocity;
                 kp_wall = 0.0f; // テスト時は壁制御を無効化
                 printf("Loaded params: straight test (mode4, case9 -> case5 params).\n");
+                printf("Straight params: v=%.1f a=%.1f a_dash=%.1f v_sw=%.1f\n",
+                       velocity_straight, acceleration_straight, acceleration_straight_dash,
+                       accel_switch_velocity);
 
                 // fan_power を反映（代替案A）
                 drive_fan(shortestRunModeParams4.fan_power);
@@ -212,7 +220,7 @@ void mode4() {
                 // path を上書きして run()
                 for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                 // 直進：初期 half_sectionA(S2) + S3 + 最後の half_sectionD(S1) = 合計S6
-                path[0] = 200 + 5; // S3
+                path[0] = 200 + 9; // S3
                 path[1] = 0;
 
                 // 実行
