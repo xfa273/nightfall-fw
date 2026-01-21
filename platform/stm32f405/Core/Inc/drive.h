@@ -105,6 +105,8 @@ volatile float velocity_next_turn; // 次のターンの並進速度[mm/s]
 /*目標位置生成用*/
 volatile float acceleration_interrupt; // 割込み内の計算用の並進加速度[mm/s^2]
 volatile float velocity_interrupt; // 割込み内の計算用の並進速度[mm/s]
+volatile float velocity_profile_target;
+volatile uint8_t velocity_profile_clamp_enabled;
 volatile float target_distance; // 割込み内の計算用の並進位置[mm]
 
 /*目標角度生成用*/
@@ -273,14 +275,14 @@ extern volatile float out_l;
 extern volatile float velocity_next_turn; // 次のターンの並進速度[mm/s]
 
 /*目標位置生成用*/
-extern volatile float
-    acceleration_interrupt; // 割込み内の計算用の並進加速度[mm/s^2]
+extern volatile float acceleration_interrupt; // 割込み内の計算用の並進加速度[mm/s^2]
 extern volatile float velocity_interrupt; // 割込み内の計算用の並進速度[mm/s]
+extern volatile float velocity_profile_target;
+extern volatile uint8_t velocity_profile_clamp_enabled;
 extern volatile float target_distance; // 割込み内の計算用の並進位置[mm]
 
 /*目標角度生成用*/
-extern volatile float
-    alpha_interrupt; // 割込み内の計算用の並進角加速度[deg/s^2]
+extern volatile float alpha_interrupt; // 割込み内の計算用の並進角加速度[deg/s^2]
 extern volatile float omega_interrupt; // 割込み内の計算用の角速度[deg/s]
 extern volatile float target_angle; // 割込み内の計算用の角度[deg]
 

@@ -47,6 +47,11 @@ int check_ms_passed(int time);
 void wait_us(int time);
 void tim1_wait_us(uint32_t us);
 
+ void inner_tune_test_start(uint8_t axis, uint8_t set, uint8_t pattern);
+ uint8_t inner_tune_test_is_active(void);
+ uint8_t inner_tune_test_is_done(void);
+ void inner_tune_test_clear_done(void);
+
 #ifdef MAIN_C_ // main.cからこのファイルが呼ばれている場合
 volatile uint8_t ADC_task_counter; // ADCの振り分け用カウンタ
 volatile LogBuffer log_buffer;     // 主ログ（速度/角速度 等）

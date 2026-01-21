@@ -327,7 +327,7 @@ void mode2() {
                 // path を上書きして run()
                 for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                 // 直進：初期 half_sectionA(S2) + S3 + 最後の half_sectionD(S1) = 合計S6
-                path[0] = 200 + 5; // S3 (半区画×3)
+                path[0] = 200 + 9; // S3 (半区画×3)
                 path[1] = 0;
 
                 // 実行
@@ -374,7 +374,7 @@ void mode2() {
                 // path を上書きして run()
                 for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                 // 直進：初期 half_sectionA(S2) + S3 + 最後の half_sectionD(S1) = 合計S6
-                path[0] = 200 + 5; // S3
+                path[0] = 200 + 9; // S3
                 path[1] = 0;
 
                 // 実行

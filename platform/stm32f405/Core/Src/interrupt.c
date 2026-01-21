@@ -8,12 +8,190 @@
 #include "global.h"
 #include "interrupt.h"
 #include "logging.h"
+#include <math.h>
 
 // 非同期ADC DMA制御用ステート（8相スケジューラ）
 // 0:RL OFF set, 1:RL OFF capture, 2:RL ON set, 3:RL ON capture,
 // 4:FR/FL OFF set, 5:FR/FL OFF capture, 6:FR/FL ON set, 7:FR/FL ON capture
 static volatile uint8_t s_adc_phase = 0;
 static volatile uint8_t s_adc_inflight = 0;  // 0:idle, 1:converting (DMA中)
+
+static volatile uint8_t s_inner_tune_active = 0;
+static volatile uint8_t s_inner_tune_done = 0;
+static volatile uint8_t s_inner_tune_axis = 0;
+static volatile uint8_t s_inner_tune_set = 0;
+static volatile uint8_t s_inner_tune_pattern = 0;
+static volatile uint16_t s_inner_tune_tick = 0;
+
+static float inner_tune_get_set_value(uint8_t set) {
+    switch (set) {
+        case 0: return 500.0f;
+        case 1: return 1000.0f;
+        case 2: return 2000.0f;
+        default: return 500.0f;
+    }
+}
+
+void inner_tune_test_start(uint8_t axis, uint8_t set, uint8_t pattern) {
+    s_inner_tune_axis = axis;
+    s_inner_tune_set = set;
+    s_inner_tune_pattern = pattern;
+    s_inner_tune_tick = 0;
+    s_inner_tune_done = 0;
+    s_inner_tune_active = 1;
+}
+
+uint8_t inner_tune_test_is_active(void) {
+    return s_inner_tune_active;
+}
+
+uint8_t inner_tune_test_is_done(void) {
+    return s_inner_tune_done;
+}
+
+void inner_tune_test_clear_done(void) {
+    s_inner_tune_done = 0;
+}
+
+static float inner_tune_ref_step(float peak, uint16_t t_ms, uint16_t on_ms) {
+    return (t_ms < on_ms) ? peak : 0.0f;
+}
+
+static float inner_tune_ref_triangle(float peak, uint16_t t_ms, uint16_t ramp_ms) {
+    if (ramp_ms == 0) {
+        return 0.0f;
+    }
+    if (t_ms < ramp_ms) {
+        return peak * ((float)t_ms / (float)ramp_ms);
+    }
+    if (t_ms < (uint16_t)(2u * ramp_ms)) {
+        return peak * ((float)((2u * ramp_ms) - t_ms) / (float)ramp_ms);
+    }
+    return 0.0f;
+}
+
+static float inner_tune_ref_trapezoid(float peak, uint16_t t_ms, uint16_t acc_ms, uint16_t hold_ms, uint16_t dec_ms) {
+    if (acc_ms == 0 || dec_ms == 0) {
+        return 0.0f;
+    }
+    const uint16_t t1 = acc_ms;
+    const uint16_t t2 = (uint16_t)(acc_ms + hold_ms);
+    const uint16_t t3 = (uint16_t)(acc_ms + hold_ms + dec_ms);
+    if (t_ms < t1) {
+        return peak * ((float)t_ms / (float)acc_ms);
+    }
+    if (t_ms < t2) {
+        return peak;
+    }
+    if (t_ms < t3) {
+        return peak * ((float)(t3 - t_ms) / (float)dec_ms);
+    }
+    return 0.0f;
+}
+
+static void inner_tune_finish_now(void) {
+    s_inner_tune_active = 0;
+    s_inner_tune_done = 1;
+
+    acceleration_interrupt = 0.0f;
+    alpha_interrupt = 0.0f;
+    velocity_interrupt = 0.0f;
+    omega_interrupt = 0.0f;
+    target_velocity = 0.0f;
+    target_omega = 0.0f;
+
+    wall_control = 0.0f;
+    diagonal_control = 0.0f;
+    out_translation = 0.0f;
+    out_rotate = 0.0f;
+    drive_motor();
+}
+
+static void inner_tune_tick_1khz(void) {
+    const uint16_t total_ms = 800u;
+    const uint16_t t_ms = s_inner_tune_tick;
+
+    // 安全停止条件
+    if (MF.FLAG.F_WALL || MF.FLAG.FAILED) {
+        inner_tune_finish_now();
+        return;
+    }
+
+    // 参照値（patternに応じて生成）
+    const float peak = inner_tune_get_set_value(s_inner_tune_set);
+
+    if (s_inner_tune_axis == 0) {
+        // 速度テスト（距離制約: 600mm程度）
+        const float dist_limit = 600.0f;
+        uint16_t on_ms = (uint16_t)fminf((float)total_ms, (dist_limit * 1000.0f) / fmaxf(peak, 1.0f));
+        uint16_t ramp_ms = (uint16_t)fminf(400.0f, (dist_limit * 1000.0f) / fmaxf(peak, 1.0f));
+        uint16_t hold_ms = 0;
+        if ((dist_limit * 1000.0f) / fmaxf(peak, 1.0f) > 100.0f) {
+            hold_ms = (uint16_t)fminf(600.0f, ((dist_limit * 1000.0f) / fmaxf(peak, 1.0f)) - 100.0f);
+        }
+        float v_ref = 0.0f;
+        if (s_inner_tune_pattern == 0) {
+            v_ref = inner_tune_ref_step(peak, t_ms, on_ms);
+        } else if (s_inner_tune_pattern == 1) {
+            v_ref = inner_tune_ref_triangle(peak, t_ms, ramp_ms);
+        } else {
+            v_ref = inner_tune_ref_trapezoid(peak, t_ms, 100u, hold_ms, 100u);
+        }
+
+        // 追加の安全（想定より距離が伸びたら即停止）
+        if (fabsf(real_distance) > 650.0f) {
+            inner_tune_finish_now();
+            return;
+        }
+
+        wall_control = 0.0f;
+        diagonal_control = 0.0f;
+        omega_interrupt = 0.0f;
+        target_omega = 0.0f;
+        velocity_interrupt = v_ref;
+        target_velocity = v_ref;
+        velocity_PID();
+        omega_PID();
+        drive_motor();
+
+    } else {
+        // 角速度テスト（回転角制約: 360deg程度）
+        const float angle_limit = 360.0f;
+        uint16_t on_ms = (uint16_t)fminf((float)total_ms, (angle_limit * 1000.0f) / fmaxf(peak, 1.0f));
+        uint16_t ramp_ms = (uint16_t)fminf(400.0f, (angle_limit * 1000.0f) / fmaxf(peak, 1.0f));
+        uint16_t hold_ms = 0;
+        if ((angle_limit * 1000.0f) / fmaxf(peak, 1.0f) > 100.0f) {
+            hold_ms = (uint16_t)fminf(600.0f, ((angle_limit * 1000.0f) / fmaxf(peak, 1.0f)) - 100.0f);
+        }
+        float o_ref = 0.0f;
+        if (s_inner_tune_pattern == 0) {
+            o_ref = inner_tune_ref_step(peak, t_ms, on_ms);
+        } else if (s_inner_tune_pattern == 1) {
+            o_ref = inner_tune_ref_triangle(peak, t_ms, ramp_ms);
+        } else {
+            o_ref = inner_tune_ref_trapezoid(peak, t_ms, 100u, hold_ms, 100u);
+        }
+
+        if (fabsf(real_angle) > 400.0f) {
+            inner_tune_finish_now();
+            return;
+        }
+
+        wall_control = 0.0f;
+        diagonal_control = 0.0f;
+        velocity_interrupt = 0.0f;
+        target_velocity = 0.0f;
+        out_translation = 0.0f;
+        omega_interrupt = o_ref;
+        omega_PID();
+        drive_motor();
+    }
+
+    s_inner_tune_tick++;
+    if (s_inner_tune_tick >= total_ms) {
+        inner_tune_finish_now();
+    }
+}
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == htim1.Instance) {
@@ -104,7 +282,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         read_encoder();
         read_IMU();
 
-        if (MF.FLAG.OVERRIDE == 0) {
+        if (s_inner_tune_active) {
+            inner_tune_tick_1khz();
+
+        } else if (MF.FLAG.OVERRIDE == 0) {
 
             // 壁制御
             wall_PID();
@@ -119,7 +300,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             velocity_PID();
 
             // 角度→角速度のPID
-            // angle_PID();
+            #if CTRL_ENABLE_ANGLE_OUTER_LOOP
+            angle_PID();
+            #endif
             omega_PID();
 
             // モータ出力更新

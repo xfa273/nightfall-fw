@@ -21,6 +21,10 @@
 #define DIST_FIRST_SEC    13     // 最初の区画の距離[mm]
 #define DIST_SET_POSITION 13     // 壁当て後の前進距離[mm]
 
+#ifndef VELOCITY_LPF_TAU
+#define VELOCITY_LPF_TAU 0.003F
+#endif
+
 // 探索直進(one_sectionU)のステップ幅[mm]
 // 壁切れ監視のチェック間隔にも影響。大きくするとdriveA呼び出し回数が減り、振動低減が期待できる。
 // ただし大きすぎると壁切れ検知後の追従距離算出に遅れが生じ得るため、10mm程度から評価してください。
@@ -48,40 +52,40 @@
  * control.c の velocity_PID() / distance_PID() が MF.FLAG.SUCTION を参照して切替
  */
 #ifndef KP_VELOCITY_FAN_ON
-#define KP_VELOCITY_FAN_ON  0.40F
+#define KP_VELOCITY_FAN_ON  2.5F   
 #endif
 #ifndef KI_VELOCITY_FAN_ON
-#define KI_VELOCITY_FAN_ON  0.55F
+#define KI_VELOCITY_FAN_ON  0.03F   
 #endif
 #ifndef KD_VELOCITY_FAN_ON
-#define KD_VELOCITY_FAN_ON  0.0F
+#define KD_VELOCITY_FAN_ON  0.0
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 0.03F
+#define KP_VELOCITY_FAN_OFF 2.0F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.30F
+#define KI_VELOCITY_FAN_OFF 0.02F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
 #endif
 
 #ifndef KP_DISTANCE_FAN_ON
-#define KP_DISTANCE_FAN_ON  4.0F
+#define KP_DISTANCE_FAN_ON  0.13F    
 #endif
 #ifndef KI_DISTANCE_FAN_ON
-#define KI_DISTANCE_FAN_ON  0.1F
+#define KI_DISTANCE_FAN_ON  0.0F
 #endif
 #ifndef KD_DISTANCE_FAN_ON
-#define KD_DISTANCE_FAN_ON  0.0F
+#define KD_DISTANCE_FAN_ON  0.0F   
 #endif
 
 #ifndef KP_DISTANCE_FAN_OFF
-#define KP_DISTANCE_FAN_OFF 0.5F
+#define KP_DISTANCE_FAN_OFF 0.07F
 #endif
 #ifndef KI_DISTANCE_FAN_OFF
-#define KI_DISTANCE_FAN_OFF 0.02F
+#define KI_DISTANCE_FAN_OFF 0.0F
 #endif
 #ifndef KD_DISTANCE_FAN_OFF
 #define KD_DISTANCE_FAN_OFF 0.0F

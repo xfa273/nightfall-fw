@@ -83,7 +83,7 @@ void first_sectionA(void) {
     float speed_out;
 
     speed_out =
-        sqrt(speed_now * speed_now + 2 * acceleration_straight * DIST_HALF_SEC);
+        sqrt(speed_now * speed_now + 2 * acceleration_straight * DIST_FIRST_SEC);
 
     MF.FLAG.CTRL = 1;
     driveA(DIST_FIRST_SEC, speed_now, speed_out, 0);
@@ -1067,6 +1067,11 @@ void driveA(float dist, float spd_in, float spd_out, float dist_wallend) {
     float dist_end = dist;
     float v_target = spd_out;
 
+    velocity_interrupt = spd_in;
+    target_velocity = spd_in;
+    velocity_profile_target = v_target;
+    velocity_profile_clamp_enabled = 1;
+
     // 探索時のみ: 壁切れ追従をアーム（detect_wall_end のゲート条件に合わせ、WALL_END=1, SCND を一時的にON）
     const bool arm_wallend_init = (dist_wallend > 0.0f);
     bool arm_wallend = arm_wallend_init;
@@ -1545,6 +1550,8 @@ void drive_variable_reset(void) {
     // 速度
     acceleration_interrupt = 0;
     target_distance = 0;
+    velocity_profile_target = 0;
+    velocity_profile_clamp_enabled = 0;
 
     // 角度
     alpha_interrupt = 0;
@@ -1592,6 +1599,8 @@ void drive_reset_before_run(void) {
 
     acceleration_interrupt = 0;
     velocity_interrupt = 0;
+    velocity_profile_target = 0;
+    velocity_profile_clamp_enabled = 0;
     target_distance = 0;
 
     alpha_interrupt = 0;
