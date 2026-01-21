@@ -10,6 +10,9 @@
 
 /*エンコーダから速度と位置を取得する*/
 void read_encoder(void) {
+     static float s_real_velocity_f = 0.0f;
+     static uint8_t s_real_velocity_f_inited = 0;
+
     // エンコーダのパルスカウンタを取得
     encoder_count_r = TIM8->CNT;
     encoder_count_l = TIM4->CNT;
@@ -43,7 +46,17 @@ void read_encoder(void) {
     encoder_distance_l += encoder_speed_l * g_ctrl_dt;
 
     // 並進のPID制御用に格納
-    real_velocity = (encoder_speed_r + encoder_speed_l) * 0.5;
+    const float real_velocity_raw = (encoder_speed_r + encoder_speed_l) * 0.5f;
+    if (!s_real_velocity_f_inited) {
+        s_real_velocity_f = real_velocity_raw;
+        s_real_velocity_f_inited = 1;
+    } else {
+        float alpha = g_ctrl_dt / (VELOCITY_LPF_TAU + g_ctrl_dt);
+        if (alpha < 0.0f) alpha = 0.0f;
+        if (alpha > 1.0f) alpha = 1.0f;
+        s_real_velocity_f = s_real_velocity_f + alpha * (real_velocity_raw - s_real_velocity_f);
+    }
+    real_velocity = s_real_velocity_f;
     real_distance = (encoder_distance_r + encoder_distance_l) * 0.5;
 
     // パルスカウントを保存
@@ -65,6 +78,18 @@ void read_IMU(void) {
 void calculate_translation(void) {
     // 設定された加速度から並進速度を計算
     velocity_interrupt += acceleration_interrupt * g_ctrl_dt;
+
+    if (velocity_profile_clamp_enabled && acceleration_interrupt != 0.0f) {
+        if (acceleration_interrupt > 0.0f) {
+            if (velocity_interrupt > velocity_profile_target) {
+                velocity_interrupt = velocity_profile_target;
+            }
+        } else {
+            if (velocity_interrupt < velocity_profile_target) {
+                velocity_interrupt = velocity_profile_target;
+            }
+        }
+    }
 
     // 並進速度から目標位置を計算
     target_distance += velocity_interrupt * g_ctrl_dt;
