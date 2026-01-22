@@ -733,10 +733,6 @@ int make_smap(uint8_t target_x, uint8_t target_y) {
         return (MAZE_SIZE * MAZE_SIZE - 10);
     }
 
-    if (smap[mouse.y][mouse.x] == 0) {
-        return 1;
-    }
-
     return smap[mouse.y][mouse.x];
 }
 
