@@ -160,6 +160,8 @@ def main() -> int:
         prev_ts: Optional[int] = None
         pending_columns: Optional[str] = None
         wrote_columns: bool = False
+        pending_fw_meta: list[str] = []
+        fw_meta_written_count: int = 0
         last_printed_columns: Optional[str] = None
         last_printed_file: Optional[Path] = None
 
@@ -208,6 +210,17 @@ def main() -> int:
                         wrote_columns = True
                     continue
 
+                if line.startswith("#fw_"):
+                    if line not in pending_fw_meta:
+                        pending_fw_meta.append(line)
+                        print(f"[INFO] FW Meta: {line}", file=sys.stderr)
+                    if out_path is not None and fw_meta_written_count < len(pending_fw_meta):
+                        with out_path.open("a", encoding="ascii", newline="\n") as f:
+                            for m in pending_fw_meta[fw_meta_written_count:]:
+                                f.write(m + "\n")
+                        fw_meta_written_count = len(pending_fw_meta)
+                    continue
+
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) == 8 and parts[0].isdigit() and all(_is_num(p) for p in parts[1:]):
                     ts = int(parts[0])
@@ -215,6 +228,12 @@ def main() -> int:
                         out_path = _new_output_file(save_dir)
                         print(f"\n[INFO] New capture file: {out_path}", file=sys.stderr)
                         wrote_columns = False
+                        fw_meta_written_count = 0
+                        if pending_fw_meta:
+                            with out_path.open("a", encoding="ascii", newline="\n") as f:
+                                for m in pending_fw_meta:
+                                    f.write(m + "\n")
+                            fw_meta_written_count = len(pending_fw_meta)
                         if pending_columns is not None:
                             _print_mm_columns(pending_columns, out_path)
                             last_printed_columns = pending_columns
@@ -225,6 +244,10 @@ def main() -> int:
 
                     print(",".join(parts))
                     with out_path.open("a", encoding="ascii", newline="\n") as f:
+                        if pending_fw_meta and fw_meta_written_count < len(pending_fw_meta):
+                            for m in pending_fw_meta[fw_meta_written_count:]:
+                                f.write(m + "\n")
+                            fw_meta_written_count = len(pending_fw_meta)
                         if pending_columns is not None and not wrote_columns:
                             f.write(pending_columns + "\n")
                             wrote_columns = True

@@ -1,6 +1,7 @@
 #include "global.h"
 #include "interrupt.h"
 #include "logging.h"
+#include "build_info.h"
 #include "stdio.h"
 
 // 現在のログプロファイル（取得内容の切替）
@@ -10,6 +11,16 @@ static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_ve
 static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
 static const char *s_mm_columns_omega = "timestamp,omega_interrupt,real_omega,p_term_omega,i_term_omega,d_term_omega,out_r,out_l";
 static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_term_angle,i_term_angle,d_term_angle,out_r,out_l";
+
+static void log_print_fw_meta(void) {
+    printf("#fw_target=%s\n", FW_TARGET);
+    printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
+    printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);
+    printf("#fw_git_describe=%s\n", FW_GIT_DESCRIBE);
+    printf("#fw_git_sha=%s\n", FW_GIT_SHA);
+    printf("#fw_git_branch=%s\n", FW_GIT_BRANCH);
+    printf("#fw_git_dirty=%d\n", (int)FW_GIT_DIRTY);
+}
 
 static void log_print_mm_columns(const char *cols) {
     printf("#mm_columns=%s\n", cols);
@@ -23,6 +34,7 @@ void log_print_velocity_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_fw_meta();
     log_print_mm_columns(s_mm_columns_velocity);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
@@ -52,6 +64,7 @@ void log_print_distance_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_fw_meta();
     log_print_mm_columns(s_mm_columns_distance);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;
@@ -81,6 +94,7 @@ void log_print_omega_all(void) {
     printf("Total entries: %d\n", log_buffer.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_fw_meta();
     log_print_mm_columns(s_mm_columns_omega);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
@@ -110,6 +124,7 @@ void log_print_angle_all(void) {
     printf("Total entries: %d\n", log_buffer2.count);
     printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
     printf("--- CSV Data Start ---\n");
+    log_print_fw_meta();
     log_print_mm_columns(s_mm_columns_angle);
 
     uint16_t count = log_buffer2.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer2.count;

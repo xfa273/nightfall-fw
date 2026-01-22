@@ -7,6 +7,7 @@
 
 #include "global.h"
 #include "flash_params.h"
+#include "build_info.h"
 
 // デバッグ出力ヘルパ：壁センサオフセットを表示
 static void print_wall_offsets(const char* label)
@@ -887,6 +888,13 @@ void sensor_log_print(void) {
     printf("Total entries: %d\n", sensor_log_buffer.count);
     printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,wall_end_deriv_r,wall_end_deriv_l\n");
     printf("--- CSV Data Start ---\n");
+    printf("#fw_target=%s\n", FW_TARGET);
+    printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
+    printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);
+    printf("#fw_git_describe=%s\n", FW_GIT_DESCRIBE);
+    printf("#fw_git_sha=%s\n", FW_GIT_SHA);
+    printf("#fw_git_branch=%s\n", FW_GIT_BRANCH);
+    printf("#fw_git_dirty=%d\n", (int)FW_GIT_DIRTY);
     printf("#mm_columns=timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,wall_end_deriv_r,wall_end_deriv_l\n");
     
     uint16_t count = sensor_log_buffer.count > SENSOR_LOG_MAX_ENTRIES 

@@ -55,12 +55,49 @@ set(NIGHTFALL_USER_SOURCES
 function(nightfall_add_firmware target variant variant_define)
     add_executable(${target})
 
+    set(build_info_dir ${CMAKE_BINARY_DIR}/generated/${target})
+    set(build_info_h ${build_info_dir}/build_info.h)
+
+    set(_src_deps)
+    foreach(_s IN LISTS NIGHTFALL_USER_SOURCES)
+        list(APPEND _src_deps "${CMAKE_SOURCE_DIR}/${_s}")
+    endforeach()
+    list(APPEND _src_deps "${CMAKE_SOURCE_DIR}/params/${variant}/params.h")
+
+    set(_git_deps)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.git/HEAD")
+        list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/HEAD")
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.git/index")
+        list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/index")
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/.git/packed-refs")
+        list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/packed-refs")
+    endif()
+
+    add_custom_command(
+        OUTPUT ${build_info_h}
+        COMMAND ${CMAKE_COMMAND}
+            -DOUTPUT_FILE=${build_info_h}
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DFW_TARGET=${target}
+            -DFW_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -P ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake
+        DEPENDS ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake ${_git_deps} ${_src_deps}
+        VERBATIM
+        COMMENT "Generating build_info.h for ${target}"
+    )
+
+    add_custom_target(build_info_${target} DEPENDS ${build_info_h})
+    add_dependencies(${target} build_info_${target})
+
     target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES})
 
     nightfall_apply_stm32f405(${target})
 
     target_include_directories(${target} BEFORE PRIVATE
         ${CMAKE_SOURCE_DIR}/params/${variant}
+        ${build_info_dir}
     )
 
     target_compile_definitions(${target} PRIVATE
