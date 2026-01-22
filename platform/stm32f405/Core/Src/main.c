@@ -25,6 +25,7 @@
 
 #define MAIN_C_
 #include "global.h"
+#include "build_info.h"
 #include "mode2.h"
 #include "mode3.h"
 #include "mode4.h"
@@ -142,7 +143,14 @@ int main(void)
     // IMU_ProbeWHOAMI_Debug();
 
     // 起動メッセージとブザー（初期化で万一詰まっても起動を可視化）
-    printf("Micro Mouse Nightfall-mini v1.1 2025\n");
+    printf("[FW] %s %s sha=%s br=%s time=%s type=%s dirty=%d\n",
+           FW_TARGET,
+           FW_GIT_DESCRIBE,
+           FW_GIT_SHA,
+           FW_GIT_BRANCH,
+           FW_BUILD_TIME_UTC,
+           FW_BUILD_TYPE,
+           (int)FW_GIT_DIRTY);
     for (uint16_t i = 1100; i > 300; i -= 150)
     {
         buzzer_beep(i);
