@@ -187,7 +187,7 @@ void adachi(void) {
     }
     
     first_sectionA();
-    half_sectionU();
+    half_sectionA(1);
 
     // 最初の1区画目を既知扱いにする（スタート区画の一つ先）
     // adv_pos()より先に座標を更新してwrite_mapとmarkVisitedを呼ぶ
