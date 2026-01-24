@@ -40,7 +40,12 @@ typedef struct {
 
 // 大きなワーキング領域はスタックを避け、静的に確保
 static NodeCost g_nodes[MAZE_SIZE][MAZE_SIZE];
-static Pos2D    g_path_buf[MAZE_SIZE * MAZE_SIZE * 2];
+
+#ifndef SOLVER_PATH_BUF_LEN
+#define SOLVER_PATH_BUF_LEN (MAZE_SIZE * MAZE_SIZE + MAZE_SIZE)
+#endif
+
+static Pos2D    g_path_buf[SOLVER_PATH_BUF_LEN];
 
 // 旧dijkstra.h への依存を避けるためのフォールバック定義
 #ifndef MOVE_NORTH
@@ -100,7 +105,7 @@ static inline bool in_bounds(int x, int y) {
 // dijkstra.c の convertPathCellToRun と同等の処理をローカルに実装
 static void convertDirectionTokensToRun(void) {
     int8_t Direction = NORTH;
-    for (int i = 0; i < 256; i++) {
+    for (int i = 0; i < ROUTE_MAX_LEN; i++) {
 
         if (path[i] - 100 == Direction) {
             // 直進
@@ -213,8 +218,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
     // 全ゴール座標を探索し、最適な経路を選択
     float best_cost = FLT_MAX;
     int best_straight = 0;
-    int best_path_len = 0;
-    static Pos2D best_path_buf[MAZE_SIZE * MAZE_SIZE];
+    Pos2D best_goal_tl = { -1, -1 };
     
     for (int g = 0; g < 9; g++) {
         uint8_t gx = goals[g][0];
@@ -228,7 +232,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
         Pos2D goal_tl = { gx, MAZE_SIZE - 1 - gy };
         
         // 経路探索
-        int path_len = shortest_path(start_tl, goal_tl, g_path_buf, 
+        int path_len = shortest_path(start_tl, goal_tl, g_path_buf,
                                      (int)(sizeof(g_path_buf) / sizeof(g_path_buf[0])), sp);
         
         if (path_len <= 0) continue;
@@ -250,26 +254,24 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
         if (is_better) {
             best_cost = cost;
             best_straight = approach_straight;
-            best_path_len = path_len;
-            for (int i = 0; i < path_len; i++) {
-                best_path_buf[i] = g_path_buf[i];
-            }
+            best_goal_tl = goal_tl;
         }
     }
 
     // 初期化
-    for (int i = 0; i < 256; i++) path[i] = 0;
+    for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
 
-    if (best_path_len <= 0) {
+    if (best_goal_tl.x < 0) {
         // 経路無し
         return;
     }
-    
-    // 最適経路をg_path_bufにコピー
-    for (int i = 0; i < best_path_len; i++) {
-        g_path_buf[i] = best_path_buf[i];
+
+    // 最適ゴールに対して再探索し、g_path_buf を確定させる（best_path_buf を持たない）
+    int path_len = shortest_path(start_tl, best_goal_tl, g_path_buf,
+                                 (int)(sizeof(g_path_buf) / sizeof(g_path_buf[0])), sp);
+    if (path_len <= 0) {
+        return;
     }
-    int path_len = best_path_len;
 
     // path_cell マーキング（bottom-leftで保持）
     for (int i = 0; i < path_len; i++) {
@@ -286,6 +288,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
     for (int i = 1; i < path_len; i++) {
         int dx = g_path_buf[i].x - g_path_buf[i-1].x;
         int dy = g_path_buf[i].y - g_path_buf[i-1].y; // top-left基準
+        if (pc >= ROUTE_MAX_LEN) break;
         if (dx == 1 && dy == 0)      path[pc++] = MOVE_EAST;
         else if (dx == -1 && dy == 0)path[pc++] = MOVE_WEST;
         else if (dx == 0 && dy == -1)path[pc++] = MOVE_NORTH; // 上へ
@@ -320,7 +323,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
     }
 
     // デバッグ表示（必要に応じて）
-    for (int i = 0; i < 256 && path[i] != 0; i++) {
+    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
         printf("%d ", path[i]);
     }
     printf("\n");
@@ -331,7 +334,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
 
     printMaze();
 
-    for (int i = 0; i < 256 && path[i] != 0; i++) {
+    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
         // printf("%d ", path[i]);
         if (path[i] < 300) {
             uint8_t str_sec;
@@ -484,7 +487,7 @@ static int extend_path_after_goal(Pos2D *path, int length, Dir4 last_dir) {
             default: return length;
         }
         if (!can_move_cell(cur, nxt)) break;
-        if (length < (MAZE_SIZE * MAZE_SIZE * 2 - 1)) {
+        if (length < (SOLVER_PATH_BUF_LEN - 1)) {
             path[length++] = nxt;
         } else {
             break;
@@ -568,7 +571,7 @@ static int shortest_path(Pos2D start, Pos2D goal, Pos2D *out_path, int out_cap, 
         if (p.x < 0) { length = 0; break; }
         length++;
         cur = p;
-        if (length > MAZE_SIZE * MAZE_SIZE * 2) { length = 0; break; }
+        if (length > SOLVER_PATH_BUF_LEN) { length = 0; break; }
     }
     if (length <= 0) return 0;
 
