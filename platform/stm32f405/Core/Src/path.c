@@ -8,7 +8,7 @@
 #include "global.h"
 
 void simplifyPath(void) {
-    int simplifiedPath[ROUTE_MAX_LEN]; // 結果を格納するための配列
+    static uint16_t simplifiedPath[ROUTE_MAX_LEN]; // 結果を格納するための配列
     int currentIndex = 0; // simplifiedPathにおける現在のインデックス
     int currentAction = path[0]; // 現在処理している動作
     int count = 1;               // 現在の動作のカウント
@@ -56,7 +56,7 @@ void simplifyPath(void) {
 }
 
 void convertLTurn() {
-    int convertedPath[ROUTE_MAX_LEN];
+    static uint16_t convertedPath[ROUTE_MAX_LEN];
     int i = 0;
     int j = 0;
 
@@ -161,7 +161,7 @@ void convertLTurn() {
 }
 
 void convertDiagonal(void) {
-    int convertedPath[ROUTE_MAX_LEN];
+    static uint16_t convertedPath[ROUTE_MAX_LEN];
     int i = 0;
     int j = 0;
 
@@ -489,7 +489,7 @@ void convertDiagonal(void) {
     }
 
     // pathの残りをクリア
-    for (int l = j; l < 256; l++) {
+    for (int l = j; l < ROUTE_MAX_LEN; l++) {
         path[l] = 0;
     }
 
