@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
+import errno
 import glob
 import os
+import signal
 import struct
+import subprocess
 import sys
 import time
 
@@ -56,8 +59,115 @@ def xor_checksum(bs: bytes) -> int:
     return x & 0xFF
 
 
+def _paired_tty_devices(port: str) -> list[str]:
+    ports = [port]
+    if port.startswith("/dev/cu."):
+        ports.append(port.replace("/dev/cu.", "/dev/tty.", 1))
+    elif port.startswith("/dev/tty."):
+        ports.append(port.replace("/dev/tty.", "/dev/cu.", 1))
+    return sorted(set(ports))
+
+
+def _lsof_pids(path: str) -> list[int]:
+    try:
+        cp = subprocess.run(
+            ["lsof", "-t", "--", path],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("lsof が見つかりません。macOS標準ですが、存在しない場合は手動でポート使用中アプリを閉じてください")
+
+    if cp.returncode == 0:
+        out = []
+        for line in cp.stdout.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                out.append(int(line))
+            except ValueError:
+                pass
+        return sorted(set(out))
+
+    if cp.returncode == 1 and not cp.stdout.strip():
+        return []
+
+    msg = cp.stderr.strip() or "unknown error"
+    raise RuntimeError(f"lsof 実行に失敗しました: {msg}")
+
+
+def _pid_command(pid: int) -> str:
+    cp = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "command="],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    return cp.stdout.strip() if cp.stdout else ""
+
+
+def force_release_port(port: str, wait_s: float = 1.5) -> None:
+    targets = [p for p in _paired_tty_devices(port) if os.path.exists(p)]
+    pids: set[int] = set()
+    for p in targets:
+        for pid in _lsof_pids(p):
+            if pid != os.getpid():
+                pids.add(pid)
+
+    if not pids:
+        return
+
+    print("Port is used by other processes. Terminating to release...")
+    for pid in sorted(pids):
+        cmd = _pid_command(pid)
+        print(f"  pid={pid} cmd={cmd}")
+
+    for pid in sorted(pids):
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            raise RuntimeError(f"プロセス(pid={pid})を終了できません（権限不足）。該当アプリを閉じるか sudo で実行してください")
+
+    deadline = time.time() + max(0.1, wait_s)
+    while time.time() < deadline:
+        alive = False
+        for pid in sorted(pids):
+            try:
+                os.kill(pid, 0)
+                alive = True
+            except ProcessLookupError:
+                pass
+            except PermissionError:
+                alive = True
+        if not alive:
+            return
+        time.sleep(0.05)
+
+    for pid in sorted(pids):
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            raise RuntimeError(f"プロセス(pid={pid})を強制終了できません（権限不足）。該当アプリを閉じるか sudo で実行してください")
+
+
 def open_uart_8e1(port: str, baud: int) -> int:
-    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    try:
+        fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    except OSError as e:
+        if e.errno in (errno.EBUSY, errno.EACCES):
+            raise RuntimeError(
+                f"UARTポートを開けません: {port} ({e.strerror}). "
+                "他のシリアルモニタ等が使用中の可能性があります。必要なら --force-release を指定してください"
+            )
+        raise
 
     attrs = termios.tcgetattr(fd)
     attrs[0] = 0
@@ -285,6 +395,11 @@ def main() -> int:
     ap.add_argument("--port", default=None)
     ap.add_argument("--baud", type=int, default=115200)
     ap.add_argument("--bin", dest="bin_path", default=None)
+    ap.add_argument(
+        "--force-release",
+        action="store_true",
+        help="ポート使用中のプロセスを検出して終了し、強制的にポートを解放します（macOS: lsof使用）",
+    )
     ap.add_argument("--erase", choices=["app", "all", "none"], default="app")
     ap.add_argument("--no-erase", action="store_true")
     ap.add_argument("--erase-all", action="store_true")
@@ -303,7 +418,16 @@ def main() -> int:
     print(f"PORT: {port}")
     print(f"BIN : {bin_path} ({len(blob)} bytes)")
 
-    fd = open_uart_8e1(port, args.baud)
+    if args.force_release:
+        force_release_port(port)
+
+    try:
+        fd = open_uart_8e1(port, args.baud)
+    except RuntimeError:
+        if not args.force_release:
+            raise
+        force_release_port(port)
+        fd = open_uart_8e1(port, args.baud)
     try:
         did = connect_or_reuse(fd, args.timeout)
         if len(did) >= 2:
