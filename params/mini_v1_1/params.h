@@ -72,7 +72,7 @@
 #endif
 
 #ifndef KP_DISTANCE_FAN_ON
-#define KP_DISTANCE_FAN_ON  0.13F    
+#define KP_DISTANCE_FAN_ON  0.10F    
 #endif
 #ifndef KI_DISTANCE_FAN_ON
 #define KI_DISTANCE_FAN_ON  0.0F
@@ -102,7 +102,7 @@
 #define KI_OMEGA_FAN_ON  0.022F // 角速度制御のI項（ファンON）
 #endif
 #ifndef KD_OMEGA_FAN_ON
-#define KD_OMEGA_FAN_ON  0.6F  // 角速度制御のD項（ファンON）
+#define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
