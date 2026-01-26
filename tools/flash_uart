@@ -110,6 +110,31 @@ def _pid_command(pid: int) -> str:
     return cp.stdout.strip() if cp.stdout else ""
 
 
+def _port_users(port: str) -> list[tuple[int, str]]:
+    targets = [p for p in _paired_tty_devices(port) if os.path.exists(p)]
+    pids: set[int] = set()
+    for p in targets:
+        for pid in _lsof_pids(p):
+            if pid != os.getpid():
+                pids.add(pid)
+    return [(pid, _pid_command(pid)) for pid in sorted(pids)]
+
+
+def ensure_port_free(port: str, force_release: bool) -> None:
+    users = _port_users(port)
+    if not users:
+        return
+
+    if force_release:
+        force_release_port(port)
+        return
+
+    print("Port is used by other processes:")
+    for pid, cmd in users:
+        print(f"  pid={pid} cmd={cmd}")
+    raise RuntimeError("ポートが使用中です。該当アプリを停止するか --force-release を指定してください")
+
+
 def force_release_port(port: str, wait_s: float = 1.5) -> None:
     targets = [p for p in _paired_tty_devices(port) if os.path.exists(p)]
     pids: set[int] = set()
@@ -418,8 +443,7 @@ def main() -> int:
     print(f"PORT: {port}")
     print(f"BIN : {bin_path} ({len(blob)} bytes)")
 
-    if args.force_release:
-        force_release_port(port)
+    ensure_port_free(port, args.force_release)
 
     try:
         fd = open_uart_8e1(port, args.baud)
@@ -429,6 +453,7 @@ def main() -> int:
         force_release_port(port)
         fd = open_uart_8e1(port, args.baud)
     try:
+        print("Connecting...")
         did = connect_or_reuse(fd, args.timeout)
         if len(did) >= 2:
             chip_id = (did[-2] << 8) | did[-1]
