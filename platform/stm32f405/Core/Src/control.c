@@ -188,7 +188,9 @@ void distance_PID(void) {
 
 /*角速度のPID制御*/
 void omega_PID(void) {
-    const float omega_outer = (CTRL_ENABLE_ANGLE_OUTER_LOOP ? target_omega : 0.0f);
+    const int angle_outer_enabled = (CTRL_ENABLE_ANGLE_OUTER_LOOP &&
+                                     ((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)));
+    const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_ref = omega_interrupt + omega_outer;
 
     omega_error = omega_ref - real_omega + wall_control + diagonal_control;
@@ -226,6 +228,17 @@ void omega_PID(void) {
 /*角度のPID制御*/
 void angle_PID(void) {
     static uint16_t s_div = 0;
+
+    // ゲインが全て0なら外側角度ループを無効化（従来の角速度制御に戻す）
+    if ((KP_ANGLE == 0.0f) && (KI_ANGLE == 0.0f) && (KD_ANGLE == 0.0f)) {
+        target_omega = 0.0f;
+        s_div = 0;
+        angle_error = 0.0f;
+        previous_angle_error = 0.0f;
+        angle_error_error = 0.0f;
+        angle_integral = 0.0f;
+        return;
+    }
 
     // P項
     angle_error = (-target_angle) - real_angle;
