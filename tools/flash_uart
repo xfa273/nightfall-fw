@@ -120,13 +120,30 @@ def _port_users(port: str) -> list[tuple[int, str]]:
     return [(pid, _pid_command(pid)) for pid in sorted(pids)]
 
 
-def ensure_port_free(port: str, force_release: bool) -> None:
+def _looks_like_vscode(cmd: str) -> bool:
+    s = (cmd or "").lower()
+    if not s:
+        return False
+    return (
+        "visual studio code" in s
+        or "code helper" in s
+        or "com.microsoft.vscode" in s
+        or "/visual studio code.app/" in s
+    )
+
+
+def _looks_like_our_capture_tool(cmd: str) -> bool:
+    s = (cmd or "")
+    return ("serial_capture_csv.py" in s) or ("tools/serial_capture_csv.py" in s)
+
+
+def ensure_port_free(port: str, force_release: bool, allow_vscode_kill: bool) -> None:
     users = _port_users(port)
     if not users:
         return
 
     if force_release:
-        force_release_port(port)
+        force_release_port(port, allow_vscode_kill=allow_vscode_kill)
         return
 
     print("Port is used by other processes:")
@@ -135,7 +152,7 @@ def ensure_port_free(port: str, force_release: bool) -> None:
     raise RuntimeError("ポートが使用中です。該当アプリを停止するか --force-release を指定してください")
 
 
-def force_release_port(port: str, wait_s: float = 1.5) -> None:
+def force_release_port(port: str, wait_s: float = 1.5, allow_vscode_kill: bool = False) -> None:
     targets = [p for p in _paired_tty_devices(port) if os.path.exists(p)]
     pids: set[int] = set()
     for p in targets:
@@ -151,9 +168,25 @@ def force_release_port(port: str, wait_s: float = 1.5) -> None:
         cmd = _pid_command(pid)
         print(f"  pid={pid} cmd={cmd}")
 
+    blocked: list[tuple[int, str]] = []
+    for pid in sorted(pids):
+        cmd = _pid_command(pid)
+        if _looks_like_vscode(cmd) and not allow_vscode_kill:
+            blocked.append((pid, cmd))
+
+    if blocked:
+        print("VSCode がポートを使用中のため、デフォルトでは強制終了しません:")
+        for pid, cmd in blocked:
+            print(f"  pid={pid} cmd={cmd}")
+        raise RuntimeError("VSCodeのシリアルモニタを停止するか、強制終了する場合は --force-release-vscode を指定してください")
+
     for pid in sorted(pids):
         try:
-            os.kill(pid, signal.SIGTERM)
+            cmd = _pid_command(pid)
+            if _looks_like_our_capture_tool(cmd):
+                os.kill(pid, signal.SIGINT)
+            else:
+                os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
         except PermissionError:
@@ -425,6 +458,11 @@ def main() -> int:
         action="store_true",
         help="ポート使用中のプロセスを検出して終了し、強制的にポートを解放します（macOS: lsof使用）",
     )
+    ap.add_argument(
+        "--force-release-vscode",
+        action="store_true",
+        help="VSCode がポートを使用中でも VSCode プロセスを終了して解放します（注意: VSCodeが落ちます）",
+    )
     ap.add_argument("--erase", choices=["app", "all", "none"], default="app")
     ap.add_argument("--no-erase", action="store_true")
     ap.add_argument("--erase-all", action="store_true")
@@ -443,14 +481,14 @@ def main() -> int:
     print(f"PORT: {port}")
     print(f"BIN : {bin_path} ({len(blob)} bytes)")
 
-    ensure_port_free(port, args.force_release)
+    ensure_port_free(port, args.force_release, allow_vscode_kill=args.force_release_vscode)
 
     try:
         fd = open_uart_8e1(port, args.baud)
     except RuntimeError:
         if not args.force_release:
             raise
-        force_release_port(port)
+        force_release_port(port, allow_vscode_kill=args.force_release_vscode)
         fd = open_uart_8e1(port, args.baud)
     try:
         print("Connecting...")
