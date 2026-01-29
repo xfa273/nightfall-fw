@@ -91,15 +91,15 @@
 #define KD_DISTANCE_FAN_OFF 0.0F
 #endif
 
-#define KP_ANGLE 0.0F // 角度制御のP項
+#define KP_ANGLE 1.5F // 角度制御のP項
 #define KI_ANGLE 0.0F // 角度制御のI項
 #define KD_ANGLE 0.0F // 角度制御のD項
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  1.9F  // 角速度制御のP項（ファンON）
+#define KP_OMEGA_FAN_ON  1.7F  // 角速度制御のP項（ファンON）
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.022F // 角速度制御のI項（ファンON）
+#define KI_OMEGA_FAN_ON  0.02F // 角速度制御のI項（ファンON）0.022F
 #endif
 #ifndef KD_OMEGA_FAN_ON
 #define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
