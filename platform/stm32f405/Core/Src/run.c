@@ -379,7 +379,12 @@ void run(void) {
         }
     }
 
-    half_sectionD(0);
+    // 最終停止時は壁制御による回転の暴走を避けるため、壁/斜め制御を無効化して距離ベースで停止
+    MF.FLAG.CTRL = 0;
+    MF.FLAG.CTRL_DIAGONAL = 0;
+    float dist_stop = (float)DIST_HALF_SEC;
+    driveA(dist_stop, speed_now, 0.0f, 0.0f);
+    speed_now = 0.0f;
 
     // センサログ停止
     if (g_sensor_log_enabled) {
