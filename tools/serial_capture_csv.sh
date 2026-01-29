@@ -27,7 +27,7 @@ detect_uart_port() {
   local os p
   os="$(uname -s)"
   if [[ "$os" == "Darwin" ]]; then
-    for p in /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial*; do
+    for p in /dev/cu.usbmodem* /dev/cu.usbserial* /dev/cu.wchusbserial* /dev/tty.usbmodem* /dev/tty.usbserial* /dev/tty.wchusbserial*; do
       if [[ -e "$p" ]]; then
         echo "$p"
         return 0
@@ -48,7 +48,7 @@ list_uart_ports() {
   local os
   os="$(uname -s)"
   if [[ "$os" == "Darwin" ]]; then
-    ls -1 /dev/cu.usbmodem* /dev/cu.usbserial* /dev/tty.usbmodem* /dev/tty.usbserial* 2>/dev/null || true
+    ls -1 /dev/cu.usbmodem* /dev/cu.usbserial* /dev/cu.wchusbserial* /dev/tty.usbmodem* /dev/tty.usbserial* /dev/tty.wchusbserial* 2>/dev/null || true
   else
     ls -1 /dev/ttyUSB* /dev/ttyACM* 2>/dev/null || true
   fi

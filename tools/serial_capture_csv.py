@@ -35,8 +35,10 @@ def _detect_port() -> str:
         patterns = [
             "/dev/cu.usbmodem*",
             "/dev/cu.usbserial*",
+            "/dev/cu.wchusbserial*",
             "/dev/tty.usbmodem*",
             "/dev/tty.usbserial*",
+            "/dev/tty.wchusbserial*",
         ]
     else:
         patterns = ["/dev/ttyACM*", "/dev/ttyUSB*"]
