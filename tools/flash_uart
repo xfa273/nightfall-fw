@@ -471,9 +471,6 @@ def main() -> int:
     ap.add_argument("--timeout", type=float, default=30.0)
     args = ap.parse_args()
 
-    if args.force_release_vscode:
-        args.force_release = True
-
     port = args.port or detect_port()
     bin_path = args.bin_path or default_bin_path()
     base = int(args.base, 0)
