@@ -1593,6 +1593,7 @@ void drive_reset_before_run(void) {
     MF.FLAG.OVERRIDE = 0;
     MF.FLAG.FAILED = 0;
     MF.FLAG.CTRL = 0;
+    MF.FLAG.CTRL_DIAGONAL = 0;
     MF.FLAG.SLALOM_R = 0;
     MF.FLAG.SLALOM_L = 0;
     MF.FLAG.F_WALL = 0;
