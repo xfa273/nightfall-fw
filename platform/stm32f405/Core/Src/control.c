@@ -377,20 +377,27 @@ void diagonal_CTRL(void) {
     // 制御フラグがあれば制御
     if (MF.FLAG.CTRL_DIAGONAL) {
 
+        float dc = 0.0f;
+
         if (ad_fr > diagonal_control_thr && ad_fl > diagonal_control_thr) {
             // 左右センサが閾値以上なら，差分で制御
             if (ad_fr > ad_fl) {
-                diagonal_control = -kp_diagonal * (ad_fr - ad_fl);
+                dc = -kp_diagonal * (ad_fr - ad_fl);
             } else {
-                diagonal_control = kp_diagonal * (ad_fl - ad_fr);
+                dc = kp_diagonal * (ad_fl - ad_fr);
             }
 
         } else if (ad_fr > diagonal_control_thr) {
             // 右センサのみHigh
-            diagonal_control = -kp_diagonal * ad_fr;
+            dc = -kp_diagonal * ad_fr;
         } else if (ad_fl > diagonal_control_thr) {
             // 左センサのみHigh
-            diagonal_control = kp_diagonal * ad_fl;
+            dc = kp_diagonal * ad_fl;
         }
+
+        diagonal_control = dc;
+
+    } else {
+        diagonal_control = 0.0f;
     }
 }
