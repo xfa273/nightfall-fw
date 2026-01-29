@@ -1236,16 +1236,17 @@ void driveR(float angle) {
     // 回転角度カウントをリセット
     real_angle = 0;
     IMU_angle = 0;
+    target_angle = 0;
 
     drive_start();
 
     // 実際の角度が目標角度（30°）になるまで角加速走行
     if (angle >= 0) {
-        while (real_angle > -angle * 0.333 && !MF.FLAG.FAILED) {
+        while (-target_angle > -angle * 0.333 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle * 0.333 && !MF.FLAG.FAILED) {
+        while (-target_angle < -angle * 0.333 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1253,11 +1254,11 @@ void driveR(float angle) {
     // 実際の角度が目標角度（30°）になるまで等角速度走行
     alpha_interrupt = 0;
     if (angle >= 0) {
-        while (real_angle > -angle * 0.666 && !MF.FLAG.FAILED) {
+        while (-target_angle > -angle * 0.666 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle * 0.666 && !MF.FLAG.FAILED) {
+        while (-target_angle < -angle * 0.666 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1269,11 +1270,11 @@ void driveR(float angle) {
         alpha_interrupt = +ALPHA_ROTATE_90;
     };
     if (angle >= 0) {
-        while (real_angle > -angle && !MF.FLAG.FAILED) {
+        while (-target_angle > -angle && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle && !MF.FLAG.FAILED) {
+        while (-target_angle < -angle && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1343,7 +1344,7 @@ void driveSR(float angle_turn, float alpha_turn) {
     acceleration_interrupt = -acceleration_turn;
 
     // 実際の角度が目標角度（30°）になるまで角加速走行
-    while (real_angle > -angle_turn * 0.333 && !MF.FLAG.FAILED) {
+    while (-target_angle > -angle_turn * 0.333 && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
@@ -1351,7 +1352,7 @@ void driveSR(float angle_turn, float alpha_turn) {
     alpha_interrupt = 0;
     acceleration_interrupt = 0;
 
-    while (real_angle > -angle_turn * 0.666 && !MF.FLAG.FAILED) {
+    while (-target_angle > -angle_turn * 0.666 && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
@@ -1359,7 +1360,7 @@ void driveSR(float angle_turn, float alpha_turn) {
     alpha_interrupt = -alpha_turn;
     acceleration_interrupt = acceleration_turn;
 
-    while (real_angle > -angle_turn && !MF.FLAG.FAILED) {
+    while (-target_angle > -angle_turn && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
@@ -1399,6 +1400,7 @@ void driveSL(float angle_turn, float alpha_turn) {
     // 回転角度カウントをリセット
     real_angle = 0;
     IMU_angle = 0;
+    target_angle = 0;
 
     // 角加速度と並進加速度を設定
     alpha_interrupt = -alpha_turn;
@@ -1407,14 +1409,14 @@ void driveSL(float angle_turn, float alpha_turn) {
     drive_start();
 
     // 実際の角度が目標角度（30°）になるまで角加速走行
-    while (real_angle < angle_turn * 0.333 && !MF.FLAG.FAILED) {
+    while (-target_angle < angle_turn * 0.333 && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
     // 実際の角度が目標角度（30°）になるまで等角速度走行
     alpha_interrupt = 0;
     acceleration_interrupt = 0;
-    while (real_angle < angle_turn * 0.666 && !MF.FLAG.FAILED) {
+    while (-target_angle < angle_turn * 0.666 && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
@@ -1422,7 +1424,7 @@ void driveSL(float angle_turn, float alpha_turn) {
     alpha_interrupt = alpha_turn;
     acceleration_interrupt = acceleration_turn;
 
-    while (real_angle < angle_turn && !MF.FLAG.FAILED) {
+    while (-target_angle < angle_turn && !MF.FLAG.FAILED) {
         background_replan_tick();
     }
 
@@ -1440,6 +1442,7 @@ void driveSL(float angle_turn, float alpha_turn) {
     // 回転角度カウントをリセット
     real_angle = 0;
     IMU_angle = 0;
+    target_angle = 0;
 }
 
 void driveFWall(float dist, float spd_in, float spd_out) {
