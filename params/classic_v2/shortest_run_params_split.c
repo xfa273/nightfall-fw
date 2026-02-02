@@ -508,7 +508,7 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .angle_l_turn_180   = 181.5f,
     .dist_l_turn_in_180 = 5.0f,
     .dist_l_turn_out_180= 145.0f,
-    .fan_power          = 450,
+    .fan_power          = 400,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -585,43 +585,46 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
 
 // ========================= Mode 7 =========================
 const ShortestRunModeParams_t shortestRunModeParams7 = {
-    .velocity_turn90    = 1400.0f,
-    .alpha_turn90       = 50000.0f,
+    // 90deg
+    .velocity_turn90    = 2200.0f,
+    .alpha_turn90       = 89000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 58.0f,
-    .val_offset_in      = 1050.0f,
-    .angle_turn_90      = 80.5f,
-    .dist_wall_end      = 12.0f,
-    .velocity_l_turn_90 = 2200.0f,
-    .alpha_l_turn_90    = 28500.0f,
-    .angle_l_turn_90    = 85.0f,
-    .dist_l_turn_in_90  = 0.0f,
-    .dist_l_turn_out_90 = 101.0f,
-    .velocity_l_turn_180= 2200.0f,
-    .alpha_l_turn_180   = 24000.0f,
-    .angle_l_turn_180   = 176.8f,
-    .dist_l_turn_in_180 = 0.0f,
-    .dist_l_turn_out_180= 169.0f,
-    .fan_power          = 200,
+    .dist_offset_out    = 65.0f,
+    .val_offset_in      = 700.0f,
+    .angle_turn_90      = 93.0f,
+    .dist_wall_end      = 1.0f,
+    // Large 90deg
+    .velocity_l_turn_90 = 3300.0f,
+    .alpha_l_turn_90    = 90000.0f,
+    .angle_l_turn_90    = 96.0f,
+    .dist_l_turn_in_90  = 1.0f,
+    .dist_l_turn_out_90 = 70.0f,
+    // Large 180deg
+    .velocity_l_turn_180= 3300.0f,
+    .alpha_l_turn_180   = 33000.0f,
+    .angle_l_turn_180   = 184.0f,
+    .dist_l_turn_in_180 = 1.0f,
+    .dist_l_turn_out_180= 165.0f,
+    .fan_power          = 450,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 120, .wall_end_thr_r_low = 115,
-    .wall_end_thr_l_high = 120, .wall_end_thr_l_low = 115,
+    .wall_end_thr_r_high = 140, .wall_end_thr_r_low = 130,
+    .wall_end_thr_l_high = 140, .wall_end_thr_l_low = 130,
     // 加速度切り替え速度
-    .accel_switch_velocity = 2000.0f
+    .accel_switch_velocity = 1500.0f
 };
 
 const ShortestRunCaseParams_t shortestRunCaseParamsMode7[9] = {
     {
-        .acceleration_straight = 14222.2f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 2300.0f, .kp_wall = 0.13f,
+        .acceleration_straight = 14222.2f, .acceleration_straight_dash = 30000.0f,
+        .velocity_straight = 5000.0f, .kp_wall = 0.13f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     {
-        .acceleration_straight = 14222.2f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 2300.0f, .kp_wall = 0.05f,
+        .acceleration_straight = 14222.2f, .acceleration_straight_dash = 30000.0f,
+        .velocity_straight = 5000.0f, .kp_wall = 0.05f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     {

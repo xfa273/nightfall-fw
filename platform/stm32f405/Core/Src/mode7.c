@@ -325,6 +325,7 @@ void mode7() {
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 4;
                     path[1] = 501;
+                    path[2] = 200 + 1;
                     run();
                     drive_fan(0);
                     log_stop();
@@ -349,6 +350,7 @@ void mode7() {
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
                     path[0] = 200 + 4;
                     path[1] = 502;
+                    path[2] = 200 + 1;
                     run();
                     drive_fan(0);
                     log_stop();
@@ -512,7 +514,10 @@ void mode7() {
 
             break;
 #else
+
+            g_disable_wall_end_correction = true;
             run_shortest(7, 2);
+            g_disable_wall_end_correction = false;
             break;
 #endif
 

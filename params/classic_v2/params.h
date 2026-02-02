@@ -187,7 +187,7 @@
 // バッテリー電圧の警告しきい値（ADCカウント）
 // 例: 3000。割り込み内/起動時チェックで共通利用。
 #ifndef BAT_WARN_ADC_THR
-#define BAT_WARN_ADC_THR 2150
+#define BAT_WARN_ADC_THR 2650
 #endif
 
 /*制御閾値*/
