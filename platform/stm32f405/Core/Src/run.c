@@ -392,7 +392,7 @@ void run(void) {
 }
 
 void run_shortest(uint8_t mode, uint8_t case_index) {
-    // case_index: 1..9 -> idx 0..8（mode2/3 は9要素、他は従来通り）
+    // case_index: 1..9 -> idx 0..8（mode2..7 は9要素、他は従来通り）
     uint8_t idx = 0;
     if (case_index >= 1 && case_index <= 9) {
         idx = (uint8_t)(case_index - 1);
@@ -413,9 +413,9 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
         default: pm = &shortestRunModeParams2; pcases = &shortestRunCaseParamsMode2[0]; break;
     }
 
-    // モードごとのケース数でクランプ（mode2/3/4:9要素=idx0..8、その他:5要素=idx0..4）
+    // モードごとのケース数でクランプ（mode2..7:9要素=idx0..8）
     uint8_t max_idx = 4;
-    if (mode == 2 || mode == 3 || mode == 4) {
+    if (mode >= 2 && mode <= 7) {
         max_idx = 8;
     }
     if (idx > max_idx) idx = max_idx;

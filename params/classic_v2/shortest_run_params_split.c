@@ -613,7 +613,7 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
     .accel_switch_velocity = 2000.0f
 };
 
-const ShortestRunCaseParams_t shortestRunCaseParamsMode7[5] = {
+const ShortestRunCaseParams_t shortestRunCaseParamsMode7[9] = {
     {
         .acceleration_straight = 14222.2f, .acceleration_straight_dash = 25000.0f,
         .velocity_straight = 2300.0f, .kp_wall = 0.13f,
@@ -638,5 +638,33 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode7[5] = {
         .acceleration_straight = 10888.9f, .acceleration_straight_dash = 28000.0f,
         .velocity_straight = 5000.0f, .kp_wall = 0.05f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
+    },
+    {
+        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 28000.0f,
+        .velocity_straight = 5000.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
+        .velocity_d_straight = 3000.0f
+    },
+    {
+        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 30000.0f,
+        .velocity_straight = 5200.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
+        .velocity_d_straight = 3500.0f
+    },
+    {
+        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 20000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
+        .solver_profile = SOLVER_PROFILE_STANDARD,
+        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
+        .velocity_d_straight = 3000.0f
+    },
+    {
+        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 23000.0f,
+        .velocity_straight = 4500.0f, .kp_wall = 0.05f, .kp_diagonal = 0.05f,
+        .solver_profile = SOLVER_PROFILE_STANDARD,
+        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
+        .velocity_d_straight = 3500.0f
     },
 };
