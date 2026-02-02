@@ -16,13 +16,17 @@
 ------------------------------------------------------------*/
 /*走行パラメータ*/
 #define D_TIRE            13.40F  // タイヤ直径[mm] 13.75F
-#define DIST_HALF_SEC     45     // 迷路の半区間距離[mm]
-#define DIST_D_HALF_SEC   67.279 // 斜めの半区間距離[mm]
-#define DIST_FIRST_SEC    13     // 最初の区画の距離[mm]
-#define DIST_SET_POSITION 13     // 壁当て後の前進距離[mm]
+#define DIST_HALF_SEC     90     // 迷路の半区間距離[mm]
+#define DIST_D_HALF_SEC   134.558 // 斜めの半区間距離[mm]
+#define DIST_FIRST_SEC    43     // 最初の区画の距離[mm]
+#define DIST_SET_POSITION 43     // 壁当て後の前進距離[mm]
 
 #ifndef VELOCITY_LPF_TAU
 #define VELOCITY_LPF_TAU 0.003F
+#endif
+
+#ifndef OMEGA_LPF_TAU
+#define OMEGA_LPF_TAU 0.003F
 #endif
 
 // 探索直進(one_sectionU)のステップ幅[mm]
@@ -52,64 +56,64 @@
  * control.c の velocity_PID() / distance_PID() が MF.FLAG.SUCTION を参照して切替
  */
 #ifndef KP_VELOCITY_FAN_ON
-#define KP_VELOCITY_FAN_ON  0.40F
+#define KP_VELOCITY_FAN_ON  2.3F
 #endif
 #ifndef KI_VELOCITY_FAN_ON
-#define KI_VELOCITY_FAN_ON  0.55F
+#define KI_VELOCITY_FAN_ON  0.03F
 #endif
 #ifndef KD_VELOCITY_FAN_ON
 #define KD_VELOCITY_FAN_ON  0.0F
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 0.03F
+#define KP_VELOCITY_FAN_OFF 1.2F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.30F
+#define KI_VELOCITY_FAN_OFF 0.015F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
 #endif
 
 #ifndef KP_DISTANCE_FAN_ON
-#define KP_DISTANCE_FAN_ON  4.0F
+#define KP_DISTANCE_FAN_ON  5.0F
 #endif
 #ifndef KI_DISTANCE_FAN_ON
-#define KI_DISTANCE_FAN_ON  0.1F
+#define KI_DISTANCE_FAN_ON  0.00F
 #endif
 #ifndef KD_DISTANCE_FAN_ON
 #define KD_DISTANCE_FAN_ON  0.0F
 #endif
 
 #ifndef KP_DISTANCE_FAN_OFF
-#define KP_DISTANCE_FAN_OFF 0.5F
+#define KP_DISTANCE_FAN_OFF 0.8F
 #endif
 #ifndef KI_DISTANCE_FAN_OFF
-#define KI_DISTANCE_FAN_OFF 0.02F
+#define KI_DISTANCE_FAN_OFF 0.00F
 #endif
 #ifndef KD_DISTANCE_FAN_OFF
 #define KD_DISTANCE_FAN_OFF 0.0F
 #endif
 
-#define KP_ANGLE 0.0F // 角度制御のP項
+#define KP_ANGLE 2.5F // 角度制御のP項
 #define KI_ANGLE 0.0F // 角度制御のI項
 #define KD_ANGLE 0.0F // 角度制御のD項
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  1.9F  // 角速度制御のP項（ファンON）
+#define KP_OMEGA_FAN_ON  0.9F  // 角速度制御のP項（ファンON）
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.022F // 角速度制御のI項（ファンON）
+#define KI_OMEGA_FAN_ON  0.017F // 角速度制御のI項（ファンON）
 #endif
 #ifndef KD_OMEGA_FAN_ON
-#define KD_OMEGA_FAN_ON  0.6F  // 角速度制御のD項（ファンON）
+#define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 0.8F  // 角速度制御のP項（ファンOFF）
+#define KP_OMEGA_FAN_OFF 0.35F  // 角速度制御のP項（ファンOFF）
 #endif
 #ifndef KI_OMEGA_FAN_OFF
-#define KI_OMEGA_FAN_OFF 0.011F // 角速度制御のI項（ファンOFF）
+#define KI_OMEGA_FAN_OFF 0.015F // 角速度制御のI項（ファンOFF）
 #endif
 #ifndef KD_OMEGA_FAN_OFF
 #define KD_OMEGA_FAN_OFF 0.0F  // 角速度制御のD項（ファンOFF）

@@ -66,9 +66,22 @@ void read_encoder(void) {
 
 /*IMUから角速度と角度を取得する*/
 void read_IMU(void) {
+    static float s_real_omega_f = 0.0f;
+    static uint8_t s_real_omega_f_inited = 0;
+
     // 時計回りが正
     IMU_DataUpdate();
-    real_omega = -omega_z_true * KP_IMU;
+    const float real_omega_raw = -omega_z_true * KP_IMU;
+    if (!s_real_omega_f_inited) {
+        s_real_omega_f = real_omega_raw;
+        s_real_omega_f_inited = 1;
+    } else {
+        float alpha = g_ctrl_dt / (OMEGA_LPF_TAU + g_ctrl_dt);
+        if (alpha < 0.0f) alpha = 0.0f;
+        if (alpha > 1.0f) alpha = 1.0f;
+        s_real_omega_f = s_real_omega_f + alpha * (real_omega_raw - s_real_omega_f);
+    }
+    real_omega = s_real_omega_f;
     IMU_angle += omega_z_true * g_ctrl_dt;
     real_angle = IMU_angle;
     IMU_acceleration = accel_y_true * 1000;

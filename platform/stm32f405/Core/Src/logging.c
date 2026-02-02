@@ -11,6 +11,7 @@ static const char *s_mm_columns_velocity = "timestamp,velocity_interrupt,real_ve
 static const char *s_mm_columns_distance = "timestamp,target_distance,real_distance,p_term_distance,i_term_distance,d_term_distance,out_r,out_l";
 static const char *s_mm_columns_omega = "timestamp,omega_interrupt,real_omega,p_term_omega,i_term_omega,d_term_omega,out_r,out_l";
 static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_term_angle,i_term_angle,d_term_angle,out_r,out_l";
+static const char *s_mm_columns_noise = "timestamp,omega_z_raw,encoder_speed_l_raw,encoder_speed_r_raw,real_velocity_lpf,real_omega_lpf,dummy2,dummy3";
 
 static void log_print_fw_meta(void) {
     printf("#fw_target=%s\n", FW_TARGET);
@@ -36,6 +37,35 @@ void log_print_velocity_all(void) {
     printf("--- CSV Data Start ---\n");
     log_print_fw_meta();
     log_print_mm_columns(s_mm_columns_velocity);
+
+    uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
+    uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
+
+    for (uint16_t i = 0; i < count; i++) {
+        uint16_t idx = (start + i) % MAX_LOG_ENTRIES;
+        volatile LogEntry *entry = &log_buffer.entries[idx];
+        printf("%lu,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f\n",
+               entry->timestamp - log_buffer.start_time,
+               entry->target_omega,
+               entry->actual_omega,
+               entry->p_term_omega,
+               entry->i_term_omega,
+               entry->d_term_omega,
+               entry->motor_out_r,
+               entry->motor_out_l);
+    }
+
+    printf("--- CSV Data End ---\n");
+    printf("=== End of Log ===\n");
+}
+
+void log_print_noise_all(void) {
+    printf("=== Micromouse Log Data (CSV Format, NOISE) ===\n");
+    printf("Total entries: %d\n", log_buffer.count);
+    printf("CSV Format: timestamp,param1,param2,param3,param4,param5,param6,param7\n");
+    printf("--- CSV Data Start ---\n");
+    log_print_fw_meta();
+    log_print_mm_columns(s_mm_columns_noise);
 
     uint16_t count = log_buffer.count > MAX_LOG_ENTRIES ? MAX_LOG_ENTRIES : log_buffer.count;
     uint16_t start = log_buffer.count > MAX_LOG_ENTRIES ? log_buffer.head : 0;
@@ -293,6 +323,20 @@ void log_capture_tick(void) {
         }
         break;
     case LOG_PROFILE_CUSTOM:
+        {
+            log_add_entry(
+                (uint16_t)log_buffer.count,
+                omega_z_raw,
+                encoder_speed_l,
+                encoder_speed_r,
+                real_velocity,
+                real_omega,
+                0.0f,
+                0.0f,
+                current_time
+            );
+        }
+        break;
     default:
         break;
     }

@@ -73,6 +73,8 @@ void log_print_omega_all(void);
  */
 void log_print_angle_all(void);
 
+void log_print_noise_all(void);
+
 /**
  * @brief ログデータを純粋なCSV形式で出力する（可視化ツール貼り付け用）
  */

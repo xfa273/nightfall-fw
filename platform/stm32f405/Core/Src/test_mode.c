@@ -113,7 +113,8 @@ void test_mode() {
                 if (set == 0) {
                     drive_fan(0);
                 } else {
-                    drive_fan(1000);
+                    drive_fan(300);
+                    HAL_Delay(1500);
                 }
 
                 // ログ
@@ -139,6 +140,7 @@ void test_mode() {
                 MF.FLAG.RUNNING = 0;
                 drive_stop();
                 drive_disable_motor();
+                led_flash(30);
 
                 // ログ出力
                 if (axis == 0) {
@@ -229,30 +231,91 @@ void test_mode() {
             break;
 
         case 4:
-            printf("Test Mode 4 Enkai-Gei.\n");
+            printf("Test Mode 4: Fan noise check (IMU/Encoder).\n");
 
-            led_flash(10);
+            {
+                int sub = 0;
+                printf("Select sub: 0=keep fan running, 1=capture noise log\n");
+                sub = select_mode(sub);
+                if (sub != 0 && sub != 1) {
+                    sub = 0;
+                }
 
-            IMU_GetOffset();
-            drive_enable_motor();
+                if (sub == 0) {
+                    led_flash(10);
 
-            drive_variable_reset();
+                    IMU_GetOffset();
+                    drive_enable_motor();
 
-            // 回転角度カウントをリセット
-            real_angle = 0;
-            IMU_angle = 0;
-            target_angle = 0;
+                    drive_variable_reset();
 
-            // 走行距離カウントをリセット
-            real_distance = 0;
-            encoder_distance_r = 0;
-            encoder_distance_l = 0;
+                    real_angle = 0;
+                    IMU_angle = 0;
+                    target_angle = 0;
 
-            led_write(1, 1);
+                    real_distance = 0;
+                    encoder_distance_r = 0;
+                    encoder_distance_l = 0;
 
-            drive_start();
+                    led_write(1, 1);
 
-            drive_fan(1000);
+                    drive_start();
+
+                    drive_fan(500);
+
+                } else {
+                    const uint16_t fan_power = 500;
+                    const uint32_t settle_ms = 3000;
+                    const uint32_t capture_ms = 5000;
+
+                    drive_fan(0);
+                    drive_stop();
+                    drive_disable_motor();
+
+                    drive_reset_before_run();
+                    IMU_GetOffset();
+
+                    g_test_mode_run = true;
+                    MF.FLAG.OVERRIDE = 1;
+
+                    drive_variable_reset();
+                    real_angle = 0;
+                    IMU_angle = 0;
+                    target_angle = 0;
+                    real_distance = 0;
+                    encoder_distance_r = 0;
+                    encoder_distance_l = 0;
+
+                    drive_fan(fan_power);
+                    HAL_Delay(settle_ms);
+
+                    log_init();
+                    log_set_profile(LOG_PROFILE_CUSTOM);
+                    log_start(HAL_GetTick());
+
+                    uint32_t t0 = HAL_GetTick();
+                    while ((HAL_GetTick() - t0) < capture_ms) {
+                        HAL_Delay(10);
+                    }
+
+                    log_stop();
+                    drive_fan(0);
+
+                    printf("[test_mode-case4] Press RIGHT FRONT for NOISE (FR>%u) ...\n",
+                           (unsigned)WALL_BASE_FR);
+                    while (1) {
+                        if (ad_fr > WALL_BASE_FR) {
+                            log_print_noise_all();
+                            break;
+                        }
+                        HAL_Delay(50);
+                    }
+
+                    g_test_mode_run = false;
+                    MF.FLAG.OVERRIDE = 0;
+                    led_flash(5);
+                }
+            }
 
             break;
         case 5:

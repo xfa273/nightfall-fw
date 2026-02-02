@@ -25,6 +25,10 @@
 #define VELOCITY_LPF_TAU 0.003F
 #endif
 
+#ifndef OMEGA_LPF_TAU
+#define OMEGA_LPF_TAU 0.003F
+#endif
+
 // 探索直進(one_sectionU)のステップ幅[mm]
 // 壁切れ監視のチェック間隔にも影響。大きくするとdriveA呼び出し回数が減り、振動低減が期待できる。
 // ただし大きすぎると壁切れ検知後の追従距離算出に遅れが生じ得るため、10mm程度から評価してください。
