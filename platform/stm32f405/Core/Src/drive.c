@@ -61,6 +61,8 @@ static volatile uint8_t s_motor_enabled = 0;
 // 最後にファンを停止した時刻（ms）: ブザー起動のクールダウン制御用
 volatile uint32_t fan_last_off_ms = 0;
 
+static uint8_t s_fan_running = 0;
+
 /*==========================================================
     走行系 上位関数
 ==========================================================*/
@@ -1377,7 +1379,6 @@ void driveSR(float angle_turn, float alpha_turn) {
     // 回転角度カウントをリセット
     real_angle = 0;
     IMU_angle = 0;
-    target_angle = 0;
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
@@ -1945,6 +1946,8 @@ void drive_motor(void) {
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void drive_fan(uint16_t fan_power) {
 
+    const uint8_t was_running = s_fan_running;
+
     if (fan_power > 0) {
         MF.FLAG.SUCTION = 1;
     } else {
@@ -1954,15 +1957,25 @@ void drive_fan(uint16_t fan_power) {
     if (fan_power) {
         HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 
-        for (uint16_t i = 0; i < fan_power; i++) {
-            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, i);
-            HAL_Delay(1);
+        if (!was_running) {
+            for (uint16_t i = 0; i < fan_power; i++) {
+                __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, i);
+                HAL_Delay(1);
+            }
+
+            HAL_Delay(SUCTION_FAN_STABILIZE_DELAY_MS);
+        } else {
+            __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, fan_power);
         }
+
+        s_fan_running = 1;
     } else {
         __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0);
         HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);
         // 停止時刻を記録（同一TIM3を使うブザーとの干渉を避けるためのクールダウン判定用）
         fan_last_off_ms = HAL_GetTick();
+
+        s_fan_running = 0;
     }
 }
 
