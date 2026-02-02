@@ -47,8 +47,6 @@ set(NIGHTFALL_USER_SOURCES
     platform/stm32f405/Core/Src/search.c
     platform/stm32f405/Core/Src/sensor.c
     platform/stm32f405/Core/Src/sensor_distance.c
-    platform/stm32f405/Core/Src/shortest_run_params_split.c
-    platform/stm32f405/Core/Src/search_run_params_split.c
     platform/stm32f405/Core/Src/test_mode.c
 )
 
@@ -63,6 +61,12 @@ function(nightfall_add_firmware target variant variant_define)
         list(APPEND _src_deps "${CMAKE_SOURCE_DIR}/${_s}")
     endforeach()
     list(APPEND _src_deps "${CMAKE_SOURCE_DIR}/params/${variant}/params.h")
+
+    set(_variant_src
+        "${CMAKE_SOURCE_DIR}/params/${variant}/shortest_run_params_split.c"
+        "${CMAKE_SOURCE_DIR}/params/${variant}/search_run_params_split.c"
+    )
+    list(APPEND _src_deps ${_variant_src})
 
     set(_git_deps)
     if(EXISTS "${CMAKE_SOURCE_DIR}/.git/HEAD")
@@ -91,7 +95,7 @@ function(nightfall_add_firmware target variant variant_define)
     add_custom_target(build_info_${target} DEPENDS ${build_info_h})
     add_dependencies(${target} build_info_${target})
 
-    target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES})
+    target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES} ${_variant_src})
 
     nightfall_apply_stm32f405(${target})
 
