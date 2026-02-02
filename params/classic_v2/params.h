@@ -141,10 +141,10 @@
     センサ系
 ------------------------------------------------------------*/
 /*壁判断閾値*/
-#define WALL_BASE_FR  160   // 前壁右センサ    //700
-#define WALL_BASE_FL  160   // 前壁左センサ    //700
-#define WALL_BASE_R   250   // 右壁センサ  //800
-#define WALL_BASE_L   250   // 左壁センサ  //800
+#define WALL_BASE_FR  250   // 前壁右センサ    //700
+#define WALL_BASE_FL  250   // 前壁左センサ    //700
+#define WALL_BASE_R   450   // 右壁センサ  //800
+#define WALL_BASE_L   450   // 左壁センサ  //800
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
@@ -250,9 +250,9 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   5 // 7
-#define GOAL_Y   6 // 7
-#define MAZE_SIZE 32
+#define GOAL_X   1 // 7
+#define GOAL_Y   0 // 7
+#define MAZE_SIZE 16
 #define START_X   0
 #define START_Y   0
 
@@ -265,18 +265,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 5
-#define GOAL2_Y 7
+#define GOAL2_X 0
+#define GOAL2_Y 0
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 6
-#define GOAL3_Y 6
+#define GOAL3_X 0
+#define GOAL3_Y 0
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 6
-#define GOAL4_Y 7
+#define GOAL4_X 0
+#define GOAL4_Y 0
 #endif
 
 #ifndef GOAL5_X

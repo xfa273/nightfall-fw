@@ -4,25 +4,25 @@
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
-    .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 8820.0f,
+    .velocity_turn90 = 700.0f,
+    .alpha_turn90 = 10900.0f,
     .acceleration_turn = 0.0f,
     .dist_offset_in = 10.0f,
-    .dist_offset_out = 18.0f,
-    .val_offset_in = 1750.0f,
+    .dist_offset_out = 32.0f,
+    .val_offset_in = 700.0f,
     .angle_turn_90 = 89.0f,
     // Large 90deg
-    .velocity_l_turn_90 = 500.0f,
-    .alpha_l_turn_90    = 4700.0f,  // 4250
+    .velocity_l_turn_90 = 850.0f,
+    .alpha_l_turn_90    = 3000.0f,  // 4250
     .angle_l_turn_90    = 89.0f,
-    .dist_l_turn_in_90  = 5.0f,
-    .dist_l_turn_out_90 = 12.7f,
+    .dist_l_turn_in_90  = 0.0f,
+    .dist_l_turn_out_90 = 26.0f,
     // Large 180deg
-    .velocity_l_turn_180= 500.0f,
-    .alpha_l_turn_180   = 4697.0f,  // 4640
+    .velocity_l_turn_180= 850.0f,
+    .alpha_l_turn_180   = 3485.0f,  // 4640
     .angle_l_turn_180   = 179.0f,
-    .dist_l_turn_in_180 = 12.0f,
-    .dist_l_turn_out_180= 19.0f,
+    .dist_l_turn_in_180 = 0.0f,
+    .dist_l_turn_out_180= 50.0f,
     // 45deg In
     .velocity_turn45in   = 500.0f,
     .alpha_turn45in      = 6360.0f,
@@ -68,14 +68,14 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
 const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     // case1 (index 0): independent (initially same as former case3)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 1000.0f,
-        .velocity_straight = 500.0f, .kp_wall = 0.12f,
+        .acceleration_straight = 3555.6f, .acceleration_straight_dash = 8000.0f,
+        .velocity_straight = 1000.0f, .kp_wall = 0.12f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1): independent (initially same as former case4)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 2000.0f,
-        .velocity_straight = 500.0f, .kp_wall = 0.12f,
+        .acceleration_straight = 3555.6f, .acceleration_straight_dash = 8000.0f,
+        .velocity_straight = 1000.0f, .kp_wall = 0.12f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
@@ -133,26 +133,26 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
 // ========================= Mode 3 =========================
 const ShortestRunModeParams_t shortestRunModeParams3 = {
     // 90deg
-    .velocity_turn90    = 600.0f,
-    .alpha_turn90       = 33900.0f,
+    .velocity_turn90    = 1000.0f,
+    .alpha_turn90       = 22400.0f,
     .acceleration_turn  = 0.0f,
-    .dist_offset_in     = 8.0f,
-    .dist_offset_out    = 19.5f,
-    .val_offset_in      = 1000.0f,
-    .angle_turn_90      = 87.3f,
+    .dist_offset_in     = 10.0f,
+    .dist_offset_out    = 52.0f,
+    .val_offset_in      = 1100.0f,
+    .angle_turn_90      = 89.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
-    .velocity_l_turn_90 = 1000.0f,
-    .alpha_l_turn_90    = 17300.0f,
-    .angle_l_turn_90    = 86.7f,
+    .velocity_l_turn_90 = 1300.0f,
+    .alpha_l_turn_90    = 7800.0f,
+    .angle_l_turn_90    = 89.0f,
     .dist_l_turn_in_90  = 0.0f,
     .dist_l_turn_out_90 = 20.0f,
     // Large 180deg
-    .velocity_l_turn_180= 1000.0f,
-    .alpha_l_turn_180   = 16300.0f,
-    .angle_l_turn_180   = 176.5f,
-    .dist_l_turn_in_180 = 2.0f,
-    .dist_l_turn_out_180= 26.0f,
+    .velocity_l_turn_180= 1300.0f,
+    .alpha_l_turn_180   = 7500.0f,
+    .angle_l_turn_180   = 179.0f,
+    .dist_l_turn_in_180 = 0.0f,
+    .dist_l_turn_out_180= 85.0f,
     // 45deg In
     .velocity_turn45in   = 1000.0f,
     .alpha_turn45in      = 27200.0f,
@@ -184,7 +184,7 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .dist_turn135out_in  = 0.0f,
     .dist_turn135out_out = 26.0f,
     // Fan
-    .fan_power          = 600,
+    .fan_power          = 150,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
@@ -197,14 +197,14 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
 const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
     // case1 (index 0): independent (initially same as former case3)
     {
-        .acceleration_straight = 4000.0f, .acceleration_straight_dash = 4000.0f,
-        .velocity_straight = 1000.0f, .kp_wall = 0.30f,
+        .acceleration_straight = 5555.6f, .acceleration_straight_dash = 12000.0f,
+        .velocity_straight = 2000.0f, .kp_wall = 0.30f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1): independent (initially same as former case4)
     {
-        .acceleration_straight = 4000.0f, .acceleration_straight_dash = 4000.0f,
-        .velocity_straight = 1000.0f, .kp_wall = 0.30f,
+        .acceleration_straight = 5555.6f, .acceleration_straight_dash = 12000.0f,
+        .velocity_straight = 2000.0f, .kp_wall = 0.30f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
@@ -262,26 +262,26 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
 // ========================= Mode 4 =========================
 const ShortestRunModeParams_t shortestRunModeParams4 = {
     // 90deg
-    .velocity_turn90    = 800.0f,
-    .alpha_turn90       = 50200.0f,
+    .velocity_turn90    = 1200.0f,
+    .alpha_turn90       = 31150.0f,
     .acceleration_turn  = 0.0f,
-    .dist_offset_in     = 4.0f,
-    .dist_offset_out    = 20.0f,
-    .val_offset_in      = 10.0f,
-    .angle_turn_90      = 86.0f,
+    .dist_offset_in     = 10.0f,
+    .dist_offset_out    = 40.0f,
+    .val_offset_in      = 500.0f,
+    .angle_turn_90      = 89.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
-    .velocity_l_turn_90 = 1000.0f,
-    .alpha_l_turn_90    = 17300.0f,
-    .angle_l_turn_90    = 86.7f,
+    .velocity_l_turn_90 = 1700.0f,
+    .alpha_l_turn_90    = 17000.0f,
+    .angle_l_turn_90    = 89.0f,
     .dist_l_turn_in_90  = 0.0f,
-    .dist_l_turn_out_90 = 20.0f,
+    .dist_l_turn_out_90 = 94.0f,
     // Large 180deg
-    .velocity_l_turn_180= 1000.0f,
-    .alpha_l_turn_180   = 16300.0f,
-    .angle_l_turn_180   = 176.5f,
-    .dist_l_turn_in_180 = 2.0f,
-    .dist_l_turn_out_180= 26.0f,
+    .velocity_l_turn_180= 1700.0f,
+    .alpha_l_turn_180   = 12000.0f,
+    .angle_l_turn_180   = 179.0f,
+    .dist_l_turn_in_180 = 15.0f,
+    .dist_l_turn_out_180= 110.0f,
     // 45deg In
     .velocity_turn45in   = 1200.0f,
     .alpha_turn45in      = 16422.0f,
@@ -312,7 +312,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .angle_turn135out    = 135.0f,
     .dist_turn135out_in  = 2.0f,
     .dist_turn135out_out = 10.0f,
-    .fan_power          = 550,
+    .fan_power          = 250,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -325,14 +325,14 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
 const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
     // case1 (index 0)
     {
-        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1200.0f, .kp_wall = 0.4f,
+        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 15000.0f,
+        .velocity_straight = 2000.0f, .kp_wall = 0.4f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1)
     {
-        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1200.0f, .kp_wall = 0.4f,
+        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 15000.0f,
+        .velocity_straight = 2000.0f, .kp_wall = 0.4f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
