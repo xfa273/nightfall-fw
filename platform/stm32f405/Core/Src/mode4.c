@@ -260,7 +260,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 501; // L-R90
                     run();
                     drive_fan(0);
@@ -285,7 +285,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 502; // L-R180
                     run();
                     drive_fan(0);
@@ -310,7 +310,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 901; // 右45°入
                     path[2] = 1000 + 1; // 斜めS1
                     run();
@@ -336,7 +336,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 1000 + 1; // 斜めS1
                     path[2] = 904; // 左45°出
                     path[3] = 1000 + 1; // 斜めS1
@@ -363,7 +363,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 1000 + 1; // 斜めS1
                     path[2] = 701; // 右V90
                     path[3] = 1000 + 1; // 斜めS1
@@ -390,7 +390,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 903; // 右135°入
                     path[2] = 1000 + 1; // 斜めS1
                     run();
@@ -416,7 +416,7 @@ void mode4() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 1000 + 1; // 斜めS1
                     path[2] = 904; // 左135°出
                     path[3] = 1000 + 1; // 斜めS1

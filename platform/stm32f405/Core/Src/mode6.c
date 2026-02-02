@@ -109,7 +109,7 @@ void mode6() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 5; // S3
                     path[1] = 300;     // 右小回り
                     run();
                     drive_fan(0);
@@ -134,7 +134,7 @@ void mode6() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 501;     // L-R90
                     run();
                     drive_fan(0);
@@ -159,7 +159,7 @@ void mode6() {
                     log_set_profile(LOG_PROFILE_OMEGA);
                     log_start(HAL_GetTick());
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 502;     // L-R180
                     run();
                     drive_fan(0);
@@ -180,7 +180,7 @@ void mode6() {
                     const ShortestRunModeParams_t *pm3 = &shortestRunModeParams6;
                     drive_fan(pm3->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3; // S3
+                    path[0] = 200 + 4; // S3
                     path[1] = 701;     // 右45°入り
                     path[2] = 1000+1;  // 斜めS1
                     run();
@@ -194,7 +194,7 @@ void mode6() {
                     const ShortestRunModeParams_t *pm4 = &shortestRunModeParams6;
                     drive_fan(pm4->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3;  // S3
+                    path[0] = 200 + 4;  // S3
                     path[1] = 1000+1;   // 斜めS1
                     path[2] = 704;      // 左45°出
                     path[3] = 1000+1;   // 斜めS1
@@ -209,7 +209,7 @@ void mode6() {
                     const ShortestRunModeParams_t *pm5 = &shortestRunModeParams6;
                     drive_fan(pm5->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3;  // S3
+                    path[0] = 200 + 4;  // S3
                     path[1] = 1000+1;   // 斜めS1
                     path[2] = 802;      // 左V90
                     path[3] = 1000+1;   // 斜めS1
@@ -224,7 +224,7 @@ void mode6() {
                     const ShortestRunModeParams_t *pm6 = &shortestRunModeParams6;
                     drive_fan(pm6->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3;  // S3
+                    path[0] = 200 + 4;  // S3
                     path[1] = 901;      // 右135°入り
                     path[2] = 1000+1;   // 斜めS1
                     run();
@@ -238,7 +238,7 @@ void mode6() {
                     const ShortestRunModeParams_t *pm7 = &shortestRunModeParams6;
                     drive_fan(pm7->fan_power);
                     for (int i = 0; i < ROUTE_MAX_LEN; i++) path[i] = 0;
-                    path[0] = 200 + 3;  // S3
+                    path[0] = 200 + 4;  // S3
                     path[1] = 1000+1;   // 斜めS1
                     path[2] = 904;      // 左135°出
                     path[3] = 1000+1;   // 斜めS1
