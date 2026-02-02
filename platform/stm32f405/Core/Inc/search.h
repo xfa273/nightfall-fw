@@ -163,7 +163,7 @@ void search_init(void);
 
 void searchA();         // 1区画停止型探索走行
 void searchB(uint16_t); // 連続探索走行
-void adachi(void);      // 全面探索のための足立法
+void adachi(uint16_t);  // 全面探索のための足立法
 
 void adv_pos();                     // マウスの位置情報を前進
 void conf_route();                  // 次ルートの確認

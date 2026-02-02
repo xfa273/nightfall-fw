@@ -30,6 +30,8 @@ const SearchRunParams_t searchRunParams[2] = {
         // 壁切れ検出しきい値（ヒステリシス付き）
         .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
         .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+
+        .fan_duty = 0,
         
         // フラグ
         .wall_align_enable = 1  // 壁合わせ有効
@@ -63,6 +65,8 @@ const SearchRunParams_t searchRunParams[2] = {
         // 壁切れ検出しきい値（ヒステリシス付き）
         .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
         .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+
+        .fan_duty = 0,
         
         // フラグ
         .wall_align_enable = 0  // 壁合わせ無効

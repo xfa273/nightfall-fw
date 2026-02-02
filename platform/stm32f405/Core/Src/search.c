@@ -160,7 +160,7 @@ void searchB(uint16_t fan_duty) {
 // 引数：なし
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
-void adachi(void) {
+void adachi(uint16_t fan_duty) {
 
     s_no_path_exit = false;
 
@@ -168,6 +168,7 @@ void adachi(void) {
     // MF.FLAG.SEARCH_HALF_RATE = 1;
 
     drive_reset_before_run();
+    drive_fan(fan_duty);
     drive_start();
 
 

@@ -41,6 +41,8 @@ typedef struct {
     uint16_t wall_end_thr_l_high;     ///< 左壁切れ検出Highしきい値（壁あり判定）
     uint16_t wall_end_thr_l_low;      ///< 左壁切れ検出Lowしきい値（壁なし判定）
     
+    uint16_t fan_duty;                ///< 探索時ファンドューティ
+    
     // フラグ
     uint8_t wall_align_enable;        ///< 壁合わせ有効フラグ (0:無効, 1:有効)
 } SearchRunParams_t;

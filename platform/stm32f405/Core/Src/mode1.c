@@ -332,7 +332,7 @@ void mode1() {
             set_search_mode(SEARCH_MODE_GOAL);
             g_defer_save_until_end = true;  // 全面探索終了まで保存を延期
             search_end = false;
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             // ゴール到達時は保存せず、全面探索終了後に保存
 
@@ -345,7 +345,7 @@ void mode1() {
             g_suppress_first_stop_save = true;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
             search_end = false;
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             // 全面探索終了後に保存
             g_defer_save_until_end = false;
@@ -380,7 +380,7 @@ void mode1() {
             // 最初から全面探索
             set_search_mode(SEARCH_MODE_FULL);
             search_end = false;
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             led_wait();
 
@@ -410,7 +410,7 @@ void mode1() {
             g_goal_is_start = false;
             goal_x = GOAL_X; goal_y = GOAL_Y;
             search_end = false;
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             // ゴール到達後に一度だけ安全に保存
             if (save_count == 0) {
@@ -430,7 +430,7 @@ void mode1() {
             goal_x = START_X; goal_y = START_Y;
             search_end = false;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             // 後処理
             g_goal_is_start = false;
@@ -462,7 +462,7 @@ void mode1() {
             // ゴール到達で終了モード
             set_search_mode(SEARCH_MODE_GOAL);
             search_end = false;
-            adachi();
+            adachi(searchRunParams[0].fan_duty);
 
             led_wait();
 
@@ -493,7 +493,7 @@ void mode1() {
             set_search_mode(SEARCH_MODE_GOAL);
             g_defer_save_until_end = true;  // 全面探索終了まで保存を延期
             search_end = false;
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             // ゴール到達時は保存せず、全面探索終了後に保存
 
@@ -506,7 +506,7 @@ void mode1() {
             g_suppress_first_stop_save = true;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
             search_end = false;
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             // 全面探索終了後に保存
             g_defer_save_until_end = false;
@@ -542,7 +542,7 @@ void mode1() {
             // 最初から全面探索
             set_search_mode(SEARCH_MODE_FULL);
             search_end = false;
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             led_wait();
 
@@ -574,7 +574,7 @@ void mode1() {
             g_goal_is_start = false;
             goal_x = GOAL_X; goal_y = GOAL_Y;
             search_end = false;
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             // ゴール到達後に一度だけ安全に保存
             if (save_count == 0) {
@@ -594,7 +594,7 @@ void mode1() {
             goal_x = START_X; goal_y = START_Y;
             search_end = false;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             // 後処理
             g_goal_is_start = false;
@@ -628,7 +628,7 @@ void mode1() {
             // ゴール到達で終了モード
             set_search_mode(SEARCH_MODE_GOAL);
             search_end = false;
-            adachi();
+            adachi(searchRunParams[1].fan_duty);
 
             led_wait();
 
