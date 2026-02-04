@@ -388,14 +388,18 @@ void mode5() {
         }
 
         case 1:
+            g_disable_front_wall_correction = true;
+            g_disable_wall_end_correction = true;
             run_shortest(5, 1);
+            g_disable_front_wall_correction = false;
+            g_disable_wall_end_correction = false;
             break;
 
         case 2:
-            g_disable_front_wall_correction = true;  // 前壁補正無効（距離ベース走行）
             sensor_log_init();
             g_sensor_log_enabled = true;
             g_disable_front_wall_correction = true;
+            g_disable_wall_end_correction = true;
 
             uint8_t prev_wall_end_mode = wall_end_get_detect_mode();
             wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
