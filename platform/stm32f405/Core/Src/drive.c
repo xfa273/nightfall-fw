@@ -63,6 +63,20 @@ volatile uint32_t fan_last_off_ms = 0;
 
 static uint8_t s_fan_running = 0;
 
+static volatile uint8_t s_fail_turn_angle_enabled = 0;
+static volatile float s_fail_turn_angle_start_deg = 0.0f;
+static volatile float s_fail_turn_angle_limit_deg = 0.0f;
+static volatile uint16_t s_fail_turn_angle_count = 0;
+static volatile uint8_t s_fail_turn_angle_armed_for_start = 0;
+
+static inline void failsafe_turn_angle_begin(float cmd_angle_deg) {
+    s_fail_turn_angle_enabled = 1;
+    s_fail_turn_angle_start_deg = IMU_angle;
+    s_fail_turn_angle_limit_deg = fabsf(cmd_angle_deg) + (float)FAIL_TURN_ANGLE_MARGIN_DEG;
+    s_fail_turn_angle_count = 0;
+    s_fail_turn_angle_armed_for_start = 1;
+}
+
 /*==========================================================
     走行系 上位関数
 ==========================================================*/
@@ -505,7 +519,7 @@ void turn_R90(uint8_t fwall) {
 
     float dist_in = consume_search_coast_mm(dist_offset_in);
 
-    // テスト動作フラグが立っている場合は前壁補正を無効化
+    // テスト動作フラグが立っていいる場合は前壁補正を無効化
     if (fwall && !g_test_mode_run) {
         if (MF.FLAG.F_WALL) {
             driveFWall(dist_in, speed_now, velocity_turn90);
@@ -538,7 +552,7 @@ void turn_L90(uint8_t fwall) {
 
     float dist_in = consume_search_coast_mm(dist_offset_in);
 
-    // テスト動作フラグが立っている場合は前壁補正を無効化
+    // テスト動作フラグが立っていいる場合は前壁補正を無効化
     if (fwall && !g_test_mode_run) {
         if (MF.FLAG.F_WALL) {
             driveFWall(dist_in, speed_now, velocity_turn90);
@@ -1097,6 +1111,8 @@ void driveA(float dist, float spd_in, float spd_out, float dist_wallend) {
     IMU_angle = 0;
     target_angle = 0;
 
+    failsafe_turn_angle_begin(0.0f);
+
     // 走行距離カウントをリセット
     real_distance = 0;
     encoder_distance_r = 0;
@@ -1238,6 +1254,9 @@ void driveR(float angle) {
     // 回転角度カウントをリセット
     real_angle = 0;
     IMU_angle = 0;
+    target_angle = 0;
+
+    failsafe_turn_angle_begin(angle);
 
     drive_start();
 
@@ -1338,6 +1357,8 @@ void driveSR(float angle_turn, float alpha_turn) {
     IMU_angle = 0;
     target_angle = 0;
 
+    failsafe_turn_angle_begin(angle_turn);
+
     drive_start();
 
     // 角加速度と並進加速度を設定
@@ -1401,6 +1422,8 @@ void driveSL(float angle_turn, float alpha_turn) {
     real_angle = 0;
     IMU_angle = 0;
 
+    failsafe_turn_angle_begin(angle_turn);
+
     // 角加速度と並進加速度を設定
     alpha_interrupt = -alpha_turn;
     acceleration_interrupt = -acceleration_turn;
@@ -1456,6 +1479,8 @@ void driveFWall(float dist, float spd_in, float spd_out) {
     real_angle = 0;
     IMU_angle = 0;
     target_angle = 0;
+
+    failsafe_turn_angle_begin(0.0f);
 
     // 走行距離カウントをリセット
     real_distance = 0;
@@ -1516,7 +1541,6 @@ void driveFWall(float dist, float spd_in, float spd_out) {
     encoder_distance_r = 0;
     encoder_distance_l = 0;
 }
-
 
 /*==========================================================
     初期化関数・設定関数・その他関数
@@ -1587,6 +1611,12 @@ void drive_variable_reset(void) {
 
 void drive_reset_before_run(void) {
     drive_variable_reset();
+
+    s_fail_turn_angle_enabled = 0;
+    s_fail_turn_angle_start_deg = 0.0f;
+    s_fail_turn_angle_limit_deg = 0.0f;
+    s_fail_turn_angle_count = 0;
+    s_fail_turn_angle_armed_for_start = 0;
 
     MF.FLAG.OVERRIDE = 0;
     MF.FLAG.FAILED = 0;
@@ -1752,6 +1782,10 @@ void drive_brake(bool enable) {
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void drive_start(void) {
     // 統合：STBY と PWM を安全に同時運用へ
+    if (!s_fail_turn_angle_armed_for_start) {
+        failsafe_turn_angle_begin(0.0f);
+    }
+    s_fail_turn_angle_armed_for_start = 0;
     drive_enable_motor();
 }
 
@@ -1850,6 +1884,22 @@ void drive_motor(void) {
     if (fail_count_acc > FAIL_COUNT_ACC && MF.FLAG.RUNNING) {
         MF.FLAG.FAILED = 1;
         fail_count_acc = 0;
+    }
+
+    if (s_fail_turn_angle_enabled && MF.FLAG.RUNNING && !MF.FLAG.OVERRIDE) {
+        float delta = fabsf(IMU_angle - s_fail_turn_angle_start_deg);
+        if (delta > s_fail_turn_angle_limit_deg) {
+            s_fail_turn_angle_count++;
+        } else {
+            s_fail_turn_angle_count = 0;
+        }
+
+        if (s_fail_turn_angle_count > FAIL_TURN_ANGLE_COUNT) {
+            MF.FLAG.FAILED = 1;
+            s_fail_turn_angle_count = 0;
+        }
+    } else {
+        s_fail_turn_angle_count = 0;
     }
 
     // 左右モータの回転方向の指定（sign-magnitude）
@@ -2494,6 +2544,8 @@ bool driveC_wallend(float dist_max, float spd) {
     // 壁切れ検出をアーム
     wall_end_reset();
     MF.FLAG.WALL_END = 1;
+    
+    failsafe_turn_angle_begin(0.0f);
     
     drive_start();
     

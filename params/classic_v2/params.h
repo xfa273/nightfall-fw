@@ -130,6 +130,9 @@
 #define FAIL_COUNT_ACC 20    // 衝突フェイルセーフ発動までのカウント数[ms]
 #define FAIL_ACC       17000 // 衝突フェイルセーフ発動の加速度
 
+#define FAIL_TURN_ANGLE_MARGIN_DEG 90
+#define FAIL_TURN_ANGLE_COUNT 5
+
 /*動作方向関連*/
 
 #define DIR_FWD_L  GPIO_PIN_RESET // CW/CCWで前に進む出力（左）
