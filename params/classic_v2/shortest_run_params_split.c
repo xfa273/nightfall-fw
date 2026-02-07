@@ -586,11 +586,11 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
 // ========================= Mode 7 =========================
 const ShortestRunModeParams_t shortestRunModeParams7 = {
     // 90deg
-    .velocity_turn90    = 2200.0f,
-    .alpha_turn90       = 92000.0f,
+    .velocity_turn90    = 2000.0f,
+    .alpha_turn90       = 78000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 24.0f,
+    .dist_offset_out    = 27.0f,
     .val_offset_in      = 700.0f,
     .angle_turn_90      = 90.0f,
     .dist_wall_end      = 1.0f,
