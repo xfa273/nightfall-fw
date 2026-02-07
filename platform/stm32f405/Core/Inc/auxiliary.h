@@ -8,6 +8,9 @@
 #ifndef INC_AUXILIARY_H_
 #define INC_AUXILIARY_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
 #define min(A, B) ((A) > (B)) ? (B) : (A)
 #define max(A, B) ((A) > (B)) ? (A) : (B)
 

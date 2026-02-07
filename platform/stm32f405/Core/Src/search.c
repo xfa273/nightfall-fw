@@ -247,7 +247,7 @@ void adachi(uint16_t fan_duty) {
                 known_straight = false;
             }
 
-            led_write(1, 1);
+            led_write(1, 1, 0);
 
             if (known_straight && !acceled) {
                 // one_sectionA();
@@ -277,21 +277,21 @@ void adachi(uint16_t fan_duty) {
                 one_sectionU(1.0f, speed_now);
             }
 
-            led_write(0, 0);
+            led_write(0, 0, 0);
 
             break;
         //----右折----
         case 0x44:
             arm_background_replan(route[r_cnt]);
 
-            led_write(0, 1);
+            led_write(0, 1, 0);
 
             // スラローム右90°
             turn_R90(0);
 
             turn_dir(DIR_TURN_R90); // 内部位置情報でも右回転処理
 
-            led_write(0, 0);
+            led_write(0, 0, 0);
 
             break;
         //----180回転----
@@ -348,14 +348,14 @@ void adachi(uint16_t fan_duty) {
         case 0x11:
             arm_background_replan(route[r_cnt]);
 
-            led_write(1, 0);
+            led_write(1, 0, 0);
 
             // スラローム左90°
             turn_L90(0);
 
             turn_dir(DIR_TURN_L90); // 内部位置情報でも左回転処理
 
-            led_write(0, 0);
+            led_write(0, 0, 0);
 
             break;
         }
