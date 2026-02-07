@@ -513,7 +513,7 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     led_flash(2);
     get_base();
 
-    // led_write(1,1);
+    led_write(1,1,1);
 
     // ファン出力（mode共通）
     drive_fan(pm->fan_power);
@@ -525,6 +525,6 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     drive_fan(0);
     MF.FLAG.RUNNING = 0;
 
-    led_write(0,0);
-    // led_wait();
+    led_write(0,0,0);
+    led_wait();
 }

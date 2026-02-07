@@ -489,26 +489,26 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
 const ShortestRunModeParams_t shortestRunModeParams6 = {
     // 90deg
     .velocity_turn90    = 1800.0f,
-    .alpha_turn90       = 50000.0f,
+    .alpha_turn90       = 53000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 58.0f,
+    .dist_offset_out    = 12.0f,
     .val_offset_in      = 700.0f,
-    .angle_turn_90      = 91.5f,
+    .angle_turn_90      = 90.5f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
     .velocity_l_turn_90 = 2800.0f,
     .alpha_l_turn_90    = 50800.0f,
-    .angle_l_turn_90    = 90.0f,
+    .angle_l_turn_90    = 91.5f,
     .dist_l_turn_in_90  = 0.0f,
-    .dist_l_turn_out_90 = 60.0f,
+    .dist_l_turn_out_90 = 77.0f,
     // Large 180deg
     .velocity_l_turn_180= 2800.0f,
     .alpha_l_turn_180   = 30000.0f,
     .angle_l_turn_180   = 180.0f,
     .dist_l_turn_in_180 = 5.0f,
     .dist_l_turn_out_180= 120.0f,
-    .fan_power          = 350,
+    .fan_power          = 700,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -522,13 +522,13 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
     // case1 (index 0) - mode5と同じ値
     {
         .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.50f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.70f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1)
     {
         .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.50f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.70f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
@@ -587,26 +587,26 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
 const ShortestRunModeParams_t shortestRunModeParams7 = {
     // 90deg
     .velocity_turn90    = 2200.0f,
-    .alpha_turn90       = 89000.0f,
+    .alpha_turn90       = 92000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 65.0f,
+    .dist_offset_out    = 24.0f,
     .val_offset_in      = 700.0f,
-    .angle_turn_90      = 93.0f,
+    .angle_turn_90      = 90.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
     .velocity_l_turn_90 = 3300.0f,
     .alpha_l_turn_90    = 56000.0f,
-    .angle_l_turn_90    = 90.0f,
+    .angle_l_turn_90    = 91.5f,
     .dist_l_turn_in_90  = 1.0f,
-    .dist_l_turn_out_90 = 77.0f,
+    .dist_l_turn_out_90 = 75.0f,
     // Large 180deg
     .velocity_l_turn_180= 3300.0f,
     .alpha_l_turn_180   = 39000.0f,
-    .angle_l_turn_180   = 180.0f,
+    .angle_l_turn_180   = 182.0f,
     .dist_l_turn_in_180 = 1.0f,
     .dist_l_turn_out_180= 170.0f,
-    .fan_power          = 550,
+    .fan_power          = 800,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -619,12 +619,12 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
 const ShortestRunCaseParams_t shortestRunCaseParamsMode7[9] = {
     {
         .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.05f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.70f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     {
         .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.05f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.70f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     {

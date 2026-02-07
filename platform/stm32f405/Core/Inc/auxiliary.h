@@ -11,7 +11,7 @@
 #define min(A, B) ((A) > (B)) ? (B) : (A)
 #define max(A, B) ((A) > (B)) ? (A) : (B)
 
-void led_write(uint8_t, uint8_t);
+void led_write(bool, bool, bool);
 void led_flash(uint8_t);
 void led_wait(void);
 void buzzer_beep(uint16_t);

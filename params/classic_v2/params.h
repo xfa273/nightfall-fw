@@ -125,13 +125,13 @@
 
 #define KP_IMU 1.0F // IMUの角速度の補正係数
 
-#define FAIL_COUNT_LR  50    // 左右差フェイルセーフ発動までのカウント数[ms]
+#define FAIL_COUNT_LR  100    // 左右差フェイルセーフ発動までのカウント数[ms]
 #define FAIL_LR_ERROR  10000 // 左右差フェイルセーフ発動のモータ出力左右差
-#define FAIL_COUNT_ACC 20    // 衝突フェイルセーフ発動までのカウント数[ms]
+#define FAIL_COUNT_ACC 50    // 衝突フェイルセーフ発動までのカウント数[ms]
 #define FAIL_ACC       17000 // 衝突フェイルセーフ発動の加速度
 
 #define FAIL_TURN_ANGLE_MARGIN_DEG 90
-#define FAIL_TURN_ANGLE_COUNT 5
+#define FAIL_TURN_ANGLE_COUNT 3
 
 /*動作方向関連*/
 
@@ -148,8 +148,8 @@
 /*壁判断閾値*/
 #define WALL_BASE_FR  250   // 前壁右センサ    //700
 #define WALL_BASE_FL  250   // 前壁左センサ    //700
-#define WALL_BASE_R   450   // 右壁センサ  //800
-#define WALL_BASE_L   450   // 左壁センサ  //800
+#define WALL_BASE_R   250   // 右壁センサ  //800
+#define WALL_BASE_L   250   // 左壁センサ  //800
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
@@ -256,7 +256,7 @@
 ------------------------------------------------------------*/
 //----ゴール座標----
 #define GOAL_X   1 // 7
-#define GOAL_Y   2 // 7
+#define GOAL_Y   0 // 7
 #define MAZE_SIZE 16
 #define START_X   0
 #define START_Y   0

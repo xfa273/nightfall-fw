@@ -11,11 +11,11 @@
 //+++++++++++++++++++++++++++++++++++++++++++++++
 // led_write
 // LEDを点灯させる
-// 引数1：led1 …… led1のON/OFF　0なら消灯
-// 引数2：led2 …… led2のON/OFF　0なら消灯
+// 引数1：led1 …… led1のON/OFF
+// 引数2：led2 …… led2のON/OFF
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
-void led_write(uint8_t led_l, uint8_t led_r) {
+void led_write(bool led_l, bool led_r, bool led_f) {
     if (led_l) {
         HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
     } else {
@@ -26,6 +26,12 @@ void led_write(uint8_t led_l, uint8_t led_r) {
         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
     } else {
         HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
+    }
+
+    if (led_f) {
+        HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, GPIO_PIN_RESET);
     }
 }
 

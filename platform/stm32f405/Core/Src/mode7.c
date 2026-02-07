@@ -520,10 +520,8 @@ void mode7() {
 #else
 
             g_disable_front_wall_correction = true;
-            g_disable_wall_end_correction = true;
             run_shortest(7, 2);
             g_disable_front_wall_correction = false;
-            g_disable_wall_end_correction = false;
             break;
 #endif
 

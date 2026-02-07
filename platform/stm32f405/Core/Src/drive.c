@@ -1927,6 +1927,14 @@ void drive_motor(void) {
         drive_fan(0);
 
         buzzer_beep(1200);
+        led_write(0,0,0);
+
+        while(1){
+            led_write(1,1,1);
+            HAL_Delay(500);
+            led_write(0,0,0);
+            HAL_Delay(500);
+        }
 
     } else {
         // TIM2 の ARR を取得（0..ARR のカウント幅）

@@ -257,7 +257,7 @@ void test_mode() {
                     encoder_distance_r = 0;
                     encoder_distance_l = 0;
 
-                    led_write(1, 1);
+                    led_write(1, 1,0);
 
                     drive_start();
 
