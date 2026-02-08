@@ -396,24 +396,11 @@ void mode5() {
             break;
 
         case 2:
-            sensor_log_init();
-            g_sensor_log_enabled = true;
-            g_disable_front_wall_correction = true;
+            // g_disable_front_wall_correction = true;
             g_disable_wall_end_correction = true;
-
-            uint8_t prev_wall_end_mode = wall_end_get_detect_mode();
-            wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
-            wall_end_reset();
             run_shortest(5, 2);
-
-            wall_end_set_detect_mode(prev_wall_end_mode);
-            g_sensor_log_enabled = false;
-            g_disable_front_wall_correction = false;
-            printf("Sensor log recorded: %d entries\n", sensor_log_buffer.count);
-            printf("Press button for sensor log output...\n");
-            while (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) != 0) { HAL_Delay(50); }
-            sensor_log_print();
-            led_flash(3);
+            // g_disable_front_wall_correction = false;
+            g_disable_wall_end_correction = false;
             break;
 
         case 3:

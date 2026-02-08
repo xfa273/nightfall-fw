@@ -264,9 +264,9 @@ void test_mode() {
                     drive_fan(500);
 
                 } else {
-                    const uint16_t fan_power = 500;
-                    const uint32_t settle_ms = 3000;
-                    const uint32_t capture_ms = 5000;
+                    const uint16_t fan_power = 700;
+                    const uint32_t settle_ms = 2000;
+                    const uint32_t capture_ms = 3000;
 
                     drive_fan(0);
                     drive_stop();

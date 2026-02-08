@@ -134,11 +134,11 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
 const ShortestRunModeParams_t shortestRunModeParams3 = {
     // 90deg
     .velocity_turn90    = 1000.0f,
-    .alpha_turn90       = 22400.0f,
+    .alpha_turn90       = 22000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 52.0f,
-    .val_offset_in      = 1100.0f,
+    .dist_offset_out    = 34.0f,
+    .val_offset_in      = 1000.0f,
     .angle_turn_90      = 89.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
@@ -391,11 +391,11 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
 const ShortestRunModeParams_t shortestRunModeParams5 = {
     // 90deg
     .velocity_turn90    = 1400.0f,
-    .alpha_turn90       = 28000.0f,
+    .alpha_turn90       = 31000.0f,
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
-    .dist_offset_out    = 5.0f,
-    .val_offset_in      = 700.0f,
+    .dist_offset_out    = 6.0f,
+    .val_offset_in      = 740.0f,
     .angle_turn_90      = 89.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
@@ -410,7 +410,7 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .angle_l_turn_180   = 179.0f,
     .dist_l_turn_in_180 = 5.0f,
     .dist_l_turn_out_180= 80.0f,
-    .fan_power          = 300,
+    .fan_power          = 400,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -493,8 +493,8 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
     .dist_offset_out    = 12.0f,
-    .val_offset_in      = 700.0f,
-    .angle_turn_90      = 90.5f,
+    .val_offset_in      = 800.0f,
+    .angle_turn_90      = 90.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
     .velocity_l_turn_90 = 2800.0f,
@@ -591,8 +591,8 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
     .acceleration_turn  = 0.0f,
     .dist_offset_in     = 10.0f,
     .dist_offset_out    = 27.0f,
-    .val_offset_in      = 700.0f,
-    .angle_turn_90      = 90.0f,
+    .val_offset_in      = 855.0f,
+    .angle_turn_90      = 89.0f,
     .dist_wall_end      = 1.0f,
     // Large 90deg
     .velocity_l_turn_90 = 3300.0f,

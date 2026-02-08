@@ -9,13 +9,13 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_straight_dash = 0.0f,
         
         // ターンパラメータ
-        .velocity_turn90 = 1000.0f,
-        .alpha_turn90 = 22700.0f,
-        .acceleration_turn = 0.0f,
-        .dist_offset_in = 10.0f,
-        .dist_offset_out = 40.0f,
-        .val_offset_in = 730.0f,
-        .angle_turn_90 = 89.0f,
+        .velocity_turn90    = 1000.0f,
+        .alpha_turn90       = 22000.0f,
+        .acceleration_turn  = 0.0f,
+        .dist_offset_in     = 10.0f,
+        .dist_offset_out    = 34.0f,
+        .val_offset_in      = 1000.0f,
+        .angle_turn_90      = 89.0f,
         
         // 壁切れ後の追従距離
         .dist_wall_end = 90.0f,
