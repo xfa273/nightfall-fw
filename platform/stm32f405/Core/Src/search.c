@@ -168,6 +168,7 @@ void adachi(uint16_t fan_duty) {
     // MF.FLAG.SEARCH_HALF_RATE = 1;
 
     drive_reset_before_run();
+    MF.FLAG.RUNNING = 1;
     drive_fan(fan_duty);
     drive_start();
 
@@ -374,6 +375,7 @@ void adachi(uint16_t fan_duty) {
 
     half_sectionD(0); // 半区画分減速しながら走行し停止
 
+    MF.FLAG.RUNNING = 0;
     drive_stop();
 
     // 探索終了: 制御周期を通常(1kHz)へ戻す
