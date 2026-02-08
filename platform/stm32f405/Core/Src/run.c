@@ -162,7 +162,7 @@ void run(void) {
                 // メイン部分: ターン開始位置の45mm手前までターン速度まで減速
                 // バッファ部分: 最大90mmの間等速で壁切れを探しながら走行
                 
-                const float BUFFER_MAX = 90.0f;  // バッファ区間の最大距離[mm]
+                const float BUFFER_MAX = (float)DIST_HALF_SEC;  // バッファ区間の最大距離[mm]
                 
                 // メイン部分の距離（ターン開始位置の45mm手前まで）
                 float main_mm = straight_mm - WALL_END_BUFFER;
@@ -227,7 +227,7 @@ void run(void) {
                 
                 // センサログ有効時: バッファ区間でセンサ値を記録（壁切れ補正は無効のまま）
                 if (g_sensor_log_enabled && (next_is_small_turn || next_is_large_turn)) {
-                    const float BUFFER_MAX = 90.0f;
+                    const float BUFFER_MAX = (float)DIST_HALF_SEC;
                     driveC_wallend(BUFFER_MAX, v_next);  // 壁切れ検出しても補正は行わない
                 }
             }
