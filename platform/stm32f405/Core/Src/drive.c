@@ -1612,6 +1612,8 @@ void drive_variable_reset(void) {
 void drive_reset_before_run(void) {
     drive_variable_reset();
 
+    wall_end_set_detect_mode(WALL_END_DETECT_MODE_DERIV);
+
     s_fail_turn_angle_enabled = 0;
     s_fail_turn_angle_start_deg = 0.0f;
     s_fail_turn_angle_limit_deg = 0.0f;
