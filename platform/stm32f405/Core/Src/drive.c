@@ -13,6 +13,7 @@
 #include "interrupt.h"
 #include "logging.h"
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 static inline float consume_search_coast_mm(float planned_mm) {
@@ -68,13 +69,19 @@ static volatile float s_fail_turn_angle_start_deg = 0.0f;
 static volatile float s_fail_turn_angle_limit_deg = 0.0f;
 static volatile uint16_t s_fail_turn_angle_count = 0;
 static volatile uint8_t s_fail_turn_angle_armed_for_start = 0;
+static volatile int8_t s_fail_turn_angle_expected_dir = 0;
 
-static inline void failsafe_turn_angle_begin(float cmd_angle_deg) {
+static inline void failsafe_turn_angle_begin_dir(float cmd_angle_deg, int8_t expected_dir) {
     s_fail_turn_angle_enabled = 1;
     s_fail_turn_angle_start_deg = IMU_angle;
     s_fail_turn_angle_limit_deg = fabsf(cmd_angle_deg) + (float)FAIL_TURN_ANGLE_MARGIN_DEG;
     s_fail_turn_angle_count = 0;
     s_fail_turn_angle_armed_for_start = 1;
+    s_fail_turn_angle_expected_dir = expected_dir;
+}
+
+static inline void failsafe_turn_angle_begin(float cmd_angle_deg) {
+    failsafe_turn_angle_begin_dir(cmd_angle_deg, 0);
 }
 
 /*==========================================================
@@ -1256,7 +1263,7 @@ void driveR(float angle) {
     IMU_angle = 0;
     target_angle = 0;
 
-    failsafe_turn_angle_begin(angle);
+    failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? -1 : +1);
 
     drive_start();
 
@@ -1357,7 +1364,7 @@ void driveSR(float angle_turn, float alpha_turn) {
     IMU_angle = 0;
     target_angle = 0;
 
-    failsafe_turn_angle_begin(angle_turn);
+    failsafe_turn_angle_begin_dir(angle_turn, -1);
 
     drive_start();
 
@@ -1422,7 +1429,7 @@ void driveSL(float angle_turn, float alpha_turn) {
     real_angle = 0;
     IMU_angle = 0;
 
-    failsafe_turn_angle_begin(angle_turn);
+    failsafe_turn_angle_begin_dir(angle_turn, +1);
 
     // 角加速度と並進加速度を設定
     alpha_interrupt = -alpha_turn;
@@ -1619,6 +1626,7 @@ void drive_reset_before_run(void) {
     s_fail_turn_angle_limit_deg = 0.0f;
     s_fail_turn_angle_count = 0;
     s_fail_turn_angle_armed_for_start = 0;
+    s_fail_turn_angle_expected_dir = 0;
 
     MF.FLAG.OVERRIDE = 0;
     MF.FLAG.FAILED = 0;
@@ -1889,13 +1897,34 @@ void drive_motor(void) {
     }
 
     if (s_fail_turn_angle_enabled && MF.FLAG.RUNNING && !MF.FLAG.OVERRIDE) {
-        float delta = fabsf(IMU_angle - s_fail_turn_angle_start_deg);
-        if (delta > s_fail_turn_angle_limit_deg) {
+        float delta = IMU_angle - s_fail_turn_angle_start_deg;
+        float delta_abs = fabsf(delta);
+
+        bool over_limit = (delta_abs > s_fail_turn_angle_limit_deg);
+
+        // 期待する旋回方向と逆方向に一定角度以上回った場合もフェイルセーフ
+        // 例: 右旋回中（期待dir=-1）に左方向（delta>0）へ 90deg 超回ったら停止
+        if (!over_limit && s_fail_turn_angle_expected_dir != 0) {
+            const float rev_thr = (float)FAIL_TURN_ANGLE_MARGIN_DEG;
+            if (s_fail_turn_angle_expected_dir < 0) {
+                // 期待: delta < 0（右旋回）
+                if (delta > rev_thr) {
+                    over_limit = true;
+                }
+            } else {
+                // 期待: delta > 0（左旋回）
+                if (delta < -rev_thr) {
+                    over_limit = true;
+                }
+            }
+        }
+
+        if (over_limit) {
             s_fail_turn_angle_count++;
         } else {
             s_fail_turn_angle_count = 0;
         }
-
+ 
         if (s_fail_turn_angle_count > FAIL_TURN_ANGLE_COUNT) {
             MF.FLAG.FAILED = 1;
             s_fail_turn_angle_count = 0;
