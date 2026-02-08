@@ -148,8 +148,8 @@
 /*壁判断閾値*/
 #define WALL_BASE_FR  250   // 前壁右センサ    //700
 #define WALL_BASE_FL  250   // 前壁左センサ    //700
-#define WALL_BASE_R   250   // 右壁センサ  //800
-#define WALL_BASE_L   250   // 左壁センサ  //800
+#define WALL_BASE_R   240   // 右壁センサ  //800
+#define WALL_BASE_L   240   // 左壁センサ  //800
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
@@ -190,7 +190,7 @@
 // バッテリー電圧の警告しきい値（ADCカウント）
 // 例: 3000。割り込み内/起動時チェックで共通利用。
 #ifndef BAT_WARN_ADC_THR
-#define BAT_WARN_ADC_THR 1700
+#define BAT_WARN_ADC_THR 1050
 #endif
 
 /*制御閾値*/
@@ -217,8 +217,8 @@
 
 /* 前壁センサを用いた中央合わせ（非接触）用パラメータ */
 // 区画中央における前壁センサの目標値（実機で調整）
-#define F_ALIGN_TARGET_FR    1420
-#define F_ALIGN_TARGET_FL    1420
+#define F_ALIGN_TARGET_FR    1600
+#define F_ALIGN_TARGET_FL    1600
 // 小鷺田寮: FR3750 FL3790
 // 九州: FR3587 FL3587
 
