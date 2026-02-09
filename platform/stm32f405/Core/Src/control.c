@@ -407,5 +407,7 @@ void diagonal_CTRL(void) {
             // 左センサのみHigh
             diagonal_control = kp_diagonal * ad_fl;
         }
+    } else {
+        diagonal_control = 0;
     }
 }
