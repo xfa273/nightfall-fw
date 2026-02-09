@@ -290,6 +290,8 @@ void wall_PID(void) {
         if (!s_prev_ctrl) {
             wall_err_f = 0.0f;
             wall_ctrl_prev = 0.0f;
+            previous_ad_r = ad_r;
+            previous_ad_l = ad_l;
         }
 
         float wall_error = 0;
