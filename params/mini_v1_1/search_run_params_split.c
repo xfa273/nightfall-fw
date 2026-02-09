@@ -21,7 +21,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .dist_wall_end = 44.0f,
         
         // 壁制御パラメータ
-        .kp_wall = 0.12f,
+        .kp_wall = 0.10f,
         .duty_setposition = 40.0f,
         
         // センサパラメータ

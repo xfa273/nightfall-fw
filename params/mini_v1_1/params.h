@@ -37,8 +37,8 @@
 #endif
 
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
-#define ANGLE_ROTATE_90_R 89.0F // 超信地旋回の角度[deg]
-#define ANGLE_ROTATE_90_L 89.0F // 超信地旋回の角度[deg]
+#define ANGLE_ROTATE_90_R 90.0F // 超信地旋回の角度[deg]
+#define ANGLE_ROTATE_90_L 90.0F // 超信地旋回の角度[deg]
 
 #define DIFF_SETPOSITION 1500 // スラロームを位置合わせに変更する制御量
 
@@ -255,8 +255,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   5 // 7
-#define GOAL_Y   6 // 7
+#define GOAL_X   1 // 7
+#define GOAL_Y   0 // 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
@@ -270,18 +270,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 5
-#define GOAL2_Y 7
+#define GOAL2_X 0
+#define GOAL2_Y 0
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 6
-#define GOAL3_Y 6
+#define GOAL3_X 0
+#define GOAL3_Y 0
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 6
-#define GOAL4_Y 7
+#define GOAL4_X 0
+#define GOAL4_Y 0
 #endif
 
 #ifndef GOAL5_X
