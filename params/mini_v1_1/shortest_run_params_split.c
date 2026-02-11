@@ -270,7 +270,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .dist_offset_in = 4.0f,
     .dist_offset_out = 21.0f,
     .val_offset_in = 520.0f,
-    .fwall_kx = 1.1f,
+    .fwall_kx = 1.0f,
     .angle_turn_90 = 90.0f,
     .dist_wall_end = 0.0f,
     // Large 90deg
@@ -328,14 +328,14 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
 const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
     // case1 (index 0)
     {
-        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.4f,
+        .acceleration_straight = 10000.0f, .acceleration_straight_dash = 6000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.4f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1)
     {
-        .acceleration_straight = 6000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.4f,
+        .acceleration_straight = 10000.0f, .acceleration_straight_dash = 6000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.4f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
@@ -399,7 +399,7 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .dist_offset_in = 2.0f,
     .dist_offset_out = 30.0f,
     .val_offset_in = 94.0f,
-    .fwall_kx = 1.1f,
+    .fwall_kx = 0.9f,
     .angle_turn_90 = 87.5f,
     .dist_wall_end = 0.0f,
     // Large 90deg
@@ -428,13 +428,13 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
     // case1 (index 0)
     {
         .acceleration_straight = 12000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.5f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1)
     {
         .acceleration_straight = 12000.0f, .acceleration_straight_dash = 6000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.5f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)

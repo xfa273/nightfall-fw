@@ -112,7 +112,7 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 0.8F  // 角速度制御のP項（ファンOFF）
+#define KP_OMEGA_FAN_OFF 0.7F  // 角速度制御のP項（ファンOFF）
 #endif
 #ifndef KI_OMEGA_FAN_OFF
 #define KI_OMEGA_FAN_OFF 0.01F // 角速度制御のI項（ファンOFF）
@@ -256,7 +256,7 @@
 ------------------------------------------------------------*/
 //----ゴール座標----
 #define GOAL_X   1 // 7
-#define GOAL_Y   0 // 7
+#define GOAL_Y   5 // 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
@@ -270,43 +270,43 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 1
+#define GOAL2_Y 6
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 1
+#define GOAL3_Y 7
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 2
+#define GOAL4_Y 5
 #endif
 
 #ifndef GOAL5_X
-#define GOAL5_X 0
-#define GOAL5_Y 0
+#define GOAL5_X 2
+#define GOAL5_Y 6
 #endif
 
 #ifndef GOAL6_X
-#define GOAL6_X 0
-#define GOAL6_Y 0
+#define GOAL6_X 2
+#define GOAL6_Y 7
 #endif
 
 #ifndef GOAL7_X
-#define GOAL7_X 0
-#define GOAL7_Y 0
+#define GOAL7_X 3
+#define GOAL7_Y 5
 #endif
 
 #ifndef GOAL8_X
-#define GOAL8_X 0
-#define GOAL8_Y 0
+#define GOAL8_X 3
+#define GOAL8_Y 6
 #endif
 
 #ifndef GOAL9_X
-#define GOAL9_X 0
-#define GOAL9_Y 0
+#define GOAL9_X 3
+#define GOAL9_Y 7
 #endif
 
 #endif /* INC_PARAMS_H_ */

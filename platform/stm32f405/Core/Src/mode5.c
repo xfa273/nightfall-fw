@@ -397,10 +397,10 @@ void mode5() {
             break;
 
         case 2:
-            g_disable_front_wall_correction = true;
+            // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
             run_shortest(5, 2);
-            g_disable_front_wall_correction = false;
+            // g_disable_front_wall_correction = false;
             // g_disable_wall_end_correction = false;
             break;
 
