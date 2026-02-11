@@ -55,7 +55,7 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .dist_turn135out_in  = 0.0f,
     .dist_turn135out_out = 12.0f,
     // Fan
-    .fan_power          = 1000,
+    .fan_power          = 0,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,

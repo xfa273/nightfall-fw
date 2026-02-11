@@ -178,7 +178,7 @@
 #define WALL_END_DERIV_FALL_THR 200
 
 #ifndef KUSHI_FRONT_ASYM_OMEGA
-#define KUSHI_FRONT_ASYM_OMEGA 0.0F
+#define KUSHI_FRONT_ASYM_OMEGA 10.0F
 #endif
 
 // 前壁補正：未検知時の最大延長距離[mm]
