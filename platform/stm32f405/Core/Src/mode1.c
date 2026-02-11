@@ -46,6 +46,7 @@ static void apply_search_params(int case_index)
 
     // センサパラメータ
     sensor_kx = params->sensor_kx;
+    fwall_kx = params->fwall_kx;
 
     // 壁切れ検出しきい値（ヒステリシス付き）
     wall_end_thr_r_high = params->wall_end_thr_r_high;

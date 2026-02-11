@@ -18,6 +18,7 @@ static void apply_case_params_mode5_idx(int idx) {
     velocity_straight = c->velocity_straight;
     // mode5 のケースでは対角直線パラメータは未使用
     kp_wall = c->kp_wall;
+    fwall_kx = shortestRunModeParams5.fwall_kx;
 }
 
 static void apply_turn_normal_mode5(void) {
@@ -396,10 +397,10 @@ void mode5() {
             break;
 
         case 2:
-            g_disable_front_wall_correction = true;
+            // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
             run_shortest(5, 2);
-            g_disable_front_wall_correction = false;
+            // g_disable_front_wall_correction = false;
             // g_disable_wall_end_correction = false;
             break;
 

@@ -257,9 +257,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 
         // 前壁補正の判定（1kHz維持）
         // g_disable_front_wall_correctionがtrueの場合は常に0（前壁補正無効）
+        float kx = fwall_kx;
+        if (kx < 0.3f || kx > 2.0f) {
+            kx = 1.1f;
+        }
         if (g_disable_front_wall_correction) {
             MF.FLAG.F_WALL = 0;
-        } else if (ad_fr > WALL_BASE_FR * 1.1 && ad_fl > WALL_BASE_FL * 1.1) {
+        } else if (ad_fr > WALL_BASE_FR * kx && ad_fl > WALL_BASE_FL * kx) {
             MF.FLAG.F_WALL = 1;
         } else {
             MF.FLAG.F_WALL = 0;
