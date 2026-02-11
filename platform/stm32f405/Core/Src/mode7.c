@@ -26,6 +26,7 @@ static void apply_case_params_mode7_idx(int idx) {
     acceleration_d_straight_dash = pc->acceleration_d_straight_dash;
     velocity_d_straight          = pc->velocity_d_straight;
     kp_diagonal                  = pc->kp_diagonal;
+    fwall_kx = shortestRunModeParams7.fwall_kx;
 
     velocity_turn90    = pm->velocity_turn90;
     alpha_turn90       = pm->alpha_turn90;

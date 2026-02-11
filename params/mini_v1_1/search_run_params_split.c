@@ -26,6 +26,7 @@ const SearchRunParams_t searchRunParams[2] = {
         
         // センサパラメータ
         .sensor_kx = 1.0f,
+        .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
         .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
@@ -61,6 +62,7 @@ const SearchRunParams_t searchRunParams[2] = {
         
         // センサパラメータ
         .sensor_kx = 1.0f,
+        .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
         .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,

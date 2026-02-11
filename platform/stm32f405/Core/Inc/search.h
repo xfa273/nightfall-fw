@@ -133,6 +133,7 @@ extern uint8_t save_count;
 
 /*壁判定用のセンサ補正係数*/
 extern float sensor_kx;
+extern float fwall_kx;
 
 /* 探索モード */
 extern search_mode_t g_search_mode;

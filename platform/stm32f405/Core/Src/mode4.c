@@ -21,6 +21,7 @@ static void apply_case_params_mode4_idx(int idx) {
     velocity_d_straight = c->velocity_d_straight;
     kp_wall = c->kp_wall;
     kp_diagonal = c->kp_diagonal;
+    fwall_kx = shortestRunModeParams4.fwall_kx;
 }
 
 static void apply_turn_normal_mode4(void) {

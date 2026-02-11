@@ -34,6 +34,7 @@ typedef struct {
     
     // センサパラメータ
     float sensor_kx;                  ///< 壁判断しきい値の係数
+    float fwall_kx;                   ///< 前壁検出係数
     
     // 壁切れ検出しきい値（速度依存、ヒステリシス付き）
     uint16_t wall_end_thr_r_high;     ///< 右壁切れ検出Highしきい値（壁あり判定）
