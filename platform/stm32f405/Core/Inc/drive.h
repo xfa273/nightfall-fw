@@ -173,6 +173,9 @@ volatile float diagonal_control_thr;
 volatile float kp_diagonal;
 volatile float diagonal_control;
 
+/*櫛対策（前壁センサ左右非対称補正）*/
+volatile float kushi_control;
+
 /*フェイルセーフ用*/
 volatile uint16_t fail_count_lr;
 volatile uint16_t fail_count_acc;
@@ -190,13 +193,11 @@ volatile uint16_t wall_end_count;
 //  並進用
 extern volatile float velocity_straight;     // 直線の速度[mm/s]
 extern volatile float acceleration_straight; // 直線の加速度[mm/s^2]
-extern volatile float
-    acceleration_straight_dash; // 直線の半区画当たりの加速量[mm/s]
+extern volatile float acceleration_straight_dash; // 直線の半区画当たりの加速量[mm/s]
 extern volatile float accel_switch_velocity;     // 加速度切り替え速度[mm/s]
 extern volatile float velocity_d_straight;     // 斜め直線の速度[mm/s]
 extern volatile float acceleration_d_straight; // 斜め直線の加速度[mm/s^2]
-extern volatile float
-    acceleration_d_straight_dash; // 斜めs直線の半区画当たりの加速量[mm/s]
+extern volatile float acceleration_d_straight_dash; // 斜めs直線の半区画当たりの加速量[mm/s]
 extern volatile float acceleration_turn; //  ターンの減速度[mm/s^2]
 extern volatile float thr_f_wall; // 探索中に停止するための前壁閾値
 extern volatile float duty_setposition; // 壁当てのDuty[%]
@@ -219,15 +220,12 @@ extern volatile float velocity_l_turn_90; // 90°大回りターンの速度[mm/
 extern volatile float alpha_l_turn_90; // 90°大回りターンの角加速度[deg/sec^2]
 extern volatile float angle_l_turn_90; // 90°大回りターンの旋回角度[deg]
 extern volatile float dist_l_turn_in_90;  // 90°大回りターンの入オフセット距離[mm]
-extern volatile float
-    dist_l_turn_out_90; // 90°大回りターンの出オフセット距離[mm]
+extern volatile float dist_l_turn_out_90; // 90°大回りターンの出オフセット距離[mm]
 extern volatile float velocity_l_turn_180; // 180°大回りターンの速度[mm/s]
 extern volatile float alpha_l_turn_180; // 180°大回りターンの角加速度[deg/sec^2]
 extern volatile float angle_l_turn_180; // 180°大回りターンの旋回角度[deg]
-extern volatile float
-    dist_l_turn_in_180; // 180°大回りターンの入オフセット距離[mm]
-extern volatile float
-    dist_l_turn_out_180; // 180°大回りターンの出オフセット距離[mm]
+extern volatile float dist_l_turn_in_180;  // 180°大回りターンの入オフセット距離[mm]
+extern volatile float dist_l_turn_out_180; // 180°大回りターンの出オフセット距離[mm]
 
 // 斜め45度用
 extern volatile float velocity_turn45in; // 45°ターン入りの速度[mm/s]
@@ -252,15 +250,12 @@ extern volatile float dist_turnV90_out; // V90°ターンの出オフセット�
 extern volatile float velocity_turn135in; // 135°ターン入りの速度[mm/s]
 extern volatile float alpha_turn135in; // 135°ターン入りの角加速度[deg/sec^2]
 extern volatile float angle_turn135in; // 135°ターン入りの旋回角度[deg]
-extern volatile float
-    dist_turn135in_in; // 135°ターン入りの入りオフセット距離[mm]
-extern volatile float
-    dist_turn135in_out; // 135°ターン入りの出オフセット距離[mm]
+extern volatile float dist_turn135in_in; // 135°ターン入りの入りオフセット距離[mm]
+extern volatile float dist_turn135in_out; // 135°ターン入りの出オフセット距離[mm]
 extern volatile float velocity_turn135out; // 135°ターン出の速度[mm/s]
 extern volatile float alpha_turn135out; // 135°ターン出の角加速度[deg/sec^2]
 extern volatile float angle_turn135out; // 135°ターン出の旋回角度[deg]
-extern volatile float
-    dist_turn135out_in; // 135°ターン出の入りオフセット距離[mm]
+extern volatile float dist_turn135out_in; // 135°ターン出の入りオフセット距離[mm]
 extern volatile float dist_turn135out_out; // 135°ターン出の出オフセット距離[mm]
 
 /*現在の値を保持する用*/
@@ -321,16 +316,12 @@ extern volatile float out_rotate;     // 回転方向の出力
 /*エンコーダからの速度取得用*/
 extern volatile float encoder_count_r; // エンコーダのパルスカウント（右）
 extern volatile float encoder_count_l; // エンコーダのパルスカウント（左）
-extern volatile float
-    previous_encoder_count_r; // 1ループ前のエンコーダのパルスカウント（右）
-extern volatile float
-    previous_encoder_count_l; // 1ループ前のエンコーダのパルスカウント（左）
+extern volatile float previous_encoder_count_r; // 1ループ前のエンコーダのパルスカウント（右）
+extern volatile float previous_encoder_count_l; // 1ループ前のエンコーダのパルスカウント（左）
 extern volatile float encoder_speed_r; // エンコーダから取得した速度（右）[mm/s]
 extern volatile float encoder_speed_l; // エンコーダから取得した速度（左）[mm/s]
-extern volatile float
-    encoder_distance_r; // エンコーダから取得した距離（右）[mm]
-extern volatile float
-    encoder_distance_l; // エンコーダから取得した距離（左）[mm]
+extern volatile float encoder_distance_r; // エンコーダから取得した距離（右）[mm]
+extern volatile float encoder_distance_l; // エンコーダから取得した距離（左）[mm]
 
 /*IMUからの角度取得用*/
 extern volatile float IMU_angle; // IMUから取得した角度[deg]
@@ -347,6 +338,9 @@ extern volatile uint32_t fan_last_off_ms; // 最後にファンを停止した�
 extern volatile float diagonal_control_thr;
 extern volatile float kp_diagonal;
 extern volatile float diagonal_control;
+
+/*櫛対策（前壁センサ左右非対称補正）*/
+extern volatile float kushi_control;
 
 /*フェイルセーフ用*/
 extern volatile uint16_t fail_count_lr;

@@ -51,5 +51,6 @@ void angle_PID(void);
 
 void wall_PID(void);
 void diagonal_CTRL(void);
+void kushi_front_asym_CTRL(void);
 
 #endif /* INC_CONTROL_H_ */

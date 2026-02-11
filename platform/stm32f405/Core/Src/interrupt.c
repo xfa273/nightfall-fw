@@ -294,6 +294,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             // 壁制御
             wall_PID();
             diagonal_CTRL();
+            kushi_front_asym_CTRL();
 
             // 目標値の積算計算
             calculate_translation();

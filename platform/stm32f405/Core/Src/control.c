@@ -205,7 +205,7 @@ void omega_PID(void) {
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_ref = omega_interrupt + omega_outer;
 
-    omega_error = omega_ref - real_omega + wall_control + diagonal_control;
+    omega_error = omega_ref - real_omega + wall_control + diagonal_control + kushi_control;
 
     float o_i_next = omega_integral + omega_error;
 
@@ -408,5 +408,86 @@ void diagonal_CTRL(void) {
         }
     } else {
         diagonal_control = 0;
+    }
+}
+
+void kushi_front_asym_CTRL(void) {
+    static int8_t s_dir = 0;
+    static uint8_t s_cnt = 0;
+
+    // デフォルトOFF（安全側）
+    kushi_control = 0.0f;
+
+    if ((KUSHI_FRONT_ASYM_OMEGA == 0.0F) || g_test_mode_run) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    // 直進中のみ
+    const bool is_straight = (!MF.FLAG.SLALOM_R && !MF.FLAG.SLALOM_L);
+    if (!is_straight) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    // CTRLがONのときのみ（ターン前後の壁制御OFF区間では動かさない）
+    if (!MF.FLAG.CTRL) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    // 横壁なし判定（櫛区間の前提）
+    float kx = sensor_kx;
+    if (kx < 0.3f || kx > 2.0f) {
+        kx = 1.0f;
+    }
+    const bool no_side_walls =
+        (ad_r < (uint16_t)(WALL_BASE_R * kx)) &&
+        (ad_l < (uint16_t)(WALL_BASE_L * kx));
+    if (!no_side_walls) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    // 前壁左右の片側のみ反応（閾値は前壁補正と同じスケール）
+    float kf = fwall_kx;
+    if (kf < 0.3f || kf > 2.0f) {
+        kf = 1.1f;
+    }
+    const bool fr_on = (ad_fr > (uint16_t)(WALL_BASE_FR * kf));
+    const bool fl_on = (ad_fl > (uint16_t)(WALL_BASE_FL * kf));
+
+    int8_t dir = 0;
+    if (fr_on && !fl_on) {
+        dir = -1; // 右側が当たりそう -> 左へ
+    } else if (fl_on && !fr_on) {
+        dir = +1; // 左側が当たりそう -> 右へ
+    } else {
+        dir = 0;
+    }
+
+    if (dir == 0) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    if (dir != s_dir) {
+        s_dir = dir;
+        s_cnt = 1;
+        return;
+    }
+
+    if (s_cnt < 255u) {
+        s_cnt++;
+    }
+
+    // 2ms以上連続で同じ片側反応なら有効化
+    if (s_cnt >= 2u) {
+        kushi_control = (float)s_dir * (float)KUSHI_FRONT_ASYM_OMEGA;
     }
 }
