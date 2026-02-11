@@ -125,13 +125,13 @@
 
 #define KP_IMU 1.0F // IMUの角速度の補正係数
 
-#define FAIL_COUNT_LR  50    // 左右差フェイルセーフ発動までのカウント数[ms]
-#define FAIL_LR_ERROR  10000 // 左右差フェイルセーフ発動のモータ出力左右差
+#define FAIL_COUNT_LR  10    // 左右差フェイルセーフ発動までのカウント数[ms]
+#define FAIL_LR_ERROR  3000 // 左右差フェイルセーフ発動のモータ出力左右差
 #define FAIL_COUNT_ACC 20    // 衝突フェイルセーフ発動までのカウント数[ms]
 #define FAIL_ACC       17000 // 衝突フェイルセーフ発動の加速度
 
 #define FAIL_TURN_ANGLE_MARGIN_DEG 90
-#define FAIL_TURN_ANGLE_COUNT 5
+#define FAIL_TURN_ANGLE_COUNT 2
 
 /*動作方向関連*/
 
@@ -148,8 +148,8 @@
 /*壁判断閾値*/
 #define WALL_BASE_FR  160   // 前壁右センサ    //700
 #define WALL_BASE_FL  160   // 前壁左センサ    //700
-#define WALL_BASE_R   250   // 右壁センサ  //800
-#define WALL_BASE_L   250   // 左壁センサ  //800
+#define WALL_BASE_R   200   // 右壁センサ  //800
+#define WALL_BASE_L   200   // 左壁センサ  //800
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
