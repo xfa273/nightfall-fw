@@ -201,8 +201,7 @@ void distance_PID(void) {
 
 /*角速度のPID制御*/
 void omega_PID(void) {
-    const int angle_outer_enabled = (CTRL_ENABLE_ANGLE_OUTER_LOOP &&
-                                     ((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)));
+    const int angle_outer_enabled = (((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)) ? 1 : 0);
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_ref = omega_interrupt + omega_outer;
 
