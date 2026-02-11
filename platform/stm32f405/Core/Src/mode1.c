@@ -66,7 +66,7 @@ static void apply_search_params(int case_index)
 //  with_print!=0 でFR/FLのAD値と距離[mm]を定期表示
 //  PUSHボタン押下で終了
 //============================================================
-static void front_follow_continuous(int with_print)
+static __attribute__((unused)) void front_follow_continuous(int with_print)
 {
     printf("[FrontFollow] match_position continuous. Press PUSH to exit.\n");
     led_flash(3);
