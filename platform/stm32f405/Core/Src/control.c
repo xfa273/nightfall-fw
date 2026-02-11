@@ -440,14 +440,6 @@ void kushi_front_asym_CTRL(void) {
     if (kx < 0.3f || kx > 2.0f) {
         kx = 1.0f;
     }
-    const bool no_side_walls =
-        (ad_r < (uint16_t)(WALL_BASE_R * kx)) &&
-        (ad_l < (uint16_t)(WALL_BASE_L * kx));
-    if (!no_side_walls) {
-        s_dir = 0;
-        s_cnt = 0;
-        return;
-    }
 
     float kf = fwall_kx;
     if (kf < 0.3f || kf > 2.0f) {
@@ -466,6 +458,15 @@ void kushi_front_asym_CTRL(void) {
     }
 
     if (dir == 0) {
+        s_dir = 0;
+        s_cnt = 0;
+        return;
+    }
+
+    const uint16_t thr_r = (uint16_t)(WALL_BASE_R * kx);
+    const uint16_t thr_l = (uint16_t)(WALL_BASE_L * kx);
+    const bool opposite_side_clear = (dir < 0) ? (ad_l < thr_l) : (ad_r < thr_r);
+    if (!opposite_side_clear) {
         s_dir = 0;
         s_cnt = 0;
         return;
