@@ -168,6 +168,11 @@ volatile float previous_ad_l;
 volatile float kp_wall; // 壁制御ゲイン
 volatile float latest_wall_error; // 壁偏差（探索側トリガ用）
 
+/*斜め制御用*/
+volatile float diagonal_control_thr;
+volatile float kp_diagonal;
+volatile float diagonal_control;
+
 volatile float kushi_control;
 
 /*フェイルセーフ用*/
@@ -327,6 +332,11 @@ extern volatile float previous_ad_l;
 extern volatile float kp_wall; // 壁制御ゲイン
 extern volatile float latest_wall_error; // 壁偏差（探索側トリガ用）
 extern volatile uint32_t fan_last_off_ms; // 最後にファンを停止した時刻（ms）
+
+/*斜め制御用*/
+extern volatile float diagonal_control_thr;
+extern volatile float kp_diagonal;
+extern volatile float diagonal_control;
 
 extern volatile float kushi_control;
 
