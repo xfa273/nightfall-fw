@@ -415,7 +415,6 @@ void kushi_front_asym_CTRL(void) {
     static int8_t s_dir = 0;
     static uint8_t s_cnt = 0;
 
-    // デフォルトOFF（安全側）
     kushi_control = 0.0f;
 
     if ((KUSHI_FRONT_ASYM_OMEGA == 0.0F) || g_test_mode_run) {
@@ -424,7 +423,6 @@ void kushi_front_asym_CTRL(void) {
         return;
     }
 
-    // 直進中のみ
     const bool is_straight = (!MF.FLAG.SLALOM_R && !MF.FLAG.SLALOM_L);
     if (!is_straight) {
         s_dir = 0;
@@ -432,14 +430,12 @@ void kushi_front_asym_CTRL(void) {
         return;
     }
 
-    // CTRLがONのときのみ（ターン前後の壁制御OFF区間では動かさない）
     if (!MF.FLAG.CTRL) {
         s_dir = 0;
         s_cnt = 0;
         return;
     }
 
-    // 横壁なし判定（櫛区間の前提）
     float kx = sensor_kx;
     if (kx < 0.3f || kx > 2.0f) {
         kx = 1.0f;
@@ -453,7 +449,6 @@ void kushi_front_asym_CTRL(void) {
         return;
     }
 
-    // 前壁左右の片側のみ反応（閾値は前壁補正と同じスケール）
     float kf = fwall_kx;
     if (kf < 0.3f || kf > 2.0f) {
         kf = 1.1f;
@@ -463,9 +458,9 @@ void kushi_front_asym_CTRL(void) {
 
     int8_t dir = 0;
     if (fr_on && !fl_on) {
-        dir = -1; // 右側が当たりそう -> 左へ
+        dir = -1;
     } else if (fl_on && !fr_on) {
-        dir = +1; // 左側が当たりそう -> 右へ
+        dir = +1;
     } else {
         dir = 0;
     }
@@ -486,7 +481,6 @@ void kushi_front_asym_CTRL(void) {
         s_cnt++;
     }
 
-    // 2ms以上連続で同じ片側反応なら有効化
     if (s_cnt >= 2u) {
         kushi_control = (float)s_dir * (float)KUSHI_FRONT_ASYM_OMEGA;
     }
