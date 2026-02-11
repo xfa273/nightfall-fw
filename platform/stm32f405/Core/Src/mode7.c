@@ -104,7 +104,7 @@ static void apply_turn_large180_mode7(void) {
     dist_l_turn_out_180  = pm->dist_l_turn_out_180;
 }
 
-static void apply_turn_d45in_mode7(void) {
+static __attribute__((unused)) void apply_turn_d45in_mode7(void) {
     const ShortestRunModeParams_t *m = &shortestRunModeParams7;
     velocity_turn45in = m->velocity_turn45in;
     alpha_turn45in = m->alpha_turn45in;
@@ -113,7 +113,7 @@ static void apply_turn_d45in_mode7(void) {
     dist_turn45in_out = m->dist_turn45in_out;
 }
 
-static void apply_turn_d45out_mode7(void) {
+static __attribute__((unused)) void apply_turn_d45out_mode7(void) {
     const ShortestRunModeParams_t *m = &shortestRunModeParams7;
     velocity_turn45out = m->velocity_turn45out;
     alpha_turn45out = m->alpha_turn45out;
@@ -122,7 +122,7 @@ static void apply_turn_d45out_mode7(void) {
     dist_turn45out_out = m->dist_turn45out_out;
 }
 
-static void apply_turn_v90_mode7(void) {
+static __attribute__((unused)) void apply_turn_v90_mode7(void) {
     const ShortestRunModeParams_t *m = &shortestRunModeParams7;
     velocity_turnV90 = m->velocity_turnV90;
     alpha_turnV90 = m->alpha_turnV90;
@@ -131,7 +131,7 @@ static void apply_turn_v90_mode7(void) {
     dist_turnV90_out = m->dist_turnV90_out;
 }
 
-static void apply_turn_d135in_mode7(void) {
+static __attribute__((unused)) void apply_turn_d135in_mode7(void) {
     const ShortestRunModeParams_t *m = &shortestRunModeParams7;
     velocity_turn135in = m->velocity_turn135in;
     alpha_turn135in = m->alpha_turn135in;
@@ -140,7 +140,7 @@ static void apply_turn_d135in_mode7(void) {
     dist_turn135in_out = m->dist_turn135in_out;
 }
 
-static void apply_turn_d135out_mode7(void) {
+static __attribute__((unused)) void apply_turn_d135out_mode7(void) {
     const ShortestRunModeParams_t *m = &shortestRunModeParams7;
     velocity_turn135out = m->velocity_turn135out;
     alpha_turn135out = m->alpha_turn135out;
