@@ -97,7 +97,7 @@
 
 #define SUCTION_FAN_STABILIZE_DELAY_MS 1000
 
-#define KP_ANGLE 2.5F // 角度制御のP項
+#define KP_ANGLE 0.0F // 角度制御のP項
 #define KI_ANGLE 0.0F // 角度制御のI項
 #define KD_ANGLE 0.0F // 角度制御のD項
 

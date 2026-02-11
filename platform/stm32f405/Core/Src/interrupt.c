@@ -300,9 +300,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             velocity_PID();
 
             // 角度→角速度のPID
-            #if CTRL_ENABLE_ANGLE_OUTER_LOOP
             angle_PID();
-            #endif
             omega_PID();
 
             // モータ出力更新
