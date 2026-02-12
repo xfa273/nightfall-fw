@@ -146,10 +146,10 @@
     センサ系
 ------------------------------------------------------------*/
 /*壁判断閾値*/
-#define WALL_BASE_FR  160   // 前壁右センサ    //700
-#define WALL_BASE_FL  160   // 前壁左センサ    //700
-#define WALL_BASE_R   200   // 右壁センサ  //800
-#define WALL_BASE_L   200   // 左壁センサ  //800
+#define WALL_BASE_FR  160   // 前壁右センサ    //160
+#define WALL_BASE_FL  160   // 前壁左センサ    //160
+#define WALL_BASE_R   200   // 右壁センサ  //200
+#define WALL_BASE_L   200   // 左壁センサ  //200
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
@@ -178,12 +178,28 @@
 #define WALL_END_DERIV_FALL_THR 200
 
 #ifndef KUSHI_FRONT_ASYM_OMEGA
-#define KUSHI_FRONT_ASYM_OMEGA 10.0F
+#define KUSHI_FRONT_ASYM_OMEGA 500.0F
+#endif
+
+#ifndef KUSHI_FRONT_ASYM_ANGLE_STEP_DEG
+#define KUSHI_FRONT_ASYM_ANGLE_STEP_DEG 0.0F
+#endif
+#ifndef KUSHI_FRONT_ASYM_ANGLE_KP
+#define KUSHI_FRONT_ASYM_ANGLE_KP 0.0F
+#endif
+#ifndef KUSHI_FRONT_ASYM_ANGLE_OMEGA_MAX
+#define KUSHI_FRONT_ASYM_ANGLE_OMEGA_MAX 0.0F
+#endif
+#ifndef KUSHI_FRONT_ASYM_ANGLE_BIAS_MAX_DEG
+#define KUSHI_FRONT_ASYM_ANGLE_BIAS_MAX_DEG 0.0F
+#endif
+#ifndef KUSHI_FRONT_ASYM_EVENT_HOLDOFF_MS
+#define KUSHI_FRONT_ASYM_EVENT_HOLDOFF_MS 0
 #endif
 
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
-#define WALL_END_EXTEND_MAX_MM  0.0F
+#define WALL_END_EXTEND_MAX_MM  40.0F
 #endif
 
 #define WALL_CTRL_BASE_L 1941 // 壁制御の基準値（左） 2135

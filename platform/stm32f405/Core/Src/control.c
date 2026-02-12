@@ -414,12 +414,16 @@ void diagonal_CTRL(void) {
 void kushi_front_asym_CTRL(void) {
     static int8_t s_dir = 0;
     static uint8_t s_cnt = 0;
+    static float s_remain_deg = 0.0f;
+    static uint16_t s_holdoff_ms = 0;
 
     kushi_control = 0.0f;
 
     if ((KUSHI_FRONT_ASYM_OMEGA == 0.0F) || g_test_mode_run) {
         s_dir = 0;
         s_cnt = 0;
+        s_remain_deg = 0.0f;
+        s_holdoff_ms = 0;
         return;
     }
 
@@ -427,13 +431,21 @@ void kushi_front_asym_CTRL(void) {
     if (!is_straight) {
         s_dir = 0;
         s_cnt = 0;
+        s_remain_deg = 0.0f;
+        s_holdoff_ms = 0;
         return;
     }
 
     if (!MF.FLAG.CTRL) {
         s_dir = 0;
         s_cnt = 0;
+        s_remain_deg = 0.0f;
+        s_holdoff_ms = 0;
         return;
+    }
+
+    if (s_holdoff_ms > 0u) {
+        s_holdoff_ms--;
     }
 
     float kx = sensor_kx;
@@ -482,7 +494,41 @@ void kushi_front_asym_CTRL(void) {
         s_cnt++;
     }
 
-    if (s_cnt >= 2u) {
-        kushi_control = (float)s_dir * (float)KUSHI_FRONT_ASYM_OMEGA;
+    const int angle_step_enabled =
+        ((KUSHI_FRONT_ASYM_ANGLE_STEP_DEG != 0.0F) &&
+         (KUSHI_FRONT_ASYM_ANGLE_KP != 0.0F) &&
+         (KUSHI_FRONT_ASYM_ANGLE_OMEGA_MAX != 0.0F)) ? 1 : 0;
+
+    if (angle_step_enabled) {
+        if ((s_cnt == 2u) && (s_holdoff_ms == 0u)) {
+            s_remain_deg += (float)s_dir * (float)KUSHI_FRONT_ASYM_ANGLE_STEP_DEG;
+            if (KUSHI_FRONT_ASYM_ANGLE_BIAS_MAX_DEG > 0.0F) {
+                const float lim = (float)KUSHI_FRONT_ASYM_ANGLE_BIAS_MAX_DEG;
+                if (s_remain_deg >  lim) s_remain_deg =  lim;
+                if (s_remain_deg < -lim) s_remain_deg = -lim;
+            }
+            if (KUSHI_FRONT_ASYM_EVENT_HOLDOFF_MS > 0) {
+                s_holdoff_ms = (uint16_t)KUSHI_FRONT_ASYM_EVENT_HOLDOFF_MS;
+            }
+        }
+
+        const float eps = 0.05f;
+        if ((s_remain_deg > -eps) && (s_remain_deg < eps)) {
+            s_remain_deg = 0.0f;
+        }
+
+        if (s_remain_deg != 0.0f) {
+            float omega_cmd = (float)KUSHI_FRONT_ASYM_ANGLE_KP * s_remain_deg;
+            const float o_lim = (float)KUSHI_FRONT_ASYM_ANGLE_OMEGA_MAX;
+            if (omega_cmd >  o_lim) omega_cmd =  o_lim;
+            if (omega_cmd < -o_lim) omega_cmd = -o_lim;
+            kushi_control = omega_cmd;
+            s_remain_deg -= real_omega * g_ctrl_dt;
+        }
+
+    } else {
+        if (s_cnt >= 2u) {
+            kushi_control = (float)s_dir * (float)KUSHI_FRONT_ASYM_OMEGA;
+        }
     }
 }
