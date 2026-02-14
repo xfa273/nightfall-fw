@@ -57,11 +57,14 @@ void run(void) {
                 v_next = 0.0f; // 次なし（終端）
             }
 
-            // ゴール停止時（次コード=0）は、最後に half_sectionD(0) で確実に止めるため
-            // 直前直進の終端速度をわずかに残す
+            // ゴール停止時（次コード=0）は、最後の half_sectionD(0) で
+            // 通常の直線減速(acceleration_straight)と同等の減速度になるよう終端速度を設定
             if (next_code == 0) {
-                const float GOAL_ENTRY_SPEED = 120.0f; // [mm/s]
-                v_next = GOAL_ENTRY_SPEED;
+                float goal_entry_speed = sqrtf(fmaxf(0.0f, 2.0f * acceleration_straight * (float)DIST_HALF_SEC));
+                if (goal_entry_speed > velocity_straight) {
+                    goal_entry_speed = velocity_straight;
+                }
+                v_next = goal_entry_speed;
             }
 
             // 直線の加減速区画を計算（二段階加速対応）
