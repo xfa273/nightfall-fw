@@ -14,7 +14,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
         .dist_offset_out = 18.0f,
-        .val_offset_in = 1000.0f,
+        .val_offset_in = 650.0f,
         .angle_turn_90 = 89.0f,
         
         // 壁切れ後の追従距離
@@ -50,7 +50,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
         .dist_offset_out = 16.0f,
-        .val_offset_in = 1000.0f,
+        .val_offset_in = 650.0f,
         .angle_turn_90 = 89.0f,
         
         // 壁切れ後の追従距離
