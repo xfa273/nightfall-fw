@@ -251,12 +251,10 @@ void adachi(uint16_t fan_duty) {
             led_write(1, 1, 0);
 
             if (known_straight && !acceled) {
-                // one_sectionA();
-                one_sectionU(1.0f, speed_now);
+                one_sectionA();
                 acceled = true;
             } else if (!known_straight && acceled) {
-                // one_sectionD();
-                one_sectionU(1.0f, speed_now);
+                one_sectionD();
                 acceled = false;
             } else if (!acceled && fabsf(latest_wall_error) > WALL_ALIGN_ERR_THR && MF.FLAG.WALL_ALIGN) {
                 if (ad_r > WALL_BASE_R * 1.3) {
