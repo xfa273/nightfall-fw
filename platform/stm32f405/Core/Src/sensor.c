@@ -776,8 +776,6 @@ void detect_wall_end(void) {
             wall_end_detected_r = true;
             wall_end_dist_r = real_distance;
             MF.FLAG.R_WALL_END = 1;
-            HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_SET);
-            wall_end_count = 200;
         }
     }
 
@@ -787,8 +785,6 @@ void detect_wall_end(void) {
             wall_end_detected_l = true;
             wall_end_dist_l = real_distance;
             MF.FLAG.L_WALL_END = 1;
-            HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_SET);
-            wall_end_count = 200;
         }
     }
 

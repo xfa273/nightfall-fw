@@ -317,15 +317,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         }
     }
 
-    if (wall_end_count > 1) {
-        wall_end_count--;
-    } else if (wall_end_count == 1) {
-        // 壁切れ検出LEDを消灯（LED2:右、LED3:左）
-        HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, GPIO_PIN_RESET);
-        wall_end_count = 0;
-    }
-
     if (buzzer_count > 1) {
         buzzer_count--;
     } else if (buzzer_count) {
