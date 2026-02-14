@@ -212,7 +212,10 @@ void adachi(uint16_t fan_duty) {
                 [r_cnt++]) { // route配列によって進行を決定。経路カウンタを進める
 
         //----前進----
-        case 0x88:
+        case 0x88: {
+
+            const bool next_is_turn90 =
+                (route[r_cnt] == 0x44 || route[r_cnt] == 0x11);
 
             // buzzer_interrupt(900);
 
@@ -251,12 +254,14 @@ void adachi(uint16_t fan_duty) {
             led_write(1, 1, 0);
 
             if (known_straight && !acceled) {
-                // one_sectionA();
-                one_sectionU(1.0f, speed_now);
+                one_sectionA();
                 acceled = true;
             } else if (!known_straight && acceled) {
-                // one_sectionD();
-                one_sectionU(1.0f, speed_now);
+                if (next_is_turn90) {
+                    one_sectionD_turn_buffer_wallend();
+                } else {
+                    one_sectionD();
+                }
                 acceled = false;
             } else if (!acceled && fabsf(latest_wall_error) > WALL_ALIGN_ERR_THR && MF.FLAG.WALL_ALIGN) {
                 if (ad_r > WALL_BASE_R * 1.3) {
@@ -281,6 +286,7 @@ void adachi(uint16_t fan_duty) {
             led_write(0, 0, 0);
 
             break;
+        }
         //----右折----
         case 0x44:
             arm_background_replan(route[r_cnt]);

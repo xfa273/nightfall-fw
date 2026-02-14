@@ -18,6 +18,7 @@
 void simplifyPath(void);
 void convertLTurn(void);
 void convertDiagonal(void);
+void normalizeStartLargeTurnException(void);
 // makePath()は削除済み - 経路導出はsolver_build_path()を使用
 
 #endif /* INC_PATH_H_ */

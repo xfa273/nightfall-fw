@@ -332,6 +332,10 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
         convertDiagonal();
     }
 
+    // スタート直後の大回りターンは first_sectionA と組み合わせると加速要求が厳しいため、
+    // 小回り+半区画直進へ正規化する。
+    normalizeStartLargeTurnException();
+
     printMaze();
 
     for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {

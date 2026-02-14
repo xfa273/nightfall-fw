@@ -402,6 +402,7 @@ void one_sectionU(float section, float spd_out);
 void diag_sectionU(float section, float spd_out); // 等速一区画
 void one_sectionA(void);
 void one_sectionD(void);
+void one_sectionD_turn_buffer_wallend(void); // 探索加速解除時: ターン前バッファで壁切れ検出
 void run_straight(float, float, float); // 指定区画を指定速度で走行
 void rotate_R90(void);                  // 右90回転
 void rotate_L90(void);                  // 左90回転
