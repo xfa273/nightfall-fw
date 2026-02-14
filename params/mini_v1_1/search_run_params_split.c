@@ -14,7 +14,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
         .dist_offset_out = 18.0f,
-        .val_offset_in = 1750.0f,
+        .val_offset_in = 1000.0f,
         .angle_turn_90 = 89.0f,
         
         // 壁切れ後の追従距離
@@ -29,8 +29,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
-        .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+        .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 100,
+        .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 100,
 
         .fan_duty = 0,
         
@@ -50,7 +50,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
         .dist_offset_out = 16.0f,
-        .val_offset_in = 1750.0f,
+        .val_offset_in = 1000.0f,
         .angle_turn_90 = 89.0f,
         
         // 壁切れ後の追従距離
@@ -65,8 +65,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
-        .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+        .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 100,
+        .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 100,
 
         .fan_duty = 0,
         

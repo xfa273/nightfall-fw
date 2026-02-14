@@ -158,55 +158,7 @@ void mode7() {
 
         switch (mode) {
         case 0: //
-#if 0
 
-            printf("Mode 7-0 Normal Turn.\n");
-
-            // 直線
-            acceleration_straight = 14222.2;
-            acceleration_straight_dash = 25000;
-            velocity_straight = 2300;
-
-            // ターン
-            velocity_turn90 = 1400;
-            alpha_turn90 = 60000;
-            acceleration_turn = 0;
-            dist_offset_in = 10;
-            dist_offset_out = 35;
-            val_offset_in = 1100;
-            angle_turn_90 = 88;
-
-            // 壁制御とケツ当て
-            kp_wall = 0.05;
-            duty_setposition = 40;
-
-            velocity_interrupt = 0;
-
-            led_flash(10);
-
-            drive_variable_reset();
-            IMU_GetOffset();
-            drive_enable_motor();
-
-            led_flash(5);
-
-            drive_fan(600);
-
-            led_flash(20);
-
-            half_sectionA(1400);
-            turn_R90(0);
-            half_sectionD(0);
-
-            led_flash(5);
-
-            drive_fan(0);
-            led_flash(5);
-
-            drive_stop();
-
-            break;
-#else
             printf("Mode 7-0: Turn/Straight Test.\n");
             g_test_mode_run = true;
 
@@ -415,120 +367,25 @@ void mode7() {
 
             g_test_mode_run = false;
             break;
-#endif
 
         case 1: //
-#if 0
-
-            printf("Mode 7-1 Large Turn 90deg.\n");
-
-            // 直線
-            acceleration_straight = 14222.2;
-            acceleration_straight_dash = 25000;
-            velocity_straight = 2300;
-
-            // 90°大回りターン
-            velocity_l_turn_90 = 2200;
-            alpha_l_turn_90 = 27500;
-            angle_l_turn_90 = 85.0;
-            dist_l_turn_out_90 = 38;
-
-            // 壁制御とケツ当て
-            kp_wall = 0.05;
-            duty_setposition = 40;
-
-            velocity_interrupt = 0;
-
-            led_flash(10);
-
-            drive_variable_reset();
-            IMU_GetOffset();
-            drive_enable_motor();
-
-            led_flash(5);
-
-            drive_fan(600);
-
-            led_flash(20);
-
-            half_sectionA(2200);
-            l_turn_R90(false);
-            half_sectionD(0);
-
-            led_flash(5);
-
-            drive_fan(0);
-            led_flash(5);
-
-            drive_stop();
-
-            break;
-#else
-            g_disable_front_wall_correction = true;
-            g_disable_wall_end_correction = true;
-            run_shortest(7, 1);
-            g_disable_front_wall_correction = false;
-            g_disable_wall_end_correction = false;
-            break;
-#endif
-
-        case 2:
-#if 0
-
-            printf("Mode 7-2 Large Turn 180deg.\n");
-
-            // 直線
-            acceleration_straight = 14222.2;
-            acceleration_straight_dash = 25000;
-            velocity_straight = 2300;
-
-            // 180°大回りターン
-            velocity_l_turn_180 = 2200;
-            alpha_l_turn_180 = 23000;
-            angle_l_turn_180 = 176.8;
-            dist_l_turn_out_180 = 50;
-
-            // 壁制御とケツ当て
-            kp_wall = 0.05;
-            duty_setposition = 40;
-
-            velocity_interrupt = 0;
-
-            led_flash(10);
-
-            drive_variable_reset();
-            IMU_GetOffset();
-            drive_enable_motor();
-
-            led_flash(5);
-
-            drive_fan(600);
-
-            led_flash(20);
-
-            half_sectionA(2200);
-            l_turn_R180(0);
-            half_sectionD(0);
-
-            led_flash(5);
-
-            drive_fan(0);
-            led_flash(5);
-
-            drive_stop();
-
-            break;
-#else
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
-            run_shortest(7, 2);
-            // g_disable_front_wall_correction = false;
-            // g_disable_wall_end_correction = false;
+            run_shortest(7, 1);
+
             break;
-#endif
+
+        case 2:
+
+            g_disable_front_wall_correction = true;
+            g_disable_wall_end_correction = true;
+            run_shortest(7, 2);
+            break;
 
         case 3:
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
             run_shortest(7, 3);
             break;
 

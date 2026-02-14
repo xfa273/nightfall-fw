@@ -102,23 +102,23 @@
 #define KD_ANGLE 0.0F // 角度制御のD項
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  0.9F  // 角速度制御のP項（ファンON）
+#define KP_OMEGA_FAN_ON  0.7F  // 角速度制御のP項（ファンON）0.9F
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.017F // 角速度制御のI項（ファンON）
+#define KI_OMEGA_FAN_ON  0.015F // 角速度制御のI項（ファンON）0.017F
 #endif
 #ifndef KD_OMEGA_FAN_ON
-#define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
+#define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）0.0F
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 0.35F  // 角速度制御のP項（ファンOFF）
+#define KP_OMEGA_FAN_OFF 0.35F  // 角速度制御のP項（ファンOFF）0.35F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
-#define KI_OMEGA_FAN_OFF 0.015F // 角速度制御のI項（ファンOFF）
+#define KI_OMEGA_FAN_OFF 0.015F // 角速度制御のI項（ファンOFF）0.015F
 #endif
 #ifndef KD_OMEGA_FAN_OFF
-#define KD_OMEGA_FAN_OFF 0.0F  // 角速度制御のD項（ファンOFF）
+#define KD_OMEGA_FAN_OFF 0.0F  // 角速度制御のD項（ファンOFF）0.0F
 #endif
 
 #define FF_OMEGA 0.0F // 角速度制御のFF項 0.043F
@@ -179,7 +179,7 @@
 
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
-#define WALL_END_EXTEND_MAX_MM  0.0F
+#define WALL_END_EXTEND_MAX_MM  15.0F
 #endif
 
 #define WALL_CTRL_BASE_L 1941 // 壁制御の基準値（左） 2135

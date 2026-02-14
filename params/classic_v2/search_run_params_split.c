@@ -29,10 +29,10 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
-        .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+        .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
 
-        .fan_duty = 130,
+        .fan_duty = 100,
         
         // フラグ
         .wall_align_enable = 1  // 壁合わせ有効
@@ -65,8 +65,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 280, .wall_end_thr_r_low = 200,
-        .wall_end_thr_l_high = 280, .wall_end_thr_l_low = 200,
+        .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+        .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
 
         .fan_duty = 0,
         

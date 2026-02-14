@@ -179,7 +179,7 @@
 
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
-#define WALL_END_EXTEND_MAX_MM  0.0F
+#define WALL_END_EXTEND_MAX_MM  10.0F
 #endif
 
 #define WALL_CTRL_BASE_L 1941 // 壁制御の基準値（左） 2135
@@ -218,7 +218,7 @@
 /* 前壁センサを用いた中央合わせ（非接触）用パラメータ */
 // 区画中央における前壁センサの目標値（実機で調整）
 #define F_ALIGN_TARGET_FR    1420
-#define F_ALIGN_TARGET_FL    1420
+#define F_ALIGN_TARGET_FL    1400
 // 小鷺田寮: FR3750 FL3790
 // 九州: FR3587 FL3587
 

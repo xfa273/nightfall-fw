@@ -438,22 +438,20 @@ void mode3() {
         }
 
         case 1:
-            g_disable_front_wall_correction = true;
+            // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
             run_shortest(3, 1);
-            g_disable_front_wall_correction = false;
-            // g_disable_wall_end_correction = false;
             break;
 
         case 2:
-            // g_disable_front_wall_correction = true;
-            // g_disable_wall_end_correction = true;
+            g_disable_front_wall_correction = true;
+            g_disable_wall_end_correction = true;
             run_shortest(3, 2);
-            // g_disable_front_wall_correction = false;
-            // g_disable_wall_end_correction = false;
             break;
 
         case 3:
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
             run_shortest(3, 3);
             break;
 

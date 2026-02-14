@@ -60,8 +60,8 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 140, .wall_end_thr_r_low = 100,
-    .wall_end_thr_l_high = 140, .wall_end_thr_l_low = 100,
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 2000.0f
 };
@@ -190,8 +190,8 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
-    .wall_end_thr_r_high = 140, .wall_end_thr_r_low = 130,
-    .wall_end_thr_l_high = 140, .wall_end_thr_l_low = 130,
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
@@ -278,7 +278,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .alpha_l_turn_90 = 15200.0f,
     .angle_l_turn_90 = 88.0f,
     .dist_l_turn_in_90 = 2.0f,
-    .dist_l_turn_out_90 = 19.0f,
+    .dist_l_turn_out_90 = 22.0f,
     // Large 180deg
     .velocity_l_turn_180 = 1000.0f,
     .alpha_l_turn_180 = 15600.0f,
@@ -319,8 +319,8 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 1,
-    .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 1,
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1200.0f
 };
@@ -418,8 +418,8 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 1,
-    .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 1,
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1200.0f
 };
