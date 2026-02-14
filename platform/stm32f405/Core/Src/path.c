@@ -160,6 +160,59 @@ void convertLTurn() {
     }
 }
 
+void normalizeStartLargeTurnException(void) {
+    // スタート直後に大回りターンが来ると、first_sectionA直後に
+    // 大回りターン速度まで加速する必要があり厳しいため、
+    // 先頭大回りのみ小回り+半区画直進へ置換する。
+    uint16_t small_turn = 0;
+    if (path[0] == 501) {
+        small_turn = 300;
+    } else if (path[0] == 601) {
+        // 制約上ほぼ到達しないが、安全側で対応
+        small_turn = 400;
+    } else {
+        return;
+    }
+
+    int end = 0;
+    while (end < ROUTE_MAX_LEN && path[end] != 0) {
+        end++;
+    }
+
+    bool has_straight_after_turn = (path[1] > 200 && path[1] < 300);
+
+    // 先頭S1を追加するために最低1要素の空きが必要
+    // 小回り直後に直進が無い場合はさらに1要素必要
+    int required_space = has_straight_after_turn ? 1 : 2;
+    if (end >= ROUTE_MAX_LEN - required_space) {
+        return;
+    }
+
+    // 小回り後の扱いは従来仕様:
+    // 直後が直進なら +S1（= +1）、直進でなければ S1 を挿入
+    if (has_straight_after_turn) {
+        path[1] += 1;
+    }
+
+    // [L_TURN, ...] -> [S1, L_TURN, ...]
+    for (int i = end; i >= 0; i--) {
+        path[i + 1] = path[i];
+    }
+
+    // [S1, L_TURN, ...] -> [S1, small_turn, ...]
+    path[0] = 201;
+    path[1] = small_turn;
+
+    // 小回り直後に直進が無い場合のみ、S1 を挿入
+    if (!has_straight_after_turn) {
+        end++;
+        for (int i = end; i >= 2; i--) {
+            path[i + 1] = path[i];
+        }
+        path[2] = 201;
+    }
+}
+
 void convertDiagonal(void) {
     static uint16_t convertedPath[ROUTE_MAX_LEN];
     int i = 0;

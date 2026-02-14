@@ -250,25 +250,13 @@ void half_sectionDD(uint16_t val) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void one_sectionA(void) {
-    float speed_out;
-    /*
-    if (MF.FLAG.SCND || known_straight) {
-        // 最短走行時: 速度に応じて加速度を切り替え
-        float accel;
-        if (accel_switch_velocity > 0.0f && speed_now >= accel_switch_velocity) {
-            accel = acceleration_straight_dash;  // 高速域
-        } else {
-            accel = acceleration_straight;       // 低速域
-        }
-        speed_out = sqrt(speed_now * speed_now + 2 * accel * DIST_HALF_SEC * 2);
-    } else {
-        speed_out = sqrt(speed_now * speed_now +
-                         2 * acceleration_straight * DIST_HALF_SEC * 2);
-    }
-    */
+    const bool use_dash =
+        (acceleration_straight_dash > 0.0f) &&
+        (fabsf(acceleration_straight_dash - acceleration_straight) > 1e-3f);
+    const float accel_lin = use_dash ? acceleration_straight_dash : acceleration_straight;
 
-    speed_out = sqrt(speed_now * speed_now +
-                         2 * acceleration_straight * DIST_HALF_SEC * 2);
+    float speed_out = sqrtf(speed_now * speed_now +
+                            2.0f * accel_lin * DIST_HALF_SEC * 2.0f);
     
 
     MF.FLAG.CTRL = 1;
@@ -290,21 +278,12 @@ void one_sectionA(void) {
 void one_sectionD(void) {
     // 探索向け: 単一の連続走行で減速し、必要なら壁切れ追従（半区画+バッファ）を動的に行う
     float v0 = speed_now;
-    float accel_lin;
-    /*
-    if (MF.FLAG.SCND || acceled) {
-        // 最短走行時: 速度に応じて加速度を切り替え
-        if (accel_switch_velocity > 0.0f && v0 >= accel_switch_velocity) {
-            accel_lin = acceleration_straight_dash;  // 高速域
-        } else {
-            accel_lin = acceleration_straight;       // 低速域
-        }
-    } else {
-        accel_lin = acceleration_straight;
-    }
-    */
-
-    accel_lin = acceleration_straight;
+    const bool use_dash =
+        (acceleration_straight_dash > 0.0f) &&
+        (fabsf(acceleration_straight_dash - acceleration_straight) > 1e-3f);
+    // 既知直線加速を使う場合のみ、減速はdashの2倍を使う
+    float accel_lin = use_dash ? (2.0f * acceleration_straight_dash)
+                               : acceleration_straight;
 
     float speed_out = sqrtf(fmaxf(0.0f, v0 * v0 - 2.0f * accel_lin * (DIST_HALF_SEC * 2.0f)));
 
@@ -324,6 +303,53 @@ void one_sectionD(void) {
     speed_now = speed_out;
 
     MF.FLAG.F_WALL_STOP = 0;
+    MF.FLAG.CTRL = 0;
+    get_wall_info();
+}
+
+//+++++++++++++++++++++++++++++++++++++++++++++++
+// one_sectionD_turn_buffer_wallend
+// 探索の加速解除時専用:
+//   1) 前半45mmで減速してターン速度へ合わせる
+//   2) 後半45mmをターン前専用バッファとして壁切れ検出
+//   3) 検出時のみ dist_wall_end だけ追従
+// 戻り値：なし
+//+++++++++++++++++++++++++++++++++++++++++++++++
+void one_sectionD_turn_buffer_wallend(void) {
+    float v0 = speed_now;
+    const bool use_dash =
+        (acceleration_straight_dash > 0.0f) &&
+        (fabsf(acceleration_straight_dash - acceleration_straight) > 1e-3f);
+    // 前半45mmで減速するため、v_out計算は90mm式を使う。
+    // 実際の減速度はこのaccel_linの約2倍になる。
+    float accel_lin = use_dash ? acceleration_straight_dash
+                               : acceleration_straight;
+    float speed_out =
+        sqrtf(fmaxf(0.0f, v0 * v0 - 2.0f * accel_lin * (DIST_HALF_SEC * 2.0f)));
+
+    MF.FLAG.CTRL = 1;
+
+    // 前壁停止は維持
+    if (ad_fl > WALL_BASE_FL || ad_fr > WALL_BASE_FR) {
+        MF.FLAG.F_WALL_STOP = 1;
+    }
+
+    wall_end_reset();
+
+    // 前半45mmで減速してターン速度へ合わせる
+    driveA((float)DIST_HALF_SEC, speed_now, speed_out, 0.0f);
+    speed_now = speed_out;
+
+    MF.FLAG.F_WALL_STOP = 0;
+
+    // 後半45mmをターン前バッファとして等速壁切れ検出
+    bool wall_end_found = driveC_wallend((float)DIST_HALF_SEC, speed_now);
+
+    // 壁切れ検出時のみ追従（探索の既存距離定義を維持）
+    if (wall_end_found && dist_wall_end > 0.0f) {
+        driveA(dist_wall_end, speed_now, speed_now, 0.0f);
+    }
+
     MF.FLAG.CTRL = 0;
     get_wall_info();
 }
