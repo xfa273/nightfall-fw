@@ -1302,12 +1302,10 @@ void driveR(float angle) {
     encoder_distance_l = 0;
     velocity_interrupt = 0;
 
-    // 回転角度カウントをリセット（角度積算モード時はスキップ）
-    if (!g_angle_accum_mode) {
-        real_angle = 0;
-        IMU_angle = 0;
-        target_angle = 0;
-    }
+    // 回転角度カウントをリセット
+    real_angle = 0;
+    IMU_angle = 0;
+    target_angle = 0;
 
     failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? +1 : -1);
 
@@ -1355,12 +1353,10 @@ void driveR(float angle) {
     alpha_interrupt = 0;
     omega_interrupt = 0;
 
-    // 回転角度カウントをリセット（角度積算モード時はスキップ）
-    if (!g_angle_accum_mode) {
-        real_angle = 0;
-        IMU_angle = 0;
-        target_angle = 0;
-    }
+    // 回転角度カウントをリセット
+    real_angle = 0;
+    IMU_angle = 0;
+    target_angle = 0;
 
     // drive_stop();
 
