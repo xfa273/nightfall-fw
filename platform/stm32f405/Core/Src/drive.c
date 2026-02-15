@@ -70,6 +70,7 @@ static volatile float s_fail_turn_angle_limit_deg = 0.0f;
 static volatile uint16_t s_fail_turn_angle_count = 0;
 static volatile uint8_t s_fail_turn_angle_armed_for_start = 0;
 static volatile int8_t s_fail_turn_angle_expected_dir = 0;
+static volatile uint8_t s_failsafe_emergency_latched = 0;
 
 static inline void failsafe_turn_angle_begin_dir(float cmd_angle_deg, int8_t expected_dir) {
     s_fail_turn_angle_enabled = 1;
@@ -1754,6 +1755,7 @@ void drive_reset_before_run(void) {
     s_fail_turn_angle_count = 0;
     s_fail_turn_angle_armed_for_start = 0;
     s_fail_turn_angle_expected_dir = 0;
+    s_failsafe_emergency_latched = 0;
 
     MF.FLAG.OVERRIDE = 0;
     MF.FLAG.FAILED = 0;
@@ -2078,23 +2080,25 @@ void drive_motor(void) {
 
     // PWM出力
     if (MF.FLAG.FAILED) {
-        // フェイルセーフ発動の場合，強制停止（PWM=0 ＋ STBY=Low）
+        // フェイルセーフ発動: 強制停止（PWM=0 ＋ STBY=Low）
+        // ここで無限ループせず、上位(run/mode)へ制御を返してログ確認を可能にする。
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
         drive_disable_motor();
         drive_fan(0);
+        MF.FLAG.RUNNING = 0;
 
-        buzzer_beep(1200);
-        led_write(0,0,0);
-
-        while(1){
-            led_write(1,1,1);
-            HAL_Delay(500);
-            led_write(0,0,0);
-            HAL_Delay(500);
+        if (!s_failsafe_emergency_latched) {
+            buzzer_beep(1200);
+            led_write(0, 0, 0);
+            s_failsafe_emergency_latched = 1;
         }
 
+        return;
+
     } else {
+        s_failsafe_emergency_latched = 0;
+
         // TIM2 の ARR を取得（0..ARR のカウント幅）
         const uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim2);
         const uint16_t min_counts = (uint16_t)((arr * MOTOR_MIN_DUTY_PCT) / 100u);

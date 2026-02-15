@@ -11,9 +11,14 @@
 #include "../Inc/path.h"
 #include "../Inc/solver.h"
 
+#ifndef TEST_FAILSAFE_HOLD_MS
+#define TEST_FAILSAFE_HOLD_MS 3000u
+#endif
+
 void run(void) {
 
     drive_reset_before_run();
+    MF.FLAG.RUNNING = 1;
     drive_start();
     get_base();
 
@@ -24,7 +29,7 @@ void run(void) {
         sensor_log_start();
     }
 
-    for (uint8_t path_count = 0; path[path_count] != 0; path_count++) {
+    for (uint8_t path_count = 0; path[path_count] != 0 && !MF.FLAG.FAILED; path_count++) {
         if (200 < path[path_count] && path[path_count] < 300) {
             // 直進（距離ベース）
 
@@ -382,7 +387,9 @@ void run(void) {
         }
     }
 
-    half_sectionD(0);
+    if (!MF.FLAG.FAILED) {
+        half_sectionD(0);
+    }
 
     // センサログ停止
     if (g_sensor_log_enabled) {
@@ -392,6 +399,19 @@ void run(void) {
     // ゴール演出（LED/Buzzer）は run_shortest() 側で必要に応じて実施する。
     // ここでは直後にファン停止やLED消灯を行うため、一時的な再点灯/再起動を避ける目的で呼ばない。
     drive_stop();
+
+    // テスト動作中にフェイルセーフ発動時は、非常停止状態を明示して数秒待機し、
+    // 呼び出し元（modeX case0 sub）でログ出力待ちへ遷移できるようにする。
+    if (g_test_mode_run && MF.FLAG.FAILED) {
+        drive_fan(0);
+        drive_disable_motor();
+        led_write(1, 0, 0);
+        buzzer_beep(1200);
+        HAL_Delay(TEST_FAILSAFE_HOLD_MS);
+        led_write(0, 0, 0);
+    }
+
+    MF.FLAG.RUNNING = 0;
 }
 
 void run_shortest(uint8_t mode, uint8_t case_index) {
