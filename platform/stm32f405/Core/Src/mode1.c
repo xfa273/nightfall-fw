@@ -134,6 +134,7 @@ void mode1() {
         case 0: { // 探索走行テスト調整モード
 
             printf("Mode 1-0 Search Test (sub 0..3).\n");
+            g_angle_accum_mode = false;
 
             led_flash(5);
 
@@ -313,6 +314,7 @@ void mode1() {
         case 1: { // 標準速度で ゴール探索→全面探索
 
             printf("Mode 1-1: Standard speed (Goal->Full).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -363,6 +365,7 @@ void mode1() {
         case 2: // 標準速度で 最初から全面探索
 
             printf("Mode 1-2: Standard speed (Full from start).\n");
+            g_angle_accum_mode = true;
 
             g_disable_front_wall_correction = true;
             g_disable_wall_end_correction = true;
@@ -396,6 +399,7 @@ void mode1() {
         case 3: // 標準速度で ゴール探索→スタートへ帰り探索
 
             printf("Mode 1-3: Standard speed (Goal->Return to Start).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -451,6 +455,7 @@ void mode1() {
 
         case 4: // 標準速度で ゴール探索→ゴール到達で終了
             printf("Mode 1-4: Standard speed (Goal only).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -484,6 +489,7 @@ void mode1() {
         case 5: // 低速で ゴール探索→全面探索
 
             printf("Mode 1-5: Low speed (Goal->Full).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -535,6 +541,7 @@ void mode1() {
         case 6: // 低速で 最初から全面探索
 
             printf("Mode 1-6: Low speed (Full from start).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -570,6 +577,7 @@ void mode1() {
         case 7: // 低速で ゴール探索→スタートへ帰り探索
 
             printf("Mode 1-7: Low speed (Goal->Return to Start).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
@@ -627,6 +635,7 @@ void mode1() {
 
         case 8: // 低速で ゴール探索→ゴール到達で終了
             printf("Mode 1-8: Low speed (Goal only).\n");
+            g_angle_accum_mode = true;
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;

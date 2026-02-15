@@ -13,28 +13,53 @@
 static bool s_no_path_exit = false;
 // 直進中に左右壁が連続した区画数（探索の条件付き角度リセット用）
 static uint8_t s_search_dual_wall_streak = 0;
+// 直進中に右壁/左壁が連続した区画数（片側壁の条件付き角度リセット用）
+static uint8_t s_search_right_wall_streak = 0;
+static uint8_t s_search_left_wall_streak = 0;
 
 static inline void search_dual_wall_streak_reset(void) {
     s_search_dual_wall_streak = 0;
+    s_search_right_wall_streak = 0;
+    s_search_left_wall_streak = 0;
 }
 
 static inline void search_dual_wall_streak_update(void) {
     // 両側壁が連続する区画のみカウント（壁制御が安定しやすい条件）
-    if (!(r_wall && l_wall)) {
+    if (r_wall && l_wall) {
+        if (s_search_dual_wall_streak < UINT8_MAX) {
+            s_search_dual_wall_streak++;
+        }
+    } else {
         s_search_dual_wall_streak = 0;
-        return;
     }
 
-    if (s_search_dual_wall_streak < UINT8_MAX) {
-        s_search_dual_wall_streak++;
+    // 片側壁の連続区画数（反対側の壁有無は問わない）
+    if (r_wall) {
+        if (s_search_right_wall_streak < UINT8_MAX) {
+            s_search_right_wall_streak++;
+        }
+    } else {
+        s_search_right_wall_streak = 0;
     }
 
-    // 3区画目で角度の基準を更新
-    if (s_search_dual_wall_streak >= 3u) {
+    if (l_wall) {
+        if (s_search_left_wall_streak < UINT8_MAX) {
+            s_search_left_wall_streak++;
+        }
+    } else {
+        s_search_left_wall_streak = 0;
+    }
+
+    // 角度の基準を更新する条件:
+    // 1) 両側壁が3区画以上連続
+    // 2) 右壁または左壁が6区画以上連続
+    if (s_search_dual_wall_streak >= 3u ||
+        s_search_right_wall_streak >= 6u ||
+        s_search_left_wall_streak >= 6u) {
         IMU_angle = 0.0f;
         real_angle = 0.0f;
         target_angle = 0.0f;
-        s_search_dual_wall_streak = 0;
+        search_dual_wall_streak_reset();
     }
 }
 
@@ -189,10 +214,6 @@ void searchB(uint16_t fan_duty) {
 void adachi(uint16_t fan_duty) {
 
     s_no_path_exit = false;
-    bool prev_angle_accum_mode = g_angle_accum_mode;
-
-    // 探索中は角度を持ち越し、必要条件でのみゼロリセットする
-    g_angle_accum_mode = true;
     search_dual_wall_streak_reset();
 
     // 探索時のみ制御周期を0.5kHzに間引く
@@ -437,8 +458,6 @@ void adachi(uint16_t fan_duty) {
 
     drive_fan(0);
 
-    // 探索開始前の角度積算モード設定へ戻す
-    g_angle_accum_mode = prev_angle_accum_mode;
     search_dual_wall_streak_reset();
 
     led_flash(2);
