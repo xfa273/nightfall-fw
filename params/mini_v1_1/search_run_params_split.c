@@ -49,7 +49,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .alpha_turn90 = 6150.0f,
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
-        .dist_offset_out = 12.0f,
+        .dist_offset_out = 14.0f,
         .val_offset_in = 650.0f,
         .angle_turn_90 = 90.0f,
         
