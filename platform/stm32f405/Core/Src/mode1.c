@@ -313,6 +313,9 @@ void mode1() {
         case 1: { // 標準速度で ゴール探索→全面探索
 
             printf("Mode 1-1: Standard speed (Goal->Full).\n");
+
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
             
             // パラメータ適用（標準速度）
             apply_search_params(0);
@@ -361,6 +364,9 @@ void mode1() {
 
             printf("Mode 1-2: Standard speed (Full from start).\n");
 
+            g_disable_front_wall_correction = true;
+            g_disable_wall_end_correction = true;
+
             // パラメータ適用（標準速度）
             apply_search_params(0);
 
@@ -390,6 +396,9 @@ void mode1() {
         case 3: // 標準速度で ゴール探索→スタートへ帰り探索
 
             printf("Mode 1-3: Standard speed (Goal->Return to Start).\n");
+
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
 
             // パラメータ適用（標準速度）
             apply_search_params(0);
@@ -443,6 +452,9 @@ void mode1() {
         case 4: // 標準速度で ゴール探索→ゴール到達で終了
             printf("Mode 1-4: Standard speed (Goal only).\n");
 
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
+
             // パラメータ適用（標準速度）
             apply_search_params(0);
 
@@ -472,6 +484,9 @@ void mode1() {
         case 5: // 低速で ゴール探索→全面探索
 
             printf("Mode 1-5: Low speed (Goal->Full).\n");
+
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
 
             MF.FLAG.RUNNING = 1;
 
@@ -521,6 +536,9 @@ void mode1() {
 
             printf("Mode 1-6: Low speed (Full from start).\n");
 
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
+
             MF.FLAG.RUNNING = 1;
 
             // パラメータ適用（低速）
@@ -552,6 +570,9 @@ void mode1() {
         case 7: // 低速で ゴール探索→スタートへ帰り探索
 
             printf("Mode 1-7: Low speed (Goal->Return to Start).\n");
+
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
 
             MF.FLAG.RUNNING = 1;
 
@@ -606,6 +627,9 @@ void mode1() {
 
         case 8: // 低速で ゴール探索→ゴール到達で終了
             printf("Mode 1-8: Low speed (Goal only).\n");
+
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
 
             MF.FLAG.RUNNING = 1;
 

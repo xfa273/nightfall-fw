@@ -344,7 +344,13 @@ void one_sectionD_turn_buffer_wallend(void) {
     MF.FLAG.F_WALL_STOP = 0;
 
     // 後半45mmをターン前バッファとして等速壁切れ検出
-    bool wall_end_found = driveC_wallend((float)DIST_HALF_SEC, speed_now);
+    bool wall_end_found = false;
+    if (!g_disable_wall_end_correction) {
+        wall_end_found = driveC_wallend((float)DIST_HALF_SEC, speed_now);
+    } else {
+        // 壁切れ補正無効時は距離ベースで後半45mmを走行
+        driveA((float)DIST_HALF_SEC, speed_now, speed_now, 0.0f);
+    }
 
     // 壁切れ検出時のみ追従（探索の既存距離定義を維持）
     if (wall_end_found && dist_wall_end > 0.0f) {
@@ -381,6 +387,7 @@ void one_sectionU(float section, float spd_out) {
     // 壁切れ後の追加直進: 小回りターン用なので45mm + dist_wall_end
     // const float follow_dist = DIST_HALF_SEC + dist_wall_end;
     const float follow_dist = dist_wall_end;
+    const bool enable_wall_end_correction = !g_disable_wall_end_correction;
     
     MF.FLAG.CTRL = 1;
     
@@ -399,9 +406,13 @@ void one_sectionU(float section, float spd_out) {
     acceleration_interrupt = 0.0f;
     velocity_interrupt = v_const;
     
-    // 壁切れ検出をアーム
-    wall_end_reset();
-    MF.FLAG.WALL_END = 1;
+    // 壁切れ補正が有効なときのみ壁切れ検出をアーム
+    if (enable_wall_end_correction) {
+        wall_end_reset();
+        MF.FLAG.WALL_END = 1;
+    } else {
+        MF.FLAG.WALL_END = 0;
+    }
     
     drive_start();
     
@@ -409,15 +420,17 @@ void one_sectionU(float section, float spd_out) {
     
     // 壁切れ検出または最大距離到達まで走行
     while (real_distance < dist_max && !MF.FLAG.FAILED) {
-        if (wall_end_detected_r || wall_end_detected_l) {
+        if (enable_wall_end_correction && (wall_end_detected_r || wall_end_detected_l)) {
             wall_end_detected = true;
             break;
         }
         background_replan_tick();
     }
     
-    // 壁切れ検出をディスアーム
-    MF.FLAG.WALL_END = 0;
+    // 壁切れ補正有効時のみディスアーム
+    if (enable_wall_end_correction) {
+        MF.FLAG.WALL_END = 0;
+    }
     
     // 壁切れ検出時は45mm追加直進（壁の端から次の区画中心への位置補正）
     if (wall_end_detected) {
