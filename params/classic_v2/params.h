@@ -36,6 +36,14 @@
 #define SEARCH_STEP_MM 10.0F
 #endif
 
+// 探索の角度保持モード: 角度ゼロリセット条件（連続壁区画数）
+#ifndef SEARCH_ANGLE_RESET_DUAL_WALL_STREAK_CELLS
+#define SEARCH_ANGLE_RESET_DUAL_WALL_STREAK_CELLS 3u
+#endif
+#ifndef SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS
+#define SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS 6u
+#endif
+
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
 #define ANGLE_ROTATE_90_R 89.0F // 超信地旋回の角度[deg]
 #define ANGLE_ROTATE_90_L 89.0F // 超信地旋回の角度[deg]

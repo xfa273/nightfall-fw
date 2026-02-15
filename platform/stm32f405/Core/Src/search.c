@@ -51,11 +51,11 @@ static inline void search_dual_wall_streak_update(void) {
     }
 
     // 角度の基準を更新する条件:
-    // 1) 両側壁が3区画以上連続
-    // 2) 右壁または左壁が6区画以上連続
-    if (s_search_dual_wall_streak >= 3u ||
-        s_search_right_wall_streak >= 6u ||
-        s_search_left_wall_streak >= 6u) {
+    // 1) 両側壁が SEARCH_ANGLE_RESET_DUAL_WALL_STREAK_CELLS 区画以上連続
+    // 2) 右壁または左壁が SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS 区画以上連続
+    if (s_search_dual_wall_streak >= SEARCH_ANGLE_RESET_DUAL_WALL_STREAK_CELLS ||
+        s_search_right_wall_streak >= SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS ||
+        s_search_left_wall_streak >= SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS) {
         IMU_angle = 0.0f;
         real_angle = 0.0f;
         target_angle = 0.0f;
