@@ -460,39 +460,46 @@ void mode4() {
         case 3:
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 3);
             break;
 
         case 4:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 4);
             g_disable_front_wall_correction = false;
             break;
 
         case 5:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 5);
             g_disable_front_wall_correction = false;
             break;
 
         case 6:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 6);
             g_disable_front_wall_correction = false;
             break;
 
         case 7:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 7);
             g_disable_front_wall_correction = false;
             break;
         case 8:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 8);
             g_disable_front_wall_correction = false;
             break;
         case 9:
             g_disable_front_wall_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(4, 9);
             g_disable_front_wall_correction = false;
             break;

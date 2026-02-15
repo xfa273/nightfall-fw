@@ -433,28 +433,35 @@ void mode2() {
             break;
 
         case 3:
+            g_angle_accum_mode = true;
             run_shortest(2, 4);
             break;
 
         case 4:
+            g_angle_accum_mode = true;
             run_shortest(2, 4);
             break;
 
         case 5:
+            g_angle_accum_mode = true;
             run_shortest(2, 5);
             break;
 
         case 6:
+            g_angle_accum_mode = true;
             run_shortest(2, 6);
             break;
 
         case 7:
+            g_angle_accum_mode = true;
             run_shortest(2, 7);
             break;
         case 8:
+            g_angle_accum_mode = true;
             run_shortest(2, 8);
             break;
         case 9:
+            g_angle_accum_mode = true;
             run_shortest(2, 9);
             break;
         }

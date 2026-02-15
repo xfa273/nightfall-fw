@@ -452,28 +452,35 @@ void mode3() {
         case 3:
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(3, 3);
             break;
 
         case 4:
+            g_angle_accum_mode = true;
             run_shortest(3, 4);
             break;
 
         case 5:
+            g_angle_accum_mode = true;
             run_shortest(3, 5);
             break;
 
         case 6:
+            g_angle_accum_mode = true;
             run_shortest(3, 6);
             break;
 
         case 7:
+            g_angle_accum_mode = true;
             run_shortest(3, 7);
             break;
         case 8:
+            g_angle_accum_mode = true;
             run_shortest(3, 8);
             break;
         case 9:
+            g_angle_accum_mode = true;
             run_shortest(3, 9);
             break;
         }

@@ -67,6 +67,7 @@ typedef struct {
     bool disable_wall_end_correction;
     bool disable_front_wall_correction;
     bool sensor_log_enabled;
+    bool angle_accum_mode;
 } DebugFlags_t;
 
 #ifdef MAIN_C_ // main.cからこのファイルが呼ばれている場合
@@ -93,6 +94,7 @@ extern volatile DebugFlags_t g_debug;
 #define g_disable_wall_end_correction (g_debug.disable_wall_end_correction)
 #define g_disable_front_wall_correction (g_debug.disable_front_wall_correction)
 #define g_sensor_log_enabled (g_debug.sensor_log_enabled)
+#define g_angle_accum_mode (g_debug.angle_accum_mode)
 
 #include <limits.h>
 #include <stdbool.h>

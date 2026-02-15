@@ -502,6 +502,18 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     // 加速度切り替え速度（モードごと）
     accel_switch_velocity = pm->accel_switch_velocity;
 
+    // 角度積算モード時: 旋回角度パラメータを理論値に上書き
+    if (g_angle_accum_mode) {
+        angle_turn_90      = 90.0f;
+        angle_l_turn_90    = 90.0f;
+        angle_l_turn_180   = 180.0f;
+        angle_turn45in     = 45.0f;
+        angle_turn45out    = 45.0f;
+        angle_turnV90      = 90.0f;
+        angle_turn135in    = 135.0f;
+        angle_turn135out   = 135.0f;
+    }
+
     velocity_interrupt = 0;
 
     // センサ・モータ初期化
@@ -521,10 +533,18 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     // ファン出力（mode共通）
     drive_fan(pm->fan_power);
 
+    // 角度積算モード時: IMU_angle/real_angle を0にリセットしてから開始
+    if (g_angle_accum_mode) {
+        IMU_angle = 0;
+        real_angle = 0;
+        target_angle = 0;
+    }
+
     // 実行
     run();
 
     // 後処理
+    g_angle_accum_mode = false;
     drive_fan(0);
     MF.FLAG.RUNNING = 0;
 
