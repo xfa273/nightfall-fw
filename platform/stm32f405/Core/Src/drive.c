@@ -71,6 +71,12 @@ static volatile uint16_t s_fail_turn_angle_count = 0;
 static volatile uint8_t s_fail_turn_angle_armed_for_start = 0;
 static volatile int8_t s_fail_turn_angle_expected_dir = 0;
 static volatile uint8_t s_failsafe_emergency_latched = 0;
+// 超信地旋回(driveR)で角度リセットを許可するか（探索側から制御）
+static volatile bool s_super_rotate_angle_reset_enabled = true;
+
+void drive_set_super_rotate_angle_reset_enabled(bool enable) {
+    s_super_rotate_angle_reset_enabled = enable;
+}
 
 static inline void failsafe_turn_angle_begin_dir(float cmd_angle_deg, int8_t expected_dir) {
     s_fail_turn_angle_enabled = 1;
@@ -1288,6 +1294,8 @@ void driveA(float dist, float spd_in, float spd_out, float dist_wallend) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void driveR(float angle) {
+    const bool do_angle_reset =
+        (!g_angle_accum_mode) || s_super_rotate_angle_reset_enabled;
 
     // 角加速度を設定
     if (angle >= 0) {
@@ -1303,9 +1311,11 @@ void driveR(float angle) {
     velocity_interrupt = 0;
 
     // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    if (do_angle_reset) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
 
     failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? +1 : -1);
 
@@ -1354,9 +1364,11 @@ void driveR(float angle) {
     omega_interrupt = 0;
 
     // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    if (do_angle_reset) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
 
     // drive_stop();
 

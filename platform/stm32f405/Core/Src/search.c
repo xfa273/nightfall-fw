@@ -215,6 +215,8 @@ void adachi(uint16_t fan_duty) {
 
     s_no_path_exit = false;
     search_dual_wall_streak_reset();
+    // 探索中の超信地旋回では、前壁補正を行う場面でのみ角度リセットを許可する
+    drive_set_super_rotate_angle_reset_enabled(false);
 
     // 探索時のみ制御周期を0.5kHzに間引く
     // MF.FLAG.SEARCH_HALF_RATE = 1;
@@ -317,16 +319,20 @@ void adachi(uint16_t fan_duty) {
                 acceled = false;
             } else if (!acceled && fabsf(latest_wall_error) > WALL_ALIGN_ERR_THR && MF.FLAG.WALL_ALIGN) {
                 if (ad_r > WALL_BASE_R * 1.3) {
+                    drive_set_super_rotate_angle_reset_enabled(true);
                     half_sectionD(0);
                     rotate_R90();
                     match_position(0);
                     rotate_L90();
+                    drive_set_super_rotate_angle_reset_enabled(false);
                     half_sectionA(1);
                 } else if (ad_l > WALL_BASE_L * 1.3) {
+                    drive_set_super_rotate_angle_reset_enabled(true);
                     half_sectionD(0);
                     rotate_L90();
                     match_position(0);
                     rotate_R90();
+                    drive_set_super_rotate_angle_reset_enabled(false);
                     half_sectionA(1);
                 }else{
                     one_sectionU(1.0f, speed_now);
@@ -385,6 +391,7 @@ void adachi(uint16_t fan_duty) {
 
             if (ad_fr > WALL_BASE_FR * 1.5 && ad_fl > WALL_BASE_FL * 1.5) {
                 match_position(0);
+                drive_set_super_rotate_angle_reset_enabled(true);
                 if (r_wall) {
                     rotate_R90();
                     match_position(0);
@@ -396,6 +403,7 @@ void adachi(uint16_t fan_duty) {
                 } else {
                     rotate_180();
                 }
+                drive_set_super_rotate_angle_reset_enabled(false);
                 drive_wait();
             } else {
                 rotate_180();
@@ -457,6 +465,7 @@ void adachi(uint16_t fan_duty) {
     drive_stop();
 
     drive_fan(0);
+    drive_set_super_rotate_angle_reset_enabled(true);
 
     search_dual_wall_streak_reset();
 
