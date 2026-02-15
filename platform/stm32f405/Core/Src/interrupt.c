@@ -289,7 +289,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         if (s_inner_tune_active) {
             inner_tune_tick_1khz();
 
-        } else if (MF.FLAG.OVERRIDE == 0) {
+        } else if (MF.FLAG.OVERRIDE == 0 && MF.FLAG.RUNNING) {
 
             // 壁制御
             wall_PID();
