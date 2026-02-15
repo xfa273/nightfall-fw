@@ -11,6 +11,32 @@
 
 // 経路なし終了を検出する内部フラグ（adachi() 実行中のみ有効）
 static bool s_no_path_exit = false;
+// 直進中に左右壁が連続した区画数（探索の条件付き角度リセット用）
+static uint8_t s_search_dual_wall_streak = 0;
+
+static inline void search_dual_wall_streak_reset(void) {
+    s_search_dual_wall_streak = 0;
+}
+
+static inline void search_dual_wall_streak_update(void) {
+    // 両側壁が連続する区画のみカウント（壁制御が安定しやすい条件）
+    if (!(r_wall && l_wall)) {
+        s_search_dual_wall_streak = 0;
+        return;
+    }
+
+    if (s_search_dual_wall_streak < UINT8_MAX) {
+        s_search_dual_wall_streak++;
+    }
+
+    // 3区画目で角度の基準を更新
+    if (s_search_dual_wall_streak >= 3u) {
+        IMU_angle = 0.0f;
+        real_angle = 0.0f;
+        target_angle = 0.0f;
+        s_search_dual_wall_streak = 0;
+    }
+}
 
 // 内部ヘルパ: ゴール座標(9個まで)の配列を走査して、現在座標が含まれるか判定
 static inline bool is_in_goal_cells(uint8_t x, uint8_t y) {
@@ -163,6 +189,11 @@ void searchB(uint16_t fan_duty) {
 void adachi(uint16_t fan_duty) {
 
     s_no_path_exit = false;
+    bool prev_angle_accum_mode = g_angle_accum_mode;
+
+    // 探索中は角度を持ち越し、必要条件でのみゼロリセットする
+    g_angle_accum_mode = true;
+    search_dual_wall_streak_reset();
 
     // 探索時のみ制御周期を0.5kHzに間引く
     // MF.FLAG.SEARCH_HALF_RATE = 1;
@@ -284,11 +315,13 @@ void adachi(uint16_t fan_duty) {
             }
 
             led_write(0, 0, 0);
+            search_dual_wall_streak_update();
 
             break;
         }
         //----右折----
         case 0x44:
+            search_dual_wall_streak_reset();
             arm_background_replan(route[r_cnt]);
 
             led_write(0, 1, 0);
@@ -303,6 +336,7 @@ void adachi(uint16_t fan_duty) {
             break;
         //----180回転----
         case 0x22:
+            search_dual_wall_streak_reset();
             half_sectionD(1); // 半区間分減速しながら走行し停止（前壁センサ補正あり）
 
             if (MF.FLAG.GOALED && save_count == 0 && !g_defer_save_until_end) {
@@ -353,6 +387,7 @@ void adachi(uint16_t fan_duty) {
             break;
         //----左折----
         case 0x11:
+            search_dual_wall_streak_reset();
             arm_background_replan(route[r_cnt]);
 
             led_write(1, 0, 0);
@@ -401,6 +436,10 @@ void adachi(uint16_t fan_duty) {
     drive_stop();
 
     drive_fan(0);
+
+    // 探索開始前の角度積算モード設定へ戻す
+    g_angle_accum_mode = prev_angle_accum_mode;
+    search_dual_wall_streak_reset();
 
     led_flash(2);
 

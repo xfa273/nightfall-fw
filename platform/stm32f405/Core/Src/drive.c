@@ -397,10 +397,12 @@ void one_sectionU(float section, float spd_out) {
     encoder_distance_l = 0;
     target_distance = 0;  // 距離制御の目標値もリセット
     
-    // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    // 回転角度カウントをリセット（角度積算モード時はスキップ）
+    if (!g_angle_accum_mode) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
     
     // 等速走行
     acceleration_interrupt = 0.0f;
@@ -1300,10 +1302,12 @@ void driveR(float angle) {
     encoder_distance_l = 0;
     velocity_interrupt = 0;
 
-    // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    // 回転角度カウントをリセット（角度積算モード時はスキップ）
+    if (!g_angle_accum_mode) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
 
     failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? +1 : -1);
 
@@ -1351,10 +1355,12 @@ void driveR(float angle) {
     alpha_interrupt = 0;
     omega_interrupt = 0;
 
-    // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    // 回転角度カウントをリセット（角度積算モード時はスキップ）
+    if (!g_angle_accum_mode) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
 
     // drive_stop();
 
@@ -1633,10 +1639,12 @@ void driveFWall(float dist, float spd_in, float spd_out) {
 
     // printf("acceleration_interrupt: %.2f\n", acceleration_interrupt);
 
-    // 回転角度カウントをリセット
-    real_angle = 0;
-    IMU_angle = 0;
-    target_angle = 0;
+    // 回転角度カウントをリセット（角度積算モード時はスキップ）
+    if (!g_angle_accum_mode) {
+        real_angle = 0;
+        IMU_angle = 0;
+        target_angle = 0;
+    }
 
     failsafe_turn_angle_begin(0.0f);
 
