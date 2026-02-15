@@ -30,7 +30,7 @@ const SearchRunParams_t searchRunParams[2] = {
         
         // 壁切れ検出しきい値（ヒステリシス付き）
         .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
-    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
+        .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
 
         .fan_duty = 100,
         
