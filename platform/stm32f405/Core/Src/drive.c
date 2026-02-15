@@ -282,8 +282,8 @@ void one_sectionD(void) {
     const bool use_dash =
         (acceleration_straight_dash > 0.0f) &&
         (fabsf(acceleration_straight_dash - acceleration_straight) > 1e-3f);
-    // 既知直線加速を使う場合のみ、減速はdashの2倍を使う
-    float accel_lin = use_dash ? (2.0f * acceleration_straight_dash)
+    // 既知直線加速の解除は、加速時と同じ加速度で1区画減速して巡航速度へ戻す
+    float accel_lin = use_dash ? acceleration_straight_dash
                                : acceleration_straight;
 
     float speed_out = sqrtf(fmaxf(0.0f, v0 * v0 - 2.0f * accel_lin * (DIST_HALF_SEC * 2.0f)));
