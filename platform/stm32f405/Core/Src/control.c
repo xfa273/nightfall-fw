@@ -69,9 +69,9 @@ void read_IMU(void) {
     static float s_real_omega_f = 0.0f;
     static uint8_t s_real_omega_f_inited = 0;
 
-    // 時計回りが正
+    // 反時計回り(CCW)が正
     IMU_DataUpdate();
-    const float real_omega_raw = -omega_z_true * KP_IMU;
+    const float real_omega_raw = omega_z_true * KP_IMU;
     if (!s_real_omega_f_inited) {
         s_real_omega_f = real_omega_raw;
         s_real_omega_f_inited = 1;
@@ -205,7 +205,8 @@ void omega_PID(void) {
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_ref = omega_interrupt + omega_outer;
 
-    omega_error = omega_ref - real_omega + wall_control + diagonal_control;
+    // 符号規約: CCW正
+    omega_error = real_omega - omega_ref + wall_control + diagonal_control;
 
     float o_i_next = omega_integral + omega_error;
 
@@ -252,8 +253,8 @@ void angle_PID(void) {
         return;
     }
 
-    // P項
-    angle_error = (-target_angle) - real_angle;
+    // P項（CCW正で target と real を同符号系で比較）
+    angle_error = target_angle - real_angle;
 
     s_div++;
     if (s_div >= (uint16_t)CTRL_ANGLE_OUTER_DIV) {
@@ -268,8 +269,8 @@ void angle_PID(void) {
         // 角度の偏差を保存
         previous_angle_error = angle_error;
 
-        // 目標角速度を計算
-        target_omega = -(KP_ANGLE * angle_error + KI_ANGLE * angle_integral + KD_ANGLE * angle_error_error);
+        // 目標角速度を計算（CCW正）
+        target_omega = KP_ANGLE * angle_error + KI_ANGLE * angle_integral + KD_ANGLE * angle_error_error;
     }
 }
 

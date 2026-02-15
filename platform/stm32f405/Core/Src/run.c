@@ -17,6 +17,19 @@
 
 void run(void) {
 
+    // 角度積算モード時: run_shortest() 経由でなくても理論角を使用する。
+    // （modeX case0 のログ取得モードと最短走行を同条件で比較するため）
+    if (g_angle_accum_mode) {
+        angle_turn_90      = 90.0f;
+        angle_l_turn_90    = 90.0f;
+        angle_l_turn_180   = 180.0f;
+        angle_turn45in     = 45.0f;
+        angle_turn45out    = 45.0f;
+        angle_turnV90      = 90.0f;
+        angle_turn135in    = 135.0f;
+        angle_turn135out   = 135.0f;
+    }
+
     drive_reset_before_run();
     MF.FLAG.RUNNING = 1;
     drive_start();
@@ -450,8 +463,10 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     // 経路作成（新ソルバを使用）
     solver_build_path(mode, case_index);
 
-    // 走行フラグ
-    MF.FLAG.RUNNING = 1;
+    // 前回走行の残留状態をクリア
+    // （ファン起動前に FAILED が残っているとISR側で即停止されるため）
+    MF.FLAG.FAILED = 0;
+    MF.FLAG.RUNNING = 0;
 
     // パラメータ適用
     // 直線（caseごと）

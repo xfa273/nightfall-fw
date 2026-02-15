@@ -128,6 +128,7 @@ void mode4() {
                 apply_case_params_mode4_idx(idx_normal);
                 apply_turn_normal_mode4();
                 printf("Loaded params: normal turn (mode4).\n");
+                g_angle_accum_mode = true;
                 {
                     const ShortestRunModeParams_t *pm0 = &shortestRunModeParams4;
                     drive_fan(pm0->fan_power);
@@ -254,6 +255,7 @@ void mode4() {
                 apply_case_params_mode4_idx(idx_normal);
                 apply_turn_large90_mode4();
                 printf("Loaded params: large 90deg (mode4).\n");
+                g_angle_accum_mode = true;
                 {
                     const ShortestRunModeParams_t *pm1 = &shortestRunModeParams4;
                     drive_fan(pm1->fan_power);
@@ -279,6 +281,7 @@ void mode4() {
                 apply_case_params_mode4_idx(idx_normal);
                 apply_turn_large180_mode4();
                 printf("Loaded params: large 180deg (mode4).\n");
+                g_angle_accum_mode = true;
                 {
                     const ShortestRunModeParams_t *pm2 = &shortestRunModeParams4;
                     drive_fan(pm2->fan_power);
@@ -446,6 +449,7 @@ void mode4() {
         }
 
         case 1:
+            g_angle_accum_mode = true;
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
             run_shortest(4, 1);

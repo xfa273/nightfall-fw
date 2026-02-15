@@ -110,7 +110,8 @@ volatile uint8_t velocity_profile_clamp_enabled;
 volatile float target_distance; // 割込み内の計算用の並進位置[mm]
 
 /*目標角度生成用*/
-volatile float alpha_interrupt; // 割込み内の計算用の並進角加速度[deg/s^2]
+// 符号規約: 反時計回り(CCW)を正とする
+volatile float alpha_interrupt; // 割込み内の計算用の角加速度[deg/s^2]
 volatile float omega_interrupt; // 割込み内の計算用の角速度[deg/s]
 volatile float target_angle;    // 割込み内の計算用の角度[deg]
 
@@ -131,7 +132,7 @@ volatile float velocity_integral;       // 並進速度の積分項
 volatile float out_translation;         // 並進方向の出力
 
 /*角度制御用*/
-volatile float real_angle;           // 実際の角度[deg]
+volatile float real_angle;           // 実際の角度[deg]（CCW正）
 volatile float angle_error;          // 角度の偏差[deg]
 volatile float angle_error_error;    // 角度の偏差の偏差[deg]
 volatile float previous_angle_error; // 1ループ前の角度の偏差[deg]
@@ -139,7 +140,7 @@ volatile float angle_integral;       // 角度の積分項
 
 /*角速度制御用*/
 volatile float target_omega;         // 目標角速度[deg/s]
-volatile float real_omega;           // 実際の角速度[deg/s]
+volatile float real_omega;           // 実際の角速度[deg/s]（CCW正）
 volatile float omega_error;          // 角速度の偏差[deg/s]
 volatile float omega_error_error;    // 角速度の偏差の偏差[deg/s]
 volatile float previous_omega_error; // 1ループ前の角速度の偏差[deg/s]

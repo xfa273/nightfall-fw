@@ -486,7 +486,7 @@ void run_straight(float section, float spd_out, float dist_wallend) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void rotate_R90(void) {
-    driveR(ANGLE_ROTATE_90_R);
+    driveR(-ANGLE_ROTATE_90_R);
     // drive_stop();
 }
 
@@ -497,7 +497,7 @@ void rotate_R90(void) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void rotate_L90(void) {
-    driveR(-ANGLE_ROTATE_90_L);
+    driveR(ANGLE_ROTATE_90_L);
     // drive_stop();
 }
 
@@ -539,7 +539,7 @@ void reverse_distance(float distance_mm) {
 // 引数：なし
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
-void rotate_180(void) { driveR(ANGLE_ROTATE_90_R * 2); }
+void rotate_180(void) { driveR(-ANGLE_ROTATE_90_R * 2); }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++
 // turn_R90
@@ -1077,8 +1077,8 @@ void match_position(uint16_t target_value) {
         if (v_cmd < -MATCH_POS_VEL_MAX) v_cmd = -MATCH_POS_VEL_MAX;
         velocity_interrupt = v_cmd;
 
-        // 角度は omega_interrupt を直接与えて omega_PID を活用
-        float w_cmd = MATCH_POS_KP_ROT * e_ang; // [deg/s] / [ADcount]
+        // 角度は omega_interrupt を直接与えて omega_PID を活用（CCW正）
+        float w_cmd = -MATCH_POS_KP_ROT * e_ang; // [deg/s] / [ADcount]
         if (w_cmd >  MATCH_POS_OMEGA_MAX) w_cmd =  MATCH_POS_OMEGA_MAX;
         if (w_cmd < -MATCH_POS_OMEGA_MAX) w_cmd = -MATCH_POS_OMEGA_MAX;
         omega_interrupt = w_cmd;
@@ -1292,17 +1292,17 @@ void driveR(float angle) {
     IMU_angle = 0;
     target_angle = 0;
 
-    failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? -1 : +1);
+    failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? +1 : -1);
 
     drive_start();
 
     // 実際の角度が目標角度（30°）になるまで角加速走行
     if (angle >= 0) {
-        while (real_angle > -angle * 0.333 && !MF.FLAG.FAILED) {
+        while (real_angle < angle * 0.333 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle * 0.333 && !MF.FLAG.FAILED) {
+        while (real_angle > angle * 0.333 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1310,11 +1310,11 @@ void driveR(float angle) {
     // 実際の角度が目標角度（30°）になるまで等角速度走行
     alpha_interrupt = 0;
     if (angle >= 0) {
-        while (real_angle > -angle * 0.666 && !MF.FLAG.FAILED) {
+        while (real_angle < angle * 0.666 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle * 0.666 && !MF.FLAG.FAILED) {
+        while (real_angle > angle * 0.666 && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1326,11 +1326,11 @@ void driveR(float angle) {
         alpha_interrupt = +ALPHA_ROTATE_90;
     };
     if (angle >= 0) {
-        while (real_angle > -angle && !MF.FLAG.FAILED) {
+        while (real_angle < angle && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (real_angle < -angle && !MF.FLAG.FAILED) {
+        while (real_angle > angle && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1390,19 +1390,20 @@ void driveSR(float angle_turn, float alpha_turn) {
 
     if (g_angle_accum_mode) {
         // 角度積算モード: target_angle ベースでフェーズ遷移
-        // 右ターン: target_angle は正方向に増加する
+        // 右ターン: target_angle は負方向に減少する
         float start_target = target_angle;
+        float target_end = start_target - angle_turn;
 
         failsafe_turn_angle_begin_dir(angle_turn, -1);
 
         drive_start();
 
         // 角加速度と並進加速度を設定
-        alpha_interrupt = alpha_turn;
+        alpha_interrupt = -alpha_turn;
         acceleration_interrupt = -acceleration_turn;
 
         // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle < start_target + angle_turn * 0.333f && !MF.FLAG.FAILED) {
+        while (target_angle > start_target - angle_turn * 0.333f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
@@ -1410,19 +1411,20 @@ void driveSR(float angle_turn, float alpha_turn) {
         alpha_interrupt = 0;
         acceleration_interrupt = 0;
 
-        while (target_angle < start_target + angle_turn * 0.666f && !MF.FLAG.FAILED) {
+        while (target_angle > start_target - angle_turn * 0.666f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
         // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = -alpha_turn;
+        alpha_interrupt = alpha_turn;
         acceleration_interrupt = acceleration_turn;
 
-        while (target_angle < start_target + angle_turn && !MF.FLAG.FAILED) {
+        while (target_angle > target_end && omega_interrupt < 0.0f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
         alpha_interrupt = 0;
+        omega_interrupt = 0;
         velocity_interrupt = speed_now;
 
         // 割込み内の変数をリセット（target_angle は維持）
@@ -1446,7 +1448,7 @@ void driveSR(float angle_turn, float alpha_turn) {
         drive_start();
 
         // 角加速度と並進加速度を設定
-        alpha_interrupt = alpha_turn;
+        alpha_interrupt = -alpha_turn;
         acceleration_interrupt = -acceleration_turn;
 
         // 実際の角度が目標角度（30°）になるまで角加速走行
@@ -1463,7 +1465,7 @@ void driveSR(float angle_turn, float alpha_turn) {
         }
 
         // 実際の角度が目標角度（30°）になるまで角減速走行
-        alpha_interrupt = -alpha_turn;
+        alpha_interrupt = alpha_turn;
         acceleration_interrupt = acceleration_turn;
 
         while (real_angle > -angle_turn && !MF.FLAG.FAILED) {
@@ -1505,38 +1507,40 @@ void driveSL(float angle_turn, float alpha_turn) {
 
     if (g_angle_accum_mode) {
         // 角度積算モード: target_angle ベースでフェーズ遷移
-        // 左ターン: target_angle は負方向に減少する
+        // 左ターン: target_angle は正方向に増加する
         float start_target = target_angle;
+        float target_end = start_target + angle_turn;
 
         failsafe_turn_angle_begin_dir(angle_turn, +1);
 
         // 角加速度と並進加速度を設定
-        alpha_interrupt = -alpha_turn;
+        alpha_interrupt = alpha_turn;
         acceleration_interrupt = -acceleration_turn;
 
         drive_start();
 
         // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle > start_target - angle_turn * 0.333f && !MF.FLAG.FAILED) {
+        while (target_angle < start_target + angle_turn * 0.333f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
         // target_angle が 2/3 に到達するまで等角速度走行
         alpha_interrupt = 0;
         acceleration_interrupt = 0;
-        while (target_angle > start_target - angle_turn * 0.666f && !MF.FLAG.FAILED) {
+        while (target_angle < start_target + angle_turn * 0.666f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
         // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = alpha_turn;
+        alpha_interrupt = -alpha_turn;
         acceleration_interrupt = acceleration_turn;
 
-        while (target_angle > start_target - angle_turn && !MF.FLAG.FAILED) {
+        while (target_angle < target_end && omega_interrupt > 0.0f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
 
         alpha_interrupt = 0;
+        omega_interrupt = 0;
         velocity_interrupt = speed_now;
 
         // 割込み内の変数をリセット（target_angle は維持）
@@ -1557,7 +1561,7 @@ void driveSL(float angle_turn, float alpha_turn) {
         failsafe_turn_angle_begin_dir(angle_turn, +1);
 
         // 角加速度と並進加速度を設定
-        alpha_interrupt = -alpha_turn;
+        alpha_interrupt = alpha_turn;
         acceleration_interrupt = -acceleration_turn;
 
         drive_start();
@@ -1575,7 +1579,7 @@ void driveSL(float angle_turn, float alpha_turn) {
         }
 
         // 実際の角度が目標角度（30°）になるまで角減速走行
-        alpha_interrupt = alpha_turn;
+        alpha_interrupt = -alpha_turn;
         acceleration_interrupt = acceleration_turn;
 
         while (real_angle < angle_turn && !MF.FLAG.FAILED) {
@@ -2079,7 +2083,7 @@ void drive_motor(void) {
     }
 
     // PWM出力
-    if (MF.FLAG.FAILED) {
+    if (MF.FLAG.FAILED && MF.FLAG.RUNNING) {
         // フェイルセーフ発動: 強制停止（PWM=0 ＋ STBY=Low）
         // ここで無限ループせず、上位(run/mode)へ制御を返してログ確認を可能にする。
         __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
