@@ -367,8 +367,8 @@ void mode1() {
             printf("Mode 1-2: Standard speed (Full from start).\n");
             g_angle_accum_mode = true;
 
-            g_disable_front_wall_correction = true;
-            g_disable_wall_end_correction = true;
+            // g_disable_front_wall_correction = true;
+            // g_disable_wall_end_correction = true;
 
             // パラメータ適用（標準速度）
             apply_search_params(0);
