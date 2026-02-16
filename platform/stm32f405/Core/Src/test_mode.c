@@ -28,6 +28,7 @@ typedef struct {
     float real_omega;
     float imu_angle;
     float real_angle;
+    float accel_x_true;
     float accel_y_true;
 } ImuDiagSample_t;
 
@@ -66,6 +67,7 @@ static void imu_diag_capture_and_print_csv(uint16_t fan_duty) {
         s->real_omega = real_omega;
         s->imu_angle = IMU_angle;
         s->real_angle = real_angle;
+        s->accel_x_true = accel_x_true;
         s->accel_y_true = accel_y_true;
         HAL_Delay(IMU_DIAG_SAMPLE_INTERVAL_MS);
     }
@@ -80,16 +82,17 @@ static void imu_diag_capture_and_print_csv(uint16_t fan_duty) {
     printf("#fw_git_sha=%s\n", FW_GIT_SHA);
     printf("#fw_git_branch=%s\n", FW_GIT_BRANCH);
     printf("#fw_git_dirty=%d\n", (int)FW_GIT_DIRTY);
-    printf("#mm_columns=t_ms,omega_z_raw,omega_z_true,real_omega,imu_angle,real_angle,accel_y_true\n");
+    printf("#mm_columns=t_ms,omega_z_raw,omega_z_true,real_omega,imu_angle,real_angle,accel_x_true,accel_y_true\n");
     for (uint16_t i = 0; i < n; i++) {
         const ImuDiagSample_t *s = &s_imu_diag_samples[i];
-        printf("%lu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+        printf("%lu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
                (unsigned long)s->t_ms,
                s->omega_z_raw,
                s->omega_z_true,
                s->real_omega,
                s->imu_angle,
                s->real_angle,
+               s->accel_x_true,
                s->accel_y_true);
     }
     printf("=== END IMU DIAG LOG ===\n");

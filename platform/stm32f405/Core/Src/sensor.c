@@ -9,6 +9,18 @@
 #include "flash_params.h"
 #include "build_info.h"
 
+#ifndef IMU_OFFSET_SETTLE_MS
+#define IMU_OFFSET_SETTLE_MS 400u
+#endif
+
+#ifndef IMU_OFFSET_SAMPLE_COUNT
+#define IMU_OFFSET_SAMPLE_COUNT 200u
+#endif
+
+#ifndef IMU_OFFSET_SAMPLE_INTERVAL_MS
+#define IMU_OFFSET_SAMPLE_INTERVAL_MS 1u
+#endif
+
 // デバッグ出力ヘルパ：壁センサオフセットを表示
 static void print_wall_offsets(const char* label)
 {
@@ -630,13 +642,32 @@ void get_sensor_offsets(void) {
 
 // 静止状態でIMUのオフセット値を取得
 void IMU_GetOffset(void) {
-    HAL_Delay(400);
-    omega_x_offset = omega_x_raw;
-    omega_y_offset = omega_y_raw;
-    omega_z_offset = omega_z_raw;
-    accel_x_offset = accel_x_raw;
-    accel_y_offset = accel_y_raw;
-    accel_z_offset = accel_z_raw;
+    HAL_Delay(IMU_OFFSET_SETTLE_MS);
+
+    float sum_omega_x = 0.0f;
+    float sum_omega_y = 0.0f;
+    float sum_omega_z = 0.0f;
+    float sum_accel_x = 0.0f;
+    float sum_accel_y = 0.0f;
+    float sum_accel_z = 0.0f;
+
+    for (uint32_t i = 0; i < IMU_OFFSET_SAMPLE_COUNT; i++) {
+        sum_omega_x += omega_x_raw;
+        sum_omega_y += omega_y_raw;
+        sum_omega_z += omega_z_raw;
+        sum_accel_x += accel_x_raw;
+        sum_accel_y += accel_y_raw;
+        sum_accel_z += accel_z_raw;
+        HAL_Delay(IMU_OFFSET_SAMPLE_INTERVAL_MS);
+    }
+
+    const float inv_n = 1.0f / (float)IMU_OFFSET_SAMPLE_COUNT;
+    omega_x_offset = sum_omega_x * inv_n;
+    omega_y_offset = sum_omega_y * inv_n;
+    omega_z_offset = sum_omega_z * inv_n;
+    accel_x_offset = sum_accel_x * inv_n;
+    accel_y_offset = sum_accel_y * inv_n;
+    accel_z_offset = sum_accel_z * inv_n;
 
     printf("offset: %f, %f, %f\n", omega_x_offset, omega_y_offset,
            omega_z_offset);

@@ -82,7 +82,7 @@ void read_IMU(void) {
         s_real_omega_f = s_real_omega_f + alpha * (real_omega_raw - s_real_omega_f);
     }
     real_omega = s_real_omega_f;
-    IMU_angle += omega_z_true * g_ctrl_dt;
+    IMU_angle += real_omega * g_ctrl_dt;
     real_angle = IMU_angle;
     IMU_acceleration = accel_y_true * 1000;
 }

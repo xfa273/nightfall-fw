@@ -103,7 +103,7 @@
 #define KD_DISTANCE_FAN_OFF 0.0F
 #endif
 
-#define SUCTION_FAN_STABILIZE_DELAY_MS 0
+#define SUCTION_FAN_STABILIZE_DELAY_MS 500
 
 #define KP_ANGLE 3.0F // 角度制御のP項
 #define KI_ANGLE 0.03F // 角度制御のI項
@@ -263,8 +263,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   1 // 7
-#define GOAL_Y   0 // 7
+#define GOAL_X   8 // 7
+#define GOAL_Y   8 // 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
