@@ -10,11 +10,90 @@
 #include "sensor_distance.h"
 #include "distance_params.h"
 #include "logging.h"
+#include "build_info.h"
 
 // drive.c と同じ条件でPWM反転するための定義（DIR==Lowで反転が既定）
 #ifndef PWM_INVERT_DIR_LEVEL
 #define PWM_INVERT_DIR_LEVEL 0
 #endif
+
+#define IMU_DIAG_CAPTURE_MS 5000u
+#define IMU_DIAG_SAMPLE_INTERVAL_MS 10u
+#define IMU_DIAG_MAX_SAMPLES (IMU_DIAG_CAPTURE_MS / IMU_DIAG_SAMPLE_INTERVAL_MS + 1u)
+
+typedef struct {
+    uint32_t t_ms;
+    float omega_z_raw;
+    float omega_z_true;
+    float real_omega;
+    float imu_angle;
+    float real_angle;
+    float accel_y_true;
+} ImuDiagSample_t;
+
+static ImuDiagSample_t s_imu_diag_samples[IMU_DIAG_MAX_SAMPLES];
+
+static void imu_diag_capture_and_print_csv(uint16_t fan_duty) {
+    printf("[IMU_DIAG] start: fan_duty=%u, capture=%lums, dt=%lums\n",
+           (unsigned)fan_duty,
+           (unsigned long)IMU_DIAG_CAPTURE_MS,
+           (unsigned long)IMU_DIAG_SAMPLE_INTERVAL_MS);
+
+    drive_fan(0);
+    drive_stop();
+    drive_disable_motor();
+    drive_reset_before_run();
+
+    if (fan_duty > 0) {
+        drive_fan(fan_duty);
+        HAL_Delay(2000);
+    } else {
+        HAL_Delay(500);
+    }
+
+    IMU_GetOffset();
+    IMU_angle = 0.0f;
+    real_angle = 0.0f;
+    target_angle = 0.0f;
+
+    uint32_t t0 = HAL_GetTick();
+    uint16_t n = 0;
+    while ((HAL_GetTick() - t0) < IMU_DIAG_CAPTURE_MS && n < IMU_DIAG_MAX_SAMPLES) {
+        ImuDiagSample_t *s = &s_imu_diag_samples[n++];
+        s->t_ms = HAL_GetTick() - t0;
+        s->omega_z_raw = omega_z_raw;
+        s->omega_z_true = omega_z_true;
+        s->real_omega = real_omega;
+        s->imu_angle = IMU_angle;
+        s->real_angle = real_angle;
+        s->accel_y_true = accel_y_true;
+        HAL_Delay(IMU_DIAG_SAMPLE_INTERVAL_MS);
+    }
+
+    drive_fan(0);
+
+    printf("=== IMU DIAG LOG (CSV) ===\n");
+    printf("#fw_target=%s\n", FW_TARGET);
+    printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
+    printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);
+    printf("#fw_git_describe=%s\n", FW_GIT_DESCRIBE);
+    printf("#fw_git_sha=%s\n", FW_GIT_SHA);
+    printf("#fw_git_branch=%s\n", FW_GIT_BRANCH);
+    printf("#fw_git_dirty=%d\n", (int)FW_GIT_DIRTY);
+    printf("#mm_columns=t_ms,omega_z_raw,omega_z_true,real_omega,imu_angle,real_angle,accel_y_true\n");
+    for (uint16_t i = 0; i < n; i++) {
+        const ImuDiagSample_t *s = &s_imu_diag_samples[i];
+        printf("%lu,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+               (unsigned long)s->t_ms,
+               s->omega_z_raw,
+               s->omega_z_true,
+               s->real_omega,
+               s->imu_angle,
+               s->real_angle,
+               s->accel_y_true);
+    }
+    printf("=== END IMU DIAG LOG ===\n");
+}
 
 //============================================================
 // Front sensors averaging helper (blocking)
@@ -181,22 +260,37 @@ void test_mode() {
 
             printf("Test Mode 1 IMU Check.\n");
 
-            drive_variable_reset();
-            IMU_GetOffset();
+            {
+                int sub = 0;
+                printf("Select sub: 0=live monitor, 1=CSV drift(fan OFF), 2=CSV drift(fan ON)\n");
+                sub = select_mode(sub);
+                if (sub < 0 || sub > 2) {
+                    sub = 0;
+                }
 
-            drive_fan(250);
+                if (sub == 0) {
+                    drive_variable_reset();
+                    IMU_GetOffset();
 
-            while (1) {
+                    drive_fan(250);
 
-                printf("omega: %.3f [deg/s] ,  ", real_omega);
+                    while (1) {
 
-                printf("angle: %.3f [deg] ,  ", real_angle);
+                        printf("omega: %.3f [deg/s] ,  ", real_omega);
 
-                printf("accl_x: %.3f ,  ", accel_x_true);
+                        printf("angle: %.3f [deg] ,  ", real_angle);
 
-                printf("accl_y: %.3f\n", accel_y_true);
+                        printf("accl_x: %.3f ,  ", accel_x_true);
 
-                HAL_Delay(100);
+                        printf("accl_y: %.3f\n", accel_y_true);
+
+                        HAL_Delay(100);
+                    }
+                } else {
+                    uint16_t fan_duty = (sub == 2) ? 500u : 0u;
+                    imu_diag_capture_and_print_csv(fan_duty);
+                    led_flash(5);
+                }
             }
 
             break;
