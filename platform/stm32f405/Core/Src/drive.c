@@ -1296,6 +1296,8 @@ void driveA(float dist, float spd_in, float spd_out, float dist_wallend) {
 void driveR(float angle) {
     const bool do_angle_reset =
         (!g_angle_accum_mode) || s_super_rotate_angle_reset_enabled;
+    float start_target;
+    float target_end;
 
     // 角加速度を設定
     if (angle >= 0) {
@@ -1317,17 +1319,21 @@ void driveR(float angle) {
         target_angle = 0;
     }
 
+    // 角度積算の有無に関わらず、開始角度基準で位相遷移を行う
+    start_target = target_angle;
+    target_end = start_target + angle;
+
     failsafe_turn_angle_begin_dir(angle, (angle >= 0.0f) ? +1 : -1);
 
     drive_start();
 
     // 目標角度が目標角度（30°）になるまで角加速走行
     if (angle >= 0) {
-        while (target_angle < angle * 0.333f && !MF.FLAG.FAILED) {
+        while (target_angle < start_target + angle * 0.333f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (target_angle > angle * 0.333f && !MF.FLAG.FAILED) {
+        while (target_angle > start_target + angle * 0.333f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1335,11 +1341,11 @@ void driveR(float angle) {
     // 目標角度が目標角度（30°）になるまで等角速度走行
     alpha_interrupt = 0;
     if (angle >= 0) {
-        while (target_angle < angle * 0.666f && !MF.FLAG.FAILED) {
+        while (target_angle < start_target + angle * 0.666f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (target_angle > angle * 0.666f && !MF.FLAG.FAILED) {
+        while (target_angle > start_target + angle * 0.666f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
@@ -1351,11 +1357,11 @@ void driveR(float angle) {
         alpha_interrupt = +ALPHA_ROTATE_90;
     };
     if (angle >= 0) {
-        while (target_angle < angle && omega_interrupt > 0.0f && !MF.FLAG.FAILED) {
+        while (target_angle < target_end && omega_interrupt > 0.0f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     } else {
-        while (target_angle > angle && omega_interrupt < 0.0f && !MF.FLAG.FAILED) {
+        while (target_angle > target_end && omega_interrupt < 0.0f && !MF.FLAG.FAILED) {
             background_replan_tick();
         }
     }
