@@ -106,14 +106,14 @@
 #define SUCTION_FAN_STABILIZE_DELAY_MS 500
 
 #define KP_ANGLE 3.0F // 角度制御のP項
-#define KI_ANGLE 0.03F // 角度制御のI項
+#define KI_ANGLE 0.05F // 角度制御のI項
 #define KD_ANGLE 0.0F // 角度制御のD項
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  0.9F  // 角速度制御のP項（ファンON） 0.9F
+#define KP_OMEGA_FAN_ON  0.8F  // 角速度制御のP項（ファンON） 0.9F
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.02F // 角速度制御のI項（ファンON）0.01F
+#define KI_OMEGA_FAN_ON  0.015F // 角速度制御のI項（ファンON）0.01F
 #endif
 #ifndef KD_OMEGA_FAN_ON
 #define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
@@ -263,8 +263,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   8 // 7
-#define GOAL_Y   8 // 7
+#define GOAL_X   1 // 7
+#define GOAL_Y   0 // 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
