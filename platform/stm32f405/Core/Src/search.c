@@ -848,43 +848,33 @@ void make_route() {
             m_temp >>= 4; // 上位4bitを使うので4bit分右にシフトさせる
         }
 
-        //----北を見る----
-        if (!(m_temp & 0x08) &&
-            (smap[y + 1][x] <
-             m_step)) { // 北側に壁が無く、現在地より小さい歩数マップ値であれば
-            route[i] = (0x00 - mouse.dir) & 0x03; // route配列に進行方向を記録
-            m_step = smap[y + 1][x]; // 最大歩数マップ値を更新
-            y++; // 北に進んだのでY座標をインクリメント
+        // 次方向の優先順位: 方位固定ではなく、現在向きに対して直進→右→左→後退
+        {
+            static const uint8_t s_rel_priority[4] = {0x00, 0x01, 0x03, 0x02};
+            static const int8_t s_dx[4] = {0, 1, 0, -1};
+            static const int8_t s_dy[4] = {1, 0, -1, 0};
+            static const uint8_t s_wall_mask[4] = {0x08, 0x04, 0x02, 0x01};
 
-        }
-        //----東を見る----
-        else if (
-            !(m_temp & 0x04) &&
-            (smap[y][x + 1] <
-             m_step)) { // 東側に壁が無く、現在地より小さい歩数マップ値であれば
-            route[i] = (0x01 - mouse.dir) & 0x03; // route配列に進行方向を記録
-            m_step = smap[y][x + 1]; // 最大歩数マップ値を更新
-            x++; // 東に進んだのでX座標をインクリメント
+            for (uint8_t k = 0; k < 4; k++) {
+                uint8_t rel_dir = s_rel_priority[k];
+                uint8_t abs_dir = (mouse.dir + rel_dir) & 0x03;
+                int16_t nx = (int16_t)x + s_dx[abs_dir];
+                int16_t ny = (int16_t)y + s_dy[abs_dir];
 
-        }
-        //----南を見る----
-        else if (
-            !(m_temp & 0x02) &&
-            (smap[y - 1][x] <
-             m_step)) { // 南側に壁が無く、現在地より小さい歩数マップ値であれば
-            route[i] = (0x02 - mouse.dir) & 0x03; // route配列に進行方向を記録
-            m_step = smap[y - 1][x]; // 最大歩数マップ値を更新
-            y--; // 南に進んだのでY座標をデクリメント
-
-        }
-        //----西を見る----
-        else if (
-            !(m_temp & 0x01) &&
-            (smap[y][x - 1] <
-             m_step)) { // 西側に壁が無く、現在地より小さい歩数マップ値であれば
-            route[i] = (0x03 - mouse.dir) & 0x03; // route配列に進行方向を記録
-            m_step = smap[y][x - 1]; // 最大歩数マップ値を更新
-            x--; // 西に進んだのでX座標をデクリメント
+                if ((m_temp & s_wall_mask[abs_dir]) != 0) {
+                    continue;
+                }
+                if (nx < 0 || nx >= MAZE_SIZE || ny < 0 || ny >= MAZE_SIZE) {
+                    continue;
+                }
+                if (smap[ny][nx] < m_step) {
+                    route[i] = rel_dir;
+                    m_step = smap[ny][nx];
+                    x = (uint8_t)nx;
+                    y = (uint8_t)ny;
+                    break;
+                }
+            }
         }
 
         //----格納データ形式変更----
