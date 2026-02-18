@@ -26,7 +26,7 @@
 #endif
 
 #ifndef OMEGA_LPF_TAU
-#define OMEGA_LPF_TAU 0.003F
+#define OMEGA_LPF_TAU 0.002F
 #endif
 
 // 探索直進(one_sectionU)のステップ幅[mm]
@@ -108,20 +108,40 @@
 #define KD_DISTANCE_FAN_OFF 0.0F
 #endif
 
-#define SUCTION_FAN_STABILIZE_DELAY_MS 500
+#define SUCTION_FAN_STABILIZE_DELAY_MS 100
 
-#define KP_ANGLE 3.0F // 角度制御のP項
-#define KI_ANGLE 0.05F // 角度制御のI項
-#define KD_ANGLE 0.0F // 角度制御のD項
+#ifndef KP_ANGLE_FAN_ON
+#define KP_ANGLE_FAN_ON 80.0F // 角度制御のP項（ファンON）
+#endif
+#ifndef KI_ANGLE_FAN_ON
+#define KI_ANGLE_FAN_ON 8.0F // 角度制御のI項（ファンON）
+#endif
+#ifndef KD_ANGLE_FAN_ON
+#define KD_ANGLE_FAN_ON 0.0F // 角度制御のD項（ファンON）
+#endif
+
+#ifndef KP_ANGLE_FAN_OFF
+#define KP_ANGLE_FAN_OFF 20.0F // 角度制御のP項（ファンOFF）
+#endif
+#ifndef KI_ANGLE_FAN_OFF
+#define KI_ANGLE_FAN_OFF 0.1F // 角度制御のI項（ファンOFF）
+#endif
+#ifndef KD_ANGLE_FAN_OFF
+#define KD_ANGLE_FAN_OFF 0.0F // 角度制御のD項（ファンOFF）
+#endif
+
+#ifndef TURN_OMEGA_PROFILE_ROUNDING_SCALE
+#define TURN_OMEGA_PROFILE_ROUNDING_SCALE 1.2F // >1で滑らか、<1で鋭い
+#endif
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  0.8F  // 角速度制御のP項（ファンON） 0.9F
+#define KP_OMEGA_FAN_ON  1.0F  // 角速度制御のP項（ファンON） 0.9F
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.015F // 角速度制御のI項（ファンON）0.01F
+#define KI_OMEGA_FAN_ON  0.035F // 角速度制御のI項（ファンON）0.01F
 #endif
 #ifndef KD_OMEGA_FAN_ON
-#define KD_OMEGA_FAN_ON  0.0F  // 角速度制御のD項（ファンON）
+#define KD_OMEGA_FAN_ON  1.0F  // 角速度制御のD項（ファンON）
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
@@ -138,8 +158,8 @@
 
 #define KP_IMU 1.0F // IMUの角速度の補正係数
 
-#define FAIL_COUNT_LR  10    // 左右差フェイルセーフ発動までのカウント数[ms]
-#define FAIL_LR_ERROR  3000 // 左右差フェイルセーフ発動のモータ出力左右差
+#define FAIL_COUNT_LR  20    // 左右差フェイルセーフ発動までのカウント数[ms]
+#define FAIL_LR_ERROR  4000 // 左右差フェイルセーフ発動のモータ出力左右差
 #define FAIL_COUNT_ACC 20    // 衝突フェイルセーフ発動までのカウント数[ms]
 #define FAIL_ACC       17000 // 衝突フェイルセーフ発動の加速度
 

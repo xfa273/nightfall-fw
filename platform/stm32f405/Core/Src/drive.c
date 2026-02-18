@@ -16,6 +16,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifndef TURN_OMEGA_PROFILE_ROUNDING_SCALE
+#define TURN_OMEGA_PROFILE_ROUNDING_SCALE 1.0f
+#endif
+
 static inline float consume_search_coast_mm(float planned_mm) {
     float dist = planned_mm;
     if (planned_mm <= 0.0f) return 0.0f;
@@ -89,6 +93,117 @@ static inline void failsafe_turn_angle_begin_dir(float cmd_angle_deg, int8_t exp
 
 static inline void failsafe_turn_angle_begin(float cmd_angle_deg) {
     failsafe_turn_angle_begin_dir(cmd_angle_deg, 0);
+}
+
+typedef struct {
+    float omega_peak_deg_s;
+    float t_acc_s;
+    float t_cruise_s;
+    float t_total_s;
+} smooth_turn_profile_t;
+
+static inline smooth_turn_profile_t build_smooth_turn_profile(float angle_turn_deg,
+                                                              float alpha_turn_deg_s2) {
+    smooth_turn_profile_t p = {0.0f, 0.0f, 0.0f, 0.0f};
+    const float angle_abs = fabsf(angle_turn_deg);
+
+    if (angle_abs <= 0.0f || alpha_turn_deg_s2 <= 0.0f) {
+        return p;
+    }
+
+    // 従来の1/3-1/3-1/3位相から等価なωmax, Ta, Tcを算出し、
+    // 角速度を余弦ブレンド（C1連続）へ置換する。
+    const float omega_peak_base = sqrtf((2.0f * alpha_turn_deg_s2 * angle_abs) / 3.0f);
+    p.omega_peak_deg_s = omega_peak_base;
+    if (p.omega_peak_deg_s <= 0.0f) {
+        p.omega_peak_deg_s = 0.0f;
+        return p;
+    }
+
+    const float t_acc_base = omega_peak_base / alpha_turn_deg_s2;
+    float rounding_scale = TURN_OMEGA_PROFILE_ROUNDING_SCALE;
+    if (rounding_scale < 0.1f) {
+        rounding_scale = 0.1f;
+    }
+
+    // 丸め係数:
+    //   >1.0 で加減速区間を長く（より滑らか）
+    //   <1.0 で加減速区間を短く（より鋭く）
+    p.t_acc_s = t_acc_base * rounding_scale;
+
+    // 角度保存条件（余弦ブレンド: angle = omega_peak * (t_acc + t_cruise)）
+    p.t_cruise_s = (angle_abs / p.omega_peak_deg_s) - p.t_acc_s;
+    if (p.t_cruise_s < 0.0f) {
+        // 丸めを強くし過ぎた場合は台形が成立しないため、等速区間なしの三角形へ遷移。
+        // その場合でも角度は一致するようにピーク角速度を再計算する。
+        p.t_cruise_s = 0.0f;
+        p.omega_peak_deg_s = angle_abs / p.t_acc_s;
+    }
+    p.t_total_s = 2.0f * p.t_acc_s + p.t_cruise_s;
+    return p;
+}
+
+static inline float sample_smooth_turn_omega(const smooth_turn_profile_t *p, float t_s) {
+    if (p->t_total_s <= 0.0f || p->omega_peak_deg_s <= 0.0f) {
+        return 0.0f;
+    }
+    if (t_s <= 0.0f) {
+        return 0.0f;
+    }
+
+    const float kPi = 3.14159265358979323846f;
+
+    if (t_s < p->t_acc_s) {
+        const float x = kPi * (t_s / p->t_acc_s);
+        return 0.5f * p->omega_peak_deg_s * (1.0f - cosf(x));
+    }
+
+    if (t_s < (p->t_acc_s + p->t_cruise_s)) {
+        return p->omega_peak_deg_s;
+    }
+
+    if (t_s < p->t_total_s) {
+        const float td = t_s - (p->t_acc_s + p->t_cruise_s);
+        const float x = kPi * (td / p->t_acc_s);
+        return 0.5f * p->omega_peak_deg_s * (1.0f + cosf(x));
+    }
+
+    return 0.0f;
+}
+
+static void run_smooth_turn_profile(float angle_turn_deg, float alpha_turn_deg_s2,
+                                    int8_t turn_dir_sign) {
+    const smooth_turn_profile_t p =
+        build_smooth_turn_profile(angle_turn_deg, alpha_turn_deg_s2);
+    if (p.t_total_s <= 0.0f) {
+        omega_interrupt = 0.0f;
+        alpha_interrupt = 0.0f;
+        return;
+    }
+
+    alpha_interrupt = 0.0f;
+    omega_interrupt = 0.0f;
+    const uint32_t t_start_ms = HAL_GetTick();
+
+    while (!MF.FLAG.FAILED) {
+        const float t_s = (float)(HAL_GetTick() - t_start_ms) * 0.001f;
+        if (t_s >= p.t_total_s) {
+            break;
+        }
+
+        if (t_s < p.t_acc_s) {
+            acceleration_interrupt = -acceleration_turn;
+        } else if (t_s < (p.t_acc_s + p.t_cruise_s)) {
+            acceleration_interrupt = 0.0f;
+        } else {
+            acceleration_interrupt = acceleration_turn;
+        }
+
+        const float omega_abs = sample_smooth_turn_omega(&p, t_s);
+        omega_interrupt = (float)turn_dir_sign * omega_abs;
+
+        background_replan_tick();
+    }
 }
 
 /*==========================================================
@@ -1423,39 +1538,11 @@ void driveSR(float angle_turn, float alpha_turn) {
     encoder_distance_l = 0;
 
     if (g_angle_accum_mode) {
-        // 角度積算モード: target_angle ベースでフェーズ遷移
-        // 右ターン: target_angle は負方向に減少する
-        float start_target = target_angle;
-        float target_end = start_target - angle_turn;
-
         failsafe_turn_angle_begin_dir(angle_turn, -1);
 
         drive_start();
 
-        // 角加速度と並進加速度を設定
-        alpha_interrupt = -alpha_turn;
-        acceleration_interrupt = -acceleration_turn;
-
-        // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle > start_target - angle_turn * 0.333f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が 2/3 に到達するまで等角速度走行
-        alpha_interrupt = 0;
-        acceleration_interrupt = 0;
-
-        while (target_angle > start_target - angle_turn * 0.666f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = alpha_turn;
-        acceleration_interrupt = acceleration_turn;
-
-        while (target_angle > target_end && omega_interrupt < 0.0f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
+        run_smooth_turn_profile(angle_turn, alpha_turn, -1);
 
         alpha_interrupt = 0;
         omega_interrupt = 0;
@@ -1471,42 +1558,16 @@ void driveSR(float angle_turn, float alpha_turn) {
 
         // 角度はリセットしない（積算を維持）
     } else {
-        // 従来モード: ターン単位の target_angle ベースでフェーズ遷移
         // 回転角度カウントをリセット
         real_angle = 0;
         IMU_angle = 0;
         target_angle = 0;
-        float start_target = target_angle;
-        float target_end = start_target - angle_turn;
 
         failsafe_turn_angle_begin_dir(angle_turn, -1);
 
         drive_start();
 
-        // 角加速度と並進加速度を設定
-        alpha_interrupt = -alpha_turn;
-        acceleration_interrupt = -acceleration_turn;
-
-        // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle > start_target - angle_turn * 0.333f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が 2/3 に到達するまで等角速度走行
-        alpha_interrupt = 0;
-        acceleration_interrupt = 0;
-
-        while (target_angle > start_target - angle_turn * 0.666f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = alpha_turn;
-        acceleration_interrupt = acceleration_turn;
-
-        while (target_angle > target_end && omega_interrupt < 0.0f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
+        run_smooth_turn_profile(angle_turn, alpha_turn, -1);
 
         alpha_interrupt = 0;
         omega_interrupt = 0;
@@ -1543,38 +1604,11 @@ void driveSL(float angle_turn, float alpha_turn) {
     encoder_distance_l = 0;
 
     if (g_angle_accum_mode) {
-        // 角度積算モード: target_angle ベースでフェーズ遷移
-        // 左ターン: target_angle は正方向に増加する
-        float start_target = target_angle;
-        float target_end = start_target + angle_turn;
-
         failsafe_turn_angle_begin_dir(angle_turn, +1);
-
-        // 角加速度と並進加速度を設定
-        alpha_interrupt = alpha_turn;
-        acceleration_interrupt = -acceleration_turn;
 
         drive_start();
 
-        // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle < start_target + angle_turn * 0.333f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が 2/3 に到達するまで等角速度走行
-        alpha_interrupt = 0;
-        acceleration_interrupt = 0;
-        while (target_angle < start_target + angle_turn * 0.666f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = -alpha_turn;
-        acceleration_interrupt = acceleration_turn;
-
-        while (target_angle < target_end && omega_interrupt > 0.0f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
+        run_smooth_turn_profile(angle_turn, alpha_turn, +1);
 
         alpha_interrupt = 0;
         omega_interrupt = 0;
@@ -1590,41 +1624,16 @@ void driveSL(float angle_turn, float alpha_turn) {
 
         // 角度はリセットしない（積算を維持）
     } else {
-        // 従来モード: ターン単位の target_angle ベースでフェーズ遷移
         // 回転角度カウントをリセット
         real_angle = 0;
         IMU_angle = 0;
         target_angle = 0;
-        float start_target = target_angle;
-        float target_end = start_target + angle_turn;
 
         failsafe_turn_angle_begin_dir(angle_turn, +1);
 
-        // 角加速度と並進加速度を設定
-        alpha_interrupt = alpha_turn;
-        acceleration_interrupt = -acceleration_turn;
-
         drive_start();
 
-        // target_angle が 1/3 に到達するまで角加速走行
-        while (target_angle < start_target + angle_turn * 0.333f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が 2/3 に到達するまで等角速度走行
-        alpha_interrupt = 0;
-        acceleration_interrupt = 0;
-        while (target_angle < start_target + angle_turn * 0.666f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
-
-        // target_angle が目標に到達するまで角減速走行
-        alpha_interrupt = -alpha_turn;
-        acceleration_interrupt = acceleration_turn;
-
-        while (target_angle < target_end && omega_interrupt > 0.0f && !MF.FLAG.FAILED) {
-            background_replan_tick();
-        }
+        run_smooth_turn_profile(angle_turn, alpha_turn, +1);
 
         alpha_interrupt = 0;
         omega_interrupt = 0;

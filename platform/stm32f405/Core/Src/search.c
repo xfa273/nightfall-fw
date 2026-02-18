@@ -103,7 +103,6 @@ static void track_post_goal_map_update_around_mouse(void) {
 
 static bool try_post_goal_save_or_abort(void) {
     if (try_store_map_safely()) {
-        buzzer_beep(200);
         reset_post_goal_save_tracking_baseline();
         return true;
     }
@@ -1048,6 +1047,9 @@ void store_map_in_eeprom(void) {
         }
     }
     eeprom_disable_write();
+
+    // 保存完了時の通知音を保存関数に集約（吸引中はbuzzer_beep側で抑止）
+    buzzer_beep(200);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++

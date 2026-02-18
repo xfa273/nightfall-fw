@@ -10,10 +10,10 @@ const SearchRunParams_t searchRunParams[2] = {
         
         // ターンパラメータ
         .velocity_turn90 = 300.0f,
-        .alpha_turn90 = 8820.0f,
+        .alpha_turn90 = 8920.0f,
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
-        .dist_offset_out = 14.5f,
+        .dist_offset_out = 14.2f,
         .val_offset_in = 630.0f,
         .angle_turn_90 = 90.0f,
         
