@@ -8,6 +8,15 @@
 #include "global.h"
 #include <math.h>
 
+static inline float get_heading_omega_correction(void) {
+    // 旧実装で omega_error 側に加えていた符号を保つため、指令側では反転して加算する
+    float omega_corr = -(wall_control + diagonal_control);
+    const float lim = WALL_CTRL_MAX;
+    if (omega_corr > lim) omega_corr = lim;
+    if (omega_corr < -lim) omega_corr = -lim;
+    return omega_corr;
+}
+
 /*エンコーダから速度と位置を取得する*/
 void read_encoder(void) {
      static float s_real_velocity_f = 0.0f;
@@ -120,8 +129,9 @@ void calculate_rotation(void) {
     }
     */
 
-    // 角速度から角度を計算
-    target_angle += omega_interrupt * g_ctrl_dt;
+    // 角速度から角度を計算（壁/斜め補正を目標角モデルにも反映）
+    const float omega_corr = get_heading_omega_correction();
+    target_angle += (omega_interrupt + omega_corr) * g_ctrl_dt;
 }
 
 /*並進速度のPID制御*/
@@ -203,10 +213,11 @@ void distance_PID(void) {
 void omega_PID(void) {
     const int angle_outer_enabled = (((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)) ? 1 : 0);
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
-    const float omega_ref = omega_interrupt + omega_outer;
+    const float omega_corr = get_heading_omega_correction();
+    const float omega_ref = omega_interrupt + omega_outer + omega_corr;
 
     // 符号規約: CCW正
-    omega_error = real_omega - omega_ref + wall_control + diagonal_control;
+    omega_error = real_omega - omega_ref;
 
     float o_i_next = omega_integral + omega_error;
 
