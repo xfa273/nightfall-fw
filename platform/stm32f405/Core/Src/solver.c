@@ -166,7 +166,7 @@ static int calc_goal_approach_straight(Pos2D *path_buf, int path_len) {
     return straight_count;
 }
 
-void solver_build_path(uint8_t mode, uint8_t case_index) {
+bool solver_build_path(uint8_t mode, uint8_t case_index) {
     // 最短走行パラメータからソルバプロファイルを設定
     const ShortestRunCaseParams_t* cp = NULL;
     uint8_t idx = (case_index >= 1) ? (case_index - 1) : 0;
@@ -263,14 +263,14 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
 
     if (best_goal_tl.x < 0) {
         // 経路無し
-        return;
+        return false;
     }
 
     // 最適ゴールに対して再探索し、g_path_buf を確定させる（best_path_buf を持たない）
     int path_len = shortest_path(start_tl, best_goal_tl, g_path_buf,
                                  (int)(sizeof(g_path_buf) / sizeof(g_path_buf[0])), sp);
     if (path_len <= 0) {
-        return;
+        return false;
     }
 
     // path_cell マーキング（bottom-leftで保持）
@@ -384,6 +384,7 @@ void solver_build_path(uint8_t mode, uint8_t case_index) {
         printf(", ");
     }
     printf("Goal\n");
+    return true;
 }
 
 // 既存の maze[][] の壁ビット（NORTH_WALL/EAST_WALL/SOUTH_WALL/WEST_WALL）に従い移動可否を判定

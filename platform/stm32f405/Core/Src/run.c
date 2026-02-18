@@ -15,6 +15,17 @@
 #define TEST_FAILSAFE_HOLD_MS 3000u
 #endif
 
+static void shortest_no_path_error_halt(uint8_t mode, uint8_t case_index) {
+    printf("[Shortest] ERROR: no path (mode=%u, case=%u).\n", (unsigned)mode, (unsigned)case_index);
+    MF.FLAG.RUNNING = 0;
+    MF.FLAG.FAILED = 1;
+    drive_fan(0);
+    drive_disable_motor();
+    while (1) {
+        led_flash(5);
+    }
+}
+
 void run(void) {
 
     // 角度積算モード時: run_shortest() 経由でなくても理論角を使用する。
@@ -461,7 +472,12 @@ void run_shortest(uint8_t mode, uint8_t case_index) {
     printf("Mode %d-%d Shortest Run.\n", mode, case_index);
 
     // 経路作成（新ソルバを使用）
-    solver_build_path(mode, case_index);
+    const bool path_ready = solver_build_path(mode, case_index);
+    if (!path_ready || path[0] == 0) {
+        // 走行開始前に異常停止（first_sectionA に入らない）
+        shortest_no_path_error_halt(mode, case_index);
+        return;
+    }
 
     // 前回走行の残留状態をクリア
     // （ファン起動前に FAILED が残っているとISR側で即停止されるため）
