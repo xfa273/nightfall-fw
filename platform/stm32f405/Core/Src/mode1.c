@@ -336,11 +336,8 @@ void mode1() {
             get_base();
             drive_start();
             set_search_mode(SEARCH_MODE_GOAL);
-            g_defer_save_until_end = true;  // 全面探索終了まで保存を延期
             search_end = false;
             adachi(searchRunParams[0].fan_duty);
-
-            // ゴール到達時は保存せず、全面探索終了後に保存
 
             // ===== 第2フェーズ: 全面探索 =====
             led_flash(2);
@@ -348,14 +345,9 @@ void mode1() {
             get_base();
             drive_start();
             set_search_mode(SEARCH_MODE_FULL);
-            g_suppress_first_stop_save = true;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
             search_end = false;
             adachi(searchRunParams[0].fan_duty);
-
-            // 全面探索終了後に保存
-            g_defer_save_until_end = false;
-            store_map_in_eeprom();
 
             led_wait();
 
@@ -425,13 +417,6 @@ void mode1() {
             goal_x = GOAL_X; goal_y = GOAL_Y;
             search_end = false;
             adachi(searchRunParams[0].fan_duty);
-
-            // ゴール到達後に一度だけ安全に保存
-            if (save_count == 0) {
-                if (try_store_map_safely()) {
-                    save_count = 1;
-                }
-            }
 
             // ===== 第2フェーズ: スタートへ復帰（スタート到達で終了） =====
             led_flash(2);
@@ -513,11 +498,8 @@ void mode1() {
             get_base();
             drive_start();
             set_search_mode(SEARCH_MODE_GOAL);
-            g_defer_save_until_end = true;  // 全面探索終了まで保存を延期
             search_end = false;
             adachi(searchRunParams[1].fan_duty);
-
-            // ゴール到達時は保存せず、全面探索終了後に保存
 
             // ===== 第2フェーズ: 全面探索 =====
             led_flash(2);
@@ -525,14 +507,9 @@ void mode1() {
             get_base();
             drive_start();
             set_search_mode(SEARCH_MODE_FULL);
-            g_suppress_first_stop_save = true;
             g_second_phase_search = true;  // 第2フェーズフラグ設定
             search_end = false;
             adachi(searchRunParams[1].fan_duty);
-
-            // 全面探索終了後に保存
-            g_defer_save_until_end = false;
-            store_map_in_eeprom();
 
             led_wait();
 
@@ -605,13 +582,6 @@ void mode1() {
             goal_x = GOAL_X; goal_y = GOAL_Y;
             search_end = false;
             adachi(searchRunParams[1].fan_duty);
-
-            // ゴール到達後に一度だけ安全に保存
-            if (save_count == 0) {
-                if (try_store_map_safely()) {
-                    save_count = 1;
-                }
-            }
 
             // ===== 第2フェーズ: スタートへ復帰（スタート到達で終了） =====
             led_flash(2);

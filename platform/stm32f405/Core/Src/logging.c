@@ -235,9 +235,12 @@ void log_capture_tick(void) {
             // フィールド名は共通だが、角度系を格納する
             log_buffer2.entries[pos2].target_omega = target_angle; // 目標角度
             log_buffer2.entries[pos2].actual_omega = real_angle;   // 実角度
-            log_buffer2.entries[pos2].p_term_omega = KP_ANGLE * angle_error;
-            log_buffer2.entries[pos2].i_term_omega = KI_ANGLE * angle_integral;
-            log_buffer2.entries[pos2].d_term_omega = KD_ANGLE * angle_error_error;
+            const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+            const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+            const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+            log_buffer2.entries[pos2].p_term_omega = kp_a * angle_error;
+            log_buffer2.entries[pos2].i_term_omega = ki_a * angle_integral;
+            log_buffer2.entries[pos2].d_term_omega = kd_a * angle_error_error;
             log_buffer2.entries[pos2].motor_out_r = (float)out_r;
             log_buffer2.entries[pos2].motor_out_l = (float)out_l;
             log_buffer2.entries[pos2].timestamp = current_time;

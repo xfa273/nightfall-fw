@@ -80,9 +80,6 @@ float acceled_count; // 直線加速
 bool known_straight;
 bool acceled;
 
-/*Flash保存用*/
-uint8_t save_count;
-
 /*壁判定用のセンサ補正係数*/
 float sensor_kx;
 float fwall_kx;
@@ -90,17 +87,11 @@ float fwall_kx;
 /* 探索モード */
 search_mode_t g_search_mode;
 
-/* ゴール探索→全面探索に切り替えた直後の「最初の停止でのFlash保存」を抑制するフラグ */
-bool g_suppress_first_stop_save;
-
 /* GOALモード時の到達判定にスタート座標を用いるフラグ（trueでSTART_X/START_Yを到達判定に含める） */
 bool g_goal_is_start;
 
 /* 第2フェーズ探索フラグ（ゴール区画からの再開始を示す） */
 bool g_second_phase_search;
-
-/* 探索終了まで迷路保存を延期するフラグ（ゴール→全面探索で使用） */
-bool g_defer_save_until_end;
 
 /* conf_route() 計算中に進んだ距離[mm]（次の走行で1回だけ相殺する） */
 float g_search_coast_mm;
@@ -128,9 +119,6 @@ extern float acceled_count; // 直線加速
 extern bool known_straight;
 extern bool acceled;
 
-/*Flash保存用*/
-extern uint8_t save_count;
-
 /*壁判定用のセンサ補正係数*/
 extern float sensor_kx;
 extern float fwall_kx;
@@ -138,17 +126,11 @@ extern float fwall_kx;
 /* 探索モード */
 extern search_mode_t g_search_mode;
 
-/* フラッシュ保存抑制フラグ（trueなら次の停止時保存を1回だけスキップ） */
-extern bool g_suppress_first_stop_save;
-
 /* GOALモード時に開始座標を到達判定に含めるフラグ */
 extern bool g_goal_is_start;
 
 /* 第2フェーズ探索フラグ（ゴール区画からの再開始を示す） */
 extern bool g_second_phase_search;
-
-/* 探索終了まで迷路保存を延期するフラグ（ゴール→全面探索で使用） */
-extern bool g_defer_save_until_end;
 
 /* conf_route() 計算中に進んだ距離[mm]（次の走行で1回だけ相殺する） */
 extern float g_search_coast_mm;

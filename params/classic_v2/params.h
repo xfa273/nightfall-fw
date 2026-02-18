@@ -44,6 +44,11 @@
 #define SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS 6u
 #endif
 
+// ゴール後の探索で、何区画分の新規壁情報が判明したら次の180deg停止で保存するか
+#ifndef SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD
+#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 8u
+#endif
+
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
 #define ANGLE_ROTATE_90_R 89.0F // 超信地旋回の角度[deg]
 #define ANGLE_ROTATE_90_L 89.0F // 超信地旋回の角度[deg]
@@ -105,9 +110,29 @@
 
 #define SUCTION_FAN_STABILIZE_DELAY_MS 1000
 
-#define KP_ANGLE 2.0F // 角度制御のP項
-#define KI_ANGLE 0.01F // 角度制御のI項
-#define KD_ANGLE 0.0F // 角度制御のD項
+#ifndef KP_ANGLE_FAN_ON
+#define KP_ANGLE_FAN_ON 2.0F // 角度制御のP項（ファンON）
+#endif
+#ifndef KI_ANGLE_FAN_ON
+#define KI_ANGLE_FAN_ON 0.01F // 角度制御のI項（ファンON）
+#endif
+#ifndef KD_ANGLE_FAN_ON
+#define KD_ANGLE_FAN_ON 0.0F // 角度制御のD項（ファンON）
+#endif
+
+#ifndef KP_ANGLE_FAN_OFF
+#define KP_ANGLE_FAN_OFF 2.0F // 角度制御のP項（ファンOFF）
+#endif
+#ifndef KI_ANGLE_FAN_OFF
+#define KI_ANGLE_FAN_OFF 0.01F // 角度制御のI項（ファンOFF）
+#endif
+#ifndef KD_ANGLE_FAN_OFF
+#define KD_ANGLE_FAN_OFF 0.0F // 角度制御のD項（ファンOFF）
+#endif
+
+#ifndef TURN_OMEGA_PROFILE_ROUNDING_SCALE
+#define TURN_OMEGA_PROFILE_ROUNDING_SCALE 1.0F // >1で滑らか、<1で鋭い
+#endif
 
 #ifndef KP_OMEGA_FAN_ON
 #define KP_OMEGA_FAN_ON  0.7F  // 角速度制御のP項（ファンON）0.9F

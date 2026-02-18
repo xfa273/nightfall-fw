@@ -211,7 +211,10 @@ void distance_PID(void) {
 
 /*角速度のPID制御*/
 void omega_PID(void) {
-    const int angle_outer_enabled = (((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)) ? 1 : 0);
+    const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+    const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+    const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+    const int angle_outer_enabled = (((kp_a != 0.0f) || (ki_a != 0.0f) || (kd_a != 0.0f)) ? 1 : 0);
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_corr = get_heading_omega_correction();
     const float omega_ref = omega_interrupt + omega_outer + omega_corr;
@@ -252,9 +255,12 @@ void omega_PID(void) {
 /*角度のPID制御*/
 void angle_PID(void) {
     static uint16_t s_div = 0;
+    const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+    const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+    const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
 
     // ゲインが全て0なら外側角度ループを無効化（従来の角速度制御に戻す）
-    if ((KP_ANGLE == 0.0f) && (KI_ANGLE == 0.0f) && (KD_ANGLE == 0.0f)) {
+    if ((kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f)) {
         target_omega = 0.0f;
         s_div = 0;
         angle_error = 0.0f;
@@ -281,7 +287,7 @@ void angle_PID(void) {
         previous_angle_error = angle_error;
 
         // 目標角速度を計算（CCW正）
-        target_omega = KP_ANGLE * angle_error + KI_ANGLE * angle_integral + KD_ANGLE * angle_error_error;
+        target_omega = kp_a * angle_error + ki_a * angle_integral + kd_a * angle_error_error;
     }
 }
 
