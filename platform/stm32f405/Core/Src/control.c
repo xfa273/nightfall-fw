@@ -214,7 +214,11 @@ void omega_PID(void) {
     const int angle_outer_enabled = (((KP_ANGLE != 0.0f) || (KI_ANGLE != 0.0f) || (KD_ANGLE != 0.0f)) ? 1 : 0);
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_corr = get_heading_omega_correction();
-    const float omega_ref = omega_interrupt + omega_outer + omega_corr;
+    // Test-B: 外側角度ループの出力を角速度目標の主成分にする。
+    // ただし外側ループ無効時のみ従来どおりomega_interruptを使う。
+    const float omega_ref = angle_outer_enabled
+        ? (omega_outer + omega_corr)
+        : (omega_interrupt + omega_corr);
 
     // 符号規約: CCW正
     omega_error = real_omega - omega_ref;
