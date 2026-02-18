@@ -553,10 +553,12 @@ void adachi(uint16_t fan_duty) {
 
     drive_wait();
 
+    const bool full_mode_reached_end = (g_search_mode == SEARCH_MODE_FULL);
     const bool goal_mode_reached_end = (MF.FLAG.GOALED ||
         (g_goal_is_start && mouse.x == START_X && mouse.y == START_Y));
-    if (!s_no_path_exit && g_search_mode == SEARCH_MODE_GOAL && goal_mode_reached_end) {
-        // ゴール到達で終了する探索は、ゴール時に保存する
+    if (!s_no_path_exit && (full_mode_reached_end ||
+        (g_search_mode == SEARCH_MODE_GOAL && goal_mode_reached_end))) {
+        // 全面探索の終了時、またはGOALモード終了時(ゴール/スタート到達)は保存する
         if (!try_post_goal_save_or_abort()) {
             s_no_path_exit = true;
         }
