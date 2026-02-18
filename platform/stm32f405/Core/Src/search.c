@@ -17,6 +17,102 @@ static uint8_t s_search_dual_wall_streak = 0;
 static uint8_t s_search_right_wall_streak = 0;
 static uint8_t s_search_left_wall_streak = 0;
 
+// ゴール後保存管理
+static bool s_post_goal_active = false;
+static bool s_post_goal_save_pending = false;
+static uint16_t s_post_goal_newly_known_cells = 0;
+static uint8_t s_post_goal_known_snapshot[MAZE_SIZE][MAZE_SIZE];
+static bool s_post_goal_cell_counted[MAZE_SIZE][MAZE_SIZE];
+
+static inline uint8_t get_cell_known_mask(uint16_t cell) {
+    uint8_t mask = 0;
+    if (((cell & 0x80u) != 0u) == ((cell & 0x08u) != 0u)) mask |= 0x08u; // N
+    if (((cell & 0x40u) != 0u) == ((cell & 0x04u) != 0u)) mask |= 0x04u; // E
+    if (((cell & 0x20u) != 0u) == ((cell & 0x02u) != 0u)) mask |= 0x02u; // S
+    if (((cell & 0x10u) != 0u) == ((cell & 0x01u) != 0u)) mask |= 0x01u; // W
+    return mask;
+}
+
+static void reset_post_goal_save_tracking_baseline(void) {
+    for (uint8_t y = 0; y < MAZE_SIZE; y++) {
+        for (uint8_t x = 0; x < MAZE_SIZE; x++) {
+            s_post_goal_known_snapshot[y][x] = get_cell_known_mask(map[y][x]);
+            s_post_goal_cell_counted[y][x] = false;
+        }
+    }
+    s_post_goal_newly_known_cells = 0;
+    s_post_goal_save_pending = false;
+}
+
+static inline void track_post_goal_cell(uint8_t x, uint8_t y) {
+    if (x >= MAZE_SIZE || y >= MAZE_SIZE) {
+        return;
+    }
+
+    const uint8_t now_known = get_cell_known_mask(map[y][x]);
+    const uint8_t prev_known = s_post_goal_known_snapshot[y][x];
+
+    if (now_known == prev_known) {
+        return;
+    }
+
+    s_post_goal_known_snapshot[y][x] = now_known;
+
+    const uint8_t newly_known_bits = (uint8_t)(now_known & (uint8_t)(~prev_known));
+    if (newly_known_bits != 0u && !s_post_goal_cell_counted[y][x]) {
+        s_post_goal_cell_counted[y][x] = true;
+        if (s_post_goal_newly_known_cells < UINT16_MAX) {
+            s_post_goal_newly_known_cells++;
+        }
+    }
+}
+
+static void track_post_goal_map_update_around_mouse(void) {
+    if (!s_post_goal_active) {
+        return;
+    }
+
+    const uint8_t x = mouse.x;
+    const uint8_t y = mouse.y;
+
+    track_post_goal_cell(x, y);
+
+    if (y + 1u < MAZE_SIZE) {
+        track_post_goal_cell(x, (uint8_t)(y + 1u));
+    }
+    if (x + 1u < MAZE_SIZE) {
+        track_post_goal_cell((uint8_t)(x + 1u), y);
+    }
+    if (y > 0u) {
+        track_post_goal_cell(x, (uint8_t)(y - 1u));
+    }
+    if (x > 0u) {
+        track_post_goal_cell((uint8_t)(x - 1u), y);
+    }
+
+    // write_map()のスタート壁強制保持で変更される可能性がある区画も監視
+    track_post_goal_cell(START_X, START_Y);
+    if ((START_X + 1u) < MAZE_SIZE) {
+        track_post_goal_cell((uint8_t)(START_X + 1u), START_Y);
+    }
+
+    if (s_post_goal_newly_known_cells >= SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD) {
+        s_post_goal_save_pending = true;
+    }
+}
+
+static bool try_post_goal_save_or_abort(void) {
+    if (try_store_map_safely()) {
+        buzzer_beep(200);
+        reset_post_goal_save_tracking_baseline();
+        return true;
+    }
+
+    s_no_path_exit = true;
+    search_end = true;
+    return false;
+}
+
 static inline void search_dual_wall_streak_reset(void) {
     s_search_dual_wall_streak = 0;
     s_search_right_wall_streak = 0;
@@ -118,12 +214,12 @@ void search_init(void) {
     mouse.y = 0;   // 現在地の初期化
     mouse.dir = 0; // マウスの向きの初期化
     search_end = false;
-    save_count = 0;
-    g_search_mode = SEARCH_MODE_FULL; 
-    g_suppress_first_stop_save = false;
+    g_search_mode = SEARCH_MODE_FULL;
     g_second_phase_search = false;
     g_goal_is_start = false; // 初期状態ではスタートをゴール扱いしない
-    g_defer_save_until_end = false; // 迷路保存延期フラグ
+    s_post_goal_active = false;
+    s_post_goal_save_pending = false;
+    s_post_goal_newly_known_cells = 0;
 
     g_search_coast_mm = 0.0f;
 }
@@ -231,6 +327,7 @@ void adachi(uint16_t fan_duty) {
     get_wall_info();    // 壁情報の初期化, 後壁はなくなる
     wall_info &= ~0x88; // 前壁は存在するはずがないので削除する
     write_map();        // 壁情報を地図に記入
+    track_post_goal_map_update_around_mouse();
 
     //====前に壁が無い想定で問答無用で前進====
     speed_now = 0;
@@ -250,6 +347,7 @@ void adachi(uint16_t fan_duty) {
     adv_pos();
     get_wall_info();
     write_map();
+    track_post_goal_map_update_around_mouse();
     markVisited(mouse.x, mouse.y);
 
     //====歩数マップ・経路作成====
@@ -366,26 +464,13 @@ void adachi(uint16_t fan_duty) {
             search_dual_wall_streak_reset();
             half_sectionD(1); // 半区間分減速しながら走行し停止（前壁センサ補正あり）
 
-            if (MF.FLAG.GOALED && save_count == 0 && !g_defer_save_until_end) {
-                if (g_search_mode == SEARCH_MODE_FULL && g_suppress_first_stop_save) {
-                    // フル探索直後の最初の停止での保存はスキップ（1回だけ）
-                    g_suppress_first_stop_save = false;
-                } else {
-                    drive_variable_reset();
-                    alpha_interrupt = 0;
-                    acceleration_interrupt = 0;
-                    drive_wait();
-                    if (try_store_map_safely()) {
-                        buzzer_beep(200);
-                        save_count++;
-                        if (save_count > 2) {
-                            save_count = 0;
-                        }
-                    } else {
-                        // 経路がない場合は保存せず探索走行を終了
-                        s_no_path_exit = true;
-                        search_end = true;
-                    }
+            if (s_post_goal_active && s_post_goal_save_pending) {
+                drive_variable_reset();
+                alpha_interrupt = 0;
+                acceleration_interrupt = 0;
+                drive_wait();
+                if (!try_post_goal_save_or_abort()) {
+                    break;
                 }
             }
 
@@ -431,11 +516,23 @@ void adachi(uint16_t fan_duty) {
             break;
         }
 
+        if (s_no_path_exit) {
+            break;
+        }
+
         adv_pos();
 
         markVisited(mouse.x, mouse.y); // 探索済区画として記録
 
         if (is_in_goal_cells(mouse.x, mouse.y)) {
+            if (!MF.FLAG.GOALED) {
+                s_post_goal_active = true;
+                reset_post_goal_save_tracking_baseline();
+                if (g_search_mode == SEARCH_MODE_FULL) {
+                    // 全面探索では、ゴール後の最初の停止(180deg)で保存
+                    s_post_goal_save_pending = true;
+                }
+            }
             MF.FLAG.GOALED = 1;
         }
 
@@ -456,8 +553,11 @@ void adachi(uint16_t fan_duty) {
 
     drive_wait();
 
-    if (!s_no_path_exit) {
-        if (!try_store_map_safely()) { // 経路がない場合は保存しない＋終了表示へ
+    const bool goal_mode_reached_end = (MF.FLAG.GOALED ||
+        (g_goal_is_start && mouse.x == START_X && mouse.y == START_Y));
+    if (!s_no_path_exit && g_search_mode == SEARCH_MODE_GOAL && goal_mode_reached_end) {
+        // ゴール到達で終了する探索は、ゴール時に保存する
+        if (!try_post_goal_save_or_abort()) {
             s_no_path_exit = true;
         }
     }
@@ -519,6 +619,7 @@ void conf_route() {
 
     //----壁情報書き込み----
     write_map();
+    track_post_goal_map_update_around_mouse();
 
     int mstep = make_smap(goal_x, goal_y);
 

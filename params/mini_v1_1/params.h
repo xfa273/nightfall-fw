@@ -44,6 +44,11 @@
 #define SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS 5u
 #endif
 
+// ゴール後の探索で、何区画分の新規壁情報が判明したら次の180deg停止で保存するか
+#ifndef SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD
+#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 8u
+#endif
+
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
 #define ANGLE_ROTATE_90_R 90.0F // 超信地旋回の角度[deg]
 #define ANGLE_ROTATE_90_L 90.0F // 超信地旋回の角度[deg]
