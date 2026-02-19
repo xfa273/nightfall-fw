@@ -66,7 +66,7 @@
 
 /*
  * 吸引ファン ON/OFF で使い分ける PID ゲイン（v1最終の値を使用）
- * control.c の velocity_PID() / distance_PID() が MF.FLAG.SUCTION を参照して切替
+ * control.c の各PIDが drive_use_fan_on_gains() で吸引強度閾値を参照して切替
  */
 #ifndef KP_VELOCITY_FAN_ON
 #define KP_VELOCITY_FAN_ON  2.5F   
@@ -109,6 +109,10 @@
 #endif
 
 #define SUCTION_FAN_STABILIZE_DELAY_MS 100
+
+#ifndef SUCTION_GAIN_ON_THRESHOLD_PERCENT
+#define SUCTION_GAIN_ON_THRESHOLD_PERCENT 50U // [%] 以上でFAN_ON用ゲインを適用
+#endif
 
 #ifndef KP_ANGLE_FAN_ON
 #define KP_ANGLE_FAN_ON 80.0F // 角度制御のP項（ファンON）

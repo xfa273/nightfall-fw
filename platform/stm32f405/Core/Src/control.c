@@ -150,10 +150,11 @@ void velocity_PID(void) {
     // D項
     velocity_error_error = velocity_error - previous_velocity_error;
 
-    // 吸引ON/OFFでゲイン切替（v1最終の値を params.h に定義）
-    const float kp_v = MF.FLAG.SUCTION ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
-    const float ki_v = MF.FLAG.SUCTION ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
-    const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+    // 吸引強度が閾値以上なら FAN_ON 用ゲイン、それ未満なら FAN_OFF 用ゲイン
+    const bool use_fan_on_gains = drive_use_fan_on_gains();
+    const float kp_v = use_fan_on_gains ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+    const float ki_v = use_fan_on_gains ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+    const float kd_v = use_fan_on_gains ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
 
     // モータ制御量を計算（純PID）
     if (CTRL_ENABLE_ANTI_WINDUP) {
@@ -186,10 +187,11 @@ void distance_PID(void) {
     // 誤差
     distance_error = target_distance - real_distance;
 
-    // 目標速度（プロファイル速度 + 位置PIDの補正）: 吸引ON/OFFでゲイン切替
-    const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
-    const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
-    const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+    // 目標速度（プロファイル速度 + 位置PIDの補正）: 吸引強度閾値でゲイン切替
+    const bool use_fan_on_gains = drive_use_fan_on_gains();
+    const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+    const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+    const float kd_d = use_fan_on_gains ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
 
     s_div++;
     if (s_div >= (uint16_t)CTRL_DISTANCE_OUTER_DIV) {
@@ -211,9 +213,10 @@ void distance_PID(void) {
 
 /*角速度のPID制御*/
 void omega_PID(void) {
-    const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
-    const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
-    const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+    const bool use_fan_on_gains = drive_use_fan_on_gains();
+    const float kp_a = use_fan_on_gains ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+    const float ki_a = use_fan_on_gains ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+    const float kd_a = use_fan_on_gains ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
     const int angle_outer_enabled = (((kp_a != 0.0f) || (ki_a != 0.0f) || (kd_a != 0.0f)) ? 1 : 0);
     const float omega_outer = (angle_outer_enabled ? target_omega : 0.0f);
     const float omega_corr = get_heading_omega_correction();
@@ -227,10 +230,10 @@ void omega_PID(void) {
     // D項（角速度誤差の差分）
     omega_error_error = omega_error - previous_omega_error;
 
-    // 吸引ON/OFFでゲイン切替
-    const float kp_o = MF.FLAG.SUCTION ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
-    const float ki_o = MF.FLAG.SUCTION ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
-    const float kd_o = MF.FLAG.SUCTION ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
+    // 吸引強度閾値でゲイン切替
+    const float kp_o = use_fan_on_gains ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
+    const float ki_o = use_fan_on_gains ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
+    const float kd_o = use_fan_on_gains ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
 
     // モータ制御量を計算
     if (CTRL_ENABLE_ANTI_WINDUP) {
@@ -255,9 +258,10 @@ void omega_PID(void) {
 /*角度のPID制御*/
 void angle_PID(void) {
     static uint16_t s_div = 0;
-    const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
-    const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
-    const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+    const bool use_fan_on_gains = drive_use_fan_on_gains();
+    const float kp_a = use_fan_on_gains ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+    const float ki_a = use_fan_on_gains ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+    const float kd_a = use_fan_on_gains ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
 
     // ゲインが全て0なら外側角度ループを無効化（従来の角速度制御に戻す）
     if ((kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f)) {

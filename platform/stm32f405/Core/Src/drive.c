@@ -20,6 +20,10 @@
 #define TURN_OMEGA_PROFILE_ROUNDING_SCALE 1.0f
 #endif
 
+#ifndef SUCTION_GAIN_ON_THRESHOLD_PERCENT
+#define SUCTION_GAIN_ON_THRESHOLD_PERCENT 50U
+#endif
+
 static inline float consume_search_coast_mm(float planned_mm) {
     float dist = planned_mm;
     if (planned_mm <= 0.0f) return 0.0f;
@@ -67,6 +71,7 @@ static volatile uint8_t s_motor_enabled = 0;
 volatile uint32_t fan_last_off_ms = 0;
 
 static uint8_t s_fan_running = 0;
+static volatile uint16_t s_fan_power = 0;
 
 static volatile uint8_t s_fail_turn_angle_enabled = 0;
 static volatile float s_fail_turn_angle_start_deg = 0.0f;
@@ -80,6 +85,24 @@ static volatile bool s_super_rotate_angle_reset_enabled = true;
 
 void drive_set_super_rotate_angle_reset_enabled(bool enable) {
     s_super_rotate_angle_reset_enabled = enable;
+}
+
+uint16_t drive_get_fan_power(void) {
+    return s_fan_power;
+}
+
+bool drive_use_fan_on_gains(void) {
+    const uint16_t fan_power = drive_get_fan_power();
+    if (fan_power == 0u) {
+        return false;
+    }
+
+    uint32_t threshold_percent = (uint32_t)SUCTION_GAIN_ON_THRESHOLD_PERCENT;
+    if (threshold_percent > 100u) {
+        threshold_percent = 100u;
+    }
+    const uint16_t threshold_power = (uint16_t)(threshold_percent * 10u);
+    return fan_power >= threshold_power;
 }
 
 static inline void failsafe_turn_angle_begin_dir(float cmd_angle_deg, int8_t expected_dir) {
@@ -2223,6 +2246,10 @@ void drive_motor(void) {
 void drive_fan(uint16_t fan_power) {
 
     const uint8_t was_running = s_fan_running;
+    if (fan_power > 1000u) {
+        fan_power = 1000u;
+    }
+    s_fan_power = fan_power;
 
     if (fan_power > 0) {
         MF.FLAG.SUCTION = 1;

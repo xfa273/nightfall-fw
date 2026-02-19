@@ -379,6 +379,8 @@ void drive_set_dir(uint8_t); // 進む方向の設定
 void drive_motor(void);
 
 void drive_fan(uint16_t);
+uint16_t drive_get_fan_power(void);
+bool drive_use_fan_on_gains(void);
 void drive_set_super_rotate_angle_reset_enabled(bool enable);
 
 

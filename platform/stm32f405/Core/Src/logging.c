@@ -213,9 +213,10 @@ void log_capture_tick(void) {
     case LOG_PROFILE_OMEGA:
         // 角速度（主バッファ）
         {
-            const float kp_o = MF.FLAG.SUCTION ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
-            const float ki_o = MF.FLAG.SUCTION ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
-            const float kd_o = MF.FLAG.SUCTION ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_o = use_fan_on_gains ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
+            const float ki_o = use_fan_on_gains ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
+            const float kd_o = use_fan_on_gains ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
             log_add_entry(
                 (uint16_t)log_buffer.count,
                 omega_interrupt,
@@ -235,9 +236,10 @@ void log_capture_tick(void) {
             // フィールド名は共通だが、角度系を格納する
             log_buffer2.entries[pos2].target_omega = target_angle; // 目標角度
             log_buffer2.entries[pos2].actual_omega = real_angle;   // 実角度
-            const float kp_a = MF.FLAG.SUCTION ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
-            const float ki_a = MF.FLAG.SUCTION ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
-            const float kd_a = MF.FLAG.SUCTION ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_a = use_fan_on_gains ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+            const float ki_a = use_fan_on_gains ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+            const float kd_a = use_fan_on_gains ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
             log_buffer2.entries[pos2].p_term_omega = kp_a * angle_error;
             log_buffer2.entries[pos2].i_term_omega = ki_a * angle_integral;
             log_buffer2.entries[pos2].d_term_omega = kd_a * angle_error_error;
@@ -252,9 +254,10 @@ void log_capture_tick(void) {
     case LOG_PROFILE_VELOCITY:
         // 並進速度（主バッファ）
         {
-            const float kp_v = MF.FLAG.SUCTION ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
-            const float ki_v = MF.FLAG.SUCTION ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
-            const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_v = use_fan_on_gains ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+            const float ki_v = use_fan_on_gains ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+            const float kd_v = use_fan_on_gains ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
             log_add_entry(
                 (uint16_t)log_buffer.count,
                 velocity_interrupt,
@@ -274,9 +277,10 @@ void log_capture_tick(void) {
             log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
             log_buffer2.entries[pos2].target_omega = target_distance;
             log_buffer2.entries[pos2].actual_omega = real_distance;
-            const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
-            const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
-            const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+            const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+            const float kd_d = use_fan_on_gains ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
             log_buffer2.entries[pos2].p_term_omega = kp_d * distance_error;
             log_buffer2.entries[pos2].i_term_omega = ki_d * distance_integral;
             log_buffer2.entries[pos2].d_term_omega = kd_d * distance_error_error;
@@ -295,9 +299,10 @@ void log_capture_tick(void) {
             log_buffer2.entries[pos2].count = (uint16_t)log_buffer2.count;
             log_buffer2.entries[pos2].target_omega = target_distance;
             log_buffer2.entries[pos2].actual_omega = real_distance;
-            const float kp_d = MF.FLAG.SUCTION ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
-            const float ki_d = MF.FLAG.SUCTION ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
-            const float kd_d = MF.FLAG.SUCTION ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+            const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+            const float kd_d = use_fan_on_gains ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
             log_buffer2.entries[pos2].p_term_omega = kp_d * distance_error;
             log_buffer2.entries[pos2].i_term_omega = ki_d * distance_integral;
             log_buffer2.entries[pos2].d_term_omega = kd_d * distance_error_error;
@@ -309,9 +314,10 @@ void log_capture_tick(void) {
         }
         // 並進速度（主バッファ）も併記しておく（閲覧側でVELOCITYを選ばれても空にならないように）
         {
-            const float kp_v = MF.FLAG.SUCTION ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
-            const float ki_v = MF.FLAG.SUCTION ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
-            const float kd_v = MF.FLAG.SUCTION ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+            const bool use_fan_on_gains = drive_use_fan_on_gains();
+            const float kp_v = use_fan_on_gains ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+            const float ki_v = use_fan_on_gains ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+            const float kd_v = use_fan_on_gains ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
             log_add_entry(
                 (uint16_t)log_buffer.count,
                 velocity_interrupt,
