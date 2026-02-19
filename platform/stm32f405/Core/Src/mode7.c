@@ -372,6 +372,7 @@ void mode7() {
 
             // g_disable_front_wall_correction = true;
             // g_disable_wall_end_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(7, 1);
 
             break;
@@ -380,6 +381,7 @@ void mode7() {
 
             g_disable_front_wall_correction = true;
             g_disable_wall_end_correction = true;
+            g_angle_accum_mode = true;
             run_shortest(7, 2);
             break;
 
