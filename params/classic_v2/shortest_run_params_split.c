@@ -148,13 +148,13 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .alpha_l_turn_90    = 13000.0f,
     .angle_l_turn_90    = 90.0f,
     .dist_l_turn_in_90  = 13.0f,
-    .dist_l_turn_out_90 = 29.0f,
+    .dist_l_turn_out_90 = 26.0f,
     // Large 180deg
     .velocity_l_turn_180= 1700.0f,
-    .alpha_l_turn_180   = 11800.0f,
-    .angle_l_turn_180   = 179.0f,
-    .dist_l_turn_in_180 = 11.0f,
-    .dist_l_turn_out_180= 92.0f,
+    .alpha_l_turn_180   = 9400.0f,
+    .angle_l_turn_180   = 180.0f,
+    .dist_l_turn_in_180 = 3.0f,
+    .dist_l_turn_out_180= 50.0f,
     // 45deg In
     .velocity_turn45in   = 1000.0f,
     .alpha_turn45in      = 27200.0f,
@@ -278,13 +278,13 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .alpha_l_turn_90    = 19300.0f,
     .angle_l_turn_90    = 90.0f,
     .dist_l_turn_in_90  = 13.0f,
-    .dist_l_turn_out_90 = 37.0f,
+    .dist_l_turn_out_90 = 28.0f,
     // Large 180deg
     .velocity_l_turn_180= 2000.0f,
-    .alpha_l_turn_180   = 16000.0f,
+    .alpha_l_turn_180   = 14900.0f,
     .angle_l_turn_180   = 180.0f,
     .dist_l_turn_in_180 = 7.0f,
-    .dist_l_turn_out_180= 73.0f,
+    .dist_l_turn_out_180= 40.0f,
     // 45deg In
     .velocity_turn45in   = 1200.0f,
     .alpha_turn45in      = 16422.0f,
@@ -407,13 +407,13 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .alpha_l_turn_90    = 28500.0f,
     .angle_l_turn_90    = 90.0f,
     .dist_l_turn_in_90  = 12.0f,
-    .dist_l_turn_out_90 = 38.0f,
+    .dist_l_turn_out_90 = 34.0f,
     // Large 180deg
     .velocity_l_turn_180= 2400.0f,
-    .alpha_l_turn_180   = 22100.0f,
+    .alpha_l_turn_180   = 21000.0f,
     .angle_l_turn_180   = 180.0f,
     .dist_l_turn_in_180 = 5.0f,
-    .dist_l_turn_out_180= 60.0f,
+    .dist_l_turn_out_180= 32.0f,
     .fan_power          = 500,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
@@ -506,13 +506,13 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .alpha_l_turn_90    = 37000.0f,
     .angle_l_turn_90    = 90.5f,
     .dist_l_turn_in_90  = 8.0f,
-    .dist_l_turn_out_90 = 39.0f,
+    .dist_l_turn_out_90 = 32.0f,
     // Large 180deg
     .velocity_l_turn_180= 2800.0f,
     .alpha_l_turn_180   = 29500.0f,
     .angle_l_turn_180   = 180.0f,
     .dist_l_turn_in_180 = 1.0f,
-    .dist_l_turn_out_180= 100.0f,
+    .dist_l_turn_out_180= 52.0f,
     .fan_power          = 650,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
@@ -544,47 +544,47 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
     },
     // case4 (index 3)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.5f,
+        .acceleration_straight = 38000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 5000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case5 (index 4)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.5f,
+        .acceleration_straight = 40000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 5000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case6 (index 5)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 28000.0f,
-        .velocity_straight = 5000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
         .velocity_d_straight = 3000.0f
     },
     // case7 (index 6)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 30000.0f,
-        .velocity_straight = 5200.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
-        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
-        .velocity_d_straight = 3500.0f
+        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
+        .velocity_d_straight = 3000.0f
     },
     // case8 (index 7): diagonal-use
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 20000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
         .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
         .velocity_d_straight = 3000.0f
     },
     // case9 (index 8): diagonal-use
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 23000.0f,
-        .velocity_straight = 4500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 35000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.5f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
-        .velocity_d_straight = 3500.0f
+        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
+        .velocity_d_straight = 3000.0f
     },
 };
 
