@@ -111,10 +111,10 @@
 #define SUCTION_FAN_STABILIZE_DELAY_MS 1000
 
 #ifndef KP_ANGLE_FAN_ON
-#define KP_ANGLE_FAN_ON 2.0F // 角度制御のP項（ファンON）
+#define KP_ANGLE_FAN_ON 75.0F // 角度制御のP項（ファンON）
 #endif
 #ifndef KI_ANGLE_FAN_ON
-#define KI_ANGLE_FAN_ON 0.01F // 角度制御のI項（ファンON）
+#define KI_ANGLE_FAN_ON 5.0F // 角度制御のI項（ファンON）
 #endif
 #ifndef KD_ANGLE_FAN_ON
 #define KD_ANGLE_FAN_ON 0.0F // 角度制御のD項（ファンON）
