@@ -216,7 +216,7 @@
 
 // 前壁補正：未検知時の最大延長距離[mm]
 #ifndef WALL_END_EXTEND_MAX_MM
-#define WALL_END_EXTEND_MAX_MM  15.0F
+#define WALL_END_EXTEND_MAX_MM  30.0F
 #endif
 
 #define WALL_CTRL_BASE_L 1941 // 壁制御の基準値（左） 2135

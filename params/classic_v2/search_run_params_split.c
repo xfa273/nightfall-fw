@@ -13,7 +13,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .alpha_turn90       = 19000.0f,
         .acceleration_turn  = 0.0f,
         .dist_offset_in     = 10.0f,
-        .dist_offset_out    = 26.0f,
+        .dist_offset_out    = 24.0f,
         .val_offset_in      = 930.0f,
         .angle_turn_90      = 90.0f,
         
@@ -45,13 +45,13 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_straight_dash = 3000.0f,
         
         // ターンパラメータ
-        .velocity_turn90 = 600.0f,
-        .alpha_turn90 = 10300.0f,
-        .acceleration_turn = 0.0f,
-        .dist_offset_in = 20.0f,
-        .dist_offset_out = 28.0f,
-        .val_offset_in = 730.0f,
-        .angle_turn_90 = 90.0f,
+        .velocity_turn90    = 1200.0f,
+        .alpha_turn90       = 29000.0f,
+        .acceleration_turn  = 0.0f,
+        .dist_offset_in     = 10.0f,
+        .dist_offset_out    = 36.5f,
+        .val_offset_in      = 525.0f,
+        .angle_turn_90      = 90.0f,
         
         // 壁切れ後の追従距離
         .dist_wall_end = 90.0f,
@@ -68,7 +68,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
         .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
 
-        .fan_duty = 0,
+        .fan_duty = 150,
         
         // フラグ
         .wall_align_enable = 0  // 壁合わせ無効
