@@ -72,6 +72,8 @@ volatile uint32_t fan_last_off_ms = 0;
 
 static uint8_t s_fan_running = 0;
 static volatile uint16_t s_fan_power = 0;
+// 探索走行の fan_duty 設定が非0の間、走行中ブザーを抑止する
+static volatile bool s_search_fan_buzzer_suppress = false;
 
 static volatile uint8_t s_fail_turn_angle_enabled = 0;
 static volatile float s_fail_turn_angle_start_deg = 0.0f;
@@ -89,6 +91,17 @@ void drive_set_super_rotate_angle_reset_enabled(bool enable) {
 
 uint16_t drive_get_fan_power(void) {
     return s_fan_power;
+}
+
+void drive_set_search_fan_buzzer_suppress(bool enable) {
+    s_search_fan_buzzer_suppress = enable;
+}
+
+bool drive_should_suppress_buzzer(void) {
+    if (MF.FLAG.SUCTION) {
+        return true;
+    }
+    return (MF.FLAG.RUNNING && s_search_fan_buzzer_suppress);
 }
 
 bool drive_use_fan_on_gains(void) {
