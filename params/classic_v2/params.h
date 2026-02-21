@@ -46,7 +46,7 @@
 
 // ゴール後の探索で、何区画分の新規壁情報が判明したら次の180deg停止で保存するか
 #ifndef SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD
-#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 8u
+#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 256u
 #endif
 
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
@@ -183,10 +183,10 @@
     センサ系
 ------------------------------------------------------------*/
 /*壁判断閾値*/
-#define WALL_BASE_FR  250   // 前壁右センサ    //700
-#define WALL_BASE_FL  250   // 前壁左センサ    //700
-#define WALL_BASE_R   240   // 右壁センサ  //800
-#define WALL_BASE_L   240   // 左壁センサ  //800
+#define WALL_BASE_FR  220   // 前壁右センサ    //700
+#define WALL_BASE_FL  220   // 前壁左センサ    //700
+#define WALL_BASE_R   300   // 右壁センサ  //800
+#define WALL_BASE_L   300   // 左壁センサ  //800
 #define WALL_DIFF_THR 22   // 壁センサ値の変化量のしきい値
 #define K_SENSOR      1.00F // センサの補正値 0.94F
 
@@ -292,8 +292,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   1 // 7
-#define GOAL_Y   0 // 7
+#define GOAL_X   7 // 7
+#define GOAL_Y   7 // 7
 #define MAZE_SIZE 16
 #define START_X   0
 #define START_Y   0
@@ -307,18 +307,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 7
+#define GOAL2_Y 8
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 8
+#define GOAL3_Y 7
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 8
+#define GOAL4_Y 8
 #endif
 
 #ifndef GOAL5_X

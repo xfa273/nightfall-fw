@@ -6,7 +6,7 @@ const SearchRunParams_t searchRunParams[2] = {
     {
         // 直線パラメータ
         .acceleration_straight = 5555.6f,
-        .acceleration_straight_dash = 7000.0f,
+        .acceleration_straight_dash = 3000.0f,
         
         // ターンパラメータ
         .velocity_turn90    = 1000.0f,
@@ -29,8 +29,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
-        .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
+        .wall_end_thr_r_high = 130, .wall_end_thr_r_low = 1,
+        .wall_end_thr_l_high = 130, .wall_end_thr_l_low = 1,
 
         .fan_duty = 100,
         
@@ -41,8 +41,8 @@ const SearchRunParams_t searchRunParams[2] = {
     // case5 (index 1): 遅い速度 (旧mode1 case5相当)
     {
         // 直線パラメータ
-        .acceleration_straight = 2000.0f,
-        .acceleration_straight_dash = 3000.0f,
+        .acceleration_straight = 8000.0f,
+        .acceleration_straight_dash = 8000.0f,
         
         // ターンパラメータ
         .velocity_turn90    = 1200.0f,
@@ -65,8 +65,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
-        .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
+        .wall_end_thr_r_high = 130, .wall_end_thr_r_low = 1,
+        .wall_end_thr_l_high = 130, .wall_end_thr_l_low = 1,
 
         .fan_duty = 150,
         

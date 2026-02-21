@@ -15,7 +15,7 @@
     走行系
 ------------------------------------------------------------*/
 /*走行パラメータ*/
-#define D_TIRE            13.40F  // タイヤ直径[mm] 13.75F
+#define D_TIRE            13.35F  // タイヤ直径[mm] 13.75F
 #define DIST_HALF_SEC     45     // 迷路の半区間距離[mm]
 #define DIST_D_HALF_SEC   67.279 // 斜めの半区間距離[mm]
 #define DIST_FIRST_SEC    13     // 最初の区画の距離[mm]
@@ -46,7 +46,7 @@
 
 // ゴール後の探索で、何区画分の新規壁情報が判明したら次の180deg停止で保存するか
 #ifndef SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD
-#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 8u
+#define SEARCH_POST_GOAL_SAVE_NEW_CELL_THRESHOLD 128u
 #endif
 
 #define ALPHA_ROTATE_90   3000  // 超信地旋回の角加速度[deg/sec^2]
@@ -292,8 +292,8 @@
     探索系
 ------------------------------------------------------------*/
 //----ゴール座標----
-#define GOAL_X   1 // 7
-#define GOAL_Y   0 // 7
+#define GOAL_X   13 // 7
+#define GOAL_Y   15// 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
