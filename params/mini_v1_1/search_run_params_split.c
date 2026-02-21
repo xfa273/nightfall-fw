@@ -6,7 +6,7 @@ const SearchRunParams_t searchRunParams[2] = {
     {
         // 直線パラメータ
         .acceleration_straight = 1000.0f,
-        .acceleration_straight_dash = 1500.0f,
+        .acceleration_straight_dash = 1000.0f,
         
         // ターンパラメータ
         .velocity_turn90 = 300.0f,
@@ -29,8 +29,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 100,
-        .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 100,
+        .wall_end_thr_r_high = 200, .wall_end_thr_r_low = 100,
+        .wall_end_thr_l_high = 200, .wall_end_thr_l_low = 100,
 
         .fan_duty = 0,
         
@@ -65,8 +65,8 @@ const SearchRunParams_t searchRunParams[2] = {
         .fwall_kx = 1.1f,
         
         // 壁切れ検出しきい値（ヒステリシス付き）
-        .wall_end_thr_r_high = 150, .wall_end_thr_r_low = 100,
-        .wall_end_thr_l_high = 150, .wall_end_thr_l_low = 100,
+        .wall_end_thr_r_high = 200, .wall_end_thr_r_low = 100,
+        .wall_end_thr_l_high = 200, .wall_end_thr_l_low = 100,
 
         .fan_duty = 0,
         
