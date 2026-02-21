@@ -352,7 +352,7 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
     },
     // case5 (index 4)
     {
-        .acceleration_straight = 12000.0f, .acceleration_straight_dash = 8000.0f,
+        .acceleration_straight = 8000.0f, .acceleration_straight_dash = 6000.0f,
         .velocity_straight = 3000.0f, .kp_wall = 0.14f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
