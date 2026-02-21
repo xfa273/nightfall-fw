@@ -53,7 +53,7 @@ void run(void) {
         sensor_log_start();
     }
 
-    for (uint8_t path_count = 0; path[path_count] != 0 && !MF.FLAG.FAILED; path_count++) {
+    for (uint16_t path_count = 0; path[path_count] != 0 && !MF.FLAG.FAILED; path_count++) {
         if (200 < path[path_count] && path[path_count] < 300) {
             // 直進（距離ベース）
 

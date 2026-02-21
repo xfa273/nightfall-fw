@@ -8,9 +8,13 @@
 #ifndef INC_SEARCH_H_
 #define INC_SEARCH_H_
 
-// 経路配列の最大長（迷路全マス数に追従）
+// 経路配列の最大長（32x32迷路に対応するため固定1024）
 #ifndef ROUTE_MAX_LEN
-#define ROUTE_MAX_LEN (MAZE_SIZE * MAZE_SIZE)
+#define ROUTE_MAX_LEN 1024
+#endif
+
+#if ((MAZE_SIZE * MAZE_SIZE) > ROUTE_MAX_LEN)
+#error "ROUTE_MAX_LEN is too small for current MAZE_SIZE"
 #endif
 
 /*============================================================
