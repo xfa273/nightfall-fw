@@ -310,7 +310,8 @@ void adachi(uint16_t fan_duty) {
 
     s_no_path_exit = false;
     search_dual_wall_streak_reset();
-    drive_set_search_fan_buzzer_suppress(fan_duty > 0u);
+    // 暫定: 探索走行中（終了処理を含む）はブザーを全面抑止
+    drive_set_search_fan_buzzer_suppress(true);
     // 探索中の超信地旋回では、前壁補正を行う場面でのみ角度リセットを許可する
     drive_set_super_rotate_angle_reset_enabled(false);
 
@@ -567,7 +568,6 @@ void adachi(uint16_t fan_duty) {
     drive_stop();
 
     drive_fan(0);
-    drive_set_search_fan_buzzer_suppress(false);
     drive_set_super_rotate_angle_reset_enabled(true);
 
     search_dual_wall_streak_reset();
@@ -586,6 +586,8 @@ void adachi(uint16_t fan_duty) {
             HAL_Delay(150);
         }
     }
+
+    drive_set_search_fan_buzzer_suppress(false);
 }
 
 //+++++++++++++++++++++++++++++++++++++++++++++++

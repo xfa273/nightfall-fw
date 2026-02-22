@@ -101,7 +101,7 @@ bool drive_should_suppress_buzzer(void) {
     if (MF.FLAG.SUCTION) {
         return true;
     }
-    return (MF.FLAG.RUNNING && s_search_fan_buzzer_suppress);
+    return s_search_fan_buzzer_suppress;
 }
 
 bool drive_use_fan_on_gains(void) {

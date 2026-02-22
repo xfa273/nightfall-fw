@@ -119,6 +119,10 @@ void buzzer_interrupt(uint16_t tone) {
 //+++++++++++++++++++++++++++++++++++++++++++++++
 
 void buzzer_enter(uint16_t tone) {
+    if (drive_should_suppress_buzzer()) {
+        return;
+    }
+
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
     __HAL_TIM_SET_AUTORELOAD(&htim3, tone);
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, tone * 0.7);
