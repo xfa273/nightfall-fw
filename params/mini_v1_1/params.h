@@ -293,7 +293,7 @@
 ------------------------------------------------------------*/
 //----ゴール座標----
 #define GOAL_X   13 // 7
-#define GOAL_Y   15// 7
+#define GOAL_Y   14// 7
 #define MAZE_SIZE 32
 #define START_X   0
 #define START_Y   0
@@ -307,43 +307,43 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 13
+#define GOAL2_Y 15
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 13
+#define GOAL3_Y 16
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 14
+#define GOAL4_Y 14
 #endif
 
 #ifndef GOAL5_X
-#define GOAL5_X 0
-#define GOAL5_Y 0
+#define GOAL5_X 14
+#define GOAL5_Y 15
 #endif
 
 #ifndef GOAL6_X
-#define GOAL6_X 0
-#define GOAL6_Y 0
+#define GOAL6_X 14
+#define GOAL6_Y 16
 #endif
 
 #ifndef GOAL7_X
-#define GOAL7_X 0
-#define GOAL7_Y 0
+#define GOAL7_X 15
+#define GOAL7_Y 14
 #endif
 
 #ifndef GOAL8_X
-#define GOAL8_X 0
-#define GOAL8_Y 0
+#define GOAL8_X 15
+#define GOAL8_Y 15
 #endif
 
 #ifndef GOAL9_X
-#define GOAL9_X 0
-#define GOAL9_Y 0
+#define GOAL9_X 15
+#define GOAL9_Y 16
 #endif
 
 #endif /* INC_PARAMS_H_ */
