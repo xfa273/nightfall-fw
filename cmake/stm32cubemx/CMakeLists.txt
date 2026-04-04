@@ -3,94 +3,148 @@ cmake_minimum_required(VERSION 3.22)
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
-# STM32CubeMX generated symbols (macros)
-set(MX_Defines_Syms
+set(NIGHTFALL_STM32_COMMON_LINK_OPTIONS
+    --specs=nano.specs
+    -Wl,--gc-sections
+    -Wl,--start-group
+    -lc
+    -lm
+    -Wl,--end-group
+    -Wl,--print-memory-usage
+)
+set(NIGHTFALL_STM32_COMMON_LINK_OPTIONS ${NIGHTFALL_STM32_COMMON_LINK_OPTIONS} PARENT_SCOPE)
+
+set(NIGHTFALL_STM32F405_ROOT ${CMAKE_SOURCE_DIR}/platform/stm32f405)
+set(NIGHTFALL_STM32F405_LINKER_SCRIPT ${NIGHTFALL_STM32F405_ROOT}/STM32F405XX_FLASH.ld)
+set(NIGHTFALL_STM32F405_APPLICATION_SRC
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/main.c
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/stm32f4xx_it.c
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/stm32f4xx_hal_msp.c
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/sysmem.c
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/syscalls.c
+    ${NIGHTFALL_STM32F405_ROOT}/startup_stm32f405xx.s
+)
+set(NIGHTFALL_STM32F405_LINKER_SCRIPT ${NIGHTFALL_STM32F405_LINKER_SCRIPT} PARENT_SCOPE)
+set(NIGHTFALL_STM32F405_APPLICATION_SRC ${NIGHTFALL_STM32F405_APPLICATION_SRC} PARENT_SCOPE)
+set(NIGHTFALL_STM32F405_DRIVERS_SRC
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Src/system_stm32f4xx.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
+)
+
+add_library(stm32cubemx_stm32f405 INTERFACE)
+target_include_directories(stm32cubemx_stm32f405 INTERFACE
+    ${NIGHTFALL_STM32F405_ROOT}/Core/Inc
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    ${NIGHTFALL_STM32F405_ROOT}/Drivers/CMSIS/Include
+)
+target_compile_definitions(stm32cubemx_stm32f405 INTERFACE
     USE_HAL_DRIVER
     STM32F405xx
     $<$<CONFIG:Debug>:DEBUG>
 )
 
-# STM32CubeMX generated include paths
-set(MX_Include_Dirs
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Inc
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Inc
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/CMSIS/Device/ST/STM32F4xx/Include
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/CMSIS/Include
-)
+add_library(stm32_drivers_stm32f405 OBJECT)
+target_sources(stm32_drivers_stm32f405 PRIVATE ${NIGHTFALL_STM32F405_DRIVERS_SRC})
+target_link_libraries(stm32_drivers_stm32f405 PUBLIC stm32cubemx_stm32f405)
 
-# STM32CubeMX generated application sources
-set(MX_Application_Src
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/main.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/stm32f4xx_it.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/stm32f4xx_hal_msp.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/sysmem.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/syscalls.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/startup_stm32f405xx.s
-)
-
-# STM32 HAL/LL Drivers
-set(STM32_Drivers_Src
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/system_stm32f4xx.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
-    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
-)
-
-# Link directories setup
-set(MX_LINK_DIRS
-)
-
-# Project static libraries
-set(MX_LINK_LIBS
-    STM32_Drivers
-)
-
-set(NIGHTFALL_MX_APPLICATION_SRC ${MX_Application_Src} PARENT_SCOPE)
-set(NIGHTFALL_MX_LINK_DIRS ${MX_LINK_DIRS} PARENT_SCOPE)
-set(NIGHTFALL_MX_LINK_LIBS ${MX_LINK_LIBS} PARENT_SCOPE)
-
-# Interface library for includes and symbols
-add_library(stm32cubemx INTERFACE)
-target_include_directories(stm32cubemx INTERFACE ${MX_Include_Dirs})
-target_compile_definitions(stm32cubemx INTERFACE ${MX_Defines_Syms})
-
-# Create STM32_Drivers static library
-add_library(STM32_Drivers OBJECT)
-target_sources(STM32_Drivers PRIVATE ${STM32_Drivers_Src})
-target_link_libraries(STM32_Drivers PUBLIC stm32cubemx)
-
-# Suppress benign warnings from HAL drivers
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(STM32_Drivers PRIVATE -Wno-unused-parameter)
+    target_compile_options(stm32_drivers_stm32f405 PRIVATE -Wno-unused-parameter)
+endif()
+
+set(NIGHTFALL_STM32F413_ROOT ${CMAKE_SOURCE_DIR}/platform/stm32f413/HM_Nightfall_f413_preorder)
+set(NIGHTFALL_STM32F413_LINKER_SCRIPT ${NIGHTFALL_STM32F413_ROOT}/STM32F413XX_FLASH.ld)
+set(NIGHTFALL_STM32F413_APPLICATION_SRC
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_it.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_hal_msp.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/sysmem.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/syscalls.c
+    ${NIGHTFALL_STM32F413_ROOT}/startup_stm32f413xx.s
+)
+set(NIGHTFALL_STM32F413_LINKER_SCRIPT ${NIGHTFALL_STM32F413_LINKER_SCRIPT} PARENT_SCOPE)
+set(NIGHTFALL_STM32F413_APPLICATION_SRC ${NIGHTFALL_STM32F413_APPLICATION_SRC} PARENT_SCOPE)
+set(NIGHTFALL_STM32F413_DRIVERS_SRC
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/system_stm32f4xx.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_exti.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
+)
+
+add_library(stm32cubemx_stm32f413 INTERFACE)
+target_include_directories(stm32cubemx_stm32f413 INTERFACE
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Inc
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    ${NIGHTFALL_STM32F413_ROOT}/Drivers/CMSIS/Include
+)
+target_compile_definitions(stm32cubemx_stm32f413 INTERFACE
+    USE_HAL_DRIVER
+    STM32F413xx
+    $<$<CONFIG:Debug>:DEBUG>
+)
+
+add_library(stm32_drivers_stm32f413 OBJECT)
+target_sources(stm32_drivers_stm32f413 PRIVATE ${NIGHTFALL_STM32F413_DRIVERS_SRC})
+target_link_libraries(stm32_drivers_stm32f413 PUBLIC stm32cubemx_stm32f413)
+
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(stm32_drivers_stm32f413 PRIVATE -Wno-unused-parameter)
 endif()
 
 function(nightfall_apply_stm32f405 target)
-    # Add STM32CubeMX generated application sources to the target
-    target_sources(${target} PRIVATE ${NIGHTFALL_MX_APPLICATION_SRC})
+    target_sources(${target} PRIVATE ${NIGHTFALL_STM32F405_APPLICATION_SRC})
+    target_link_libraries(${target} PRIVATE stm32cubemx_stm32f405 stm32_drivers_stm32f405)
+    target_link_options(${target} PRIVATE
+        -T${NIGHTFALL_STM32F405_LINKER_SCRIPT}
+        ${NIGHTFALL_STM32_COMMON_LINK_OPTIONS}
+    )
+endfunction()
 
-    # Link directories setup
-    target_link_directories(${target} PRIVATE ${NIGHTFALL_MX_LINK_DIRS})
-
-    # Add libraries to the target
-    target_link_libraries(${target} stm32cubemx ${NIGHTFALL_MX_LINK_LIBS})
+function(nightfall_apply_stm32f413 target)
+    target_sources(${target} PRIVATE ${NIGHTFALL_STM32F413_APPLICATION_SRC})
+    target_link_libraries(${target} PRIVATE stm32cubemx_stm32f413 stm32_drivers_stm32f413)
+    target_link_options(${target} PRIVATE
+        -T${NIGHTFALL_STM32F413_LINKER_SCRIPT}
+        ${NIGHTFALL_STM32_COMMON_LINK_OPTIONS}
+    )
 endfunction()
 
 # Validate that STM32CubeMX code is compatible with C standard

@@ -45,6 +45,20 @@
             "configurePreset": "Debug"
         },
         {
+            "name": "Debug-stm32f405",
+            "configurePreset": "Debug",
+            "targets": [
+                "nightfall_stm32f405"
+            ]
+        },
+        {
+            "name": "Debug-stm32f413",
+            "configurePreset": "Debug",
+            "targets": [
+                "nightfall_stm32f413"
+            ]
+        },
+        {
             "name": "RelWithDebInfo",
             "configurePreset": "RelWithDebInfo"
         },
