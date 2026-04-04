@@ -1,7 +1,1 @@
-pandas>=1.0.0
-matplotlib>=3.0.0
-numpy>=1.18.0
-
-streamlit>=1.30.0
-plotly>=5.0.0
-kaleido==0.2.1
+-r ../logging/visualizer/requirements.txt

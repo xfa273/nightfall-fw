@@ -60,7 +60,7 @@ cmake --preset Debug
 cmake --build build/Debug --target nightfall_mini_r1_0
 
 # 書き込み
-python3 tools/flash_uart --bin build/Debug/nightfall_mini_r1_0.bin
+python3 tools/flashing/flash_uart --bin build/Debug/nightfall_mini_r1_0.bin
 ```
 
 ### 3.3 ゴール座標だけ変更して使う
@@ -81,7 +81,7 @@ git checkout -b temp/goal-change stable/mini/unit001/s20260404-nationals
 # 4. ビルドして書き込み
 cmake --preset Debug
 cmake --build build/Debug --target nightfall_mini_r1_0
-python3 tools/flash_uart --bin build/Debug/nightfall_mini_r1_0.bin
+python3 tools/flashing/flash_uart --bin build/Debug/nightfall_mini_r1_0.bin
 
 # 5. 用が済んだら main に戻る
 git checkout main
@@ -89,6 +89,8 @@ git branch -D temp/goal-change
 ```
 
 > **補足**: 将来的には、ゴール座標などの運用設定を NVM に保存し、再ビルドなしで変更できるようにする予定です（開発計画 Phase 7）。現時点ではソースコード編集 + 再ビルドが必要です。
+
+> **ツールパス互換**: 既存運用のため `tools/flash_uart` は互換ラッパーとして維持していますが、新規手順では `tools/flashing/flash_uart` を使用してください。
 
 ### 3.4 安定版の manifest を確認する
 
