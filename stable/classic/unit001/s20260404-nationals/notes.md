@@ -7,11 +7,11 @@
 
 ## 構成
 
-- **機体**: classic r2.0 (unit001)
+- **機体**: classic r1.0 (unit001)
 - **FW**: v1.0.0
 - **Params/Tune**: t1.0
 - **MCU**: STM32F405
-- **ビルドターゲット**: `nightfall_classic_r2_0`
+- **ビルドターゲット**: `nightfall_classic_r1_0`
 
 ## 調整状況
 

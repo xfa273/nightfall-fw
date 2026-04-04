@@ -5,18 +5,18 @@ description: 全日本マイクロマウス大会出場時の調整済み構成
 
 # ファームウェア
 fw_tag: v1.0.0
-fw_target: nightfall_classic_r2_0
+fw_target: nightfall_classic_r1_0
 fw_build_type: Release
 
 # 機体識別
 family: classic
-hw_rev_major: 2
+hw_rev_major: 1
 hw_rev_minor: 0
-board_id: classic_r2_0
+board_id: classic_r1_0
 unit_serial: unit001
 
 # パラメータ
-params_profile: classic_r2_0
+params_profile: classic_r1_0
 params_tune_version: t1.0
 
 # NVM / 校正

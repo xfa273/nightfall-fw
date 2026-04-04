@@ -7,11 +7,11 @@
 
 ## 構成
 
-- **機体**: mini r1.1 (unit001)
+- **機体**: mini r1.0 (unit001)
 - **FW**: v1.0.0
 - **Params/Tune**: t1.0
 - **MCU**: STM32F405
-- **ビルドターゲット**: `nightfall_mini_r1_1`
+- **ビルドターゲット**: `nightfall_mini_r1_0`
 
 ## 調整状況
 
