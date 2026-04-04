@@ -1,0 +1,30 @@
+# Stable version manifest
+# mini unit001 - 全日本大会出場時の構成
+stable_name: s20260404-nationals
+description: 全日本マイクロマウス大会出場時の調整済み構成
+
+# ファームウェア
+fw_tag: v1.0.0
+fw_target: nightfall_mini_r1_1
+fw_build_type: Release
+
+# 機体識別
+family: mini
+hw_rev_major: 1
+hw_rev_minor: 1
+board_id: mini_r1_1
+unit_serial: unit001
+
+# パラメータ
+params_profile: mini_r1_1
+params_tune_version: t1.0
+
+# NVM / 校正
+nvm_schema_version: n/a  # 機体識別ブロック未導入
+calibration_note: distance_params + flash_params は実機Flash上に保存済み
+
+# 既知の制約
+known_limitations:
+  - 機体識別ブロック未導入のため、書き込み時にターゲットを手動で選択する必要がある
+  - ログは RAM + UART 方式
+  - 安定版の自動適用ツールは未整備

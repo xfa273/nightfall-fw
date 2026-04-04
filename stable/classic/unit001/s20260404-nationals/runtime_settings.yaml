@@ -1,0 +1,12 @@
+# Runtime settings (後から再ビルドなしで編集可能な運用設定)
+# classic unit001 - 全日本大会出場時
+
+# ゴール座標 (0-indexed)
+goal_x: 1
+goal_y: 0
+
+# 既定モード
+default_mode: 1
+
+# メモ
+notes: 全日本大会クラシックサイズ出場時の設定
