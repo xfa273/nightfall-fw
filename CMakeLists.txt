@@ -27,6 +27,7 @@ set(FW_VERSION "1.0.0")
 add_subdirectory(cmake/stm32cubemx)
 
 set(NIGHTFALL_STM32F405_USER_SOURCES
+    platform/trace/trace.c
     platform/stm32f405/Core/Src/auxiliary.c
     platform/stm32f405/Core/Src/control.c
     platform/stm32f405/Core/Src/distance_params.c
@@ -134,6 +135,7 @@ function(nightfall_add_firmware target variant variant_define mcu_family)
 
     target_include_directories(${target} BEFORE PRIVATE
         ${CMAKE_SOURCE_DIR}/params/${variant}
+        ${CMAKE_SOURCE_DIR}/platform/trace
         ${build_info_dir}
     )
 
@@ -181,6 +183,7 @@ function(nightfall_add_platform_target target mcu_family)
     nightfall_apply_mcu(${target} ${mcu_family})
 
     target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_SOURCE_DIR}/platform/trace
         ${build_info_dir}
     )
 

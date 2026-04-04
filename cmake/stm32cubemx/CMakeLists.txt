@@ -52,6 +52,7 @@ set(NIGHTFALL_STM32F405_DRIVERS_SRC
 
 add_library(stm32cubemx_stm32f405 INTERFACE)
 target_include_directories(stm32cubemx_stm32f405 INTERFACE
+    ${CMAKE_SOURCE_DIR}/platform/trace
     ${NIGHTFALL_STM32F405_ROOT}/Core/Inc
     ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc
     ${NIGHTFALL_STM32F405_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
@@ -75,6 +76,7 @@ endif()
 set(NIGHTFALL_STM32F413_ROOT ${CMAKE_SOURCE_DIR}/platform/stm32f413/HM_Nightfall_f413_preorder)
 set(NIGHTFALL_STM32F413_LINKER_SCRIPT ${NIGHTFALL_STM32F413_ROOT}/STM32F413XX_FLASH.ld)
 set(NIGHTFALL_STM32F413_APPLICATION_SRC
+    ${CMAKE_SOURCE_DIR}/platform/trace/trace.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_it.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_hal_msp.c
@@ -109,6 +111,7 @@ set(NIGHTFALL_STM32F413_DRIVERS_SRC
 
 add_library(stm32cubemx_stm32f413 INTERFACE)
 target_include_directories(stm32cubemx_stm32f413 INTERFACE
+    ${CMAKE_SOURCE_DIR}/platform/trace
     ${NIGHTFALL_STM32F413_ROOT}/Core/Inc
     ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc
     ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy

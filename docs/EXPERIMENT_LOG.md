@@ -22,3 +22,10 @@
 
 ## 記録
 
+- topic: phase2/trace-api-bootstrap
+- 目的: F413基板到着前に、F405(UART)とF413(SWO)を同じ呼び出しで扱える `trace_printf()` の土台を作る
+- ブランチ: main
+- 参照（タグ or コミット）: pending (この作業コミットで確定)
+- 結果: success
+- メモ: `platform/trace/trace.c` を追加し、`trace_init()` と `trace_printf()` を導入。Phase2チェックリストとSWO受信確認手順も文書化。
+
