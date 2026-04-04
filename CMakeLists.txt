@@ -126,5 +126,5 @@ function(nightfall_add_firmware target variant variant_define)
     )
 endfunction()
 
-nightfall_add_firmware(nightfall_mini_v1_1 mini_v1_1 ROBOT_MINI_V1_1)
-nightfall_add_firmware(nightfall_classic_v2 classic_v2 ROBOT_CLASSIC_V2)
+nightfall_add_firmware(nightfall_mini_v1_1 mini_r1_1 ROBOT_MINI_V1_1)
+nightfall_add_firmware(nightfall_classic_v2 classic_r1_0 ROBOT_CLASSIC_V2)
