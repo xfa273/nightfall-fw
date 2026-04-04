@@ -75,6 +75,7 @@ static void imu_diag_capture_and_print_csv(uint16_t fan_duty) {
     drive_fan(0);
 
     printf("=== IMU DIAG LOG (CSV) ===\n");
+    printf("#fw_version=%s\n", FW_VERSION);
     printf("#fw_target=%s\n", FW_TARGET);
     printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
     printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);

@@ -143,9 +143,9 @@ int main(void)
     // IMU_ProbeWHOAMI_Debug();
 
     // 起動メッセージとブザー（初期化で万一詰まっても起動を可視化）
-    printf("[FW] %s %s sha=%s br=%s time=%s type=%s dirty=%d\n",
+    printf("[FW] %s v%s sha=%s br=%s time=%s type=%s dirty=%d\n",
            FW_TARGET,
-           FW_GIT_DESCRIBE,
+           FW_VERSION,
            FW_GIT_SHA,
            FW_GIT_BRANCH,
            FW_BUILD_TIME_UTC,

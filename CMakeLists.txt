@@ -20,6 +20,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 project(nightfall-fw C ASM)
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
+# Firmware version - update this when releasing a new version
+set(FW_VERSION "1.0.0")
+
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
 
@@ -86,6 +89,7 @@ function(nightfall_add_firmware target variant variant_define)
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
             -DFW_TARGET=${target}
             -DFW_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DFW_VERSION=${FW_VERSION}
             -P ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake
         DEPENDS ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake ${_git_deps} ${_src_deps}
         VERBATIM

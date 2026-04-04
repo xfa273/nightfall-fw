@@ -14,6 +14,7 @@ static const char *s_mm_columns_angle = "timestamp,target_angle,real_angle,p_ter
 static const char *s_mm_columns_noise = "timestamp,omega_z_raw,encoder_speed_l_raw,encoder_speed_r_raw,real_velocity_lpf,real_omega_lpf,dummy2,dummy3";
 
 static void log_print_fw_meta(void) {
+    printf("#fw_version=%s\n", FW_VERSION);
     printf("#fw_target=%s\n", FW_TARGET);
     printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
     printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);

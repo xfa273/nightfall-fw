@@ -915,6 +915,7 @@ void sensor_log_print(void) {
     printf("Total entries: %d\n", sensor_log_buffer.count);
     printf("CSV Format: timestamp,ad_r,ad_l,ad_fr,ad_fl,distance,wall_end_deriv_r,wall_end_deriv_l\n");
     printf("--- CSV Data Start ---\n");
+    printf("#fw_version=%s\n", FW_VERSION);
     printf("#fw_target=%s\n", FW_TARGET);
     printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
     printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);
