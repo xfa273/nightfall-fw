@@ -15,6 +15,7 @@ static const char *s_mm_columns_noise = "timestamp,omega_z_raw,encoder_speed_l_r
 
 static void log_print_fw_meta(void) {
     printf("#fw_version=%s\n", FW_VERSION);
+    printf("#params_tune_version=%s\n", PARAMS_TUNE_VERSION);
     printf("#fw_target=%s\n", FW_TARGET);
     printf("#fw_build_type=%s\n", FW_BUILD_TYPE);
     printf("#fw_build_time_utc=%s\n", FW_BUILD_TIME_UTC);
