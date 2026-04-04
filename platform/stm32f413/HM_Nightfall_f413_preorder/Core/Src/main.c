@@ -21,6 +21,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include "build_info.h"
 
 /* USER CODE END Includes */
 
@@ -82,6 +84,54 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+#define NIGHTFALL_SWO_BAUD_HZ 2000000U
+
+static void nightfall_trace_init(void)
+{
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  DBGMCU->CR &= ~DBGMCU_CR_TRACE_MODE;
+  DBGMCU->CR |= DBGMCU_CR_TRACE_IOEN | DBGMCU_CR_TRACE_MODE_0;
+
+  TPI->SPPR = 2U;
+
+  {
+    uint32_t hclk = HAL_RCC_GetHCLKFreq();
+    if (hclk > NIGHTFALL_SWO_BAUD_HZ)
+    {
+      TPI->ACPR = (hclk / NIGHTFALL_SWO_BAUD_HZ) - 1U;
+    }
+    else
+    {
+      TPI->ACPR = 0U;
+    }
+  }
+
+  ITM->TCR = ITM_TCR_ITMENA_Msk;
+  ITM->TPR = 0U;
+  ITM->TER = 1U;
+}
+
+int __io_putchar(int ch)
+{
+  if (((CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk) == 0U) ||
+      ((ITM->TCR & ITM_TCR_ITMENA_Msk) == 0U) ||
+      ((ITM->TER & 1UL) == 0U))
+  {
+    return ch;
+  }
+
+  for (uint32_t spin = 0U; spin < 100000U; ++spin)
+  {
+    if (ITM->PORT[0U].u32 != 0U)
+    {
+      ITM->PORT[0U].u8 = (uint8_t)ch;
+      break;
+    }
+  }
+
+  return ch;
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -126,6 +176,11 @@ int main(void)
   MX_TIM11_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+
+  nightfall_trace_init();
+  printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
+  printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
+  printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
 
   /* USER CODE END 2 */
 
