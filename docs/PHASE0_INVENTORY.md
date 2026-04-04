@@ -125,26 +125,24 @@
 
 | 旧名 | 新正式名 | family | HW Rev | MCU | 備考 |
 |---|---|---|---|---|---|
-| `mini_v1_1` | `mini_r1_1` | `mini` | `r1.1` | STM32F405 | 現行ハーフサイズ |
-| `classic_v2` | `classic_r1_0` | `classic` | `r1.0` | STM32F405 | 現行クラシック(仮rev) |
+| `mini_v1_1` | `mini_r1_1` | `mini` | `r1.1` | STM32F405 | 初代ハーフ機体 + 基板修正1回 |
+| `classic_v2` | `classic_r2_0` | `classic` | `r2.0` | STM32F405 | 2世代目クラシック機体 |
 | `f413_preorder` | `mini_r2_0` | `mini` | `r2.0` | STM32F413 | 新機体（MCU+FRAM変更=major up） |
-
-注: `classic_v2` の正確な HW Rev は要確認。現時点では仮に `r1.0` としています。
 
 ### 5.1 CMakeターゲット名の移行
 
-| 旧ターゲット | 新ターゲット |
-|---|---|
-| `nightfall_mini_v1_1` | `nightfall_stm32f405` |
-| `nightfall_classic_v2` | `nightfall_stm32f405` （同一バイナリ） |
-| （なし） | `nightfall_stm32f413` |
+| 旧ターゲット | 現ターゲット | 将来（MCU系列統合後） |
+|---|---|---|
+| `nightfall_mini_v1_1` | `nightfall_mini_r1_1` | `nightfall_stm32f405` |
+| `nightfall_classic_v2` | `nightfall_classic_r2_0` | `nightfall_stm32f405`（同一バイナリ） |
+| （なし） | （なし） | `nightfall_stm32f413` |
 
 ### 5.2 params ディレクトリの移行
 
 | 旧パス | 新パス |
 |---|---|
 | `params/mini_v1_1/` | `params/mini_r1_1/` |
-| `params/classic_v2/` | `params/classic_r1_0/` |
+| `params/classic_v2/` | `params/classic_r2_0/` |
 | （なし） | `params/mini_r2_0/` |
 
 ---
