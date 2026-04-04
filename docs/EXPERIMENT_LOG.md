@@ -29,3 +29,10 @@
 - 結果: success
 - メモ: `platform/trace/trace.c` を追加し、`trace_init()` と `trace_printf()` を導入。Phase2チェックリストとSWO受信確認手順も文書化。
 
+- topic: phase3/nvm-foundation-bootstrap
+- 目的: 機体識別ブロック導入前に、`NVM` APIと識別ブロック検証ロジックの土台を先行実装する
+- ブランチ: main
+- 参照（タグ or コミット）: pending (この作業コミットで確定)
+- 結果: success
+- メモ: `nvm/nvm*.{h,c}` を追加し、`docs/NVM_IDENTITY_BLOCK_SPEC.md` と `docs/PHASE3_CHECKLIST.md` を作成。
+

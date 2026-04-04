@@ -12,4 +12,17 @@
 ## 現在の状態
 
 既存実装は `platform/stm32f405/Core/Src/*.c` に分散しています。
-Phase 3 で API 設計、Phase 4 で FRAM 連携を実装します。
+Phase 3 先行として、以下の土台を追加済みです。
+
+- `nvm.h`, `nvm.c`
+  - `nvm_init`, `nvm_get_area_info`, `nvm_read`, `nvm_write`, `nvm_erase`
+- `nvm_identity.h`, `nvm_identity.c`
+  - 機体識別ブロック構造体
+  - `nvm_identity_read`, `nvm_identity_validate`
+
+制約:
+
+- 機体識別ブロック領域アドレス（F405/F413）は未確定
+- `nvm_write` / `nvm_erase` は現時点では `NVM_STATUS_UNSUPPORTED` を返す
+
+次段で、予約領域確定と既存 `distance_params` / `flash_params` / `eeprom` の段階移行を行います。
