@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "build_info.h"
+#include "nvm_identity.h"
 #include "trace.h"
 
 /* USER CODE END Includes */
@@ -60,6 +61,9 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
+static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
+static nvm_identity_block_t g_boot_identity;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,6 +88,17 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+static void nightfall_identity_enter_safe_mode(void)
+{
+  while (1)
+  {
+    HAL_GPIO_TogglePin(LED_1_GPIO_Port, LED_1_Pin);
+    HAL_GPIO_TogglePin(LED_2_GPIO_Port, LED_2_Pin);
+    HAL_GPIO_TogglePin(LED_3_GPIO_Port, LED_3_Pin);
+    HAL_Delay(150U);
+  }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -103,6 +118,15 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
+  if (nvm_init() == NVM_STATUS_OK)
+  {
+    g_boot_identity_status = nvm_identity_read(&g_boot_identity);
+  }
+  else
+  {
+    g_boot_identity_status = NVM_STATUS_HW_ERROR;
+  }
 
   /* USER CODE END Init */
 
@@ -133,6 +157,31 @@ int main(void)
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
+
+  if (g_boot_identity_status == NVM_STATUS_OK)
+  {
+    trace_printf("ID family=%lu board=%lu rev=%u.%u unit=%lu cap=0x%08lX\r\n",
+                 (unsigned long)g_boot_identity.family,
+                 (unsigned long)g_boot_identity.board_id,
+                 (unsigned int)g_boot_identity.hw_rev_major,
+                 (unsigned int)g_boot_identity.hw_rev_minor,
+                 (unsigned long)g_boot_identity.unit_serial,
+                 (unsigned long)g_boot_identity.capability_flags);
+  }
+  else if ((g_boot_identity_status == NVM_STATUS_NOT_FOUND) ||
+           (g_boot_identity_status == NVM_STATUS_UNSUPPORTED))
+  {
+    trace_printf("ID status=%d (continue boot)\r\n", (int)g_boot_identity_status);
+  }
+  else
+  {
+    trace_printf("[SAFE] identity invalid status=%d uid=%08lX-%08lX-%08lX\r\n",
+                 (int)g_boot_identity_status,
+                 (unsigned long)HAL_GetUIDw0(),
+                 (unsigned long)HAL_GetUIDw1(),
+                 (unsigned long)HAL_GetUIDw2());
+    nightfall_identity_enter_safe_mode();
+  }
 
   /* USER CODE END 2 */
 

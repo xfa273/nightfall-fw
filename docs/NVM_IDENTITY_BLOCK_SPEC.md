@@ -54,6 +54,10 @@
   - `nvm_identity_read()`
   - `nvm_identity_validate()`
   - `nvm_identity_is_valid_for_boot()`
+- 起動時判定:
+  - `STM32F413` では `HAL_Init()` 直後に識別ブロックを読み、起動ログ出力後に判定する
+  - `NVM_STATUS_INTEGRITY_ERROR` / `NVM_STATUS_HW_ERROR` はセーフモード遷移（LED点滅ループ）
+  - `NVM_STATUS_NOT_FOUND` / `NVM_STATUS_UNSUPPORTED` は起動継続（暫定運用）
 - 検証ロジック:
   - 先頭16byteより短い `length` は checksum 計算前に `NVM_STATUS_INTEGRITY_ERROR` として棄却する
   - checksum 仕様は従来どおり、先頭16byte以降に対する 32bit additive checksum を維持する
