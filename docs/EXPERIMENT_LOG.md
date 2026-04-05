@@ -39,7 +39,7 @@
 - topic: phase3/f413-identity-safe-mode-bootstrap
 - 目的: F413起動初期で識別ブロックを読み、整合性異常時にセーフモードへ遷移する最小フローを追加する
 - ブランチ: main
-- 参照（タグ or コミット）: pending (この作業コミットで確定)
+- 参照（タグ or コミット）: 984e157
 - 結果: success
 - メモ: `platform/stm32f413/.../main.c` で `HAL_Init()` 直後に `nvm_identity_read()` を実行し、`INTEGRITY_ERROR/HW_ERROR` をセーフモード扱いにした。
 
