@@ -18,6 +18,9 @@ markdown_extensions:
   - toc:
       permalink: true
 
+extra_css:
+  - stylesheets/github-dark.css
+
 nav:
   - ホーム: README.md
   - 記事一覧: posts/index.md
