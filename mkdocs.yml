@@ -1,0 +1,28 @@
+site_name: Nightfall FW Micromouse Blog
+site_description: マイクロマウス関連記事の公開ページ
+site_url: https://xfa273.github.io/nightfall-fw/
+repo_url: https://github.com/xfa273/nightfall-fw
+
+docs_dir: docs/blog
+use_directory_urls: true
+
+theme:
+  name: mkdocs
+  language: ja
+
+plugins:
+  - search
+
+markdown_extensions:
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - ホーム: README.md
+  - 移行計画: MIGRATION_PLAN.md
+  - 移行トラッカー: MIGRATION_TRACKER.md
+  - 記事テンプレート: POST_TEMPLATE.md
+  - 記事:
+      - 既製品で作るクラシックサイズDCマイクロマウスの足回り（2024-05-09）: posts/2024-05-09_classic-dc-footwork/README.md
+      - 改良版 既製品で作るクラシックサイズDCマイクロマウスの足回り（2026-04-05）: posts/2026-04-05_classic-dc-footwork-improved/README.md
