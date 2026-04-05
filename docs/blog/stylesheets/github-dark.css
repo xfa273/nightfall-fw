@@ -142,13 +142,42 @@ blockquote {
   border-left: 4px solid var(--gh-border);
 }
 
-img,
-.img-thumbnail,
-.figure-img,
-figure img {
+[role="main"] img,
+[role="main"] .img-thumbnail,
+[role="main"] .figure-img,
+[role="main"] figure img {
+  display: block;
+  width: 66.666vw;
+  max-width: 66.666vw;
+  height: auto;
+  margin: 0.6rem auto 0.35rem;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+}
+
+[role="main"] p > strong:only-child {
+  display: block;
+  width: 66.666vw;
+  max-width: 66.666vw;
+  margin: 0 auto 1.4rem;
+  text-align: center;
+  color: var(--gh-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+[role="main"] p > img + strong {
+  display: block;
+  width: 66.666vw;
+  max-width: 66.666vw;
+  margin: 0 auto 1.4rem;
+  text-align: center;
+  color: var(--gh-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .bs-sidebar,
