@@ -40,8 +40,9 @@
 
 1. `magic` 一致
 2. `schema_version` 一致
-3. `length` 一致
-4. `crc` 一致
+3. `length >= 16` を満たすこと
+4. `length == sizeof(nvm_identity_block_t)` を満たすこと
+5. `crc` 一致
 
 いずれか不一致なら無効として扱う。
 
@@ -53,12 +54,19 @@
   - `nvm_identity_read()`
   - `nvm_identity_validate()`
   - `nvm_identity_is_valid_for_boot()`
-- F405/F413ともに識別ブロック領域アドレスは未確定のため、現状は `NVM_STATUS_UNSUPPORTED` を返す
+- 検証ロジック:
+  - 先頭16byteより短い `length` は checksum 計算前に `NVM_STATUS_INTEGRITY_ERROR` として棄却する
+  - checksum 仕様は従来どおり、先頭16byte以降に対する 32bit additive checksum を維持する
+- 予約領域:
+  - `STM32F405`: 読み出し先を `0x08080000`（sector 8, 128KiB）として有効化済み
+    - 既存の `distance_params` `0x080A0000`（sector 9）, `flash_params` `0x080C0000`（sector 10）, maze/eeprom `0x080E0000`（sector 11）とは非衝突
+    - 現状は read path のみ有効で、`nvm_write()` / `nvm_erase()` は未実装
+  - `STM32F413`: 識別ブロック予約領域は未確定のため、現状は `NVM_STATUS_UNSUPPORTED`
 
 ---
 
 ## 5. 今後の確定事項
 
-- MCU系列ごとの識別ブロック予約領域（通常アプリ書き込みで消えない場所）
+- `STM32F413` 向け識別ブロック予約領域（通常アプリ書き込みで消えない場所）
 - `family` / `board_id` / `default_param_profile` の符号化ルール
 - セーフモード遷移時の表示・ログ方針

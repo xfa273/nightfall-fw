@@ -14,6 +14,7 @@ nvm_status_t nvm_identity_validate(const nvm_identity_block_t* block) {
     const uint8_t* payload;
     uint32_t payload_len;
     uint32_t calc;
+    const uint32_t header_size = 16U;
 
     if (block == NULL) {
         return NVM_STATUS_INVALID_ARG;
@@ -24,12 +25,15 @@ nvm_status_t nvm_identity_validate(const nvm_identity_block_t* block) {
     if (block->schema_version != NVM_IDENTITY_SCHEMA_VERSION) {
         return NVM_STATUS_INTEGRITY_ERROR;
     }
+    if (block->length < header_size) {
+        return NVM_STATUS_INTEGRITY_ERROR;
+    }
     if (block->length != sizeof(nvm_identity_block_t)) {
         return NVM_STATUS_INTEGRITY_ERROR;
     }
 
-    payload = ((const uint8_t*)block) + 16U;
-    payload_len = (uint32_t)block->length - 16U;
+    payload = ((const uint8_t*)block) + header_size;
+    payload_len = block->length - header_size;
     calc = nvm_identity_checksum(payload, payload_len);
     if (calc != block->crc) {
         return NVM_STATUS_INTEGRITY_ERROR;

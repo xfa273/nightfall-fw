@@ -358,3 +358,15 @@
 - 制御手法の見直しに着手する前
 
 見直し時は、完了項目、未着手項目、依存関係の変化を反映して更新する。
+
+---
+
+## 10. AI委譲運用（Cascade/Codex）
+
+- この運用は、**ユーザーは Cascade だけを操作し、Codex は Cascade から委譲されたワーカーとして動く** 前提で行う
+- 委譲判断は、`1〜2` ファイルの軽微修正や説明のみは Cascade で直接扱い、多ファイル変更、調査→修正→検証ループが長い作業、ビルドやテストの反復が多い作業は Codex 委譲を優先する
+- 委譲時は、Cascade が task packet を整理し、対象ファイル、目的、成功条件、禁止事項を明示した handoff を作成して `scripts/ai/delegate_to_codex.sh` から Codex を実行する
+- Codex の結果はまず隔離された作業ツリーで確認し、差分を読んだ上で必要なものだけを `maybe_apply_codex_result.sh` などで本作業ツリーへ適用する
+- 監査可能性のため、各委譲について `docs/ai/HANDOFFS/` に task packet、raw log、last message、result summary、metadata を残し、`docs/ai/WORKLOG.md` に実行履歴を追記する
+- リスク対策として、委譲時に対象ファイルを明示し、無関係な広範変更を禁止し、Codex 側での `commit` / `push` は行わない
+- 差分適用前には、対象ファイル外への変更混入、意図しない生成物更新、方針文書との不整合がないかを Cascade 側で確認する

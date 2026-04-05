@@ -41,3 +41,9 @@ compile_commands.json
 *.log
 
 *.bak
+
+.ai/worktrees/*
+!.ai/worktrees/.gitkeep
+
+docs/ai/HANDOFFS/*
+!docs/ai/HANDOFFS/README.md

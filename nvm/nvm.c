@@ -4,6 +4,7 @@
 
 #if defined(STM32F405xx)
 
+#define NVM_STM32F405_IDENTITY_BASE (0x08080000UL)
 #define NVM_STM32F405_DISTANCE_PARAMS_BASE (0x080A0000UL)
 #define NVM_STM32F405_FLASH_PARAMS_BASE (0x080C0000UL)
 #define NVM_STM32F405_MAZE_MAP_BASE (0x080E0000UL)
@@ -11,7 +12,7 @@
 #define NVM_STM32F405_SECTOR_SIZE_BYTES (128U * 1024U)
 
 static const nvm_area_info_t g_nvm_area_table[NVM_AREA_COUNT] = {
-    {NVM_AREA_IDENTITY, 0x00000000UL, 0U, 0U},
+    {NVM_AREA_IDENTITY, NVM_STM32F405_IDENTITY_BASE, NVM_STM32F405_SECTOR_SIZE_BYTES, 0x00010000UL},
     {NVM_AREA_DISTANCE_PARAMS, NVM_STM32F405_DISTANCE_PARAMS_BASE, NVM_STM32F405_SECTOR_SIZE_BYTES, 0x00010000UL},
     {NVM_AREA_FLASH_PARAMS, NVM_STM32F405_FLASH_PARAMS_BASE, NVM_STM32F405_SECTOR_SIZE_BYTES, 0x00010001UL},
     {NVM_AREA_MAZE_MAP, NVM_STM32F405_MAZE_MAP_BASE, NVM_STM32F405_SECTOR_SIZE_BYTES, 0x00000000UL},
@@ -72,7 +73,10 @@ nvm_status_t nvm_read(nvm_area_t area, uint32_t offset, void* out, size_t len) {
         return st;
     }
 
-    if ((size_t)offset + len > (size_t)info.size_bytes) {
+    if ((size_t)offset > (size_t)info.size_bytes) {
+        return NVM_STATUS_INVALID_ARG;
+    }
+    if (len > ((size_t)info.size_bytes - (size_t)offset)) {
         return NVM_STATUS_INVALID_ARG;
     }
 
