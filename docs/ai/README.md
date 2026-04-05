@@ -5,18 +5,24 @@
 ## 1. できること
 
 - あなたはこれまで通り Cascade に依頼するだけでOKです。
-- 重い作業は内部で `codex exec` に委譲できます。
+- 重い作業は、依頼文で明示しなくても内部で `codex exec` にデフォルト委譲されます。
 - 委譲結果は `docs/ai/HANDOFFS/` に保存されます。
 
-## 2. 初回確認
+## 2. デフォルト挙動（重要）
 
-### 2-1. Codex CLIの確認
+- 毎回のConversationで、重い作業は自動的にCodex委譲します。
+- 軽微修正・説明のみ・局所修正はCascadeが直接対応します。
+- 今回だけ委譲を止めたい場合は「今回は委譲せずCascadeで対応」と指定してください。
+
+## 3. 初回確認
+
+### 3-1. Codex CLIの確認
 
 ```bash
 codex --version
 ```
 
-### 2-2. ChatGPTサインイン状態の確認
+### 3-2. ChatGPTサインイン状態の確認
 
 ```bash
 codex login status
@@ -24,7 +30,7 @@ codex login status
 
 `Logged in using ChatGPT` と表示されれば、ChatGPT Pro側リソースを利用できます。
 
-## 3. 委譲の実行
+## 4. 委譲の実行
 
 基本コマンド:
 
@@ -38,7 +44,7 @@ scripts/ai/delegate_to_codex.sh \
 
 `--prompt` で直接テキストを渡すこともできます。
 
-## 4. 結果確認
+## 5. 結果確認
 
 委譲後は `docs/ai/HANDOFFS/` に以下が出力されます。
 
@@ -47,7 +53,7 @@ scripts/ai/delegate_to_codex.sh \
 - `<task-id>-last-message.md`（最終回答）
 - `<task-id>.diff`（適用用差分）
 
-## 5. 差分を取り込む
+## 6. 差分を取り込む
 
 ```bash
 scripts/ai/maybe_apply_codex_result.sh --task-id <task-id>
@@ -59,13 +65,13 @@ scripts/ai/maybe_apply_codex_result.sh --task-id <task-id>
 scripts/ai/maybe_apply_codex_result.sh --task-id <task-id> --yes
 ```
 
-## 6. よくある運用
+## 7. よくある運用
 
 - 軽い修正はCascadeが直接対応
 - 重い修正はCodex委譲
 - 追加調査が必要なら同じ `task-id` 方針で再委譲
 
-## 7. 関連ファイル
+## 8. 関連ファイル
 
 - `AGENTS.md`
 - `docs/ai/STATE.md`
