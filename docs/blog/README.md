@@ -22,6 +22,7 @@
 ## 記事一覧
 
 - [【既製品で作る】クラシックサイズDCマイクロマウスの足回り（公開日: 2024-05-09）](./posts/2024-05-09_classic-dc-footwork/README.md)
+- [2024シーズンの機体紹介（公開日: 2024-12-26）](./posts/2024-12-26_2024-season-machines/README.md)
 - [【改良版】既製品で作るクラシックサイズDCマイクロマウスの足回り（公開日: 2026-04-05）](./posts/2026-04-05_classic-dc-footwork-improved/README.md)
 
 ## このブログについて
