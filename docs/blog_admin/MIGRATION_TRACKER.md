@@ -14,8 +14,8 @@
 | done | P0 | ローカル試し記事 | `docs/blog/posts/2026-04-05_classic-dc-footwork-improved/README.md` | 画像込みで移設済み |
 | done | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2024/05/09/025442 | `docs/blog/posts/2024-05-09_classic-dc-footwork/README.md` | 公開日は移行元（2024-05-09）で移行 |
 | done | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2024/12/26/225736 | `docs/blog/posts/2024-12-26_2024-season-machines/README.md` | 画像込みで移行済み |
-| todo | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2025/12/14/002140 | - | 今年のマイクロマウス振り返り |
-| todo | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2023/12/19/151923 | - | クラシックマウス"Ca.161/bis"の紹介 |
+| done | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2023/12/19/151923 | `docs/blog/posts/2023-12-19_ca-161-bis-introduction/README.md` | 画像込みで移行済み |
+| done | P1 | https://xfa273-backofchirashi.hatenablog.com/entry/2025/12/14/002140 | `docs/blog/posts/2025-12-14_2025-micromouse-retrospective/README.md` | 画像込みで移行済み |
 
 ## 運用メモ
 
