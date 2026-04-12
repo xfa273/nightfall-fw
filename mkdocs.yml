@@ -21,6 +21,9 @@ markdown_extensions:
 extra_css:
   - stylesheets/github-dark.css
 
+extra_javascript:
+  - javascripts/twitter-embed.js
+
 nav:
   - ホーム: README.md
   - 記事一覧: posts/index.md
