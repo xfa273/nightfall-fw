@@ -1,13 +1,15 @@
 (() => {
-  const STATUS_URL_RE = /^https?:\/\/(?:twitter|x)\.com\/[^/]+\/status\/(\d+)/i;
+  const STATUS_URL_RE = /^https?:\/\/(?:mobile\.)?(?:twitter\.com|x\.com)\/([^/]+)\/status\/(\d+)/i;
 
-  function normalizeStatusUrl(url) {
+  function parseStatusUrl(url) {
     try {
       const u = new URL(url);
       const match = `${u.origin}${u.pathname}`.match(STATUS_URL_RE);
       if (!match) return null;
-      return `https://twitter.com/i/web/status/${match[1]}`;
-    } catch {
+      return {
+        canonicalUrl: `https://twitter.com/${match[1]}/status/${match[2]}`,
+      };
+    } catch (error) {
       return null;
     }
   }
@@ -20,24 +22,26 @@
       if (blockquote.classList.contains("twitter-tweet")) return;
 
       const links = blockquote.querySelectorAll("a[href]");
-      let statusUrl = null;
+      let tweet = null;
 
       for (const link of links) {
-        const normalized = normalizeStatusUrl(link.href);
-        if (normalized) {
-          statusUrl = normalized;
+        const parsed = parseStatusUrl(link.href);
+        if (parsed) {
+          tweet = parsed;
           break;
         }
       }
 
-      if (!statusUrl) return;
+      if (!tweet) return;
 
       const embed = document.createElement("blockquote");
       embed.className = "twitter-tweet";
       embed.setAttribute("data-conversation", "none");
+      embed.setAttribute("data-dnt", "true");
 
       const anchor = document.createElement("a");
-      anchor.href = statusUrl;
+      anchor.href = tweet.canonicalUrl;
+      anchor.textContent = tweet.canonicalUrl;
       embed.appendChild(anchor);
 
       blockquote.replaceWith(embed);
@@ -48,7 +52,11 @@
   }
 
   function ensureTwitterWidgets() {
-    if (window.twttr?.widgets) {
+    if (
+      window.twttr &&
+      window.twttr.widgets &&
+      typeof window.twttr.widgets.load === "function"
+    ) {
       window.twttr.widgets.load();
       return;
     }
@@ -61,6 +69,15 @@
     script.src = "https://platform.twitter.com/widgets.js";
     script.async = true;
     script.charset = "utf-8";
+    script.onload = function () {
+      if (
+        window.twttr &&
+        window.twttr.widgets &&
+        typeof window.twttr.widgets.load === "function"
+      ) {
+        window.twttr.widgets.load();
+      }
+    };
     script.setAttribute("data-twitter-widgets", "1");
     document.head.appendChild(script);
   }
