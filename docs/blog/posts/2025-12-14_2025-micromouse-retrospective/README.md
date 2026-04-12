@@ -18,6 +18,8 @@
 
 弊社は新入社員は全員寮に入るので，こんな感じの部屋に住んでいます．最初は何もありませんでしたが，散財の限りを尽くし，デスク環境を整えました．31インチ4Kモニタと18インチの縦モニタ（モバイルモニタ流用）で複数ウインドウでも快適です．
 
+<br>
+
 > デュアルモニタ設置した
 > 4K 31.5" + FHD 18.3" [pic.twitter.com/AjMdtkNDAh](https://t.co/AjMdtkNDAh)
 >
@@ -27,6 +29,8 @@
 ・[InnoView 18.5" FHD](https://amzn.asia/d/7Y8B2IQ)
 ・[BenQ ScreenBar Pro](https://amzn.asia/d/beVk0Mp)
 
+<br>
+
 > [マイコン](https://d.hatena.ne.jp/keyword/%A5%DE%A5%A4%A5%B3%A5%F3)在庫切れだったので取り敢えず剥がして確保
 > ホットプレート便利だね [pic.twitter.com/RakiAoCrHP](https://t.co/RakiAoCrHP)
 >
@@ -34,6 +38,8 @@
 
 寮の狭さからハーフサイズがメインになるので，裏面パッドの表面実装ができるようにはんだ付け用ホットプレートも買いました．これで4000dps対応IMU ISM330DHCXも無事付けられました．
 ・[ALIENTEK HP15](https://ja.aliexpress.com/item/1005008093053677.html?channel=twinner)
+
+<br>
 
 > 九州大会前のマウスはここまで
 > 壁切れを追加したおかげで距離ズレする無茶な加速度でも割と走れるようになった [pic.twitter.com/9d5RNjIVNr](https://t.co/9d5RNjIVNr)
@@ -52,6 +58,8 @@
 まず，最近流行りのAIコーディングを本格的に始めました．色んなツールがありますが，ソフト初心者向けってどこかで見かけたWindsurfを使っています．土日メインでマウス開発なら月$15ぐらいのプランでThinking付きモデルをがっつり使っても大体足りるみたいです．
 
 [Referrals | Windsurf](https://windsurf.com/refer?referral_code=ox6uaybj3yxyfn5u)
+
+<br>
 
 > ログ取り用にAIに作らせたツール
 > これで[Excel](https://d.hatena.ne.jp/keyword/Excel)脱却 [pic.twitter.com/zqnykrYMX4](https://t.co/zqnykrYMX4)
