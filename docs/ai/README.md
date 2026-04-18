@@ -1,77 +1,33 @@
-# Codex委譲運用ガイド（nightfall-fw）
+# AI運用ガイド（Cascade単独実行）
 
-このドキュメントは、Cascadeを窓口にしたまま重い作業をCodex CLIへ委譲するための手順です。
+このドキュメントは、`nightfall-fw` における現在のAI運用方針を示します。
 
-## 1. できること
+## 1. 現在の運用方針
 
-- あなたはこれまで通り Cascade に依頼するだけでOKです。
-- 重い作業は、依頼文で明示しなくても内部で `codex exec` にデフォルト委譲されます。
-- 委譲結果は `docs/ai/HANDOFFS/` に保存されます。
+- ユーザーはこれまで通り Cascade に依頼するだけで運用できます。
+- 実装・調査・検証・最終説明は Cascade が直接実行します。
+- 当面の間、Codex CLI への委譲は行いません。
 
-## 2. デフォルト挙動（重要）
+## 2. 標準フロー
 
-- 毎回のConversationで、重い作業は自動的にCodex委譲します。
-- 軽微修正・説明のみ・局所修正はCascadeが直接対応します。
-- 今回だけ委譲を止めたい場合は「今回は委譲せずCascadeで対応」と指定してください。
+1. Cascade が依頼内容を整理する
+2. Cascade が本作業ツリーで実装・調査・検証を行う
+3. 必要に応じて `docs/ai/WORKLOG.md` に重要イベントを記録する
+4. Cascade が最終報告する
 
-## 3. 初回確認
+## 3. 記録方針
 
-### 3-1. Codex CLIの確認
+- `docs/ai/HANDOFFS/` は過去の委譲履歴として保持します。
+- 新規の委譲成果物（packet/raw log/diff など）は原則追加しません。
 
-```bash
-codex --version
-```
+## 4. 互換資産の扱い
 
-### 3-2. ChatGPTサインイン状態の確認
+以下のスクリプトは過去運用との互換のため残していますが、現行運用では通常使用しません。
 
-```bash
-codex login status
-```
+- `scripts/ai/delegate_to_codex.sh`
+- `scripts/ai/maybe_apply_codex_result.sh`
 
-`Logged in using ChatGPT` と表示されれば、ChatGPT Pro側リソースを利用できます。
-
-## 4. 委譲の実行
-
-基本コマンド:
-
-```bash
-scripts/ai/delegate_to_codex.sh \
-  --title "<task title>" \
-  --prompt-file "<task prompt file>" \
-  --targets "<target paths>" \
-  --success-criteria "<success criteria>"
-```
-
-`--prompt` で直接テキストを渡すこともできます。
-
-## 5. 結果確認
-
-委譲後は `docs/ai/HANDOFFS/` に以下が出力されます。
-
-- `<task-id>-result.md`（要約）
-- `<task-id>-raw.log`（生ログ）
-- `<task-id>-last-message.md`（最終回答）
-- `<task-id>.diff`（適用用差分）
-
-## 6. 差分を取り込む
-
-```bash
-scripts/ai/maybe_apply_codex_result.sh --task-id <task-id>
-```
-
-自動確認なしで適用する場合:
-
-```bash
-scripts/ai/maybe_apply_codex_result.sh --task-id <task-id> --yes
-```
-
-## 7. よくある運用
-
-- 軽い修正はCascadeが直接対応
-- 重い修正はCodex委譲
-- 追加調査が必要なら同じ `task-id` 方針で再委譲
-
-## 8. 関連ファイル
+## 5. 関連ファイル
 
 - `AGENTS.md`
 - `docs/ai/STATE.md`

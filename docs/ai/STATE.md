@@ -1,55 +1,30 @@
 # AI Coordination State
 
-このファイルは、Cascade と Codex が共有する「現在の運用状態」の正本です。
+このファイルは、Cascade の現在の運用状態を記録する正本です。
 
 ## 目的
 
 - 会話履歴ではなく、リポジトリ内の状態ファイルで運用を継続可能にする
-- AI間の委譲条件と手順を固定し、再現性を高める
+- 実装・調査・検証の実行方針を固定し、再現性を高める
 
 ## 現在の構成
 
-- オーケストレータ: Cascade（Windsurf）
-- ワーカー: Codex CLI（`codex exec`）
-- 実行方式: `scripts/ai/delegate_to_codex.sh` から非対話実行
-- 作業隔離: `.ai/worktrees/` の `git worktree`
+- 実行者: Cascade（Windsurf）
+- 実行方式: Cascade が本作業ツリーで直接実行
+- 委譲状態: Codex CLI への委譲は当面停止
 
-## Codex認証状態
+## 委譲停止ポリシー
 
-- 方針: **ChatGPTサインインを使用**（API key運用ではなくPro枠活用）
-- 確認コマンド: `codex login status`
-
-## 委譲判定基準（デフォルト自動委譲）
-
-前提:
-
-- ユーザーが会話内で明示しなくても、重い作業はデフォルトでCodexへ委譲する
-- ユーザーが「委譲せずCascadeで対応」と明示した場合のみ、委譲を抑制する
-
-委譲する:
-
-- 多ファイル変更
-- 調査→修正→検証ループが長い
-- ビルド/テスト反復が多い
-
-委譲しない:
-
-- 軽微な単発修正
-- 説明のみ
-- 局所修正
+- 多ファイル変更、長時間調査、反復ビルド/テストを含む作業も Cascade が直接対応する
+- `scripts/ai/delegate_to_codex.sh` と `scripts/ai/maybe_apply_codex_result.sh` は過去運用との互換資産として保持する
+- `docs/ai/HANDOFFS/` は過去ログ保管用途として維持し、新規委譲成果物は原則追加しない
 
 ## 標準フロー
 
 1. Cascadeがタスクを整理
-2. `delegate_to_codex.sh` で task packet を作成してCodex実行
-3. Codex結果を `docs/ai/HANDOFFS/` と `docs/ai/WORKLOG.md` に記録
-4. 必要なら `maybe_apply_codex_result.sh` で差分を本作業ツリーへ適用
-5. Cascadeが最終報告
-
-## 今後の拡張
-
-- Phase Bとして、`codex exec` 呼び出しをローカルMCPサーバでラップする
-- `delegate_to_codex` 専用ツール化で、Cascade側呼び出しをさらに簡素化する
+2. Cascadeが実装・調査・検証を直接実行
+3. 必要に応じて `docs/ai/WORKLOG.md` に重要イベントを記録
+4. Cascadeが最終報告
 
 ## 更新ルール
 
