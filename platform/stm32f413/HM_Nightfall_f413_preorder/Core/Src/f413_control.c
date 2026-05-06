@@ -50,14 +50,22 @@
 #define F413_IMU_CTRL3_C          (0x12U)    /* 制御レジスタ3 */
 #define F413_IMU_OUTZ_G_L         (0x26U)    /* ジャイロ Z軸 LOW byte */
 #define F413_IMU_OUTZ_G_H         (0x27U)    /* ジャイロ Z軸 HIGH byte */
+#define F413_IMU_OUTX_XL_L        (0x28U)
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
+#define F413_IMU_ACCEL_SENS_MG    (0.488f)
+#define F413_IMU_GRAVITY_MM_S2    (9.80665f)
 #define F413_IMU_OMEGA_LPF_TAU    (0.020f)   /* 角速度 LPF 時定数 [s] (振動ノイズ除去) */
+#define F413_IMU_ACCEL_LPF_TAU    (0.010f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
+#define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTX_XL_L)
+#define F413_IMU_FORWARD_ACCEL_SIGN (1.0f)
+#define F413_CTRL_VEL_CORR_TAU    (0.035f)
+#define F413_CTRL_VEL_EST_MAX     (1200.0f)
 
 /* ---------- エンコーダ変換定数 ---------- */
-static const float s_enc_to_mms =
-    (F413_CTRL_D_TIRE * 3.14159265f) / (F413_CTRL_CPR_WHEEL * F413_CTRL_DT);
+static const float s_enc_to_mm =
+    (F413_CTRL_D_TIRE * 3.14159265f) / F413_CTRL_CPR_WHEEL;
 
 /* ---------- HAL ハンドル (main.c で定義) ---------- */
 extern TIM_HandleTypeDef htim2;
@@ -83,6 +91,10 @@ static volatile float s_angle           = 0.0f;
 static float s_omega_z_offset  = 0.0f;
 static float s_omega_z_filtered = 0.0f;
 static bool  s_omega_z_lpf_inited = false;
+static float s_accel_forward_offset = 0.0f;
+static float s_accel_forward_filtered = 0.0f;
+static bool  s_accel_forward_lpf_inited = false;
+static float s_accel_velocity = 0.0f;
 static float s_omega_integral = 0.0f;
 static float s_previous_omega_error = 0.0f;
 static float s_angle_integral = 0.0f;
@@ -137,6 +149,14 @@ static float imu_read_gyro_z_dps(void)
     return (float)imu_read16_le(F413_IMU_OUTZ_G_L) * F413_IMU_GYRO_SENSITIVITY;
 }
 
+static float imu_read_accel_forward_mm_s2(void)
+{
+    return (float)imu_read16_le(F413_IMU_FORWARD_ACCEL_REG) *
+           F413_IMU_ACCEL_SENS_MG *
+           F413_IMU_GRAVITY_MM_S2 *
+           F413_IMU_FORWARD_ACCEL_SIGN;
+}
+
 static bool imu_init_ism330(void)
 {
     uint8_t who = imu_read_byte(F413_IMU_WHO_AM_I_REG);
@@ -160,22 +180,28 @@ static bool imu_init_ism330(void)
     return true;
 }
 
-static void imu_get_gyro_z_offset(void)
+static void imu_get_motion_offsets(void)
 {
-    float sum = 0.0f;
+    float gyro_sum = 0.0f;
+    float accel_sum = 0.0f;
     uint32_t i;
 
     HAL_Delay(F413_IMU_OFFSET_SETTLE_MS);
 
     for (i = 0U; i < F413_IMU_OFFSET_SAMPLES; i++)
     {
-        sum += imu_read_gyro_z_dps();
+        gyro_sum += imu_read_gyro_z_dps();
+        accel_sum += imu_read_accel_forward_mm_s2();
         HAL_Delay(1U);
     }
 
-    s_omega_z_offset = sum / (float)F413_IMU_OFFSET_SAMPLES;
+    s_omega_z_offset = gyro_sum / (float)F413_IMU_OFFSET_SAMPLES;
     s_omega_z_filtered = 0.0f;
     s_omega_z_lpf_inited = false;
+    s_accel_forward_offset = accel_sum / (float)F413_IMU_OFFSET_SAMPLES;
+    s_accel_forward_filtered = 0.0f;
+    s_accel_forward_lpf_inited = false;
+    s_accel_velocity = 0.0f;
 }
 
 /* ========================================================== */
@@ -193,6 +219,10 @@ void f413_ctrl_init(void)
     s_real_omega      = 0.0f;
     s_distance        = 0.0f;
     s_angle           = 0.0f;
+    s_accel_forward_offset = 0.0f;
+    s_accel_forward_filtered = 0.0f;
+    s_accel_forward_lpf_inited = false;
+    s_accel_velocity = 0.0f;
     s_omega_integral = 0.0f;
     s_previous_omega_error = 0.0f;
     s_angle_integral = 0.0f;
@@ -202,7 +232,7 @@ void f413_ctrl_init(void)
     s_imu_ok = imu_init_ism330();
     if (s_imu_ok)
     {
-        imu_get_gyro_z_offset();
+        imu_get_motion_offsets();
     }
 
     /* エンコーダ開始 */
@@ -220,7 +250,7 @@ void f413_ctrl_start(void)
     /* 走行直前に IMU オフセットを再取得（静止状態で校正） */
     if (s_imu_ok)
     {
-        imu_get_gyro_z_offset();
+        imu_get_motion_offsets();
     }
 
     /* 状態をリセットしてから有効化 */
@@ -234,6 +264,9 @@ void f413_ctrl_start(void)
     s_angle           = 0.0f;
     s_omega_z_filtered = 0.0f;
     s_omega_z_lpf_inited = false;
+    s_accel_forward_filtered = 0.0f;
+    s_accel_forward_lpf_inited = false;
+    s_accel_velocity = 0.0f;
     s_omega_integral = 0.0f;
     s_previous_omega_error = 0.0f;
     s_angle_integral = 0.0f;
@@ -261,6 +294,7 @@ void f413_ctrl_stop(void)
     s_target_velocity = 0.0f;
     s_target_omega    = 0.0f;
     s_angle_target_enabled = false;
+    s_accel_velocity = 0.0f;
     s_omega_integral = 0.0f;
     s_previous_omega_error = 0.0f;
     s_angle_integral = 0.0f;
@@ -335,11 +369,11 @@ void f413_ctrl_tick(void)
 
     /* 方向補正: 前進でカウンタ減少 → enc_l<0 → (-1.0f)で正速度に変換
        （実機ログ 2026-05-01 で確認済み: forward→counter decrease） */
-    float vel_l = (float)enc_l * s_enc_to_mms * F413_CTRL_ENCODER_SIGN_L;
-    float vel_r = (float)enc_r * s_enc_to_mms * F413_CTRL_ENCODER_SIGN_R;
-
-    /* 並進速度 [mm/s] — エンコーダから */
-    s_real_velocity = (vel_l + vel_r) * 0.5f;
+    float dist_l = (float)enc_l * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_L;
+    float dist_r = (float)enc_r * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_R;
+    float distance_delta = (dist_l + dist_r) * 0.5f;
+    float velocity_encoder = distance_delta / F413_CTRL_DT;
+    float velocity_est = velocity_encoder;
 
     /* 角速度 [deg/s] — IMU ジャイロから (F405 read_IMU() と同等)
        SPI2 が FRAM 操作中（HAL busy）ならこの tick の IMU 読取をスキップし前回値を維持 */
@@ -360,11 +394,36 @@ void f413_ctrl_tick(void)
             s_omega_z_filtered += alpha * (omega_raw - s_omega_z_filtered);
         }
         s_real_omega = s_omega_z_filtered;
+
+        float accel_raw = imu_read_accel_forward_mm_s2() - s_accel_forward_offset;
+        if (!s_accel_forward_lpf_inited)
+        {
+            s_accel_forward_filtered = accel_raw;
+            s_accel_forward_lpf_inited = true;
+        }
+        else
+        {
+            float alpha_accel = F413_CTRL_DT / (F413_IMU_ACCEL_LPF_TAU + F413_CTRL_DT);
+            s_accel_forward_filtered += alpha_accel * (accel_raw - s_accel_forward_filtered);
+        }
+        s_accel_velocity += s_accel_forward_filtered * F413_CTRL_DT;
+        float alpha_vel = F413_CTRL_DT / (F413_CTRL_VEL_CORR_TAU + F413_CTRL_DT);
+        s_accel_velocity += alpha_vel * (velocity_encoder - s_accel_velocity);
+        if (s_accel_velocity > F413_CTRL_VEL_EST_MAX)
+        {
+            s_accel_velocity = F413_CTRL_VEL_EST_MAX;
+        }
+        else if (s_accel_velocity < -F413_CTRL_VEL_EST_MAX)
+        {
+            s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
+        }
+        velocity_est = s_accel_velocity;
         s_spi2_busy = false;
     }
 
     /* 累積 */
-    s_distance += s_real_velocity * F413_CTRL_DT;
+    s_real_velocity = velocity_est;
+    s_distance += distance_delta;
     s_angle    += s_real_omega    * F413_CTRL_DT;
 
     /* ---- 並進 P 制御 + 回転 角度外側/角速度内側制御 ---- */
