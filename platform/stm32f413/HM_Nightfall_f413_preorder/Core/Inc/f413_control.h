@@ -26,6 +26,8 @@ void f413_ctrl_stop(void);
 /* 目標値設定（走行中に随時呼ぶ） */
 void f413_ctrl_set_velocity(float velocity_mm_s);
 void f413_ctrl_set_omega(float omega_deg_s);
+void f413_ctrl_set_angle_target(float angle_deg);
+void f413_ctrl_clear_angle_target(void);
 
 /* 累積量取得 */
 float f413_ctrl_get_distance(void);
