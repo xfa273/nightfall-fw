@@ -89,12 +89,13 @@ typedef struct __attribute__((packed)) {
   - bit3 (`0x0008`): motor coast 区間（`y`）
   - bit4 (`0x0010`): motor reverse 区間（`y`）
   - bit5 (`0x0020`): smoke+trace 区間（`g`）
-  - bit6 (`0x0040`): search-safe 区間（`z`）
-  - bit7 (`0x0080`): shortest-safe 区間（`j`）
+  - bit6 (`0x0040`): search entry / search-safe 区間（`z`）
+  - bit7 (`0x0080`): shortest entry / shortest-safe 区間（`j`）
   - bit8 (`0x0100`): run abort reason = switch
   - bit9 (`0x0200`): run abort reason = wall sensor fault
   - bit10 (`0x0400`): run abort reason = encoder fault
   - bit11 (`0x0800`): run abort reason = imu fault
+  - bit12 (`0x1000`): solver path / closed-loop test session
   - bit15 (`0x8000`): 自動収集モードで追加されたレコード
 
 ---
@@ -125,13 +126,25 @@ typedef struct __attribute__((packed)) {
 - `g`: hardware smoke + trace session（run start/stop hookを内部実行）
 - `x`: idle run session 1000ms（run start/stop hookを内部実行、モータ駆動なし）
 - `y`: motor run session short（run start/stop hookを内部実行、短時間の正転/逆転を含む）
-- `z`: search-safe run session（低速短区間、guard付き: switch/wall/encoder/imu異常で停止）
-- `j`: shortest-safe run session（低速短区間、guard付き: switch/wall/encoder/imu異常で停止）
+- `z`: search entry（`NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1` では solver path + closed-loop session、solver失敗時またはgate OFF時は search-safe fallback）
+- `j`: shortest entry（`NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1` では solver path + closed-loop session、solver失敗時またはgate OFF時は shortest-safe fallback）
+- `1`: closed-loop straight S3（270mm）
+- `2`: closed-loop straight S6（540mm）
+- `3`: closed-loop right 90deg turn
+- `4`: closed-loop left 90deg turn
+- `5`: closed-loop S3 + R90 + S3
+- `6`: open-loop left motor forward + encoder check
+- `7`: open-loop right motor forward + encoder check
+- `8`: open-loop left motor reverse + encoder check
+- `9`: open-loop right motor reverse + encoder check
+- `F`: button-armed test execution（直前に選んだ `1`〜`5`、未選択時は `1`）
 
-補足（Phase4.5 Step5）:
+補足（Phase4.5 Step8/Step9）:
 
-- `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1` の場合、`z/j` は実行入口で `nvm_maze_load_map` とBFSによる本経路ドラフト（goal到達step数、旋回回数、直進区間数）を事前算出してログ出力する。
-- 現段階では実行本体は safe fallback のまま（モータ実行は既存 `search-safe/shortest-safe` 経路）。
+- `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1` の場合、`z/j` は実行入口で `solver_build_path()` を呼び、成功時は生成された `path[]` を closed-loop session で実行する。
+- closed-loop session は `f413_control.c/h` の TIM5 1kHz 制御を使い、直進は距離目標（半区画45mm×N）、ターンは角度目標（90/180deg）で完了判定する。
+- solver失敗時または `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=0` の場合は、従来の低速短区間 safe fallback を実行する。
+- `1`〜`5` は `z/j` 前の調整用に、同じ run-start/stop hook と FRAM trace CSV 経路で距離・角度・位相を確認する。
 
 想定手順:
 
@@ -142,7 +155,10 @@ typedef struct __attribute__((packed)) {
 5. `k`
 6. `u` で数秒待機して `U`
 7. `v` で auto capture のCSVを確認（簡易確認）
-8. 必要に応じて `V` で全件CSVを取得
+8. 機体を浮かせて `6`〜`9` で片側モータとエンコーダを確認
+9. `1`〜`5` で closed-loop 直進/旋回/複合動作を確認
+10. 必要に応じて `z` / `j` で solver path session を確認
+11. 必要に応じて `V` で全件CSVを取得
 
 `header` / `rec[...]` / CSV行 / `SELFTEST PASS` が表示されれば、
 v1形式での保存・読出し・CSVダンプ経路まで成立している。
@@ -157,6 +173,7 @@ v1形式での保存・読出し・CSVダンプ経路まで成立している。
   - `--expect x/y/z/j` で run session 別の位相セット検証ができる
 - `v` / `V` コマンドは `#fw_*` メタ情報行（target/version/build/git/schema/identity）も出力する
   - `#fw_family_name`, `#fw_machine_name`, `#fw_machine_unit`, `#fw_board_id_hex` を含む
+- `z/j` の solver path 実行では `flags` に bit12 (`0x1000`) が含まれるため、safe fallback と closed-loop solver path をCSV上で区別できる
 
 例:
 

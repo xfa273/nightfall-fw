@@ -5,13 +5,14 @@
 
 ---
 
-## 0. 進捗サマリ（2026-04-30）
+## 0. 進捗サマリ（2026-05-06）
 
 - Phase 0: 完了
 - Phase 1: 完了（既存機種の実機動作確認まで完了）
 - Phase 2: 完了（`trace_printf()` 導入と `STM32F413` 起動トレース経路を整備）
 - Phase 3: 完了（F405/F413起動時の識別判定、Step A/B/C、identity write path、F413 FRAM無し暫定運用チェックリストのStep2〜5実機検証を完了）
-- Phase 4: 進行中（F413で `distance/sensor/maze/trace` のFRAM backend実機検証に加え、trace_log schema v1 + UART `q/r/R/v/k/u/U/x/y/z/j` 検証経路を整備）
+- Phase 4: 進行中（F413で `distance/sensor/maze/trace` のFRAM backend実機検証、trace_log schema v1、CSV dump、run hook連動ログ経路を整備）
+- Phase 4.5: 進行中（`z/j` 実行入口を solver path + closed-loop control へ接続。調整用UARTテスト `1`〜`9` / `F` を追加し、実機ゲイン調整待ち）
 
 ---
 
@@ -259,17 +260,19 @@
 3. 最短走行入口を追加したら同様に「最短セッションCSV」を取得する
 4. 探索/最短の各段階で、低速条件と停止条件を固定してから速度を上げる
 
-### 進捗メモ（2026-04-30）
+### 進捗メモ（2026-05-06）
 
 - Step1: `z` / `j` の安全run入口を追加（低速短区間・PUSHスイッチ即停止・trace flags記録）
 - Step2: `z/j` 実測CSVで flags 位相とスイッチabortを確認し、`analyze_trace_csv.py --expect z/j` によるホスト検証導線を追加
 - Step3: `z/j` 経路へ run guard（switch/wall/encoder/imu）を統合し、停止理由をtrace flags（bit8〜bit11）へ記録
-- Step4: `z/j` を `search/shortest` 実行入口ラッパーへ接続（`NIGHTFALL_F413_REAL_RUN_PATH_ENABLED` ゲート追加、現時点は safe fallback 実行）
-- Step5: gate ON 時に `nvm_maze_load_map` + BFS で本経路ドラフト（step数/旋回回数/直進区間数）を算出し、entryラッパーから事前確認ログを出す
+- Step4: `z/j` を `search/shortest` 実行入口ラッパーへ接続（`NIGHTFALL_F413_REAL_RUN_PATH_ENABLED` ゲート追加、OFF時は safe fallback 実行）
+- Step5: gate ON 時に `nvm_maze_load_map` + BFS で本経路ドラフト（step数/旋回回数/直進区間数）を算出し、entryラッパーから事前確認ログを出す。その後 Step6 で `solver_build_path()` へ置換済み
 - Step6: F413ビルドへ solver/path/maze_grid/solver_params を統合。`params/f413_preorder/` 作成、`f413_solver_bridge.c`（MAIN_C_ globals + load_map_from_eeprom NVM ブリッジ）作成。z/j entry の BFS ドラフトを `solver_build_path()` (Dijkstra + simplify + L-turn) に置換。RAM 55KB/320KB, FLASH 81KB/1536KB
-- Step7: gate ON 時に solver-path の `path[]` コード列をオープンループで走行実行。直進は forward duty × 時間、ターンは rotate duty × 時間。safe fallback の代替として path 全体を走破するセッション関数を実装する
+- Step7: gate ON 時に solver-path の `path[]` コード列をオープンループで走行実行。直進は forward duty × 時間、ターンは rotate duty × 時間。safe fallback の代替として path 全体を走破するセッション関数を実装
 - Step8: `f413_control.c/h` を作成。TIM5 1kHz 割り込みで並進速度（エンコーダ）+ 角速度（IMU ISM330DHCX SPI2読取 + LPF + オフセット補正）の P+FF 制御を実装。solver path session をクローズドループに移行: 直進は距離目標（半区画45mm×N）到達で完了、ターンは角度目標（90/180°）到達で完了。RAM 55KB/320KB, FLASH 84KB/1536KB
-- 次ステップ: 実機でファーム書き込み→エンコーダ/IMU方向確認→制御ゲイン調整（並進・旋回の両方が動く状態で同時に調整）
+- Step8補足: 現在の作業ツリーでは `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1`。`z/j` は `solver_build_path()` 成功時に closed-loop solver path session を実行し、失敗時のみ safe fallback へ戻る
+- Step9: 調整用UARTテストを追加。`1`=S3直進、`2`=S6直進、`3`=R90、`4`=L90、`5`=S3+R90+S3、`6`〜`9`=片側モータopen-loop+encoder、`F`=ボタンアーム実行
+- 次ステップ: 実機で `6`〜`9` → `1/2` → `3/4` → `5` → `z/j` の順に段階試験し、FRAM CSVログを見ながら距離・角度スケール、IMU符号、PWM左右対応、P+FFゲインを調整する
 
 ---
 

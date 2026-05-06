@@ -29,6 +29,8 @@
 - `--expect x` / `--expect y` / `--expect z` / `--expect j` を付けると、ディレクトリ指定時は期待位相を満たす最新CSVを優先して選択します。
 - `--expect z` は `search-safe` セッション（`motor_forward` + `motor_coast`）を検証します。
 - `--expect j` は `shortest-safe` セッション（`motor_forward` + `motor_coast` + `motor_reverse`）を検証します。
+- `z/j` が solver path + closed-loop session として動作した場合は、CSVの `flags` に bit12 (`0x1000`) が含まれます。
+- `1`〜`5` の closed-loop 調整用テストも同じ `V` dump とCSV解析の流れで確認できます。
 - 要約出力では `abort_count[...]`（bit8〜bit11）を表示し、停止理由フラグの有無を確認できます。
 - `segments` の `d_enc=(L,R)` は 16bit符号付き差分で表示されるため、エンコーダwrap時の見かけ上の大値を抑制できます。
 - 例:
