@@ -28,16 +28,18 @@
 
 /* ---------- 制御ゲイン ---------- */
 #define F413_CTRL_KP_VEL          (0.5f)     /* [PWM counts / (mm/s)] */
-#define F413_CTRL_KP_ANGLE        (2.0f)     /* [deg/s / deg] */
+#define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
 #define F413_CTRL_KI_ANGLE        (0.0f)
 #define F413_CTRL_KD_ANGLE        (0.0f)
-#define F413_CTRL_ANGLE_OMEGA_MAX (220.0f)
-#define F413_CTRL_KP_OMEGA        (0.9f)     /* [PWM counts / (deg/s)] */
-#define F413_CTRL_KI_OMEGA        (0.03f)
+#define F413_CTRL_ANGLE_OMEGA_MAX (300.0f)
+#define F413_CTRL_KP_OMEGA        (1.4f)     /* [PWM counts / (deg/s)] */
+#define F413_CTRL_KI_OMEGA        (0.06f)
 #define F413_CTRL_KD_OMEGA        (0.0f)
 #define F413_CTRL_FF_VEL          (0.8f)     /* フィードフォワード速度→PWM (CPR=400用) */
-#define F413_CTRL_FF_OMEGA        (0.25f)    /* フィードフォワード角速度→PWM */
-#define F413_CTRL_OMEGA_I_LIMIT   (3000.0f)
+#define F413_CTRL_FF_OMEGA        (0.45f)    /* フィードフォワード角速度→PWM */
+#define F413_CTRL_OMEGA_I_LIMIT   (6000.0f)
+#define F413_CTRL_ROT_PWM_MIN     (100.0f)
+#define F413_CTRL_ROT_MIN_OMEGA_REF (10.0f)
 
 /* ---------- IMU (ISM330DHCX) 定数 ---------- */
 #define F413_IMU_WHO_AM_I_REG     (0x0FU)
@@ -409,6 +411,12 @@ void f413_ctrl_tick(void)
                       F413_CTRL_KP_OMEGA * omega_err +
                       F413_CTRL_KI_OMEGA * s_omega_integral +
                       F413_CTRL_KD_OMEGA * omega_deriv;
+    if ((fabsf(omega_ref) >= F413_CTRL_ROT_MIN_OMEGA_REF) &&
+        (fabsf(out_rot) > 0.0f) &&
+        (fabsf(out_rot) < F413_CTRL_ROT_PWM_MIN))
+    {
+        out_rot = copysignf(F413_CTRL_ROT_PWM_MIN, out_rot);
+    }
 
     /* 左右出力 */
     float out_l = out_trans - out_rot;
