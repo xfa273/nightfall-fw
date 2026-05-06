@@ -230,6 +230,10 @@ static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev);
 static void nightfall_run_imu_manual_turn_test_once(void);
 
 static volatile uint8_t g_test_armed_id = 0U; /* 0=none, '1'-'5'=armed test */
+static uint8_t g_last_test_id = 0U;
+static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABORT_NONE;
+static float g_last_test_distance_mm = 0.0f;
+static float g_last_test_angle_deg = 0.0f;
 
 static const char* nightfall_identity_family_name(uint32_t family)
 {
@@ -845,12 +849,17 @@ static void nightfall_test_run(uint8_t test_id)
   nightfall_trace_log_on_run_stop();
   nightfall_run_guard_cleanup(&guard);
 
+  g_last_test_id = test_id;
+  g_last_test_abort_reason = abort_reason;
+  g_last_test_distance_mm = f413_ctrl_get_distance();
+  g_last_test_angle_deg = f413_ctrl_get_angle();
+
   trace_printf("[TEST] === %s === %s dist=%.0fmm angle=%.0fdeg\r\n",
                test_name,
                (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" :
                nightfall_run_abort_reason_to_text(abort_reason),
-               (double)f413_ctrl_get_distance(),
-               (double)f413_ctrl_get_angle());
+               (double)g_last_test_distance_mm,
+               (double)g_last_test_angle_deg);
 }
 
 static void nightfall_test_arm_for_button(uint8_t test_id)
@@ -960,6 +969,15 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   else
   {
     trace_printf("#fw_identity_status=%d\r\n", (int)g_boot_identity_status);
+  }
+  if (g_last_test_id != 0U)
+  {
+    trace_printf("#last_test_id=%c\r\n", (char)g_last_test_id);
+    trace_printf("#last_test_status=%s\r\n",
+                 (g_last_test_abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" :
+                 nightfall_run_abort_reason_to_text(g_last_test_abort_reason));
+    trace_printf("#last_test_dist_mm=%.0f\r\n", (double)g_last_test_distance_mm);
+    trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
   }
   trace_printf("#mm_columns=timestamp_ms,seq,encoder_l,encoder_r,motor_out_l,motor_out_r,omega_z_mdps,flags\r\n");
 
