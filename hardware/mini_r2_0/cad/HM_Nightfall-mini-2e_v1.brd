@@ -3301,6 +3301,7 @@ design rules under a new name.</description>
 <wire x1="-3.048" y1="-4.191" x2="-1.27" y2="-4.191" width="0.508" layer="16"/>
 <wire x1="-0.254" y1="-5.207" x2="-0.254" y2="-6.35" width="0.508" layer="16"/>
 <wire x1="-1.27" y1="-4.191" x2="-0.254" y2="-5.207" width="0.508" layer="16"/>
+<via x="6.477" y="-1.905" extent="1-16" drill="0.3"/>
 </signal>
 <signal name="SENSOR_FR">
 <contactref element="U5" pad="10"/>
@@ -4062,7 +4063,6 @@ design rules under a new name.</description>
 <wire x1="-0.4666625" y1="-14.8336" x2="-1.6923375" y2="-14.8336" width="0.254" layer="16"/>
 <wire x1="-18.0364" y1="-13.9619625" x2="-18.4069625" y2="-13.5914" width="0.254" layer="16"/>
 <wire x1="-18.4069625" y1="-13.5914" x2="-18.9310375" y2="-13.5914" width="0.254" layer="16"/>
-<wire x1="-18.9310375" y1="-13.5914" x2="-19.257775" y2="-13.9181375" width="0.254" layer="16"/>
 <wire x1="-11.43" y1="-19.304" x2="-15.78853125" y2="-19.304" width="0.254" layer="16"/>
 <wire x1="-15.78853125" y1="-19.304" x2="-18.0364" y2="-17.05613125" width="0.254" layer="16"/>
 <wire x1="-18.0364" y1="-17.05613125" x2="-18.0364" y2="-13.9619625" width="0.254" layer="16"/>
@@ -4575,9 +4575,6 @@ design rules under a new name.</description>
 <wire x1="12.573" y1="7.112" x2="12.573" y2="8.001" width="0.254" layer="1"/>
 <wire x1="12.573" y1="8.001" x2="11.97136875" y2="8.60263125" width="0.254" layer="1"/>
 </signal>
-<signal name="N$14">
-<via x="6.477" y="-1.905" extent="1-16" drill="0.3"/>
-</signal>
 </signals>
 <mfgpreviewcolors>
 <mfgpreviewcolor name="soldermaskcolor" color="0xC8008000"/>
@@ -4629,26 +4626,6 @@ design rules under a new name.</description>
 <approved hash="19,1,2ade2a52d44cd4c0"/>
 <approved hash="3,1,5d1ae27da27e1d19"/>
 <approved hash="3,1,32558d34cd377256"/>
-<approved hash="22,1,b342f342f083b083"/>
-<approved hash="22,1,0ebf4ebf4f7c0f7c"/>
-<approved hash="22,1,7cdd3cdd3d1e7d1e"/>
-<approved hash="22,1,8c844c844fc78fc7"/>
-<approved hash="22,1,1c86dc86dfc51fc5"/>
-<approved hash="22,1,fddc3ddc3303f303"/>
-<approved hash="22,1,24fe64fe5bbd1bbd"/>
-<approved hash="22,1,065ec65ec71d071d"/>
-<approved hash="22,1,eba62ba62ae4eae4"/>
-<approved hash="22,1,8863c863c9a089a0"/>
-<approved hash="22,16,065ec65ec71d071d"/>
-<approved hash="22,16,eba62ba62ae4eae4"/>
-<approved hash="22,16,8863c863c9a089a0"/>
-<approved hash="22,16,b342f342f083b083"/>
-<approved hash="22,16,0ebf4ebf4f7c0f7c"/>
-<approved hash="22,16,7cdd3cdd3d1e7d1e"/>
-<approved hash="22,16,8c844c844fc78fc7"/>
-<approved hash="22,16,1c86dc86dfc51fc5"/>
-<approved hash="22,16,fddc3ddc3303f303"/>
-<approved hash="22,16,24fe64fe5bbd1bbd"/>
 </errors>
 </board>
 </drawing>
