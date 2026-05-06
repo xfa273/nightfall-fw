@@ -51,6 +51,7 @@
 #define F413_IMU_OUTZ_G_L         (0x26U)    /* ジャイロ Z軸 LOW byte */
 #define F413_IMU_OUTZ_G_H         (0x27U)    /* ジャイロ Z軸 HIGH byte */
 #define F413_IMU_OUTX_XL_L        (0x28U)
+#define F413_IMU_OUTY_XL_L        (0x2AU)
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
 #define F413_IMU_ACCEL_SENS_MG    (0.488f)
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
@@ -58,7 +59,7 @@
 #define F413_IMU_ACCEL_LPF_TAU    (0.010f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
-#define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTX_XL_L)
+#define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTY_XL_L)
 #define F413_IMU_FORWARD_ACCEL_SIGN (1.0f)
 #define F413_CTRL_VEL_CORR_TAU    (0.035f)
 #define F413_CTRL_VEL_EST_MAX     (1200.0f)

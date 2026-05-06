@@ -1786,7 +1786,7 @@ static void nightfall_run_imu_accel_test_once(void)
 
   trace_printf("[HW-TEST][IMU-ACCEL] offset ax=%.1f ay=%.1f az=%.1f mm/s2\r\n",
                (double)off_x, (double)off_y, (double)off_z);
-  trace_printf("[HW-TEST][IMU-ACCEL] start: move forward/backward; control forward axis is X sign + for now\r\n");
+  trace_printf("[HW-TEST][IMU-ACCEL] start: move forward/backward; control forward axis is Y sign +\r\n");
 
   start_ms = HAL_GetTick();
   last_ms = start_ms;
