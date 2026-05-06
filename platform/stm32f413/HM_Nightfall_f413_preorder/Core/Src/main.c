@@ -629,11 +629,11 @@ static void nightfall_test_run(uint8_t test_id)
   const char* test_name = "?";
   switch (test_id)
   {
-    case '1': test_name = "straight 3 cells (270mm)"; break;
-    case '2': test_name = "straight 6 cells (540mm)"; break;
+    case '1': test_name = "straight 3 cells heading hold (270mm)"; break;
+    case '2': test_name = "straight 6 cells heading hold (540mm)"; break;
     case '3': test_name = "right 90 deg turn"; break;
     case '4': test_name = "left 90 deg turn"; break;
-    case '5': test_name = "S3 + R90 + S3"; break;
+    case '5': test_name = "S3 + R90 + S3 heading hold"; break;
     case '6': test_name = "HW: L-motor fwd only"; break;
     case '7': test_name = "HW: R-motor fwd only"; break;
     case '8': test_name = "HW: L-motor rev only"; break;
@@ -725,9 +725,10 @@ static void nightfall_test_run(uint8_t test_id)
     case '1': /* straight 6 half-cells = 270mm */
     {
       f413_ctrl_reset_distance();
-      f413_ctrl_clear_angle_target();
+      f413_ctrl_reset_angle();
       f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
       abort_reason = nightfall_test_wait_target(
           6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
           (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
@@ -736,9 +737,10 @@ static void nightfall_test_run(uint8_t test_id)
     case '2': /* straight 12 half-cells = 540mm */
     {
       f413_ctrl_reset_distance();
-      f413_ctrl_clear_angle_target();
+      f413_ctrl_reset_angle();
       f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
       abort_reason = nightfall_test_wait_target(
           12.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
           (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
@@ -770,9 +772,10 @@ static void nightfall_test_run(uint8_t test_id)
     {
       /* segment 1: straight 6 half-cells */
       f413_ctrl_reset_distance();
-      f413_ctrl_clear_angle_target();
+      f413_ctrl_reset_angle();
       f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
       abort_reason = nightfall_test_wait_target(
           6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
           (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
@@ -808,9 +811,10 @@ static void nightfall_test_run(uint8_t test_id)
 
       /* segment 3: straight 6 half-cells */
       f413_ctrl_reset_distance();
-      f413_ctrl_clear_angle_target();
+      f413_ctrl_reset_angle();
       f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
       abort_reason = nightfall_test_wait_target(
           6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
           (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
@@ -856,11 +860,11 @@ static void nightfall_test_arm_for_button(uint8_t test_id)
   const char* test_name = "?";
   switch (test_id)
   {
-    case '1': test_name = "straight 3 cells"; break;
-    case '2': test_name = "straight 6 cells"; break;
+    case '1': test_name = "straight 3 cells heading hold"; break;
+    case '2': test_name = "straight 6 cells heading hold"; break;
     case '3': test_name = "right 90 deg"; break;
     case '4': test_name = "left 90 deg"; break;
-    case '5': test_name = "S3+R90+S3"; break;
+    case '5': test_name = "S3+R90+S3 heading hold"; break;
     default: test_name = "unknown"; break;
   }
 
@@ -2941,8 +2945,6 @@ static void nightfall_handle_uart_command(uint8_t cmd)
       nightfall_run_shortest_trace_entry_once();
       break;
 
-    case '1':
-    case '2':
     case '6':
     case '7':
     case '8':
@@ -2951,6 +2953,8 @@ static void nightfall_handle_uart_command(uint8_t cmd)
       nightfall_test_run(cmd);
       break;
 
+    case '1':
+    case '2':
     case '3':
     case '4':
     case '5':

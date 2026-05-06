@@ -40,6 +40,7 @@
 #define F413_CTRL_OMEGA_I_LIMIT   (6000.0f)
 #define F413_CTRL_ROT_PWM_MIN     (100.0f)
 #define F413_CTRL_ROT_MIN_OMEGA_REF (10.0f)
+#define F413_CTRL_ROT_MIN_VEL_ABS (1.0f)
 
 /* ---------- IMU (ISM330DHCX) 定数 ---------- */
 #define F413_IMU_WHO_AM_I_REG     (0x0FU)
@@ -411,7 +412,8 @@ void f413_ctrl_tick(void)
                       F413_CTRL_KP_OMEGA * omega_err +
                       F413_CTRL_KI_OMEGA * s_omega_integral +
                       F413_CTRL_KD_OMEGA * omega_deriv;
-    if ((fabsf(omega_ref) >= F413_CTRL_ROT_MIN_OMEGA_REF) &&
+    if ((fabsf(s_target_velocity) < F413_CTRL_ROT_MIN_VEL_ABS) &&
+        (fabsf(omega_ref) >= F413_CTRL_ROT_MIN_OMEGA_REF) &&
         (fabsf(out_rot) > 0.0f) &&
         (fabsf(out_rot) < F413_CTRL_ROT_PWM_MIN))
     {
