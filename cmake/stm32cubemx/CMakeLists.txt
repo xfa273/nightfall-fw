@@ -79,7 +79,18 @@ set(NIGHTFALL_STM32F413_LINKER_SCRIPT ${NIGHTFALL_STM32F413_ROOT}/STM32F413XX_FL
 set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/nvm/nvm.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_identity.c
+    ${CMAKE_SOURCE_DIR}/nvm/nvm_params.c
+    ${CMAKE_SOURCE_DIR}/nvm/nvm_trace_log.c
     ${CMAKE_SOURCE_DIR}/platform/trace/trace.c
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/sensor_distance.c
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/solver.c
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/solver_params.c
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/path.c
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/maze_grid.c
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder/shortest_run_params_split.c
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_it.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_hal_msp.c
@@ -115,8 +126,10 @@ set(NIGHTFALL_STM32F413_DRIVERS_SRC
 add_library(stm32cubemx_stm32f413 INTERFACE)
 target_include_directories(stm32cubemx_stm32f413 INTERFACE
     ${CMAKE_SOURCE_DIR}/nvm
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder
     ${CMAKE_SOURCE_DIR}/platform/trace
     ${NIGHTFALL_STM32F413_ROOT}/Core/Inc
+    ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Inc
     ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc
     ${NIGHTFALL_STM32F413_ROOT}/Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
     ${NIGHTFALL_STM32F413_ROOT}/Drivers/CMSIS/Device/ST/STM32F4xx/Include
@@ -125,6 +138,8 @@ target_include_directories(stm32cubemx_stm32f413 INTERFACE
 target_compile_definitions(stm32cubemx_stm32f413 INTERFACE
     USE_HAL_DRIVER
     STM32F413xx
+    NIGHTFALL_TRACE_F413_USE_UART=1
+    NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1
     $<$<CONFIG:Debug>:DEBUG>
 )
 

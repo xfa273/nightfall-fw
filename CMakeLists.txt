@@ -29,6 +29,8 @@ add_subdirectory(cmake/stm32cubemx)
 set(NIGHTFALL_STM32F405_USER_SOURCES
     nvm/nvm.c
     nvm/nvm_identity.c
+    nvm/nvm_params.c
+    nvm/nvm_trace_log.c
     platform/trace/trace.c
     platform/stm32f405/Core/Src/auxiliary.c
     platform/stm32f405/Core/Src/control.c

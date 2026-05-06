@@ -3,6 +3,9 @@ set -euo pipefail
 
 export LC_ALL=C
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Serial CSV Auto Capture
 # 指定シリアルポートから受信した 8列CSV 行のみを抽出して、
 # 指定ディレクトリに日時付きファイル名で保存します。
@@ -10,12 +13,12 @@ export LC_ALL=C
 # 使い方:
 #   ./serial_capture_csv.sh [SAVE_DIR] [UART_PORT] [BAUD]
 # 例:
-#   ./serial_capture_csv.sh ~/STM32Workspace/micromouse_log_visualizer/logs /dev/ttyUSB0 115200
+#   ./serial_capture_csv.sh ./tools/logging/logs /dev/ttyUSB0 115200
 #   ./serial_capture_csv.sh                      # 省略時は既定値を使用
 #
 # 終了: Ctrl+C
 
-DEFAULT_SAVE_DIR="$HOME/STM32Workspace/micromouse_log_visualizer/logs"
+DEFAULT_SAVE_DIR="$REPO_ROOT/tools/logging/logs"
 DEFAULT_UART_PORT=""
 DEFAULT_BAUD="115200"
 

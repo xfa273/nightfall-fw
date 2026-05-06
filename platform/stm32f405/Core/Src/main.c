@@ -30,7 +30,8 @@
 #include "mode3.h"
 #include "mode4.h"
 #include "mode5.h"
-#include "distance_params.h"
+#include "nvm_identity.h"
+#include "nvm_params.h"
 
 /* Some build configurations missed the prototype; ensure it's visible */
 void mode5(void);
@@ -69,6 +70,9 @@ DMA_HandleTypeDef hdma_adc1;
 
 /* USER CODE BEGIN PV */
 
+static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
+static nvm_identity_block_t g_boot_identity;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -91,6 +95,16 @@ static void MX_TIM1_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+static void nightfall_identity_enter_safe_mode(void)
+{
+    while (1) {
+        HAL_GPIO_TogglePin(LED_1_GPIO_Port, LED_1_Pin);
+        HAL_GPIO_TogglePin(LED_2_GPIO_Port, LED_2_Pin);
+        HAL_GPIO_TogglePin(LED_3_GPIO_Port, LED_3_Pin);
+        HAL_Delay(150U);
+    }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -110,6 +124,12 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
+  if (nvm_init() == NVM_STATUS_OK) {
+    g_boot_identity_status = nvm_identity_read(&g_boot_identity);
+  } else {
+    g_boot_identity_status = NVM_STATUS_HW_ERROR;
+  }
 
   /* USER CODE END Init */
 
@@ -133,6 +153,26 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
+
+    if (g_boot_identity_status == NVM_STATUS_OK) {
+        printf("[Boot] ID family=%lu board=%lu rev=%u.%u unit=%lu cap=0x%08lX\n",
+               (unsigned long)g_boot_identity.family,
+               (unsigned long)g_boot_identity.board_id,
+               (unsigned int)g_boot_identity.hw_rev_major,
+               (unsigned int)g_boot_identity.hw_rev_minor,
+               (unsigned long)g_boot_identity.unit_serial,
+               (unsigned long)g_boot_identity.capability_flags);
+    } else if ((g_boot_identity_status == NVM_STATUS_NOT_FOUND) ||
+               (g_boot_identity_status == NVM_STATUS_UNSUPPORTED)) {
+        printf("[Boot] ID status=%d (continue boot)\n", (int)g_boot_identity_status);
+    } else {
+        printf("[SAFE] identity invalid status=%d uid=%08lX-%08lX-%08lX\n",
+               (int)g_boot_identity_status,
+               (unsigned long)HAL_GetUIDw0(),
+               (unsigned long)HAL_GetUIDw1(),
+               (unsigned long)HAL_GetUIDw2());
+        nightfall_identity_enter_safe_mode();
+    }
 
     // 既定の制御周期を1kHz(1ms)に設定
     g_ctrl_dt = 0.001f;
@@ -163,7 +203,7 @@ int main(void)
     sensor_init();
 
     // 距離ワープ補正（FL/FR/FSUM）をフラッシュから読み込み・適用
-    if (distance_params_load_and_apply()) {
+    if (nvm_params_distance_load_and_apply()) {
         printf("[Boot] Distance warp params loaded from Flash.\n");
     } else {
         printf("[Boot] Distance warp params not found (using defaults).\n");

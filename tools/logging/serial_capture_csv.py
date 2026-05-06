@@ -15,15 +15,16 @@ from typing import Optional
 _NUM_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
 
 
+def _repo_root_from_this_file() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
 def _default_save_dir() -> Path:
     env = os.environ.get("MICROMOUSE_LOG_DIR")
     if env:
         return Path(env).expanduser()
 
-    if sys.platform == "darwin":
-        return Path.home() / "Documents/micromouse_logs"
-
-    return Path.home() / "micromouse_logs"
+    return _repo_root_from_this_file() / "tools/logging/logs"
 
 
 def _is_num(s: str) -> bool:
@@ -120,12 +121,62 @@ def _print_mm_columns(line: str, out_path: Optional[Path]) -> None:
         print(f"[INFO] Columns: {cols}", file=sys.stderr)
 
 
+def _parse_command_text(text: str) -> list[str]:
+    out: list[str] = []
+    for token in re.split(r"[\s,]+", text.strip()):
+        if not token:
+            continue
+        for ch in token:
+            out.append(ch)
+    return out
+
+
+def _send_command_chars(fd: int, commands: list[str], delay_ms: float) -> None:
+    if not commands:
+        return
+    delay_sec = max(0.0, delay_ms / 1000.0)
+    sent_count = 0
+    for i, cmd in enumerate(commands):
+        b = cmd.encode("ascii", errors="ignore")
+        if len(b) != 1:
+            print(f"[WARN] Skipped non-ASCII cmd: {cmd}", file=sys.stderr)
+            continue
+        try:
+            os.write(fd, b)
+        except OSError as e:
+            print(f"[ERROR] Failed to send cmd '{cmd}': {e}", file=sys.stderr)
+            return
+        sent_count += 1
+        print(f"[INFO] Sent cmd: {cmd}", file=sys.stderr)
+        if i + 1 < len(commands) and delay_sec > 0.0:
+            time.sleep(delay_sec)
+    if sent_count == 0 and commands:
+        print("[WARN] No valid ASCII command was sent", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("save_dir", nargs="?", default=None)
     ap.add_argument("port", nargs="?", default="auto")
     ap.add_argument("baud", nargs="?", type=int, default=115200)
     ap.add_argument("--show-noncsv", action="store_true")
+    ap.add_argument(
+        "--send",
+        default="",
+        help="Send command sequence after open (e.g. 'q,y,V' or 'qyV')",
+    )
+    ap.add_argument(
+        "--send-interval-ms",
+        type=float,
+        default=300.0,
+        help="Interval between auto-sent command chars",
+    )
+    ap.add_argument(
+        "--interactive-send-interval-ms",
+        type=float,
+        default=50.0,
+        help="Interval between chars for interactive stdin command send",
+    )
     args = ap.parse_args()
 
     save_dir = _default_save_dir() if args.save_dir is None else Path(args.save_dir).expanduser()
@@ -151,9 +202,11 @@ def main() -> int:
     print(f"Port       : {port}")
     print(f"Baud       : {args.baud}")
     print(f"Save Dir   : {save_dir}")
+    if sys.stdin.isatty():
+        print("Type UART commands and press Enter (example: q,y,V)")
     print("Press Ctrl+C to stop.")
 
-    fd = os.open(port, os.O_RDWR | os.O_NOCTTY)
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
     try:
         _configure_serial(fd, args.baud)
 
@@ -166,16 +219,52 @@ def main() -> int:
         fw_meta_written_count: int = 0
         last_printed_columns: Optional[str] = None
         last_printed_file: Optional[Path] = None
+        stdin_fd: Optional[int] = None
+        stdin_pending = ""
+        if sys.stdin.isatty():
+            try:
+                stdin_fd = sys.stdin.fileno()
+            except OSError:
+                stdin_fd = None
+
+        auto_commands = _parse_command_text(args.send)
+        if auto_commands:
+            _send_command_chars(fd, auto_commands, args.send_interval_ms)
 
         while True:
-            r, _, _ = select.select([fd], [], [], 0.25)
+            read_list = [fd]
+            if stdin_fd is not None:
+                read_list.append(stdin_fd)
+            r, _, _ = select.select(read_list, [], [], 0.25)
             if not r:
+                continue
+
+            if stdin_fd is not None and stdin_fd in r:
+                try:
+                    stdin_chunk = os.read(stdin_fd, 1024)
+                except BlockingIOError:
+                    stdin_chunk = b""
+
+                if stdin_chunk == b"":
+                    stdin_fd = None
+                else:
+                    stdin_pending += stdin_chunk.decode("utf-8", errors="ignore")
+                    stdin_pending = stdin_pending.replace("\r", "\n")
+                    while "\n" in stdin_pending:
+                        line, stdin_pending = stdin_pending.split("\n", 1)
+                        commands = _parse_command_text(line)
+                        _send_command_chars(fd, commands, args.interactive_send_interval_ms)
+
+            if fd not in r:
                 continue
 
             try:
                 chunk = os.read(fd, 4096)
             except BlockingIOError:
                 continue
+            except OSError as e:
+                print(f"\n[INFO] Serial read stopped: {e}", file=sys.stderr)
+                return 0
 
             if not chunk:
                 continue

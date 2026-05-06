@@ -7,6 +7,7 @@
 
 #include "global.h"
 #include "maze_grid.h"
+#include "nvm_params.h"
 #include <math.h>
 
 // 経路なし終了を検出する内部フラグ（adachi() 実行中のみ有効）
@@ -1041,16 +1042,11 @@ void findClosestUnvisitedCell(uint8_t currentX, uint8_t currentY) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void store_map_in_eeprom(void) {
-    eeprom_enable_write();
-
-    int i;
-    for (i = 0; i < MAZE_SIZE; i++) {
-        int j;
-        for (j = 0; j < MAZE_SIZE; j++) {
-            eeprom_write_halfword((uint32_t)(i * MAZE_SIZE + j), (uint16_t)map[i][j]);
-        }
+    HAL_StatusTypeDef st = nvm_maze_save_map(&map[0][0], (uint32_t)(MAZE_SIZE * MAZE_SIZE));
+    if (st != HAL_OK) {
+        printf("[WARN] Maze map save failed. HAL=%d\n", (int)st);
+        return;
     }
-    eeprom_disable_write();
 
     // 保存完了時の通知音を保存関数に集約（吸引中はbuzzer_beep側で抑止）
     buzzer_beep(200);
@@ -1063,12 +1059,9 @@ void store_map_in_eeprom(void) {
 // 戻り値：なし
 //+++++++++++++++++++++++++++++++++++++++++++++++
 void load_map_from_eeprom(void) {
-    int i;
-    for (i = 0; i < MAZE_SIZE; i++) {
-        int j;
-        for (j = 0; j < MAZE_SIZE; j++) {
-            map[i][j] = (uint8_t)eeprom_read_halfword(i * MAZE_SIZE + j);
-        }
+    bool loaded = nvm_maze_load_map(&map[0][0], (uint32_t)(MAZE_SIZE * MAZE_SIZE));
+    if (!loaded) {
+        printf("[Boot] Maze map not found or invalid (using fallback/legacy).\n");
     }
 
     // スタート区画の既知壁を強制保持（E/S/W）。

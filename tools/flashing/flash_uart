@@ -6,6 +6,7 @@ import os
 import struct
 import sys
 import time
+from typing import Optional
 
 import termios
 
@@ -17,6 +18,60 @@ CMD_GETID = 0x02
 CMD_GOMEM = 0x21
 CMD_WRITEMEM = 0x31
 CMD_EXT_ERASE = 0x44
+
+
+CHIP_ID_STM32F405_FAMILY = 0x0413
+CHIP_ID_STM32F413_FAMILY = 0x0463
+
+
+def stm32f413_flash_sector_of_address(addr: int) -> int:
+    if addr < 0x08000000:
+        raise ValueError(f"address out of flash: 0x{addr:08X}")
+    if addr < 0x08004000:
+        return 0
+    if addr < 0x08008000:
+        return 1
+    if addr < 0x0800C000:
+        return 2
+    if addr < 0x08010000:
+        return 3
+    if addr < 0x08020000:
+        return 4
+    if addr < 0x08040000:
+        return 5
+    if addr < 0x08060000:
+        return 6
+    if addr < 0x08080000:
+        return 7
+    if addr < 0x080A0000:
+        return 8
+    if addr < 0x080C0000:
+        return 9
+    if addr < 0x080E0000:
+        return 10
+    if addr < 0x08100000:
+        return 11
+    if addr < 0x08120000:
+        return 12
+    if addr < 0x08140000:
+        return 13
+    if addr < 0x08160000:
+        return 14
+    if addr < 0x08180000:
+        return 15
+    raise ValueError(f"address out of flash: 0x{addr:08X}")
+
+
+def select_flash_profile(chip_id: Optional[int], bin_path: str):
+    lower_bin = (bin_path or "").lower()
+
+    if chip_id == CHIP_ID_STM32F413_FAMILY or "stm32f413" in lower_bin:
+        return "stm32f413", stm32f413_flash_sector_of_address, {12, 13, 14, 15}
+
+    if chip_id == CHIP_ID_STM32F405_FAMILY:
+        return "stm32f405", stm32f405_flash_sector_of_address, {8, 9, 10, 11}
+
+    return "stm32f405", stm32f405_flash_sector_of_address, {8, 9, 10, 11}
 
 
 def stm32f405_flash_sector_of_address(addr: int) -> int:
@@ -127,14 +182,17 @@ def expect_ack(fd: int, where: str, timeout_s: float) -> None:
         raise RuntimeError(f"{where}: expected ACK(0x79) got 0x{b:02X}")
 
 
-def render_bar(prefix: str, progress: float, suffix: str = "", width: int = 32) -> None:
+def render_bar(progress: float, width: int = 30) -> None:
     if progress < 0:
         progress = 0.0
     if progress > 1:
         progress = 1.0
     filled = int(round(width * progress))
     bar = "=" * filled + "-" * (width - filled)
-    sys.stdout.write(f"\r{prefix} [{bar}] {progress*100:6.2f}%{suffix}")
+    pct = f"{progress*100:5.1f}%"
+    # \r + 固定幅 + 末尾空白で前の文字を確実に上書き
+    line = f"\r[{bar}] {pct}   "
+    sys.stdout.write(line)
     sys.stdout.flush()
 
 
@@ -146,27 +204,70 @@ def get_id(fd: int) -> bytes:
         raise RuntimeError("GETID: no length")
     data = read_exact(fd, n + 1, 2.0)
     expect_ack(fd, "GETID ack2", 2.0)
+    flush_rx(fd)
     return data
+
+
+def flush_rx(fd: int) -> None:
+    """Drain any pending RX data and flush kernel buffers."""
+    try:
+        termios.tcflush(fd, termios.TCIFLUSH)
+    except Exception:
+        pass
+    # Also drain anything the OS buffered
+    for _ in range(64):
+        try:
+            d = os.read(fd, 256)
+            if not d:
+                break
+        except BlockingIOError:
+            break
 
 
 def connect_or_reuse(fd: int, total_wait_s: float) -> bytes:
     deadline = time.time() + total_wait_s
     attempt = 0
+    last_err = ""
     while time.time() < deadline:
         attempt += 1
+        flush_rx(fd)
+        time.sleep(0.05)
         send(fd, b"\x7F")
-        b = read_byte(fd, 0.6)
+        b = read_byte(fd, 1.5)
+        tag = f"[attempt {attempt}]"
+        if b is None:
+            last_err = f"{tag} sync: timeout (no response)"
+            print(last_err, file=sys.stderr)
+            time.sleep(0.5)
+            continue
         if b == ACK:
-            return get_id(fd)
-        if b == NACK:
+            print(f"{tag} sync: ACK", file=sys.stderr)
             try:
-                did = get_id(fd)
-                return did
-            except Exception:
-                pass
-        time.sleep(0.2)
+                return get_id(fd)
+            except Exception as e:
+                last_err = f"{tag} get_id after ACK failed: {e}"
+                print(last_err, file=sys.stderr)
+                time.sleep(0.3)
+                continue
+        if b == NACK:
+            print(f"{tag} sync: NACK (bootloader already synced?)", file=sys.stderr)
+            # Bootloader may already be in command mode — try get_id directly
+            flush_rx(fd)
+            time.sleep(0.05)
+            try:
+                return get_id(fd)
+            except Exception as e1:
+                last_err = f"{tag} get_id after NACK failed: {e1}"
+                print(last_err, file=sys.stderr)
+            # Retry full sync on next iteration
+            time.sleep(0.3)
+            continue
+        # Unexpected byte
+        last_err = f"{tag} sync: unexpected 0x{b:02X}"
+        print(last_err, file=sys.stderr)
+        time.sleep(0.3)
 
-    raise RuntimeError("connect/reuse failed")
+    raise RuntimeError(f"connect/reuse failed after {attempt} attempts. last: {last_err}")
 
 
 def extended_erase_all(fd: int) -> None:
@@ -198,19 +299,24 @@ def extended_erase_pages(fd: int, pages: list[int]) -> None:
     expect_ack(fd, "EXT_ERASE ack2", 40.0)
 
 
-def compute_app_erase_pages(base: int, blob_len: int) -> list[int]:
+def compute_app_erase_pages(
+    base: int,
+    blob_len: int,
+    sector_of_addr,
+    protected: set[int],
+    allow_protected: bool = False,
+) -> list[int]:
     if blob_len <= 0:
         return []
 
     end = base + blob_len - 1
-    first = stm32f405_flash_sector_of_address(base)
-    last = stm32f405_flash_sector_of_address(end)
+    first = sector_of_addr(base)
+    last = sector_of_addr(end)
 
     pages = list(range(first, last + 1))
-    protected = {10, 11}
-    if any(p in protected for p in pages):
+    if (not allow_protected) and any(p in protected for p in pages):
         raise RuntimeError(
-            "書き込み範囲がSector10以降に到達します（Flash保存パラメータ領域を破壊する可能性）: "
+            "書き込み範囲が保護セクタに到達します（NVM領域を破壊する可能性）: "
             f"base=0x{base:08X} len={blob_len} end=0x{end:08X} pages={pages}"
         )
     return pages
@@ -292,6 +398,7 @@ def main() -> int:
     ap.add_argument("--erase", choices=["app", "all", "none"], default="app")
     ap.add_argument("--no-erase", action="store_true")
     ap.add_argument("--erase-all", action="store_true")
+    ap.add_argument("--allow-protected", action="store_true")
     ap.add_argument("--no-go", action="store_true")
     ap.add_argument("--base", default="0x08000000")
     ap.add_argument("--timeout", type=float, default=30.0)
@@ -310,9 +417,18 @@ def main() -> int:
     fd = open_uart_8e1(port, args.baud)
     try:
         did = connect_or_reuse(fd, args.timeout)
+        # Drain any stale bytes still in-flight from failed sync attempts
+        flush_rx(fd)
+        time.sleep(0.2)
+        flush_rx(fd)
+        chip_id = None
         if len(did) >= 2:
             chip_id = (did[-2] << 8) | did[-1]
             print(f"Device ID: 0x{chip_id:04X}")
+
+        profile_name, sector_of_addr, protected = select_flash_profile(chip_id, bin_path)
+        print(f"Flash profile: {profile_name}")
+        print(f"Protected sectors: {sorted(protected)}")
 
         if args.no_erase:
             args.erase = "none"
@@ -322,17 +438,34 @@ def main() -> int:
         if args.erase == "all":
             extended_erase_all(fd)
         elif args.erase == "app":
-            pages = compute_app_erase_pages(base, len(blob))
+            pages = compute_app_erase_pages(base, len(blob), sector_of_addr, protected, args.allow_protected)
             extended_erase_pages(fd, pages)
 
+        # Flush after erase to clear any stale bytes
+        flush_rx(fd)
+        time.sleep(0.1)
+        flush_rx(fd)
+
         chunk = 256
+        max_retries = 3
         t0 = time.time()
         for off in range(0, len(blob), chunk):
             part = blob[off : off + chunk]
-            write_memory(fd, base + off, part)
+            for retry in range(max_retries):
+                try:
+                    write_memory(fd, base + off, part)
+                    break
+                except RuntimeError as e:
+                    if retry < max_retries - 1:
+                        print(f"\n[write retry {retry+1}] {e}", file=sys.stderr)
+                        flush_rx(fd)
+                        time.sleep(0.2)
+                        flush_rx(fd)
+                    else:
+                        raise
             written = off + len(part)
-            render_bar("Write", written / len(blob), suffix=f" ({written}/{len(blob)} bytes)")
-        sys.stdout.write("\n")
+            render_bar(written / len(blob))
+        sys.stdout.write(f"\r[{'=' * 30}] 100.0% {len(blob)}/{len(blob)} bytes\n")
         print(f"write done in {time.time() - t0:.1f}s")
 
         if not args.no_go:

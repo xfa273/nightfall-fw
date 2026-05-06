@@ -57,6 +57,35 @@ nvm_status_t nvm_identity_read(nvm_identity_block_t* out) {
     return nvm_identity_validate(out);
 }
 
+nvm_status_t nvm_identity_write(const nvm_identity_block_t* in) {
+    nvm_identity_block_t tmp;
+    uint8_t* payload;
+    uint32_t payload_len;
+    const uint32_t header_size = 16U;
+    nvm_status_t st;
+
+    if (in == NULL) {
+        return NVM_STATUS_INVALID_ARG;
+    }
+
+    memcpy(&tmp, in, sizeof(tmp));
+    tmp.magic = NVM_IDENTITY_MAGIC;
+    tmp.schema_version = NVM_IDENTITY_SCHEMA_VERSION;
+    tmp.length = sizeof(nvm_identity_block_t);
+    tmp.crc = 0U;
+
+    payload = ((uint8_t*)&tmp) + header_size;
+    payload_len = tmp.length - header_size;
+    tmp.crc = nvm_identity_checksum(payload, payload_len);
+
+    st = nvm_erase(NVM_AREA_IDENTITY);
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+
+    return nvm_write(NVM_AREA_IDENTITY, 0U, &tmp, sizeof(tmp));
+}
+
 bool nvm_identity_is_valid_for_boot(const nvm_identity_block_t* block) {
     return nvm_identity_validate(block) == NVM_STATUS_OK;
 }

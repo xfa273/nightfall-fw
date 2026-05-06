@@ -6,13 +6,15 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 
+def _repo_root_from_this_file() -> Path:
+    return Path(__file__).resolve().parents[3]
+
+
 def _default_logs_dir() -> Path:
     env_dir = os.environ.get("MICROMOUSE_LOG_DIR")
     if env_dir:
         return Path(env_dir).expanduser()
-    if sys.platform == "darwin":
-        return Path.home() / "Documents/micromouse_logs"
-    return Path.home() / "micromouse_logs"
+    return _repo_root_from_this_file() / "tools/logging/logs"
 
 
 def _coerce_8cols(df):

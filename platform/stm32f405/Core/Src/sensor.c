@@ -6,8 +6,8 @@
  */
 
 #include "global.h"
-#include "flash_params.h"
 #include "build_info.h"
+#include "nvm_params.h"
 
 #ifndef IMU_OFFSET_SETTLE_MS
 #define IMU_OFFSET_SETTLE_MS 400u
@@ -151,7 +151,7 @@ void sensor_init(void) {
 bool sensor_params_load_from_flash(void)
 {
     flash_params_t p;
-    if (!flash_params_load(&p)) {
+    if (!nvm_params_sensor_load(&p)) {
         return false;
     }
 
@@ -172,7 +172,7 @@ bool sensor_params_load_from_flash(void)
 HAL_StatusTypeDef sensor_params_save_to_flash(void)
 {
     flash_params_t p;
-    flash_params_defaults(&p);
+    nvm_params_sensor_defaults(&p);
 
     // Capture current values
     p.base_l = base_l;
@@ -186,7 +186,7 @@ HAL_StatusTypeDef sensor_params_save_to_flash(void)
 
     p.imu_offset_z = imu_offset_z;
 
-    return flash_params_save(&p);
+    return nvm_params_sensor_save(&p);
 }
 
 // 任意タイミングで再測定してフラッシュへ保存するヘルパ（壁センサのみ）

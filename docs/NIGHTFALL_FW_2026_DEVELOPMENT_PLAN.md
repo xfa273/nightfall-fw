@@ -5,12 +5,13 @@
 
 ---
 
-## 0. 進捗サマリ（2026-04-05）
+## 0. 進捗サマリ（2026-04-30）
 
 - Phase 0: 完了
 - Phase 1: 完了（既存機種の実機動作確認まで完了）
-- Phase 2: 着手（`STM32F413` 起動時の最小 `SWO` トレース疎通を実装開始）
-- Phase 3: 進行中（F405/F413起動時の識別判定、Step A/B、Step C最小backend分離、identity write pathを実装）
+- Phase 2: 完了（`trace_printf()` 導入と `STM32F413` 起動トレース経路を整備）
+- Phase 3: 完了（F405/F413起動時の識別判定、Step A/B/C、identity write path、F413 FRAM無し暫定運用チェックリストのStep2〜5実機検証を完了）
+- Phase 4: 進行中（F413で `distance/sensor/maze/trace` のFRAM backend実機検証に加え、trace_log schema v1 + UART `q/r/R/v/k/u/U/x/y/z/j` 検証経路を整備）
 
 ---
 
@@ -19,8 +20,10 @@
 - `STM32F405` 系既存機体と `STM32F413` 系新機体を並行開発する
 - 機体の大別は `mini` / `classic` とする
 - 正式な機体識別名は `<family>_r<major>_<minor>` とする
+- 現行F413 bring-up対象は `mini_r2_0`（個体名: `mini_r2_0_unit001`）
 - HW Rev の `major` は機体系世代、`minor` は基板版とする
 - 共通バイナリの範囲は **MCU系列ごとに1個**とする
+- `FW_TARGET`（例: `nightfall_stm32f413`）と `machine_name`（例: `mini_r2_0`）は別概念として扱う
 - 機体識別は **MCU内蔵Flash予約領域の機体識別ブロック**を一次情報とする
 - `STM32F413` 系の操作補助トレースは **`SWO`** を標準とする
 - `STM32F413` 系のデバッグ・調整ログは **`FRAM` 保存 + `SWO` ダンプ** を標準とする
@@ -226,6 +229,47 @@
 - `STM32F405` 系既存機体が引き続きビルド・調整できる
 - `RAM + UART` の範囲で新世代と概ね共通の trace/log API とメタ情報を使える
 - 新しい構成方針に少しずつ移しても既存機体の運用が止まらない
+
+---
+
+## Phase 4.5. `STM32F413` 実走（探索/最短）統合
+
+### 目的
+
+- 既に成立した `x/y` run-trace 計測経路を使いながら、新機体で探索走行と最短走行を段階的に有効化する
+
+### 実施項目
+
+- 探索/最短の実行入口を `STM32F413` 側へ段階的に移植し、UARTから安全に起動できるようにする
+- `run-start` / `run-stop` hook を探索走行・最短走行の実行経路へ接続する
+- `serial_capture_csv.py` + `analyze_trace_csv.py` を使った検証手順を、`x/y` から探索/最短へ横展開する
+- 実走前に「浮かせ試験」「低速短区間」「床上短区間」の3段階ゲートを設ける
+- 走行中の事故防止として、異常時停止条件（壁センサ異常、エンコーダ異常、姿勢異常）を明文化する
+
+### 完了条件
+
+- 探索走行で開始〜停止までのtrace/CSV取得が再現可能
+- 最短走行で開始〜停止までのtrace/CSV取得が再現可能
+- 失敗時に、ログから「入口・位相・停止理由」を追える
+
+### 進め方（現作業との接続）
+
+1. 既存の `q -> x/y -> V -> analyze (--expect x/y)` を日次スモークとして維持する
+2. 探索走行入口を追加したら同じ取得導線で「探索セッションCSV」を取得する
+3. 最短走行入口を追加したら同様に「最短セッションCSV」を取得する
+4. 探索/最短の各段階で、低速条件と停止条件を固定してから速度を上げる
+
+### 進捗メモ（2026-04-30）
+
+- Step1: `z` / `j` の安全run入口を追加（低速短区間・PUSHスイッチ即停止・trace flags記録）
+- Step2: `z/j` 実測CSVで flags 位相とスイッチabortを確認し、`analyze_trace_csv.py --expect z/j` によるホスト検証導線を追加
+- Step3: `z/j` 経路へ run guard（switch/wall/encoder/imu）を統合し、停止理由をtrace flags（bit8〜bit11）へ記録
+- Step4: `z/j` を `search/shortest` 実行入口ラッパーへ接続（`NIGHTFALL_F413_REAL_RUN_PATH_ENABLED` ゲート追加、現時点は safe fallback 実行）
+- Step5: gate ON 時に `nvm_maze_load_map` + BFS で本経路ドラフト（step数/旋回回数/直進区間数）を算出し、entryラッパーから事前確認ログを出す
+- Step6: F413ビルドへ solver/path/maze_grid/solver_params を統合。`params/f413_preorder/` 作成、`f413_solver_bridge.c`（MAIN_C_ globals + load_map_from_eeprom NVM ブリッジ）作成。z/j entry の BFS ドラフトを `solver_build_path()` (Dijkstra + simplify + L-turn) に置換。RAM 55KB/320KB, FLASH 81KB/1536KB
+- Step7: gate ON 時に solver-path の `path[]` コード列をオープンループで走行実行。直進は forward duty × 時間、ターンは rotate duty × 時間。safe fallback の代替として path 全体を走破するセッション関数を実装する
+- Step8: `f413_control.c/h` を作成。TIM5 1kHz 割り込みで並進速度（エンコーダ）+ 角速度（IMU ISM330DHCX SPI2読取 + LPF + オフセット補正）の P+FF 制御を実装。solver path session をクローズドループに移行: 直進は距離目標（半区画45mm×N）到達で完了、ターンは角度目標（90/180°）到達で完了。RAM 55KB/320KB, FLASH 84KB/1536KB
+- 次ステップ: 実機でファーム書き込み→エンコーダ/IMU方向確認→制御ゲイン調整（並進・旋回の両方が動く状態で同時に調整）
 
 ---
 

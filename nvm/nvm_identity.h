@@ -38,6 +38,7 @@ typedef struct __attribute__((packed)) {
 } nvm_identity_block_t;
 
 nvm_status_t nvm_identity_read(nvm_identity_block_t* out);
+nvm_status_t nvm_identity_write(const nvm_identity_block_t* in);
 nvm_status_t nvm_identity_validate(const nvm_identity_block_t* block);
 bool nvm_identity_is_valid_for_boot(const nvm_identity_block_t* block);
 

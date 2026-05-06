@@ -8,6 +8,28 @@
 
 #if defined(STM32F413xx)
 
+extern UART_HandleTypeDef huart1;
+
+#ifndef NIGHTFALL_TRACE_F413_USE_UART
+#define NIGHTFALL_TRACE_F413_USE_UART 1
+#endif
+
+#if NIGHTFALL_TRACE_F413_USE_UART
+
+static void trace_port_putc(char ch) {
+    uint8_t b = (uint8_t)ch;
+    HAL_UART_Transmit(&huart1, &b, 1, 1);
+}
+
+int __io_putchar(int ch) {
+    trace_port_putc((char)ch);
+    return ch;
+}
+
+void trace_init(void) {}
+
+#else
+
 #define NIGHTFALL_TRACE_SWO_BAUD_HZ 2000000U
 
 static void trace_port_putc(char ch) {
@@ -50,6 +72,8 @@ void trace_init(void) {
     ITM->TPR = 0U;
     ITM->TER = 1U;
 }
+
+#endif
 
 #elif defined(STM32F405xx)
 

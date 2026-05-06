@@ -8,9 +8,10 @@
 #include "global.h"
 #include "solver.h"
 #include "sensor_distance.h"
-#include "distance_params.h"
 #include "logging.h"
 #include "build_info.h"
+#include "nvm_identity.h"
+#include "nvm_params.h"
 
 // drive.c と同じ条件でPWM反転するための定義（DIR==Lowで反転が既定）
 #ifndef PWM_INVERT_DIR_LEVEL
@@ -633,9 +634,9 @@ void test_mode() {
             buzzer_beep(1200);
 
             // Persist to Flash
-            HAL_StatusTypeDef stw = distance_params_save(x_est_fl, y_true,
-                                                         x_est_fr, y_true,
-                                                         x_est_fsum, y_true);
+            HAL_StatusTypeDef stw = nvm_params_distance_save(x_est_fl, y_true,
+                                                             x_est_fr, y_true,
+                                                             x_est_fsum, y_true);
             if (stw == HAL_OK) {
                 printf("Saved distance warp params to Flash (Sector 9).\n");
                 buzzer_beep(1800);
@@ -723,16 +724,43 @@ void test_mode() {
 
         case 9:
 
-            printf("Test Mode 9 Circuit.\n");
+            printf("Test Mode 9 Maintenance.\n");
+            printf("Select sub: 0=sensor recalibrate/save, 1=identity rewrite\n");
 
-            HAL_StatusTypeDef st = sensor_recalibrate_and_save();
-                if (st == HAL_OK) {
+            {
+                int sub = 0;
+                sub = select_mode(sub);
+                if (sub == 1) {
+                    nvm_identity_block_t id;
+                    nvm_status_t nst = nvm_identity_read(&id);
+                    if (nst != NVM_STATUS_OK) {
+                        printf("Failed to read identity block. nvm status=%d\n", (int)nst);
+                        buzzer_beep(3000);
+                    } else {
+                        id.mcu_uid[0] = HAL_GetUIDw0();
+                        id.mcu_uid[1] = HAL_GetUIDw1();
+                        id.mcu_uid[2] = HAL_GetUIDw2();
+
+                        nst = nvm_identity_write(&id);
+                        if (nst == NVM_STATUS_OK) {
+                            printf("Identity block rewritten successfully.\n");
+                            buzzer_beep(1200);
+                        } else {
+                            printf("Failed to rewrite identity block. nvm status=%d\n", (int)nst);
+                            buzzer_beep(3000);
+                        }
+                    }
+                } else {
+                    HAL_StatusTypeDef st = sensor_recalibrate_and_save();
+                    if (st == HAL_OK) {
                         printf("Sensor parameters saved to Flash successfully.\n");
                         buzzer_beep(1200);
                     } else {
                         printf("Failed to save sensor parameters. HAL status=%d\n", st);
                         buzzer_beep(3000);
                     }
+                }
+            }
             break;
         }
     }

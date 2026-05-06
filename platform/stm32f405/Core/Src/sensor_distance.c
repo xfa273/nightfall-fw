@@ -2,9 +2,16 @@
  * sensor_distance.c
  */
 #include "sensor_distance.h"
-#include <params.h>
 #include <string.h>
 #include <math.h>
+
+#if defined(STM32F413xx)
+#ifndef SENSOR_DIST_GAIN
+#define SENSOR_DIST_GAIN (1.0f)
+#endif
+#else
+#include <params.h>
+#endif
 
 // Internal storage for LUTs (FL/FR)
 static uint16_t s_mm_fl[SENSOR_DIST_LUT_MAX_POINTS];

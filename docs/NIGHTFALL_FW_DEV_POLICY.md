@@ -39,6 +39,11 @@
   - `nightfall_stm32f405`
   - `nightfall_stm32f413`
 - 機体個体識別子（`board_id` / `unit_serial`）は **ビルドターゲット名とは分けて管理**し、起動時に機体識別ブロックから読み出す
+- 実運用で使う識別子は次の3層で固定する
+  - `FW_TARGET`（MCU系列バイナリ名）: 例 `nightfall_stm32f413`
+  - `machine_name`（機体系識別名）: 例 `mini_r2_0`
+  - `machine_unit`（個体識別名）: 例 `mini_r2_0_unit001`
+- 起動ログ・CSVメタ情報・安定版manifestでは、上記3層を混同せず併記する
 
 ---
 
@@ -298,6 +303,14 @@
 - `capability_flags`
 - `mcu_uid[3]`
 - `crc`
+
+`board_id` 符号化ルール（運用決定）:
+- 一意性は `family + board_id` の組で担保する（`board_id` 単独のグローバル一意は要求しない）
+- `board_id` は `0x00MMNNVV` を推奨する
+  - `MM`: `hw_rev_major`
+  - `NN`: `hw_rev_minor`
+  - `VV`: 同一 `major.minor` 内の基板バリアント番号（通常 `0x00`）
+- 例: `mini_r2_0` の標準基板は `0x00020000`
 
 ### 7.4 MCU Unique ID の扱い
 
