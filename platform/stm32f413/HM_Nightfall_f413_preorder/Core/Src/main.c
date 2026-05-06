@@ -2943,15 +2943,18 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case '1':
     case '2':
-    case '3':
-    case '4':
-    case '5':
     case '6':
     case '7':
     case '8':
     case '9':
       g_test_armed_id = cmd;
       nightfall_test_run(cmd);
+      break;
+
+    case '3':
+    case '4':
+    case '5':
+      nightfall_test_arm_for_button(cmd);
       break;
 
     case 'f':
@@ -3097,8 +3100,8 @@ int main(void)
         while (nightfall_run_stop_switch_pressed()) { HAL_Delay(10U); }
         HAL_Delay(50U);
 
-        /* 1秒待ってから実行（手を離す猶予） */
-        HAL_Delay(1000U);
+        /* 2秒待ってから実行（手を離してIMUオフセットを安定させる猶予） */
+        HAL_Delay(2000U);
 
         uint8_t tid = g_test_armed_id;
         g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
