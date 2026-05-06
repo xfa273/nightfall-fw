@@ -485,7 +485,7 @@ static void nightfall_solver_path_print_preview(void)
    guard チェック + trace auto step 付き。
    戻り値: abort reason (NONE = 正常到達) */
 static nightfall_run_abort_reason_t nightfall_wait_ctrl_target(
-    float target_abs, bool is_angle,
+    float target, bool is_angle,
     nightfall_run_guard_t* guard, uint16_t trace_flags)
 {
   nightfall_run_abort_reason_t reason = NIGHTFALL_RUN_ABORT_NONE;
@@ -493,11 +493,22 @@ static nightfall_run_abort_reason_t nightfall_wait_ctrl_target(
 
   while (1)
   {
-    float current = is_angle ? fabsf(f413_ctrl_get_angle())
-                             : fabsf(f413_ctrl_get_distance());
-    if (current >= target_abs)
+    if (is_angle)
     {
-      break;
+      float current = f413_ctrl_get_angle();
+      if (((target >= 0.0f) && (current >= target)) ||
+          ((target < 0.0f) && (current <= target)))
+      {
+        break;
+      }
+    }
+    else
+    {
+      float current = fabsf(f413_ctrl_get_distance());
+      if (current >= fabsf(target))
+      {
+        break;
+      }
     }
 
     if (HAL_GetTick() >= deadline)
@@ -575,9 +586,9 @@ static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag)
       uint16_t half_cells = (uint16_t)(code - 200U);
       float target_mm = (float)half_cells * NIGHTFALL_F413_PATH_HALF_CELL_MM;
 
-      f413_ctrl_clear_angle_target();
       f413_ctrl_set_velocity(straight_velocity);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
 
       abort_reason = nightfall_wait_ctrl_target(target_mm, false, &guard,
           (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
@@ -589,9 +600,9 @@ static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag)
       uint16_t diag_half = (uint16_t)(code - 1000U);
       float target_mm = (float)diag_half * NIGHTFALL_F413_PATH_DIAG_HALF_CELL_MM;
 
-      f413_ctrl_clear_angle_target();
       f413_ctrl_set_velocity(diagonal_velocity);
       f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
 
       abort_reason = nightfall_wait_ctrl_target(target_mm, false, &guard,
           (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
@@ -608,7 +619,7 @@ static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag)
         f413_ctrl_set_omega(0.0f);
         f413_ctrl_set_angle_target(signed_angle);
 
-        abort_reason = nightfall_wait_ctrl_target(abs_angle, true, &guard,
+        abort_reason = nightfall_wait_ctrl_target(signed_angle, true, &guard,
             (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
                        NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
       }

@@ -272,7 +272,8 @@
 - Step8: `f413_control.c/h` を作成。TIM5 1kHz 割り込みで並進速度（エンコーダ）+ 角速度（IMU ISM330DHCX SPI2読取 + LPF + オフセット補正）の P+FF 制御を実装。solver path session をクローズドループに移行: 直進は距離目標（半区画45mm×N）到達で完了、ターンは角度目標（90/180°）到達で完了。RAM 55KB/320KB, FLASH 84KB/1536KB
 - Step8補足: 現在の作業ツリーでは `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1`。`z/j` は `solver_build_path()` 成功時に closed-loop solver path session を実行し、失敗時のみ safe fallback へ戻る
 - Step9: 調整用UARTテストを追加。`1`=S3直進、`2`=S6直進、`3`=R90、`4`=L90、`5`=S3+R90+S3、`6`〜`9`=片側モータopen-loop+encoder、`F`=ボタンアーム実行
-- 次ステップ: 実機で `6`〜`9` → `1/2` → `3/4` → `5` → `z/j` の順に段階試験し、FRAM CSVログを見ながら距離・角度スケール、IMU符号、PWM左右対応、P+FFゲインを調整する
+- Step10: F405 mini相当へのパス実行移植の第2ステップとして、F413 solver path runner の直進/斜め直進でIMU方位保持を有効化し、旋回到達判定を符号付き角度へ変更した
+- 次ステップ: 実機で `j/J` または `z/Z` を広い場所・低速条件で確認し、直進中の方位保持、右/左旋回の到達判定、斜め・45/V90/135コードを含む経路をFRAM CSVログで確認する
 
 ---
 
