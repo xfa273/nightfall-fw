@@ -1,0 +1,30 @@
+# Generated build artifacts
+build/
+Build/
+build-*/
+build_*/
+cmake-build-*/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+
+# Generated docs / logs
+site/
+tools/logging/logs/
+
+# Legacy AI delegation artifacts
+.ai/
+docs/ai/archive/delegation-legacy/
+
+# Large non-firmware documents
+docs/blog/
+docs/datasheets/
+
+# Temporary workspace
+_sandbox/
+
+# Large hardware design assets
+hardware/**/cad/
+hardware/**/gerber/
+hardware/**/manufacturing/

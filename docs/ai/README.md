@@ -17,21 +17,26 @@
 
 ## 3. 記録方針
 
-- `docs/ai/HANDOFFS/` は過去の委譲履歴として保持します。
+- `docs/ai/archive/delegation-legacy/HANDOFFS/` は過去の委譲履歴として保持します。
 - 新規の委譲成果物（packet/raw log/diff など）は原則追加しません。
 
 ## 4. 互換資産の扱い
 
-以下のスクリプトは過去運用との互換のため残していますが、現行運用では通常使用しません。
+以下の資産は過去運用との互換・記録のため残していますが、現行運用では参照・実行しません。
+ユーザーから明示的に「委譲を復活する」指示がある場合のみ使用対象へ戻します。
 
-- `scripts/ai/delegate_to_codex.sh`
-- `scripts/ai/maybe_apply_codex_result.sh`
+- `docs/ai/archive/delegation-legacy/scripts/ai/delegate_to_codex.sh`
+- `docs/ai/archive/delegation-legacy/scripts/ai/maybe_apply_codex_result.sh`
+- `docs/ai/archive/delegation-legacy/scripts/ai/summarize_codex_result.sh`
+- `docs/ai/archive/delegation-legacy/HANDOFFS/`
+- `docs/ai/archive/delegation-legacy/windsurf/rules/10-codex-delegation.md`
+- `docs/ai/archive/delegation-legacy/windsurf/workflows/close-handoff.md`
 
 ## 5. 関連ファイル
 
-- `AGENTS.md`
+- `docs/ai/archive/AGENTS.md`
 - `docs/ai/STATE.md`
 - `docs/ai/WORKLOG.md`
-- `.windsurf/rules/10-codex-delegation.md`
+- `docs/ai/archive/delegation-legacy/windsurf/rules/10-codex-delegation.md`
 - `.windsurf/workflows/delegate-heavy-task.md`
-- `.windsurf/workflows/close-handoff.md`
+- `docs/ai/archive/delegation-legacy/windsurf/workflows/close-handoff.md`

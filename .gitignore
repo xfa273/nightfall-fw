@@ -45,5 +45,5 @@ compile_commands.json
 .ai/worktrees/*
 !.ai/worktrees/.gitkeep
 
-docs/ai/HANDOFFS/*
-!docs/ai/HANDOFFS/README.md
+docs/ai/archive/delegation-legacy/HANDOFFS/*
+!docs/ai/archive/delegation-legacy/HANDOFFS/README.md

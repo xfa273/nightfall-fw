@@ -745,7 +745,8 @@ static void nightfall_test_run(uint8_t test_id)
       }
 
       /* 駆動中: trace log に記録 */
-      nightfall_trace_log_set_mode_flags((uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
+      nightfall_trace_log_set_mode_flags((uint16_t)(tf |
+          (forward ? NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG : NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG)));
       abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(run_ms, &guard);
 
       /* 停止 */
@@ -1123,8 +1124,8 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   out->timestamp_ms = HAL_GetTick();
   out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
   out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
-  out->motor_out_l = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_1);
-  out->motor_out_r = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_3);
+  out->motor_out_l = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_3);
+  out->motor_out_r = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_1);
   out->omega_z_mdps = (int16_t)(f413_ctrl_get_real_omega() * 1000.0f);
   out->flags = (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET)
                    ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
@@ -1601,8 +1602,8 @@ static void nightfall_motor_set(bool enable,
 
   (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, left_duty);
-  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, right_duty);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, left_duty);
+  __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, right_duty);
 }
 
 static void nightfall_run_motor_driver_test_once(void)

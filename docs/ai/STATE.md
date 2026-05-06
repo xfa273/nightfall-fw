@@ -16,8 +16,7 @@
 ## 委譲停止ポリシー
 
 - 多ファイル変更、長時間調査、反復ビルド/テストを含む作業も Cascade が直接対応する
-- `scripts/ai/delegate_to_codex.sh` と `scripts/ai/maybe_apply_codex_result.sh` は過去運用との互換資産として保持する
-- `docs/ai/HANDOFFS/` は過去ログ保管用途として維持し、新規委譲成果物は原則追加しない
+- 委譲関連の互換資産は `docs/ai/archive/delegation-legacy/` にアーカイブとして保持し、ユーザーから明示的な復活指示があるまで参照・実行しない
 
 ## 標準フロー
 
