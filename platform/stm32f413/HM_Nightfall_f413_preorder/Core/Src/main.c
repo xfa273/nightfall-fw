@@ -190,7 +190,11 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_ENCODER_SIGN_L     (1L)
 #define NIGHTFALL_F413_ENCODER_SIGN_R     (-1L)
 #define NIGHTFALL_F413_MOTOR_PWM_MAX      (1000U)
-#define NIGHTFALL_F413_OP_MODE_MAX        (7U)
+#define NIGHTFALL_F413_OP_MODE_MAX        (9U)
+#define NIGHTFALL_F413_OP_SELECT_MAX      (9U)
+#define NIGHTFALL_F413_OP_LEVEL_TOP      (0U)
+#define NIGHTFALL_F413_OP_LEVEL_CASE     (1U)
+#define NIGHTFALL_F413_OP_LEVEL_SUB      (2U)
 #define NIGHTFALL_F413_OP_UI_POLL_MS      (40U)
 #define NIGHTFALL_F413_OP_BUTTON_LOCK_MS  (250U)
 #define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (150)
@@ -260,10 +264,14 @@ static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABO
 static float g_last_test_distance_mm = 0.0f;
 static float g_last_test_angle_deg = 0.0f;
 static uint8_t g_op_mode = 0U;
+static uint8_t g_op_case = 0U;
+static uint8_t g_op_sub = 0U;
+static uint8_t g_op_level = NIGHTFALL_F413_OP_LEVEL_TOP;
 static uint32_t g_op_next_ui_poll_ms = 0U;
 static uint32_t g_op_button_lock_until_ms = 0U;
 static uint8_t g_op_enter_streak = 0U;
 static bool g_op_button_prev_pressed = false;
+static bool g_op_enter_latched = false;
 
 static const char* nightfall_identity_family_name(uint32_t family)
 {
@@ -1235,7 +1243,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   PUSH=mode++, FR wall only=enter, LED binary mode 0:idle 1:wall 2:S3 3:R90 4:L90 5:S3R90S3 6:search 7:shortest\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode1..7 case0 has sub 0..9\r\n");
 }
 
 static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
@@ -1564,7 +1572,7 @@ static void nightfall_buzzer_beep_ms(uint16_t period, uint16_t ms)
   }
 
   __HAL_TIM_SET_AUTORELOAD(&htim11, period);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, period / 2U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, (period * 6U) / 10U);
   HAL_Delay(ms);
   __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
   (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
@@ -1572,19 +1580,26 @@ static void nightfall_buzzer_beep_ms(uint16_t period, uint16_t ms)
 
 static void nightfall_op_beep_mode(uint8_t mode)
 {
-  uint16_t period = (uint16_t)(1100U - ((uint16_t)mode * 90U));
-  if (period < 350U)
-  {
-    period = 350U;
-  }
-  nightfall_buzzer_beep_ms(period, 60U);
+  uint16_t period = (uint16_t)((11U - (uint16_t)mode) * 400U);
+  nightfall_buzzer_beep_ms(period, 200U);
 }
 
 static void nightfall_op_beep_enter(void)
 {
-  nightfall_buzzer_beep_ms(650U, 70U);
+  if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
+  {
+    return;
+  }
+
+  __HAL_TIM_SET_AUTORELOAD(&htim11, 900U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 630U);
+  HAL_Delay(100U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
   HAL_Delay(50U);
-  nightfall_buzzer_beep_ms(650U, 70U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 630U);
+  HAL_Delay(100U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
+  (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
 }
 
 static void nightfall_run_led_test_once(void)
@@ -2158,76 +2173,374 @@ static const char* nightfall_op_mode_name(uint8_t mode)
   switch (mode)
   {
     case 0U: return "idle";
-    case 1U: return "wall-sensor-test";
-    case 2U: return "straight-S3";
-    case 3U: return "right-90";
-    case 4U: return "left-90";
-    case 5U: return "S3-R90-S3";
-    case 6U: return "search-entry";
-    case 7U: return "shortest-entry";
+    case 1U: return "search";
+    case 2U: return "shortest-mode2";
+    case 3U: return "shortest-mode3";
+    case 4U: return "shortest-mode4";
+    case 5U: return "shortest-mode5";
+    case 6U: return "shortest-mode6";
+    case 7U: return "shortest-mode7";
+    case 8U: return "test-run";
+    case 9U: return "test-mode";
     default: return "unknown";
   }
 }
 
-static void nightfall_op_execute_mode(uint8_t mode)
+static const char* nightfall_op_level_name(uint8_t level)
 {
-  trace_printf("[OP-UI] enter mode=%u %s\r\n",
+  switch (level)
+  {
+    case NIGHTFALL_F413_OP_LEVEL_TOP: return "mode";
+    case NIGHTFALL_F413_OP_LEVEL_CASE: return "case";
+    case NIGHTFALL_F413_OP_LEVEL_SUB: return "sub";
+    default: return "unknown";
+  }
+}
+
+static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case)
+{
+  if (mode == 1U)
+  {
+    switch (op_case)
+    {
+      case 0U: return "search test tune";
+      case 1U: return "standard goal-full search";
+      case 2U: return "standard full search";
+      case 3U: return "standard goal-return search";
+      case 4U: return "standard goal-only search";
+      case 5U: return "low goal-full search";
+      case 6U: return "low full search";
+      case 7U: return "low goal-return search";
+      case 8U: return "low goal-only search";
+      default: return "not assigned";
+    }
+  }
+  if ((mode >= 2U) && (mode <= 7U))
+  {
+    if (op_case == 0U)
+    {
+      return "turn/diagonal/straight test";
+    }
+    return "shortest case";
+  }
+  if (mode == 8U)
+  {
+    switch (op_case)
+    {
+      case 0U: return "set position";
+      case 1U: return "get log short straight";
+      case 2U: return "get log long straight";
+      case 3U: return "right 90 turn log";
+      case 4U: return "straight plus turn";
+      case 5U: return "large right 90";
+      case 6U: return "rotate right 90";
+      case 7U: return "large turn check";
+      case 8U: return "front match position";
+      case 9U: return "print log";
+      default: return "unknown";
+    }
+  }
+  if (mode == 9U)
+  {
+    switch (op_case)
+    {
+      case 0U: return "inner loop tune";
+      case 1U: return "IMU check";
+      case 2U: return "encoder check";
+      case 3U: return "sensor AD check";
+      case 4U: return "fan noise check";
+      case 5U: return "distance sensor calibration";
+      case 6U: return "wall threshold check";
+      case 7U: return "NVM check";
+      case 8U: return "identity check";
+      case 9U: return "sensor parameter save";
+      default: return "unknown";
+    }
+  }
+  return "unknown";
+}
+
+static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub)
+{
+  if (mode == 1U)
+  {
+    switch (sub)
+    {
+      case 0U: return "reserved";
+      case 1U: return "standard speed turn test";
+      case 2U: return "low speed turn test";
+      case 3U: return "straight 3-section test";
+      default: return "not assigned";
+    }
+  }
+  if ((mode >= 2U) && (mode <= 7U))
+  {
+    switch (sub)
+    {
+      case 0U: return "normal R90 turn";
+      case 1U: return "large 90 turn";
+      case 2U: return "large 180 turn";
+      case 3U: return "diagonal 45-in";
+      case 4U: return "diagonal 45-out";
+      case 5U: return "diagonal V90";
+      case 6U: return "diagonal 135-in";
+      case 7U: return "diagonal 135-out";
+      case 8U: return "straight slow";
+      case 9U: return "straight fast";
+      default: return "unknown";
+    }
+  }
+  return "unknown";
+}
+
+static uint8_t nightfall_op_selected_value(void)
+{
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_CASE)
+  {
+    return g_op_case;
+  }
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_SUB)
+  {
+    return g_op_sub;
+  }
+  return g_op_mode;
+}
+
+static void nightfall_op_set_selected_value(uint8_t value)
+{
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_CASE)
+  {
+    g_op_case = value;
+  }
+  else if (g_op_level == NIGHTFALL_F413_OP_LEVEL_SUB)
+  {
+    g_op_sub = value;
+  }
+  else
+  {
+    g_op_mode = value;
+  }
+}
+
+static void nightfall_op_print_selection(void)
+{
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_CASE)
+  {
+    trace_printf("[OP-UI] mode=%u %s case=%u %s\r\n",
+                 (unsigned int)g_op_mode,
+                 nightfall_op_mode_name(g_op_mode),
+                 (unsigned int)g_op_case,
+                 nightfall_op_case_name(g_op_mode, g_op_case));
+  }
+  else if (g_op_level == NIGHTFALL_F413_OP_LEVEL_SUB)
+  {
+    trace_printf("[OP-UI] mode=%u %s case=0 sub=%u %s\r\n",
+                 (unsigned int)g_op_mode,
+                 nightfall_op_mode_name(g_op_mode),
+                 (unsigned int)g_op_sub,
+                 nightfall_op_sub_name(g_op_mode, g_op_sub));
+  }
+  else
+  {
+    trace_printf("[OP-UI] mode=%u %s\r\n",
+                 (unsigned int)g_op_mode,
+                 nightfall_op_mode_name(g_op_mode));
+  }
+}
+
+static void nightfall_op_after_execute(void)
+{
+  g_op_enter_streak = 0U;
+  g_op_button_lock_until_ms = HAL_GetTick() + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
+  nightfall_op_led_show_mode(nightfall_op_selected_value());
+}
+
+static void nightfall_op_run_test_after_delay(uint8_t test_id)
+{
+  g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+  HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+  nightfall_test_run(test_id);
+}
+
+static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
+{
+  trace_printf("[OP-UI] execute mode=%u %s case=%u %s\r\n",
                (unsigned int)mode,
-               nightfall_op_mode_name(mode));
-  nightfall_op_beep_enter();
-  nightfall_set_all_leds(GPIO_PIN_SET);
-  HAL_Delay(120U);
-  nightfall_op_led_show_mode(mode);
+               nightfall_op_mode_name(mode),
+               (unsigned int)op_case,
+               nightfall_op_case_name(mode, op_case));
 
   switch (mode)
   {
-    case 0U:
-      trace_printf("[OP-UI] idle selected\r\n");
-      break;
     case 1U:
-      nightfall_run_wall_sensor_test_once();
+      if (op_case == 4U)
+      {
+        HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+        nightfall_run_search_trace_entry_once();
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 mode1 case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
       break;
     case 2U:
-      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_test_run('1');
+      if (op_case == 1U)
+      {
+        HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+        nightfall_run_shortest_trace_entry_once();
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F413 shortest runner is currently wired to mode2 case1 only\r\n");
+      }
       break;
-    case 3U:
-      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_test_run('3');
+    case 8U:
+      if (op_case == 1U)
+      {
+        nightfall_op_run_test_after_delay('1');
+      }
+      else if (op_case == 2U)
+      {
+        nightfall_op_run_test_after_delay('2');
+      }
+      else if (op_case == 3U)
+      {
+        nightfall_op_run_test_after_delay('3');
+      }
+      else if (op_case == 4U)
+      {
+        nightfall_op_run_test_after_delay('5');
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 test_run case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
       break;
-    case 4U:
-      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_test_run('4');
-      break;
-    case 5U:
-      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_test_run('5');
-      break;
-    case 6U:
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_run_search_trace_entry_once();
-      break;
-    case 7U:
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_run_shortest_trace_entry_once();
+    case 9U:
+      if (op_case == 1U)
+      {
+        nightfall_run_imu_test_once();
+      }
+      else if (op_case == 3U)
+      {
+        nightfall_run_wall_sensor_test_once();
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 test_mode case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
       break;
     default:
+      trace_printf("[OP-UI] no-op: F405 mode%u case%u is not fully ported on F413 yet\r\n",
+                   (unsigned int)mode,
+                   (unsigned int)op_case);
       break;
   }
 
-  g_op_enter_streak = 0U;
-  g_op_button_lock_until_ms = HAL_GetTick() + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
-  nightfall_op_led_show_mode(g_op_mode);
+  nightfall_op_after_execute();
+}
+
+static void nightfall_op_execute_sub(uint8_t mode, uint8_t sub)
+{
+  trace_printf("[OP-UI] execute mode=%u %s case=0 sub=%u %s\r\n",
+               (unsigned int)mode,
+               nightfall_op_mode_name(mode),
+               (unsigned int)sub,
+               nightfall_op_sub_name(mode, sub));
+
+  if ((mode >= 2U) && (mode <= 7U))
+  {
+    if (sub == 8U)
+    {
+      nightfall_op_run_test_after_delay('1');
+    }
+    else if (sub == 0U)
+    {
+      nightfall_op_run_test_after_delay('3');
+    }
+    else
+    {
+      trace_printf("[OP-UI] no-op: F405 mode%u case0 sub%u is not fully ported on F413 yet\r\n",
+                   (unsigned int)mode,
+                   (unsigned int)sub);
+    }
+  }
+  else if (mode == 1U)
+  {
+    if (sub == 3U)
+    {
+      nightfall_op_run_test_after_delay('1');
+    }
+    else
+    {
+      trace_printf("[OP-UI] no-op: F405 mode1 case0 sub%u is not fully ported on F413 yet\r\n",
+                   (unsigned int)sub);
+    }
+  }
+  else
+  {
+    trace_printf("[OP-UI] no-op: unsupported sub selection\r\n");
+  }
+
+  g_op_level = NIGHTFALL_F413_OP_LEVEL_CASE;
+  nightfall_op_after_execute();
+}
+
+static void nightfall_op_enter_selection(void)
+{
+  uint8_t selected = nightfall_op_selected_value();
+
+  nightfall_op_beep_enter();
+  nightfall_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(120U);
+
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_TOP)
+  {
+    if (g_op_mode == 0U)
+    {
+      trace_printf("[OP-UI] execute mode=0 idle\r\n");
+      nightfall_op_after_execute();
+      return;
+    }
+
+    g_op_level = NIGHTFALL_F413_OP_LEVEL_CASE;
+    g_op_case = 0U;
+    trace_printf("[OP-UI] enter mode=%u %s; select case 0..9\r\n",
+                 (unsigned int)g_op_mode,
+                 nightfall_op_mode_name(g_op_mode));
+    nightfall_op_print_selection();
+    nightfall_op_after_execute();
+    return;
+  }
+
+  if (g_op_level == NIGHTFALL_F413_OP_LEVEL_CASE)
+  {
+    if ((g_op_case == 0U) && (g_op_mode >= 1U) && (g_op_mode <= 7U))
+    {
+      g_op_level = NIGHTFALL_F413_OP_LEVEL_SUB;
+      g_op_sub = 0U;
+      trace_printf("[OP-UI] enter mode=%u case=0; select sub 0..9\r\n",
+                   (unsigned int)g_op_mode);
+      nightfall_op_print_selection();
+      nightfall_op_after_execute();
+      return;
+    }
+    nightfall_op_execute_case(g_op_mode, selected);
+    return;
+  }
+
+  nightfall_op_execute_sub(g_op_mode, selected);
 }
 
 static void nightfall_op_ui_step(void)
 {
   uint32_t now = HAL_GetTick();
   bool button_pressed;
+  bool enter_active;
+  uint8_t selected;
 
   if ((int32_t)(now - g_op_next_ui_poll_ms) < 0)
   {
@@ -2249,38 +2562,44 @@ static void nightfall_op_ui_step(void)
   {
     if (!g_op_button_prev_pressed && ((int32_t)(now - g_op_button_lock_until_ms) >= 0))
     {
-      g_op_mode++;
-      if (g_op_mode > NIGHTFALL_F413_OP_MODE_MAX)
+      selected = nightfall_op_selected_value();
+      selected++;
+      if (selected > NIGHTFALL_F413_OP_SELECT_MAX)
       {
-        g_op_mode = 0U;
+        selected = 0U;
       }
+      nightfall_op_set_selected_value(selected);
       g_op_button_lock_until_ms = now + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
       g_op_enter_streak = 0U;
-      nightfall_op_led_show_mode(g_op_mode);
-      nightfall_op_beep_mode(g_op_mode);
-      trace_printf("[OP-UI] mode=%u %s\r\n",
-                   (unsigned int)g_op_mode,
-                   nightfall_op_mode_name(g_op_mode));
+      nightfall_op_led_show_mode(selected);
+      nightfall_op_beep_mode(selected);
+      nightfall_op_print_selection();
     }
     g_op_button_prev_pressed = true;
     return;
   }
   g_op_button_prev_pressed = false;
 
-  if (nightfall_op_enter_sensor_active())
+  enter_active = nightfall_op_enter_sensor_active();
+  if (enter_active)
   {
-    if (g_op_enter_streak < NIGHTFALL_F413_OP_ENTER_STREAK)
+    if (!g_op_enter_latched)
     {
-      g_op_enter_streak++;
-    }
-    if (g_op_enter_streak >= NIGHTFALL_F413_OP_ENTER_STREAK)
-    {
-      nightfall_op_execute_mode(g_op_mode);
+      if (g_op_enter_streak < NIGHTFALL_F413_OP_ENTER_STREAK)
+      {
+        g_op_enter_streak++;
+      }
+      if (g_op_enter_streak >= NIGHTFALL_F413_OP_ENTER_STREAK)
+      {
+        g_op_enter_latched = true;
+        nightfall_op_enter_selection();
+      }
     }
   }
   else
   {
     g_op_enter_streak = 0U;
+    g_op_enter_latched = false;
   }
 }
 
@@ -3573,8 +3892,9 @@ int main(void)
   f413_ctrl_init();
   trace_printf("[CTRL] 1kHz velocity control initialized\r\n");
   nightfall_op_led_show_mode(g_op_mode);
-  trace_printf("[OP-UI] ready mode=%u %s\r\n",
-               (unsigned int)g_op_mode,
+  trace_printf("[OP-UI] ready %s=%u %s\r\n",
+               nightfall_op_level_name(g_op_level),
+               (unsigned int)nightfall_op_selected_value(),
                nightfall_op_mode_name(g_op_mode));
 
   /* USER CODE END 2 */
