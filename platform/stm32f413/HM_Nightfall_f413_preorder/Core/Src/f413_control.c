@@ -88,6 +88,8 @@ static volatile float s_real_velocity   = 0.0f;
 static volatile float s_real_omega      = 0.0f;
 static volatile float s_distance        = 0.0f;
 static volatile float s_angle           = 0.0f;
+static volatile int16_t s_motor_out_l   = 0;
+static volatile int16_t s_motor_out_r   = 0;
 
 static float s_omega_z_offset  = 0.0f;
 static float s_omega_z_filtered = 0.0f;
@@ -220,6 +222,8 @@ void f413_ctrl_init(void)
     s_real_omega      = 0.0f;
     s_distance        = 0.0f;
     s_angle           = 0.0f;
+    s_motor_out_l     = 0;
+    s_motor_out_r     = 0;
     s_accel_forward_offset = 0.0f;
     s_accel_forward_filtered = 0.0f;
     s_accel_forward_lpf_inited = false;
@@ -263,6 +267,8 @@ void f413_ctrl_start(void)
     s_real_omega      = 0.0f;
     s_distance        = 0.0f;
     s_angle           = 0.0f;
+    s_motor_out_l     = 0;
+    s_motor_out_r     = 0;
     s_omega_z_filtered = 0.0f;
     s_omega_z_lpf_inited = false;
     s_accel_forward_filtered = 0.0f;
@@ -300,6 +306,8 @@ void f413_ctrl_stop(void)
     s_previous_omega_error = 0.0f;
     s_angle_integral = 0.0f;
     s_previous_angle_error = 0.0f;
+    s_motor_out_l = 0;
+    s_motor_out_r = 0;
 
     /* モータ停止 */
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0U);
@@ -348,6 +356,14 @@ void  f413_ctrl_reset_angle(void)
 }
 float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
+float f413_ctrl_get_target_velocity(void) { return s_target_velocity; }
+float f413_ctrl_get_target_omega(void)    { return s_target_omega; }
+float f413_ctrl_get_target_angle(void)    { return s_target_angle; }
+float f413_ctrl_get_accel_velocity(void)  { return s_accel_velocity; }
+float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
+int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
+int16_t f413_ctrl_get_motor_out_r(void)   { return s_motor_out_r; }
+bool f413_ctrl_angle_target_enabled(void) { return s_angle_target_enabled; }
 bool  f413_ctrl_is_running(void)        { return s_running; }
 bool  f413_ctrl_spi2_busy(void)         { return s_spi2_busy; }
 
@@ -483,6 +499,8 @@ void f413_ctrl_tick(void)
     /* 左右出力 */
     float out_l = out_trans - out_rot;
     float out_r = out_trans + out_rot;
+    s_motor_out_l = (int16_t)lrintf(fmaxf(fminf(out_l, (float)F413_CTRL_PWM_MAX), -(float)F413_CTRL_PWM_MAX));
+    s_motor_out_r = (int16_t)lrintf(fmaxf(fminf(out_r, (float)F413_CTRL_PWM_MAX), -(float)F413_CTRL_PWM_MAX));
 
     /* ---- モータ出力 ---- */
     uint32_t duty_l = (uint32_t)fminf(fabsf(out_l), (float)F413_CTRL_PWM_MAX);

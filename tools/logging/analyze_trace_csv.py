@@ -17,6 +17,7 @@ FLAG_ABORT_SWITCH = 0x0100
 FLAG_ABORT_WALL_FAULT = 0x0200
 FLAG_ABORT_ENCODER_FAULT = 0x0400
 FLAG_ABORT_IMU_FAULT = 0x0800
+FLAG_ANGLE_TARGET = 0x2000
 FLAG_AUTO = 0x8000
 
 DEFAULT_COLUMNS = [
@@ -67,7 +68,7 @@ class PhaseSegment:
 
 def _looks_like_trace_row(line: str) -> bool:
     parts = [p.strip() for p in line.split(",")]
-    if len(parts) != 8:
+    if len(parts) < 8:
         return False
     if not parts[0].isdigit():
         return False
@@ -224,7 +225,7 @@ def _load_trace_csv(path: Path) -> tuple[dict[str, str], list[str], list[TraceRe
                     encoder_r=_parse_int(row["encoder_r"]),
                     motor_out_l=_parse_int(row["motor_out_l"]),
                     motor_out_r=_parse_int(row["motor_out_r"]),
-                    omega_z_mdps=_parse_int(row["omega_z_mdps"]),
+                    omega_z_mdps=_parse_int(row.get("omega_z_mdps", row.get("real_omega_mdps", "0"))),
                     flags=_parse_int(row["flags"]),
                 )
             except (KeyError, ValueError):

@@ -78,6 +78,10 @@ static uint32_t g_trace_log_auto_period_ms = 10U;
 static uint32_t g_trace_log_auto_next_tick_ms = 0U;
 static uint32_t g_trace_log_auto_seq = 0U;
 static uint16_t g_trace_log_auto_mode_flags = 0U;
+static uint8_t g_trace_log_context_mode = 0xFFU;
+static uint8_t g_trace_log_context_case = 0xFFU;
+static uint8_t g_trace_log_context_sub = 0xFFU;
+static uint8_t g_trace_log_context_test_id = 0U;
 
 /* USER CODE END PV */
 
@@ -124,6 +128,7 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_TRACE_ABORT_ENCODER_FAULT_FLAG (0x0400U)
 #define NIGHTFALL_F413_TRACE_ABORT_IMU_FAULT_FLAG (0x0800U)
 #define NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG (0x1000U)
+#define NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG (0x2000U)
 #define NIGHTFALL_F413_TRACE_AUTO_FLAG (0x8000U)
 #define NIGHTFALL_F413_RUN_SESSION_IDLE_MS (1000U)
 #define NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY (120U)
@@ -254,6 +259,11 @@ static void nightfall_trace_log_on_run_start(void);
 static void nightfall_trace_log_on_run_stop(void);
 static void nightfall_trace_log_auto_step(void);
 static void nightfall_trace_log_set_mode_flags(uint16_t flags);
+static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
+static int32_t nightfall_trace_log_scale_float(float value, float scale);
+static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
+static bool nightfall_adc_prepare_single_conversion(void);
+static bool nightfall_adc_read_single_channel(uint32_t channel, uint16_t* out);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
 static void nightfall_test_run(uint8_t test_id);
@@ -1144,6 +1154,7 @@ static void nightfall_test_run(uint8_t test_id)
 static void nightfall_test_arm_for_button(uint8_t test_id)
 {
   g_test_armed_id = test_id;
+  nightfall_trace_log_set_context(8U, 0xFFU, 0xFFU, test_id);
 
   const char* test_name = "?";
   switch (test_id)
@@ -1200,6 +1211,54 @@ static void nightfall_identity_enter_safe_mode(void)
   }
 }
 
+static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id)
+{
+  g_trace_log_context_mode = mode;
+  g_trace_log_context_case = op_case;
+  g_trace_log_context_sub = sub;
+  g_trace_log_context_test_id = test_id;
+}
+
+static int32_t nightfall_trace_log_scale_float(float value, float scale)
+{
+  float scaled = value * scale;
+
+  if (scaled > 2147483000.0f)
+  {
+    return 2147483000L;
+  }
+  if (scaled < -2147483000.0f)
+  {
+    return -2147483000L;
+  }
+  return (int32_t)lrintf(scaled);
+}
+
+static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat)
+{
+  if ((fr == NULL) || (r == NULL) || (fl == NULL) || (l == NULL) || (vbat == NULL))
+  {
+    return false;
+  }
+
+  *fr = 0U;
+  *r = 0U;
+  *fl = 0U;
+  *l = 0U;
+  *vbat = 0U;
+
+  if (!nightfall_adc_prepare_single_conversion())
+  {
+    return false;
+  }
+
+  return nightfall_adc_read_single_channel(ADC_CHANNEL_0, fr) &&
+         nightfall_adc_read_single_channel(ADC_CHANNEL_1, r) &&
+         nightfall_adc_read_single_channel(ADC_CHANNEL_2, fl) &&
+         nightfall_adc_read_single_channel(ADC_CHANNEL_3, l) &&
+         nightfall_adc_read_single_channel(ADC_CHANNEL_8, vbat);
+}
+
 static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
 {
   nvm_trace_log_header_t header;
@@ -1235,6 +1294,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
                (unsigned long)dump_count,
                (unsigned long)available);
+  trace_printf("#log_format=nightfall_trace_csv_v2\r\n");
   trace_printf("#fw_target=%s\r\n", FW_TARGET);
   trace_printf("#fw_version=%s\r\n", FW_VERSION);
   trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
@@ -1258,7 +1318,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     trace_printf("#last_test_dist_mm=%.0f\r\n", (double)g_last_test_distance_mm);
     trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
   }
-  trace_printf("#mm_columns=timestamp_ms,seq,encoder_l,encoder_r,motor_out_l,motor_out_r,omega_z_mdps,flags\r\n");
+  trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
 
   for (i = dump_count; i > 0U; i--)
   {
@@ -1273,15 +1333,38 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
       return;
     }
 
-    trace_printf("%lu,%lu,%d,%d,%d,%d,%d,%u\r\n",
+    trace_printf("%lu,%lu,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%u,%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
                  (unsigned long)rec.timestamp_ms,
                  (unsigned long)rec.seq,
+                 (unsigned int)rec.op_mode,
+                 (unsigned int)rec.op_case,
+                 (unsigned int)rec.op_sub,
+                 (unsigned int)rec.test_id,
+                 (long)rec.distance_mm,
+                 (long)rec.angle_mdeg,
+                 (long)rec.target_velocity_mm_s,
+                 (long)rec.real_velocity_mm_s,
+                 (long)rec.accel_velocity_mm_s,
+                 (long)rec.target_omega_mdps,
+                 (long)rec.real_omega_mdps,
+                 (long)rec.target_angle_mdeg,
+                 (long)rec.accel_forward_mm_s2,
                  (int)rec.encoder_l,
                  (int)rec.encoder_r,
                  (int)rec.motor_out_l,
                  (int)rec.motor_out_r,
-                 (int)rec.omega_z_mdps,
-                 (unsigned int)rec.flags);
+                 (unsigned int)rec.adc_fr,
+                 (unsigned int)rec.adc_r,
+                 (unsigned int)rec.adc_fl,
+                 (unsigned int)rec.adc_l,
+                 (unsigned int)rec.adc_vbat,
+                 (unsigned int)rec.flags,
+                 (long)rec.reserved_i32_0,
+                 (long)rec.reserved_i32_1,
+                 (long)rec.reserved_i32_2,
+                 (long)rec.reserved_i32_3,
+                 (unsigned int)rec.reserved_u16_0,
+                 (unsigned int)rec.reserved_u16_1);
   }
 
   trace_printf("[TRACE-LOG] csv: done\r\n");
@@ -1390,12 +1473,12 @@ static void nightfall_print_nvm_cli_help(void)
 {
   trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
-  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
+  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
   trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode1..7 case0 has sub 0..9\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
 }
 
 static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
@@ -1450,6 +1533,12 @@ static void nightfall_run_trace_log_format_once(void)
 
 static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_t seq)
 {
+  uint16_t adc_fr = 0U;
+  uint16_t adc_r = 0U;
+  uint16_t adc_fl = 0U;
+  uint16_t adc_l = 0U;
+  uint16_t adc_vbat = 0U;
+
   if (out == NULL)
   {
     return;
@@ -1458,14 +1547,38 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   memset(out, 0, sizeof(*out));
   out->seq = seq;
   out->timestamp_ms = HAL_GetTick();
+  out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
+  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_angle(), 1000.0f);
+  out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
+  out->real_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_real_velocity(), 1.0f);
+  out->accel_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
+  out->target_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
+  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_real_omega(), 1000.0f);
+  out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
+  out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
   out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
   out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
-  out->motor_out_l = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_1);
-  out->motor_out_r = (int16_t)__HAL_TIM_GET_COMPARE(&htim2, TIM_CHANNEL_3);
-  out->omega_z_mdps = (int16_t)(f413_ctrl_get_real_omega() * 1000.0f);
+  out->motor_out_l = f413_ctrl_get_motor_out_l();
+  out->motor_out_r = f413_ctrl_get_motor_out_r();
+  if (nightfall_trace_log_read_adc_raw(&adc_fr, &adc_r, &adc_fl, &adc_l, &adc_vbat))
+  {
+    out->adc_fr = adc_fr;
+    out->adc_r = adc_r;
+    out->adc_fl = adc_fl;
+    out->adc_l = adc_l;
+    out->adc_vbat = adc_vbat;
+  }
   out->flags = (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET)
                    ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
                    : 0U;
+  if (f413_ctrl_angle_target_enabled())
+  {
+    out->flags |= NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG;
+  }
+  out->op_mode = g_trace_log_context_mode;
+  out->op_case = g_trace_log_context_case;
+  out->op_sub = g_trace_log_context_sub;
+  out->test_id = g_trace_log_context_test_id;
 }
 
 static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq)
@@ -1478,12 +1591,35 @@ static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out
   memset(out, 0, sizeof(*out));
   out->seq = seq;
   out->timestamp_ms = 1000U + seq * 10U;
+  out->distance_mm = (int32_t)(10 + (int32_t)seq);
+  out->angle_mdeg = (int32_t)(-1000 - (int32_t)seq);
+  out->target_velocity_mm_s = (int32_t)(200 + (int32_t)seq);
+  out->real_velocity_mm_s = (int32_t)(190 + (int32_t)seq);
+  out->accel_velocity_mm_s = (int32_t)(185 + (int32_t)seq);
+  out->target_omega_mdps = (int32_t)(3000 + (int32_t)seq);
+  out->real_omega_mdps = (int32_t)(2900 + (int32_t)seq);
+  out->target_angle_mdeg = (int32_t)(90000 + (int32_t)seq);
+  out->accel_forward_mm_s2 = (int32_t)(50 + (int32_t)seq);
+  out->reserved_i32_0 = (int32_t)(1000 + (int32_t)seq);
+  out->reserved_i32_1 = (int32_t)(2000 + (int32_t)seq);
+  out->reserved_i32_2 = (int32_t)(3000 + (int32_t)seq);
+  out->reserved_i32_3 = (int32_t)(4000 + (int32_t)seq);
   out->encoder_l = (int16_t)(100 + (int32_t)seq);
   out->encoder_r = (int16_t)(-100 - (int32_t)seq);
   out->motor_out_l = (int16_t)(200 + (int32_t)(seq * 2U));
   out->motor_out_r = (int16_t)(-200 - (int32_t)(seq * 2U));
-  out->omega_z_mdps = (int16_t)(seq * 3U);
+  out->adc_fr = (uint16_t)(1000U + seq);
+  out->adc_r = (uint16_t)(1100U + seq);
+  out->adc_fl = (uint16_t)(1200U + seq);
+  out->adc_l = (uint16_t)(1300U + seq);
+  out->adc_vbat = (uint16_t)(1400U + seq);
   out->flags = (uint16_t)(0xA500U | (seq & 0x00FFU));
+  out->op_mode = 9U;
+  out->op_case = 5U;
+  out->op_sub = (uint8_t)(seq & 0xFFU);
+  out->test_id = (uint8_t)'T';
+  out->reserved_u16_0 = (uint16_t)(0x5500U | (seq & 0x00FFU));
+  out->reserved_u16_1 = (uint16_t)(0x6600U | (seq & 0x00FFU));
 }
 
 static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* lhs,
@@ -1494,15 +1630,7 @@ static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* l
     return 0U;
   }
 
-  if (lhs->seq != rhs->seq) return 0U;
-  if (lhs->timestamp_ms != rhs->timestamp_ms) return 0U;
-  if (lhs->encoder_l != rhs->encoder_l) return 0U;
-  if (lhs->encoder_r != rhs->encoder_r) return 0U;
-  if (lhs->motor_out_l != rhs->motor_out_l) return 0U;
-  if (lhs->motor_out_r != rhs->motor_out_r) return 0U;
-  if (lhs->omega_z_mdps != rhs->omega_z_mdps) return 0U;
-  if (lhs->flags != rhs->flags) return 0U;
-  return 1U;
+  return (memcmp(lhs, rhs, sizeof(*lhs)) == 0) ? 1U : 0U;
 }
 
 static void nightfall_run_trace_log_append_sample_once(void)
@@ -1527,9 +1655,11 @@ static void nightfall_run_trace_log_append_sample_once(void)
     return;
   }
 
-  trace_printf("[TRACE-LOG] append: PASS seq=%lu ts=%lu enc=(%d,%d) motor=(%d,%d) flags=0x%04X\r\n",
+  trace_printf("[TRACE-LOG] append: PASS seq=%lu ts=%lu dist=%ld angle=%ld enc=(%d,%d) motor=(%d,%d) flags=0x%04X\r\n",
                (unsigned long)rec.seq,
                (unsigned long)rec.timestamp_ms,
+               (long)rec.distance_mm,
+               (long)rec.angle_mdeg,
                (int)rec.encoder_l,
                (int)rec.encoder_r,
                (int)rec.motor_out_l,
@@ -1689,15 +1819,24 @@ static void nightfall_run_trace_log_dump_latest_once(void)
       return;
     }
 
-    trace_printf("[TRACE-LOG] rec[%lu] seq=%lu ts=%lu enc=(%d,%d) motor=(%d,%d) omega=%d flags=0x%04X\r\n",
+    trace_printf("[TRACE-LOG] rec[%lu] seq=%lu ts=%lu mode=%u case=%u sub=%u test=%u dist=%ld angle=%ld v=(%ld/%ld) omega=(%ld/%ld) enc=(%d,%d) motor=(%d,%d) flags=0x%04X\r\n",
                  (unsigned long)i,
                  (unsigned long)rec.seq,
                  (unsigned long)rec.timestamp_ms,
+                 (unsigned int)rec.op_mode,
+                 (unsigned int)rec.op_case,
+                 (unsigned int)rec.op_sub,
+                 (unsigned int)rec.test_id,
+                 (long)rec.distance_mm,
+                 (long)rec.angle_mdeg,
+                 (long)rec.target_velocity_mm_s,
+                 (long)rec.real_velocity_mm_s,
+                 (long)rec.target_omega_mdps,
+                 (long)rec.real_omega_mdps,
                  (int)rec.encoder_l,
                  (int)rec.encoder_r,
                  (int)rec.motor_out_l,
                  (int)rec.motor_out_r,
-                 (int)rec.omega_z_mdps,
                  (unsigned int)rec.flags);
   }
 }
@@ -2414,7 +2553,7 @@ static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case)
       case 2U: return "encoder check";
       case 3U: return "sensor AD check";
       case 4U: return "fan noise check";
-      case 5U: return "distance sensor calibration";
+      case 5U: return "dump latest full log";
       case 6U: return "wall threshold check";
       case 7U: return "NVM check";
       case 8U: return "identity check";
@@ -2523,6 +2662,7 @@ static void nightfall_op_after_execute(void)
 static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
   g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+  nightfall_trace_log_set_context(8U, g_op_case, 0xFFU, test_id);
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
   nightfall_test_run(test_id);
 }
@@ -2614,6 +2754,7 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
       break;
   }
 
+  nightfall_trace_log_set_context(mode, 0U, sub, (uint8_t)'P');
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
   nightfall_run_path_code_sequence_once(label, mode, case_index, codes, code_count,
                                         straight_velocity, diagonal_velocity);
@@ -2635,6 +2776,7 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
     case 1U:
       if (op_case == 4U)
       {
+        nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
         HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
         nightfall_run_search_trace_entry_once();
       }
@@ -2647,6 +2789,7 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
     case 2U:
       if (op_case == 1U)
       {
+        nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
         HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
         nightfall_run_shortest_trace_entry_once();
       }
@@ -2694,6 +2837,10 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
       else if (op_case == 4U)
       {
         nightfall_run_fan_pwm_test_once();
+      }
+      else if (op_case == 5U)
+      {
+        nightfall_run_trace_log_dump_csv_all_once();
       }
       else
       {
@@ -4019,21 +4166,25 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'x':
     case 'X':
+      nightfall_trace_log_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'x');
       nightfall_run_idle_trace_session_once();
       break;
 
     case 'y':
     case 'Y':
+      nightfall_trace_log_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'y');
       nightfall_run_motor_trace_session_once();
       break;
 
     case 'z':
     case 'Z':
+      nightfall_trace_log_set_context(1U, 4U, 0xFFU, (uint8_t)'z');
       nightfall_run_search_trace_entry_once();
       break;
 
     case 'j':
     case 'J':
+      nightfall_trace_log_set_context(2U, 1U, 0xFFU, (uint8_t)'j');
       nightfall_run_shortest_trace_entry_once();
       break;
 
@@ -4042,6 +4193,7 @@ static void nightfall_handle_uart_command(uint8_t cmd)
     case '8':
     case '9':
       g_test_armed_id = cmd;
+      nightfall_trace_log_set_context(8U, 0xFFU, 0xFFU, cmd);
       nightfall_test_run(cmd);
       break;
 

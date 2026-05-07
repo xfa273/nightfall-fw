@@ -40,6 +40,14 @@ void f413_ctrl_reset_angle(void);
 /* 実測値取得（デバッグ/ログ用） */
 float f413_ctrl_get_real_velocity(void);
 float f413_ctrl_get_real_omega(void);
+float f413_ctrl_get_target_velocity(void);
+float f413_ctrl_get_target_omega(void);
+float f413_ctrl_get_target_angle(void);
+float f413_ctrl_get_accel_velocity(void);
+float f413_ctrl_get_accel_forward(void);
+int16_t f413_ctrl_get_motor_out_l(void);
+int16_t f413_ctrl_get_motor_out_r(void);
+bool f413_ctrl_angle_target_enabled(void);
 
 /* 1kHz 割り込みハンドラ（HAL_TIM_PeriodElapsedCallback から呼ぶ） */
 void f413_ctrl_tick(void);

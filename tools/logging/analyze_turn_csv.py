@@ -74,7 +74,7 @@ def _load_csv(path: Path) -> tuple[dict[str, str], list[TurnRecord]]:
                         timestamp_ms=_parse_int(row["timestamp_ms"]),
                         motor_out_l=_parse_int(row["motor_out_l"]),
                         motor_out_r=_parse_int(row["motor_out_r"]),
-                        omega_z_mdps=_parse_int(row["omega_z_mdps"]),
+                        omega_z_mdps=_parse_int(row.get("omega_z_mdps", row.get("real_omega_mdps", "0"))),
                         flags=_parse_int(row["flags"]),
                     )
                 )

@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 #define NVM_TRACE_LOG_MAGIC (0x544C4F47UL)
-#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00010000UL)
+#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00020000UL)
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
@@ -26,12 +26,35 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     uint32_t seq;
     uint32_t timestamp_ms;
+    int32_t distance_mm;
+    int32_t angle_mdeg;
+    int32_t target_velocity_mm_s;
+    int32_t real_velocity_mm_s;
+    int32_t accel_velocity_mm_s;
+    int32_t target_omega_mdps;
+    int32_t real_omega_mdps;
+    int32_t target_angle_mdeg;
+    int32_t accel_forward_mm_s2;
+    int32_t reserved_i32_0;
+    int32_t reserved_i32_1;
+    int32_t reserved_i32_2;
+    int32_t reserved_i32_3;
     int16_t encoder_l;
     int16_t encoder_r;
     int16_t motor_out_l;
     int16_t motor_out_r;
-    int16_t omega_z_mdps;
+    uint16_t adc_fr;
+    uint16_t adc_r;
+    uint16_t adc_fl;
+    uint16_t adc_l;
+    uint16_t adc_vbat;
     uint16_t flags;
+    uint8_t op_mode;
+    uint8_t op_case;
+    uint8_t op_sub;
+    uint8_t test_id;
+    uint16_t reserved_u16_0;
+    uint16_t reserved_u16_1;
 } nvm_trace_log_record_t;
 
 nvm_status_t nvm_trace_log_format(void);
