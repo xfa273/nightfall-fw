@@ -6,6 +6,7 @@
 
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
+- `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
 - `serial_capture_csv.sh`: シェル版CSVキャプチャ
 - `serial_minicom.sh`: minicomベース受信
 - `serial_monitor.sh`: シンプル受信
@@ -37,6 +38,15 @@
   - `python3 tools/logging/analyze_trace_csv.py tools/logging/logs --expect y`
   - `python3 tools/logging/analyze_trace_csv.py tools/logging/logs --expect z`
   - `python3 tools/logging/analyze_trace_csv.py tools/logging/logs --expect j`
+
+## `analyze_turn_csv.py` のターン評価
+
+- `omega_z_mdps` を時間積分し、旋回角度の推定値を出します。
+- 通常は `motor_reverse` 位相だけを評価します。全レコードを見る場合は `--all-records` を付けます。
+- UART `3` / `4` の `#last_test_id` がCSVメタにある場合は目標角を自動推定します。
+- 例:
+  - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
+  - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
 
 ## 互換パス
 
