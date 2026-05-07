@@ -185,6 +185,94 @@ static bool load_c_array_file(const char *path_name, bool top_left_origin)
     return true;
 }
 
+static bool line_has_horizontal_wall(const char *line, unsigned int x)
+{
+    size_t pos = (size_t)x * 4U + 1U;
+    return (line[pos] == '-') || (line[pos + 1U] == '-') || (line[pos + 2U] == '-') ||
+           (line[pos] == '.') || (line[pos + 1U] == '.') || (line[pos + 2U] == '.');
+}
+
+static bool line_has_vertical_wall(const char *line, unsigned int x)
+{
+    size_t pos = (size_t)x * 4U;
+    return (line[pos] == '|') || (line[pos] == '.');
+}
+
+static bool load_maze_text_file(const char *path_name)
+{
+    char *buf = NULL;
+    char *lines[2U * MAZE_SIZE + 1U];
+    size_t line_count = 0U;
+    unsigned int src_size;
+
+    if (!read_file_bytes(path_name, &buf)) {
+        return false;
+    }
+
+    char *p = buf;
+    while (*p != '\0' && line_count < (sizeof(lines) / sizeof(lines[0]))) {
+        char *line = p;
+        char *end = strpbrk(p, "\r\n");
+        if (end != NULL) {
+            *end = '\0';
+            p = end + 1;
+            if ((*p == '\n' || *p == '\r') && *p != *end) {
+                p++;
+            }
+        } else {
+            p += strlen(p);
+        }
+        if (line[0] != '\0') {
+            lines[line_count++] = line;
+        }
+    }
+
+    if ((line_count < 3U) || ((line_count % 2U) == 0U)) {
+        fprintf(stderr, "invalid maze text line count: %zu\n", line_count);
+        free(buf);
+        return false;
+    }
+
+    src_size = (unsigned int)((line_count - 1U) / 2U);
+    if (src_size > MAZE_SIZE) {
+        fprintf(stderr, "maze size %u exceeds firmware MAZE_SIZE %u\n",
+                src_size, (unsigned int)MAZE_SIZE);
+        free(buf);
+        return false;
+    }
+
+    s_width = src_size;
+    s_height = src_size;
+    clear_sample_area(s_width, s_height);
+
+    for (unsigned int y = 0U; y < src_size; y++) {
+        unsigned int row_from_top = src_size - 1U - y;
+        const char *north_line = lines[row_from_top * 2U];
+        const char *cell_line = lines[row_from_top * 2U + 1U];
+        const char *south_line = lines[row_from_top * 2U + 2U];
+
+        for (unsigned int x = 0U; x < src_size; x++) {
+            if (line_has_horizontal_wall(north_line, x)) {
+                set_wall_pair(x, y, NORTH_WALL);
+            }
+            if (line_has_horizontal_wall(south_line, x)) {
+                set_wall_pair(x, y, SOUTH_WALL);
+            }
+            if (line_has_vertical_wall(cell_line, x)) {
+                set_wall_pair(x, y, WEST_WALL);
+            }
+            if (line_has_vertical_wall(cell_line, x + 1U)) {
+                set_wall_pair(x, y, EAST_WALL);
+            }
+        }
+    }
+
+    add_sample_boundary();
+    set_wall_pair(START_X, START_Y, EAST_WALL);
+    free(buf);
+    return true;
+}
+
 void load_map_from_eeprom(void)
 {
     memset(map, 0, sizeof(map));
@@ -244,7 +332,7 @@ static void print_path_summary(void)
 
 static void print_usage(const char *argv0)
 {
-    printf("usage: %s [--maze-c-array FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver]\n", argv0);
+    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver]\n", argv0);
 }
 
 static bool run_solver_quiet(uint8_t mode, uint8_t case_index)
@@ -276,6 +364,7 @@ static bool run_solver_quiet(uint8_t mode, uint8_t case_index)
 int main(int argc, char **argv)
 {
     const char *maze_file = NULL;
+    const char *maze_text_file = NULL;
     bool top_left_origin = true;
     bool verbose_solver = false;
     uint8_t mode = 2U;
@@ -284,6 +373,8 @@ int main(int argc, char **argv)
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--maze-c-array") == 0 && (i + 1) < argc) {
             maze_file = argv[++i];
+        } else if (strcmp(argv[i], "--maze") == 0 && (i + 1) < argc) {
+            maze_text_file = argv[++i];
         } else if (strcmp(argv[i], "--origin") == 0 && (i + 1) < argc) {
             const char *origin = argv[++i];
             if (strcmp(origin, "top-left") == 0) {
@@ -309,7 +400,12 @@ int main(int argc, char **argv)
         }
     }
 
-    if (maze_file != NULL) {
+    if (maze_text_file != NULL) {
+        if (!load_maze_text_file(maze_text_file)) {
+            return 1;
+        }
+        printf("[host] loaded maze=%s size=%ux%u format=text\n", maze_text_file, s_width, s_height);
+    } else if (maze_file != NULL) {
         if (!load_c_array_file(maze_file, top_left_origin)) {
             return 1;
         }
