@@ -201,6 +201,8 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
 #define NIGHTFALL_F413_OP_ENTER_STREAK    (3U)
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
+#define NIGHTFALL_F413_OP_TEST_VEL_CAP    (450.0f)
+#define NIGHTFALL_F413_OP_TEST_DIAG_SCALE (0.75f)
 
 typedef enum
 {
@@ -230,6 +232,9 @@ static void nightfall_run_shortest_trace_entry_once(void);
 #if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
 static void nightfall_solver_path_print_preview(void);
 static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag);
+static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mode, uint8_t case_index,
+                                                   const uint16_t* codes, uint16_t code_count,
+                                                   float straight_velocity, float diagonal_velocity);
 static const ShortestRunModeParams_t* nightfall_f413_shortest_mode_params(uint8_t mode);
 static const ShortestRunCaseParams_t* nightfall_f413_shortest_case_params(uint8_t mode, uint8_t case_index);
 static float nightfall_f413_path_velocity_or_cap(float candidate, float fallback);
@@ -257,6 +262,8 @@ static void nightfall_op_ui_step(void);
 static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev);
 static void nightfall_run_imu_manual_turn_test_once(void);
 static void nightfall_run_imu_accel_test_once(void);
+static void nightfall_run_fan_pwm_test_once(void);
+static void nightfall_run_encoder_test_once(void);
 
 static volatile uint8_t g_test_armed_id = 0U; /* 0=none, '1'-'5'=armed test */
 static uint8_t g_last_test_id = 0U;
@@ -385,6 +392,20 @@ static float nightfall_f413_path_velocity_or_cap(float candidate, float fallback
     v = NIGHTFALL_F413_PATH_VELOCITY_CAP;
   }
 
+  return v;
+}
+
+static float nightfall_f413_op_test_velocity_for_mode(uint8_t mode, bool fast)
+{
+  float v = 150.0f + ((float)((mode > 2U) ? (mode - 2U) : 0U) * 50.0f);
+  if (fast)
+  {
+    v += 75.0f;
+  }
+  if (v > NIGHTFALL_F413_OP_TEST_VEL_CAP)
+  {
+    v = NIGHTFALL_F413_OP_TEST_VEL_CAP;
+  }
   return v;
 }
 
@@ -703,6 +724,137 @@ static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag)
                  (double)f413_ctrl_get_distance(),
                  (double)f413_ctrl_get_angle());
   }
+}
+
+static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mode, uint8_t case_index,
+                                                   const uint16_t* codes, uint16_t code_count,
+                                                   float straight_velocity, float diagonal_velocity)
+{
+  nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
+  nightfall_run_guard_t guard = {0};
+  const ShortestRunModeParams_t* mode_params = nightfall_f413_shortest_mode_params(mode);
+  uint16_t i;
+  uint16_t code = 0U;
+
+  if ((codes == NULL) || (code_count == 0U))
+  {
+    trace_printf("[OP-UI][PATH-TEST] no sequence\r\n");
+    return;
+  }
+  if (g_trace_log_auto_enabled != 0U)
+  {
+    trace_printf("[OP-UI][PATH-TEST] busy(auto already running)\r\n");
+    return;
+  }
+  if (nightfall_run_stop_switch_pressed())
+  {
+    trace_printf("[OP-UI][PATH-TEST] canceled(start switch pressed)\r\n");
+    return;
+  }
+  if (!nightfall_run_guard_prepare(&guard))
+  {
+    trace_printf("[OP-UI][PATH-TEST] canceled(guard init fail)\r\n");
+    return;
+  }
+
+  trace_printf("[OP-UI][PATH-TEST] start %s mode=%u case=%u v=%.0f diag_v=%.0f codes=",
+               label,
+               (unsigned int)mode,
+               (unsigned int)case_index,
+               (double)straight_velocity,
+               (double)diagonal_velocity);
+  for (i = 0U; i < code_count; i++)
+  {
+    trace_printf("%u%s", (unsigned int)codes[i], ((i + 1U) < code_count) ? "," : "");
+  }
+  trace_printf("\r\n");
+
+  nightfall_trace_log_on_run_start();
+  f413_ctrl_start();
+
+  for (i = 0U; i < code_count; i++)
+  {
+    code = codes[i];
+    f413_ctrl_reset_distance();
+    f413_ctrl_reset_angle();
+
+    if ((code > 200U) && (code < 300U))
+    {
+      uint16_t half_cells = (uint16_t)(code - 200U);
+      float target_mm = (float)half_cells * NIGHTFALL_F413_PATH_HALF_CELL_MM;
+      f413_ctrl_set_velocity(straight_velocity);
+      f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
+      abort_reason = nightfall_wait_ctrl_target(target_mm, false, &guard,
+          (uint16_t)(NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
+    }
+    else if (code > 1000U)
+    {
+      uint16_t diag_half = (uint16_t)(code - 1000U);
+      float target_mm = (float)diag_half * NIGHTFALL_F413_PATH_DIAG_HALF_CELL_MM;
+      f413_ctrl_set_velocity(diagonal_velocity);
+      f413_ctrl_set_omega(0.0f);
+      f413_ctrl_set_angle_target(0.0f);
+      abort_reason = nightfall_wait_ctrl_target(target_mm, false, &guard,
+          (uint16_t)(NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
+    }
+    else
+    {
+      float signed_angle = 0.0f;
+      float abs_angle = 0.0f;
+      if (nightfall_f413_path_turn_from_code(code, mode_params, &signed_angle, &abs_angle))
+      {
+        f413_ctrl_set_velocity(0.0f);
+        f413_ctrl_set_omega(0.0f);
+        f413_ctrl_set_angle_target(signed_angle);
+        abort_reason = nightfall_wait_ctrl_target(signed_angle, true, &guard,
+            (uint16_t)(NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG | NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
+      }
+      else
+      {
+        abort_reason = NIGHTFALL_RUN_ABORT_IMU_FAULT;
+      }
+    }
+
+    if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
+    {
+      break;
+    }
+
+    f413_ctrl_clear_angle_target();
+    f413_ctrl_set_velocity(0.0f);
+    f413_ctrl_set_omega(0.0f);
+    nightfall_trace_log_set_mode_flags((uint16_t)(NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG | NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
+    abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(NIGHTFALL_F413_PATH_COAST_MS, &guard);
+    if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
+    {
+      break;
+    }
+  }
+
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_stop();
+  if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
+  {
+    nightfall_trace_log_set_mode_flags((uint16_t)(NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG | nightfall_run_abort_reason_to_trace_flag(abort_reason)));
+    nightfall_trace_log_auto_step();
+  }
+  nightfall_trace_log_set_mode_flags(0U);
+  nightfall_trace_log_on_run_stop();
+  nightfall_run_guard_cleanup(&guard);
+  g_last_test_id = (uint8_t)'P';
+  g_last_test_abort_reason = abort_reason;
+  g_last_test_distance_mm = f413_ctrl_get_distance();
+  g_last_test_angle_deg = f413_ctrl_get_angle();
+  trace_printf("[OP-UI][PATH-TEST] %s %s at code[%u]=%u dist=%.0fmm angle=%.0fdeg\r\n",
+               label,
+               (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" : nightfall_run_abort_reason_to_text(abort_reason),
+               (unsigned int)i,
+               (unsigned int)code,
+               (double)g_last_test_distance_mm,
+               (double)g_last_test_angle_deg);
 }
 #endif
 
@@ -1241,7 +1393,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
   trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
-  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button\r\n");
+  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode1..7 case0 has sub 0..9\r\n");
 }
@@ -1600,6 +1752,19 @@ static void nightfall_op_beep_enter(void)
   HAL_Delay(100U);
   __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
   (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+}
+
+static void nightfall_boot_buzzer_pattern(void)
+{
+  nightfall_buzzer_beep_ms(1800U, 70U);
+  HAL_Delay(35U);
+  nightfall_buzzer_beep_ms(1300U, 70U);
+  HAL_Delay(35U);
+  nightfall_buzzer_beep_ms(850U, 90U);
+  HAL_Delay(120U);
+  nightfall_buzzer_beep_ms(1450U, 70U);
+  HAL_Delay(35U);
+  nightfall_buzzer_beep_ms(1050U, 110U);
 }
 
 static void nightfall_run_led_test_once(void)
@@ -2362,6 +2527,101 @@ static void nightfall_op_run_test_after_delay(uint8_t test_id)
   nightfall_test_run(test_id);
 }
 
+static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
+{
+#if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
+  uint16_t codes[4] = {0U, 0U, 0U, 0U};
+  uint16_t code_count = 0U;
+  uint8_t case_index = 1U;
+  float straight_velocity = nightfall_f413_op_test_velocity_for_mode(mode, (sub == 9U));
+  float diagonal_velocity = straight_velocity * NIGHTFALL_F413_OP_TEST_DIAG_SCALE;
+  const char* label = nightfall_op_sub_name(mode, sub);
+  uint16_t lead = (mode >= 6U) ? 204U : 203U;
+
+  if (sub <= 2U)
+  {
+    case_index = (mode <= 5U) ? 3U : 1U;
+  }
+  else if ((sub >= 3U) && (sub <= 7U))
+  {
+    case_index = 8U;
+  }
+  else if (sub == 8U)
+  {
+    case_index = 1U;
+  }
+  else
+  {
+    case_index = 5U;
+  }
+
+  switch (sub)
+  {
+    case 0U:
+      codes[0] = lead;
+      codes[1] = 300U;
+      code_count = 2U;
+      break;
+    case 1U:
+      codes[0] = lead;
+      codes[1] = 501U;
+      code_count = 2U;
+      break;
+    case 2U:
+      codes[0] = lead;
+      codes[1] = 502U;
+      code_count = 2U;
+      break;
+    case 3U:
+      codes[0] = lead;
+      codes[1] = 701U;
+      codes[2] = 1001U;
+      code_count = 3U;
+      break;
+    case 4U:
+      codes[0] = lead;
+      codes[1] = 1001U;
+      codes[2] = 704U;
+      codes[3] = 1001U;
+      code_count = 4U;
+      break;
+    case 5U:
+      codes[0] = lead;
+      codes[1] = 1001U;
+      codes[2] = 802U;
+      codes[3] = 1001U;
+      code_count = 4U;
+      break;
+    case 6U:
+      codes[0] = lead;
+      codes[1] = 901U;
+      codes[2] = 1001U;
+      code_count = 3U;
+      break;
+    case 7U:
+      codes[0] = lead;
+      codes[1] = 1001U;
+      codes[2] = 904U;
+      codes[3] = 1001U;
+      code_count = 4U;
+      break;
+    case 8U:
+    case 9U:
+      codes[0] = 206U;
+      code_count = 1U;
+      break;
+    default:
+      break;
+  }
+
+  HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+  nightfall_run_path_code_sequence_once(label, mode, case_index, codes, code_count,
+                                        straight_velocity, diagonal_velocity);
+#else
+  trace_printf("[OP-UI] no-op: F413 path-code test runner is disabled in this build\r\n");
+#endif
+}
+
 static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
 {
   trace_printf("[OP-UI] execute mode=%u %s case=%u %s\r\n",
@@ -2423,9 +2683,17 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
       {
         nightfall_run_imu_test_once();
       }
+      else if (op_case == 2U)
+      {
+        nightfall_run_encoder_test_once();
+      }
       else if (op_case == 3U)
       {
         nightfall_run_wall_sensor_test_once();
+      }
+      else if (op_case == 4U)
+      {
+        nightfall_run_fan_pwm_test_once();
       }
       else
       {
@@ -2453,20 +2721,7 @@ static void nightfall_op_execute_sub(uint8_t mode, uint8_t sub)
 
   if ((mode >= 2U) && (mode <= 7U))
   {
-    if (sub == 8U)
-    {
-      nightfall_op_run_test_after_delay('1');
-    }
-    else if (sub == 0U)
-    {
-      nightfall_op_run_test_after_delay('3');
-    }
-    else
-    {
-      trace_printf("[OP-UI] no-op: F405 mode%u case0 sub%u is not fully ported on F413 yet\r\n",
-                   (unsigned int)mode,
-                   (unsigned int)sub);
-    }
+    nightfall_op_run_case0_sub_after_delay(mode, sub);
   }
   else if (mode == 1U)
   {
@@ -2682,6 +2937,33 @@ static void nightfall_motor_set(bool enable,
   }
 
   HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_SET);
+}
+
+static void nightfall_run_fan_pwm_test_once(void)
+{
+  const uint16_t duties[3] = {200U, 500U, 800U};
+  uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim10);
+  uint8_t i;
+
+  if (HAL_TIM_PWM_Start(&htim10, TIM_CHANNEL_1) != HAL_OK)
+  {
+    trace_printf("[HW-TEST][Fan] PWM start failed\r\n");
+    return;
+  }
+
+  trace_printf("[HW-TEST][Fan] start ARR=%lu\r\n", (unsigned long)arr);
+  for (i = 0U; i < 3U; i++)
+  {
+    uint32_t compare = ((uint32_t)duties[i] * arr) / 1000U;
+    __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, compare);
+    trace_printf("[HW-TEST][Fan] duty=%u/1000 compare=%lu\r\n",
+                 (unsigned int)duties[i],
+                 (unsigned long)compare);
+    HAL_Delay(1200U);
+  }
+  __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, 0U);
+  (void)HAL_TIM_PWM_Stop(&htim10, TIM_CHANNEL_1);
+  trace_printf("[HW-TEST][Fan] done\r\n");
 }
 
 static void nightfall_run_motor_driver_test_once(void)
@@ -3850,6 +4132,7 @@ int main(void)
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
+  nightfall_boot_buzzer_pattern();
 
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
