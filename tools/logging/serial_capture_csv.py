@@ -219,6 +219,7 @@ def main() -> int:
         fw_meta_written_count: int = 0
         last_printed_columns: Optional[str] = None
         last_printed_file: Optional[Path] = None
+        expected_csv_columns = 8
         stdin_fd: Optional[int] = None
         stdin_pending = ""
         if sys.stdin.isatty():
@@ -285,6 +286,9 @@ def main() -> int:
 
                 if line.startswith("#mm_columns="):
                     pending_columns = line
+                    formatted_columns = _format_mm_columns(pending_columns)
+                    if formatted_columns:
+                        expected_csv_columns = len(formatted_columns.split(","))
                     if out_path is None:
                         if pending_columns != last_printed_columns:
                             _print_mm_columns(pending_columns, None)
@@ -301,7 +305,7 @@ def main() -> int:
                         wrote_columns = True
                     continue
 
-                if line.startswith("#fw_"):
+                if line.startswith("#fw_") or line.startswith("#log_format=") or line.startswith("#last_test_"):
                     if line not in pending_fw_meta:
                         pending_fw_meta.append(line)
                         print(f"[INFO] FW Meta: {line}", file=sys.stderr)
@@ -313,7 +317,7 @@ def main() -> int:
                     continue
 
                 parts = [p.strip() for p in line.split(",")]
-                if len(parts) == 8 and parts[0].isdigit() and all(_is_num(p) for p in parts[1:]):
+                if len(parts) == expected_csv_columns and parts[0].isdigit() and all(_is_num(p) for p in parts[1:]):
                     ts = int(parts[0])
                     if out_path is None or (prev_ts is not None and ts < prev_ts):
                         out_path = _new_output_file(save_dir)

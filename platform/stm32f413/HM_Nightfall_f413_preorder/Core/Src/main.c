@@ -1318,7 +1318,11 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     trace_printf("#last_test_dist_mm=%.0f\r\n", (double)g_last_test_distance_mm);
     trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
   }
-  trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
+  trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,");
+  trace_printf("distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
+  trace_printf("target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,");
+  trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
+  trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
 
   for (i = dump_count; i > 0U; i--)
   {
@@ -1333,7 +1337,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
       return;
     }
 
-    trace_printf("%lu,%lu,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%u,%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
+    trace_printf("%lu,%lu,%u,%u,%u,%u,%ld,%ld,%ld,%ld,",
                  (unsigned long)rec.timestamp_ms,
                  (unsigned long)rec.seq,
                  (unsigned int)rec.op_mode,
@@ -1343,7 +1347,8 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
                  (long)rec.distance_mm,
                  (long)rec.angle_mdeg,
                  (long)rec.target_velocity_mm_s,
-                 (long)rec.real_velocity_mm_s,
+                 (long)rec.real_velocity_mm_s);
+    trace_printf("%ld,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%u,",
                  (long)rec.accel_velocity_mm_s,
                  (long)rec.target_omega_mdps,
                  (long)rec.real_omega_mdps,
@@ -1353,7 +1358,8 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
                  (int)rec.encoder_r,
                  (int)rec.motor_out_l,
                  (int)rec.motor_out_r,
-                 (unsigned int)rec.adc_fr,
+                 (unsigned int)rec.adc_fr);
+    trace_printf("%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
                  (unsigned int)rec.adc_r,
                  (unsigned int)rec.adc_fl,
                  (unsigned int)rec.adc_l,
