@@ -190,6 +190,13 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_ENCODER_SIGN_L     (1L)
 #define NIGHTFALL_F413_ENCODER_SIGN_R     (-1L)
 #define NIGHTFALL_F413_MOTOR_PWM_MAX      (1000U)
+#define NIGHTFALL_F413_OP_MODE_MAX        (7U)
+#define NIGHTFALL_F413_OP_UI_POLL_MS      (40U)
+#define NIGHTFALL_F413_OP_BUTTON_LOCK_MS  (250U)
+#define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (300)
+#define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (120)
+#define NIGHTFALL_F413_OP_ENTER_STREAK    (3U)
+#define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 
 typedef enum
 {
@@ -242,6 +249,7 @@ static void nightfall_motor_set(bool enable, bool left_forward, bool right_forwa
                                 uint16_t left_duty, uint16_t right_duty);
 static void nightfall_test_run(uint8_t test_id);
 static void nightfall_test_arm_for_button(uint8_t test_id);
+static void nightfall_op_ui_step(void);
 static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev);
 static void nightfall_run_imu_manual_turn_test_once(void);
 static void nightfall_run_imu_accel_test_once(void);
@@ -251,6 +259,11 @@ static uint8_t g_last_test_id = 0U;
 static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABORT_NONE;
 static float g_last_test_distance_mm = 0.0f;
 static float g_last_test_angle_deg = 0.0f;
+static uint8_t g_op_mode = 0U;
+static uint32_t g_op_next_ui_poll_ms = 0U;
+static uint32_t g_op_button_lock_until_ms = 0U;
+static uint8_t g_op_enter_streak = 0U;
+static bool g_op_button_prev_pressed = false;
 
 static const char* nightfall_identity_family_name(uint32_t family)
 {
@@ -1222,6 +1235,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
+  trace_printf("[OP-UI]   PUSH=mode++, FR wall only=enter, LED binary mode 0:idle 1:wall 2:S3 3:R90 4:L90 5:S3R90S3 6:search 7:shortest\r\n");
 }
 
 static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
@@ -1535,6 +1549,44 @@ static void nightfall_set_all_leds(GPIO_PinState state)
   HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, state);
 }
 
+static void nightfall_op_led_show_mode(uint8_t mode)
+{
+  HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, (mode & 0x01U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, (mode & 0x02U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, (mode & 0x04U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+static void nightfall_buzzer_beep_ms(uint16_t period, uint16_t ms)
+{
+  if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
+  {
+    return;
+  }
+
+  __HAL_TIM_SET_AUTORELOAD(&htim11, period);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, period / 2U);
+  HAL_Delay(ms);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
+  (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+}
+
+static void nightfall_op_beep_mode(uint8_t mode)
+{
+  uint16_t period = (uint16_t)(1100U - ((uint16_t)mode * 90U));
+  if (period < 350U)
+  {
+    period = 350U;
+  }
+  nightfall_buzzer_beep_ms(period, 60U);
+}
+
+static void nightfall_op_beep_enter(void)
+{
+  nightfall_buzzer_beep_ms(650U, 70U);
+  HAL_Delay(50U);
+  nightfall_buzzer_beep_ms(650U, 70U);
+}
+
 static void nightfall_run_led_test_once(void)
 {
   trace_printf("[HW-TEST][LED] all on for %lu ms\r\n",
@@ -1605,6 +1657,67 @@ static void nightfall_ir_emitters_set(GPIO_PinState fr,
   HAL_GPIO_WritePin(IR_R_GPIO_Port, IR_R_Pin, r);
   HAL_GPIO_WritePin(IR_FL_GPIO_Port, IR_FL_Pin, fl);
   HAL_GPIO_WritePin(IR_L_GPIO_Port, IR_L_Pin, l);
+}
+
+static bool nightfall_op_read_front_sensor_delta(int32_t* fr_delta, int32_t* fl_delta)
+{
+  uint16_t fr_off = 0U;
+  uint16_t fl_off = 0U;
+  uint16_t fr_on = 0U;
+  uint16_t fl_on = 0U;
+  bool ok = false;
+
+  if ((fr_delta == NULL) || (fl_delta == NULL))
+  {
+    return false;
+  }
+
+  *fr_delta = 0;
+  *fl_delta = 0;
+
+  if (!nightfall_adc_prepare_single_conversion())
+  {
+    return false;
+  }
+
+  nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
+  HAL_Delay(1U);
+  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_off) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_off))
+  {
+    goto op_sensor_cleanup;
+  }
+
+  nightfall_ir_emitters_set(GPIO_PIN_SET, GPIO_PIN_RESET, GPIO_PIN_SET, GPIO_PIN_RESET);
+  HAL_Delay(1U);
+  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_on) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_on))
+  {
+    goto op_sensor_cleanup;
+  }
+
+  *fr_delta = (int32_t)fr_on - (int32_t)fr_off;
+  *fl_delta = (int32_t)fl_on - (int32_t)fl_off;
+  ok = true;
+
+op_sensor_cleanup:
+  nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
+  MX_ADC1_Init();
+  return ok;
+}
+
+static bool nightfall_op_enter_sensor_active(void)
+{
+  int32_t fr_delta = 0;
+  int32_t fl_delta = 0;
+
+  if (!nightfall_op_read_front_sensor_delta(&fr_delta, &fl_delta))
+  {
+    return false;
+  }
+
+  return (fr_delta >= NIGHTFALL_F413_OP_ENTER_DELTA_ADC) &&
+         (fl_delta <= NIGHTFALL_F413_OP_ENTER_RELEASE_ADC);
 }
 
 static void nightfall_run_wall_sensor_test_once(void)
@@ -2038,6 +2151,137 @@ static void nightfall_run_buzzer_test_once(void)
   (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
 
   trace_printf("[HW-TEST][Buzzer] PASS(beep)\r\n");
+}
+
+static const char* nightfall_op_mode_name(uint8_t mode)
+{
+  switch (mode)
+  {
+    case 0U: return "idle";
+    case 1U: return "wall-sensor-test";
+    case 2U: return "straight-S3";
+    case 3U: return "right-90";
+    case 4U: return "left-90";
+    case 5U: return "S3-R90-S3";
+    case 6U: return "search-entry";
+    case 7U: return "shortest-entry";
+    default: return "unknown";
+  }
+}
+
+static void nightfall_op_execute_mode(uint8_t mode)
+{
+  trace_printf("[OP-UI] enter mode=%u %s\r\n",
+               (unsigned int)mode,
+               nightfall_op_mode_name(mode));
+  nightfall_op_beep_enter();
+  nightfall_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(120U);
+  nightfall_op_led_show_mode(mode);
+
+  switch (mode)
+  {
+    case 0U:
+      trace_printf("[OP-UI] idle selected\r\n");
+      break;
+    case 1U:
+      nightfall_run_wall_sensor_test_once();
+      break;
+    case 2U:
+      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_test_run('1');
+      break;
+    case 3U:
+      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_test_run('3');
+      break;
+    case 4U:
+      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_test_run('4');
+      break;
+    case 5U:
+      g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_test_run('5');
+      break;
+    case 6U:
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_run_search_trace_entry_once();
+      break;
+    case 7U:
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_run_shortest_trace_entry_once();
+      break;
+    default:
+      break;
+  }
+
+  g_op_enter_streak = 0U;
+  g_op_button_lock_until_ms = HAL_GetTick() + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
+  nightfall_op_led_show_mode(g_op_mode);
+}
+
+static void nightfall_op_ui_step(void)
+{
+  uint32_t now = HAL_GetTick();
+  bool button_pressed;
+
+  if ((int32_t)(now - g_op_next_ui_poll_ms) < 0)
+  {
+    return;
+  }
+  g_op_next_ui_poll_ms = now + NIGHTFALL_F413_OP_UI_POLL_MS;
+
+  if (g_trace_log_auto_enabled != 0U || f413_ctrl_is_running())
+  {
+    return;
+  }
+  if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
+  {
+    return;
+  }
+
+  button_pressed = nightfall_run_stop_switch_pressed();
+  if (button_pressed)
+  {
+    if (!g_op_button_prev_pressed && ((int32_t)(now - g_op_button_lock_until_ms) >= 0))
+    {
+      g_op_mode++;
+      if (g_op_mode > NIGHTFALL_F413_OP_MODE_MAX)
+      {
+        g_op_mode = 0U;
+      }
+      g_op_button_lock_until_ms = now + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
+      g_op_enter_streak = 0U;
+      nightfall_op_led_show_mode(g_op_mode);
+      nightfall_op_beep_mode(g_op_mode);
+      trace_printf("[OP-UI] mode=%u %s\r\n",
+                   (unsigned int)g_op_mode,
+                   nightfall_op_mode_name(g_op_mode));
+    }
+    g_op_button_prev_pressed = true;
+    return;
+  }
+  g_op_button_prev_pressed = false;
+
+  if (nightfall_op_enter_sensor_active())
+  {
+    if (g_op_enter_streak < NIGHTFALL_F413_OP_ENTER_STREAK)
+    {
+      g_op_enter_streak++;
+    }
+    if (g_op_enter_streak >= NIGHTFALL_F413_OP_ENTER_STREAK)
+    {
+      nightfall_op_execute_mode(g_op_mode);
+    }
+  }
+  else
+  {
+    g_op_enter_streak = 0U;
+  }
 }
 
 static void nightfall_motor_set(bool enable,
@@ -3328,6 +3572,10 @@ int main(void)
 
   f413_ctrl_init();
   trace_printf("[CTRL] 1kHz velocity control initialized\r\n");
+  nightfall_op_led_show_mode(g_op_mode);
+  trace_printf("[OP-UI] ready mode=%u %s\r\n",
+               (unsigned int)g_op_mode,
+               nightfall_op_mode_name(g_op_mode));
 
   /* USER CODE END 2 */
 
@@ -3340,6 +3588,7 @@ int main(void)
     /* USER CODE BEGIN 3 */
     uint8_t cmd = 0U;
     nightfall_trace_log_auto_step();
+    nightfall_op_ui_step();
 
     /* ボタンアーム実行: ボタン押下でアーム済みテストを開始 */
     if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
