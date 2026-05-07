@@ -277,6 +277,7 @@
 - Step12: KeriLabの `.maze` テキスト形式を `tools/solver_host/run_solver_host.sh --maze <file>` で直接読み込めるようにし、`tools/solver_host/run_kerilab_samples.sh` で代表32x32過去大会迷路を取得・一括検証できる導線を追加した
 - Step13: 小回りターン（`300/400`）と大回りターン（`501` など）を含む `path[]` 導出・F413 runner解釈まで確認できたため、F405 mini相当へのF413 solver/path移植は完了扱いとする。斜め経路導出・パス変換と斜め走行調整は既知課題があり、移植後の別フェーズ課題として扱う
 - Step14: UARTケーブルの抜き差しを減らすため、F413側へF405風の操作UI基盤を追加。PUSHで0〜7のモードを進め、LED1〜3で2進表示し、前右壁センサ反応かつ前左非反応をenterとして実行する。現時点の割当は `0=idle`, `1=wall-sensor-test`, `2=S3`, `3=R90`, `4=L90`, `5=S3+R90+S3`, `6=search-entry`, `7=shortest-entry`
+- Step14補足: mode1の実機確認で、壁なし時のセンサ差分は概ね0〜50、壁あり時は1000以上と確認。操作時に壁ではなく手をかざしてもenterしやすいよう、F413操作UIのenter閾値を `FR>=150` / `FL<=250` に調整した
 - 次ステップ: 実機でモータを浮かせた状態から、PUSHモード送り・LED表示・前右センサenter・mode1壁センサ確認を先に確認する。その後、床上ではmode2〜5の低速調整用テスト、mode6/7の探索/最短入口へ進む
 
 ---
