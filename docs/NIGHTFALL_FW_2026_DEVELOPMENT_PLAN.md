@@ -273,7 +273,8 @@
 - Step8補足: 現在の作業ツリーでは `NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1`。`z/j` は `solver_build_path()` 成功時に closed-loop solver path session を実行し、失敗時のみ safe fallback へ戻る
 - Step9: 調整用UARTテストを追加。`1`=S3直進、`2`=S6直進、`3`=R90、`4`=L90、`5`=S3+R90+S3、`6`〜`9`=片側モータopen-loop+encoder、`F`=ボタンアーム実行
 - Step10: F405 mini相当へのパス実行移植の第2ステップとして、F413 solver path runner の直進/斜め直進でIMU方位保持を有効化し、旋回到達判定を符号付き角度へ変更した
-- 次ステップ: 実機で `j/J` または `z/Z` を広い場所・低速条件で確認し、直進中の方位保持、右/左旋回の到達判定、斜め・45/V90/135コードを含む経路をFRAM CSVログで確認する
+- Step11: 実機迷路走行に依存せず経路導出を確認するため、`tools/solver_host/run_solver_host.sh` を追加。F413向け `solver_build_path()` をホスト上でコンパイルし、内蔵サンプル迷路またはKeriLabのC配列形式サンプルで `path[]` コード列を確認できる
+- 次ステップ: 過去大会迷路をKeriLabビューアのC配列形式で保存し、`tools/solver_host/run_solver_host.sh --maze-c-array <file> --origin top-left --mode 2 --case 1` で経路導出を確認する。実機は調整完了後に `j/J` または `z/Z` を広い場所・低速条件で確認する
 
 ---
 
