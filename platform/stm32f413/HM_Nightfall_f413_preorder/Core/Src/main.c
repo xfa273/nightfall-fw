@@ -208,6 +208,8 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_OP_TEST_VEL_CAP    (450.0f)
 #define NIGHTFALL_F413_OP_TEST_DIAG_SCALE (0.75f)
+#define NIGHTFALL_F413_WALL_END_MONITOR_MS (4000U)
+#define NIGHTFALL_F413_WALL_END_MONITOR_SAMPLE_MS (50U)
 
 typedef enum
 {
@@ -249,6 +251,25 @@ typedef struct
   bool saturated;
 } nightfall_wall_sensor_snapshot_t;
 
+typedef struct
+{
+  bool right_wall;
+  bool left_wall;
+  bool prev_right_wall;
+  bool prev_left_wall;
+  bool detected_r;
+  bool detected_l;
+  float dist_r_mm;
+  float dist_l_mm;
+  int32_t deriv_r;
+  int32_t deriv_l;
+  int32_t prev_r_delta;
+  int32_t prev_l_delta;
+  uint8_t deriv_fall_count_r;
+  uint8_t deriv_fall_count_l;
+  bool initialized;
+} nightfall_wall_end_state_t;
+
 static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq);
 static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* lhs,
                                                  const nvm_trace_log_record_t* rhs);
@@ -287,6 +308,9 @@ static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t
 static bool nightfall_adc_prepare_single_conversion(void);
 static bool nightfall_adc_read_single_channel(uint32_t channel, uint16_t* out);
 static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out);
+static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
+static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
+static void nightfall_run_wall_end_monitor_once(void);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
 static void nightfall_test_run(uint8_t test_id);
@@ -312,6 +336,7 @@ static uint32_t g_op_button_lock_until_ms = 0U;
 static uint8_t g_op_enter_streak = 0U;
 static bool g_op_button_prev_pressed = false;
 static bool g_op_enter_latched = false;
+static nightfall_wall_end_state_t g_wall_end;
 
 static const char* nightfall_identity_family_name(uint32_t family)
 {
@@ -1504,7 +1529,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
@@ -2116,6 +2141,173 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
 }
+static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall)
+{
+  memset(&g_wall_end, 0, sizeof(g_wall_end));
+  if (wall == NULL)
+  {
+    return;
+  }
+
+  g_wall_end.right_wall = wall->r_delta > WALL_END_THR_R_HIGH;
+  g_wall_end.left_wall = wall->l_delta > WALL_END_THR_L_HIGH;
+  g_wall_end.prev_right_wall = g_wall_end.right_wall;
+  g_wall_end.prev_left_wall = g_wall_end.left_wall;
+  g_wall_end.prev_r_delta = wall->r_delta;
+  g_wall_end.prev_l_delta = wall->l_delta;
+  g_wall_end.initialized = true;
+}
+
+static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on)
+{
+  bool right_wall;
+  bool left_wall;
+
+  if (wall == NULL)
+  {
+    return;
+  }
+  if (!g_wall_end.initialized)
+  {
+    nightfall_wall_end_reset_from_snapshot(wall);
+  }
+
+  g_wall_end.deriv_r = wall->r_delta - g_wall_end.prev_r_delta;
+  g_wall_end.deriv_l = wall->l_delta - g_wall_end.prev_l_delta;
+  g_wall_end.prev_r_delta = wall->r_delta;
+  g_wall_end.prev_l_delta = wall->l_delta;
+
+  right_wall = g_wall_end.right_wall;
+  left_wall = g_wall_end.left_wall;
+
+  if (right_wall)
+  {
+    if (wall->r_delta < WALL_END_THR_R_LOW)
+    {
+      right_wall = false;
+    }
+  }
+  else if (wall->r_delta > WALL_END_THR_R_HIGH)
+  {
+    right_wall = true;
+  }
+
+  if (left_wall)
+  {
+    if (wall->l_delta < WALL_END_THR_L_LOW)
+    {
+      left_wall = false;
+    }
+  }
+  else if (wall->l_delta > WALL_END_THR_L_HIGH)
+  {
+    left_wall = true;
+  }
+
+  if (right_wall && (g_wall_end.deriv_r < -(int32_t)WALL_END_DERIV_FALL_THR))
+  {
+    if (g_wall_end.deriv_fall_count_r < 255U)
+    {
+      g_wall_end.deriv_fall_count_r++;
+    }
+  }
+  else
+  {
+    g_wall_end.deriv_fall_count_r = 0U;
+  }
+
+  if (left_wall && (g_wall_end.deriv_l < -(int32_t)WALL_END_DERIV_FALL_THR))
+  {
+    if (g_wall_end.deriv_fall_count_l < 255U)
+    {
+      g_wall_end.deriv_fall_count_l++;
+    }
+  }
+  else
+  {
+    g_wall_end.deriv_fall_count_l = 0U;
+  }
+
+  if (g_wall_end.deriv_fall_count_r >= 2U)
+  {
+    right_wall = false;
+    g_wall_end.deriv_fall_count_r = 0U;
+  }
+  if (g_wall_end.deriv_fall_count_l >= 2U)
+  {
+    left_wall = false;
+    g_wall_end.deriv_fall_count_l = 0U;
+  }
+
+  if (g_wall_end.prev_right_wall && !right_wall && gate_on && !g_wall_end.detected_r)
+  {
+    g_wall_end.detected_r = true;
+    g_wall_end.dist_r_mm = f413_ctrl_get_distance();
+  }
+  if (g_wall_end.prev_left_wall && !left_wall && gate_on && !g_wall_end.detected_l)
+  {
+    g_wall_end.detected_l = true;
+    g_wall_end.dist_l_mm = f413_ctrl_get_distance();
+  }
+
+  g_wall_end.right_wall = right_wall;
+  g_wall_end.left_wall = left_wall;
+  g_wall_end.prev_right_wall = right_wall;
+  g_wall_end.prev_left_wall = left_wall;
+}
+
+static void nightfall_run_wall_end_monitor_once(void)
+{
+  nightfall_wall_sensor_snapshot_t wall;
+  uint32_t start_ms;
+  uint32_t now;
+
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    trace_printf("[HW-TEST][WallEnd] FAIL(read initial)\r\n");
+    return;
+  }
+
+  nightfall_wall_end_reset_from_snapshot(&wall);
+  trace_printf("[HW-TEST][WallEnd] start %lums sample=%lums R=%ld L=%ld wallR=%u wallL=%u\r\n",
+               (unsigned long)NIGHTFALL_F413_WALL_END_MONITOR_MS,
+               (unsigned long)NIGHTFALL_F413_WALL_END_MONITOR_SAMPLE_MS,
+               (long)wall.r_delta,
+               (long)wall.l_delta,
+               (unsigned int)g_wall_end.right_wall,
+               (unsigned int)g_wall_end.left_wall);
+
+  start_ms = HAL_GetTick();
+  do
+  {
+    HAL_Delay(NIGHTFALL_F413_WALL_END_MONITOR_SAMPLE_MS);
+    now = HAL_GetTick();
+    if (!nightfall_wall_sensor_read_snapshot(&wall))
+    {
+      trace_printf("[HW-TEST][WallEnd] FAIL(read sample)\r\n");
+      return;
+    }
+
+    nightfall_wall_end_update(&wall, true);
+    trace_printf("[HW-TEST][WallEnd] t=%lu R=%ld L=%ld dR=%ld dL=%ld wallR=%u wallL=%u endR=%u endL=%u\r\n",
+                 (unsigned long)(now - start_ms),
+                 (long)wall.r_delta,
+                 (long)wall.l_delta,
+                 (long)g_wall_end.deriv_r,
+                 (long)g_wall_end.deriv_l,
+                 (unsigned int)g_wall_end.right_wall,
+                 (unsigned int)g_wall_end.left_wall,
+                 (unsigned int)g_wall_end.detected_r,
+                 (unsigned int)g_wall_end.detected_l);
+  } while ((now - start_ms) < NIGHTFALL_F413_WALL_END_MONITOR_MS);
+
+  trace_printf("[HW-TEST][WallEnd] done endR=%u distR=%.0f endL=%u distL=%.0f\r\n",
+               (unsigned int)g_wall_end.detected_r,
+               (double)g_wall_end.dist_r_mm,
+               (unsigned int)g_wall_end.detected_l,
+               (double)g_wall_end.dist_l_mm);
+}
+
 static void nightfall_run_switch_test_once(void)
 {
   GPIO_PinState raw = HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin);
@@ -4133,6 +4325,10 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'w':
       nightfall_run_wall_sensor_test_once();
+      break;
+
+    case 'W':
+      nightfall_run_wall_end_monitor_once();
       break;
 
     case 'p':
