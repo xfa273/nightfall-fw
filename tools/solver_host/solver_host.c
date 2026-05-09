@@ -191,6 +191,111 @@ static bool load_c_array_file(const char *path_name, bool top_left_origin)
     return true;
 }
 
+static bool load_search_dump_file(const char *path_name)
+{
+    char *buf = NULL;
+    bool seen[MAZE_SIZE] = {false};
+    unsigned int row_count = 0U;
+    unsigned int detected_size = 0U;
+
+    if (!read_file_bytes(path_name, &buf)) {
+        return false;
+    }
+
+    s_width = MAZE_SIZE;
+    s_height = MAZE_SIZE;
+    clear_sample_area(s_width, s_height);
+
+    char *p = buf;
+    while (*p != '\0') {
+        char *line = p;
+        char *end = strpbrk(p, "\r\n");
+        if (end != NULL) {
+            *end = '\0';
+            p = end + 1;
+            if ((*p == '\n' || *p == '\r') && *p != *end) {
+                p++;
+            }
+        } else {
+            p += strlen(p);
+        }
+
+        char *tag = strstr(line, "[SEARCH-DUMP]");
+        if (tag == NULL) {
+            continue;
+        }
+
+        unsigned int header_size = 0U;
+        if (sscanf(tag, "[SEARCH-DUMP] source=%*s size=%u", &header_size) == 1) {
+            if (header_size == 0U || header_size > MAZE_SIZE) {
+                fprintf(stderr, "invalid SEARCH-DUMP size: %u\n", header_size);
+                free(buf);
+                return false;
+            }
+            detected_size = header_size;
+            s_width = header_size;
+            s_height = header_size;
+            continue;
+        }
+
+        unsigned int y = 0U;
+        char *colon = strchr(tag, ':');
+        if (colon == NULL || sscanf(tag, "[SEARCH-DUMP] y=%u:", &y) != 1) {
+            continue;
+        }
+        if (y >= MAZE_SIZE) {
+            fprintf(stderr, "SEARCH-DUMP row y=%u is outside MAZE_SIZE=%u\n",
+                    y, (unsigned int)MAZE_SIZE);
+            free(buf);
+            return false;
+        }
+        if (detected_size != 0U && y >= detected_size) {
+            fprintf(stderr, "SEARCH-DUMP row y=%u is outside dump size=%u\n", y, detected_size);
+            free(buf);
+            return false;
+        }
+
+        char *hex = colon + 1;
+        while (isspace((unsigned char)*hex)) {
+            hex++;
+        }
+        unsigned int expected = (detected_size != 0U) ? detected_size : MAZE_SIZE;
+        for (unsigned int x = 0U; x < expected; x++) {
+            if (!isxdigit((unsigned char)hex[x * 2U]) || !isxdigit((unsigned char)hex[x * 2U + 1U])) {
+                fprintf(stderr, "SEARCH-DUMP row y=%u is too short at x=%u\n", y, x);
+                free(buf);
+                return false;
+            }
+            char byte_text[3] = {hex[x * 2U], hex[x * 2U + 1U], '\0'};
+            unsigned long cell = strtoul(byte_text, NULL, 16);
+            s_walls_bl[y][x] = (uint8_t)((cell >> 4U) & 0x0FU);
+        }
+        seen[y] = true;
+        row_count++;
+    }
+
+    if (detected_size == 0U) {
+        detected_size = MAZE_SIZE;
+        s_width = MAZE_SIZE;
+        s_height = MAZE_SIZE;
+    }
+    if (row_count != detected_size) {
+        fprintf(stderr, "SEARCH-DUMP expected %u rows, got %u\n", detected_size, row_count);
+        free(buf);
+        return false;
+    }
+    for (unsigned int y = 0U; y < detected_size; y++) {
+        if (!seen[y]) {
+            fprintf(stderr, "SEARCH-DUMP missing row y=%u\n", y);
+            free(buf);
+            return false;
+        }
+    }
+
+    free(buf);
+    return true;
+}
+
 static bool line_has_horizontal_wall(const char *line, unsigned int x)
 {
     size_t pos = (size_t)x * 4U + 1U;
@@ -616,7 +721,7 @@ static void print_path_summary(void)
 
 static void print_usage(const char *argv0)
 {
-    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver] [--explore-sim] [--explore-verbose] [--max-steps N]\n", argv0);
+    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--search-dump FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver] [--explore-sim] [--explore-verbose] [--max-steps N]\n", argv0);
 }
 
 static bool run_solver_quiet(uint8_t mode, uint8_t case_index)
@@ -649,6 +754,7 @@ int main(int argc, char **argv)
 {
     const char *maze_file = NULL;
     const char *maze_text_file = NULL;
+    const char *search_dump_file = NULL;
     bool top_left_origin = true;
     bool verbose_solver = false;
     bool explore_sim = false;
@@ -662,6 +768,8 @@ int main(int argc, char **argv)
             maze_file = argv[++i];
         } else if (strcmp(argv[i], "--maze") == 0 && (i + 1) < argc) {
             maze_text_file = argv[++i];
+        } else if (strcmp(argv[i], "--search-dump") == 0 && (i + 1) < argc) {
+            search_dump_file = argv[++i];
         } else if (strcmp(argv[i], "--origin") == 0 && (i + 1) < argc) {
             const char *origin = argv[++i];
             if (strcmp(origin, "top-left") == 0) {
@@ -693,7 +801,17 @@ int main(int argc, char **argv)
         }
     }
 
-    if (maze_text_file != NULL) {
+    if (search_dump_file != NULL) {
+        if (maze_text_file != NULL || maze_file != NULL) {
+            print_usage(argv[0]);
+            return 2;
+        }
+        if (!load_search_dump_file(search_dump_file)) {
+            return 1;
+        }
+        printf("[host] loaded search_dump=%s size=%ux%u format=f413-uart\n",
+               search_dump_file, s_width, s_height);
+    } else if (maze_text_file != NULL) {
         if (!load_maze_text_file(maze_text_file)) {
             return 1;
         }
