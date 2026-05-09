@@ -7,6 +7,7 @@
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
+- `serial_terminal.py`: ST-LINK VCPなどで使うシンプルな対話式UART端末
 - `serial_capture_csv.sh`: シェル版CSVキャプチャ
 - `serial_minicom.sh`: minicomベース受信
 - `serial_monitor.sh`: シンプル受信
@@ -24,6 +25,28 @@
 - 起動時に自動送信する場合: `python3 tools/logging/serial_capture_csv.py --send q,y,V`
 - 起動後に手入力する場合: 実行中ターミナルで `q,y,V` と入力して Enter
 - コマンドは半角ASCIIで入力してください（全角文字は送信せず警告表示します）。
+
+## ST-LINK V3 MINIE VCPでのUART通信
+
+F413の現行ファームは `USART1` を `115200 8N1` で使います。ST-LINK V3 MINIEの `TX/RX/GND` を機体側UARTへ接続している場合、次でシリアル端末を開けます。
+
+```bash
+python3 tools/logging/serial_terminal.py
+```
+
+ポート候補を確認する場合:
+
+```bash
+python3 tools/logging/serial_terminal.py --list
+```
+
+ポートを明示する場合:
+
+```bash
+python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
+```
+
+終了は `Ctrl-]` または `Ctrl-C` です。`tools/logging/serial_monitor.sh` と `tools/serial_monitor.sh` からも同じ端末を呼び出せます。
 
 ## `analyze_trace_csv.py` のディレクトリ指定
 

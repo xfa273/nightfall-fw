@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+from typing import Optional
+
+
+CUBE_CLI_CANDIDATES = [
+    "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOS/bin/STM32_Programmer_CLI",
+    "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI",
+]
+
+
+def repo_root_from_this_file() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+def find_cube_cli(explicit: Optional[str]) -> str:
+    if explicit:
+        p = Path(explicit).expanduser()
+        if not p.is_file():
+            raise RuntimeError(f"STM32_Programmer_CLI が見つかりません: {p}")
+        return str(p)
+
+    found = shutil.which("STM32_Programmer_CLI")
+    if found:
+        return found
+
+    for candidate in CUBE_CLI_CANDIDATES:
+        if Path(candidate).is_file():
+            return candidate
+
+    raise RuntimeError("STM32_Programmer_CLI が見つかりません。CubeProgrammerのインストール先を --cli で指定してください")
+
+
+def default_image(repo_root: Path) -> Path:
+    candidates = [
+        repo_root / "build/Debug/nightfall_stm32f413.elf",
+        repo_root / "build/Debug/nightfall_stm32f413.bin",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    raise RuntimeError("F413の書き込み対象が見つかりません。先に cmake --build --preset Debug-stm32f413 を実行してください")
+
+
+def run(cmd: list, cwd: Optional[Path] = None) -> None:
+    print("$ " + " ".join(cmd))
+    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+
+
+def build_connect_args(args: argparse.Namespace) -> list:
+    conn = ["port=SWD", f"freq={args.freq}", f"mode={args.mode}", f"reset={args.reset_mode}"]
+    if args.sn:
+        conn.append(f"sn={args.sn}")
+    if args.shared:
+        conn.append("shared")
+    return ["-c", *conn]
+
+
+def main() -> int:
+    repo_root = repo_root_from_this_file()
+
+    ap = argparse.ArgumentParser(description="Flash Nightfall STM32F413 via ST-LINK SWD")
+    ap.add_argument("--image", "--elf", "--bin", dest="image", default=None, help="ELF/BIN/HEX file to write")
+    ap.add_argument("--address", default="0x08000000", help="base address for .bin files")
+    ap.add_argument("--build", action="store_true", help="build Debug-stm32f413 before flashing")
+    ap.add_argument("--cli", default=os.environ.get("STM32_PROGRAMMER_CLI"), help="path to STM32_Programmer_CLI")
+    ap.add_argument("--sn", default=os.environ.get("STLINK_SN"), help="ST-LINK serial number")
+    ap.add_argument("--freq", default="4000", help="SWD frequency in kHz")
+    ap.add_argument("--mode", default="NORMAL", choices=["NORMAL", "HOTPLUG", "UR", "POWERDOWN", "HWRSTPULSE"], help="CubeProgrammer connection mode")
+    ap.add_argument("--reset-mode", default="SWrst", choices=["SWrst", "HWrst", "Crst"], help="CubeProgrammer reset mode")
+    ap.add_argument("--no-verify", action="store_true", help="skip verify")
+    ap.add_argument("--no-reset", action="store_true", help="do not reset after write")
+    ap.add_argument("--shared", action="store_true", help="use ST-LINK shared mode")
+    ap.add_argument("--list", action="store_true", help="list ST-LINK probes and exit")
+    args = ap.parse_args()
+
+    cli = find_cube_cli(args.cli)
+
+    if args.list:
+        run([cli, "-l", "stlink-only"])
+        return 0
+
+    if args.build:
+        run(["cmake", "--build", "--preset", "Debug-stm32f413"], cwd=repo_root)
+
+    image = Path(args.image).expanduser() if args.image else default_image(repo_root)
+    if not image.is_absolute():
+        image = repo_root / image
+    if not image.is_file():
+        raise RuntimeError(f"書き込み対象が見つかりません: {image}")
+
+    cmd = [cli, *build_connect_args(args), "-w", str(image)]
+    if image.suffix.lower() == ".bin":
+        cmd.append(args.address)
+    if not args.no_verify:
+        cmd.append("-v")
+    if not args.no_reset:
+        cmd.append("-rst")
+
+    print(f"Image: {image} ({image.stat().st_size} bytes)")
+    run(cmd, cwd=repo_root)
+    print("SUCCESS")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: command failed with exit code {e.returncode}", file=sys.stderr)
+        raise SystemExit(e.returncode)
+    except Exception as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        raise SystemExit(1)
