@@ -291,6 +291,7 @@
 - Step25: F405互換操作UIの非走行メンテナンス移植として、F413 `mode9 case6..9` を接続した。case6は壁閾値/壁ADC確認、case7は非破壊NVMステータス表示、case8はidentity表示、case9はsensor params表示のみを行い、実パラメータ保存は安全のため行わない。
 - Step26: F413 UART `@` の `[SEARCH-DUMP]` をPC側で確認しやすくするため、`tools/logging/render_search_dump.py` を追加した。FRAM map dumpをASCII迷路へ変換し、境界壁欠落や隣接セル壁不一致を要約表示できる。通常モードではF405互換の開始セル強制東壁だけ片側表現として許容し、`--strict-consistency` で厳密検出できる。
 - Step27: 実機探索後に保存されたFRAM mapを実走なしで最短経路生成へ接続確認できるよう、`tools/solver_host/run_solver_host.sh --search-dump <log>` を追加した。F413 UART `@` の `[SEARCH-DUMP]` を読み込み、`map[y][x] >> 4` を壁情報として `solver_build_path()` を実行する。未探索セルが `0xF0` の空mapでは最短経路生成が失敗するのが正常で、探索後dumpが最短走行可能なmapかをPC上で判定できる。
+- Step28: 制御ゲイン・各モーション調整へ入る直前の確認手順として、`docs/F413_CONTROL_TUNING_PRECHECK.md` を追加した。浮かせ固定状態での書き込み、NVM/identity/sensor params、壁センサ、IMU、エンコーダ、片側モータ、traceログ導線、調整開始順序、中止条件を一つのチェックリストへまとめた。
 
 ### F405同等迷路走行までの残作業順序（2026-05-09）
 
