@@ -241,6 +241,8 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK (0x0FU)
 #define NIGHTFALL_F413_MAZE_START_FORCED_WALLS (0x07U)
 #define NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
+#define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
+#define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
 
 typedef enum
 {
@@ -353,6 +355,7 @@ static int nightfall_search_make_goal_smap(uint8_t x, uint8_t y);
 static bool nightfall_search_choose_next_relative(uint8_t x, uint8_t y, uint8_t dir, uint8_t* out_rel);
 static const char* nightfall_search_relative_name(uint8_t rel);
 static void nightfall_run_search_decision_preview_once(void);
+static void nightfall_run_search_forward_step_once(void);
 static void nightfall_run_search_map_probe_once(void);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
@@ -1792,7 +1795,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, N=search-step-fwd, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
@@ -2705,6 +2708,124 @@ static void nightfall_run_search_decision_preview_once(void)
                (long)wall.r_delta,
                (long)wall.fl_delta,
                (long)wall.l_delta);
+}
+
+static void nightfall_run_search_forward_step_once(void)
+{
+  nightfall_wall_sensor_snapshot_t wall;
+  nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
+  nightfall_run_guard_t guard = {0};
+  uint8_t next_rel = 0U;
+  int step;
+  HAL_StatusTypeDef st;
+
+  if (g_trace_log_auto_enabled != 0U)
+  {
+    trace_printf("[SEARCH-STEP] busy(auto already running)\r\n");
+    return;
+  }
+  if (nightfall_run_stop_switch_pressed())
+  {
+    trace_printf("[SEARCH-STEP] canceled(start switch pressed)\r\n");
+    return;
+  }
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    trace_printf("[SEARCH-STEP] FAIL(read wall snapshot)\r\n");
+    return;
+  }
+
+  nightfall_search_map_init_empty();
+  mouse.x = START_X;
+  mouse.y = START_Y;
+  mouse.dir = 0U;
+  wall_info = nightfall_search_wall_info_from_snapshot(&wall);
+  nightfall_search_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y, (uint8_t)mouse.dir, wall_info);
+  step = nightfall_search_make_goal_smap((uint8_t)mouse.x, (uint8_t)mouse.y);
+
+  if ((step < 0) || !nightfall_search_choose_next_relative((uint8_t)mouse.x, (uint8_t)mouse.y, (uint8_t)mouse.dir, &next_rel))
+  {
+    trace_printf("[SEARCH-STEP] FAIL(no route) wall_info=0x%04X cell=0x%04X\r\n",
+                 (unsigned int)wall_info,
+                 (unsigned int)map[START_Y][START_X]);
+    return;
+  }
+
+  st = nvm_maze_save_map(&map[0][0], NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  if (next_rel != 0U)
+  {
+    trace_printf("[SEARCH-STEP] preview-only next=%s(%u) smap=%d save=%s wall_info=0x%04X cell=0x%04X\r\n",
+                 nightfall_search_relative_name(next_rel),
+                 (unsigned int)next_rel,
+                 step,
+                 (st == HAL_OK) ? "OK" : "FAIL",
+                 (unsigned int)wall_info,
+                 (unsigned int)map[START_Y][START_X]);
+    return;
+  }
+
+  if (st != HAL_OK)
+  {
+    trace_printf("[SEARCH-STEP] FAIL(save HAL=%d)\r\n", (int)st);
+    return;
+  }
+  if (!nightfall_run_guard_prepare(&guard))
+  {
+    trace_printf("[SEARCH-STEP] canceled(guard init fail)\r\n");
+    return;
+  }
+
+  trace_printf("[SEARCH-STEP] run forward target=%.0fmm v=%.0f smap=%d wall_info=0x%04X cell=0x%04X\r\n",
+               (double)NIGHTFALL_F413_SEARCH_STEP_TARGET_MM,
+               (double)NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S,
+               step,
+               (unsigned int)wall_info,
+               (unsigned int)map[START_Y][START_X]);
+
+  nightfall_trace_log_set_context(1U, 4U, 0xFEU, (uint8_t)'N');
+  nightfall_trace_log_on_run_start();
+  f413_ctrl_start();
+  f413_ctrl_reset_distance();
+  f413_ctrl_reset_angle();
+  f413_ctrl_set_velocity(NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(0.0f);
+  abort_reason = nightfall_wait_ctrl_target(NIGHTFALL_F413_SEARCH_STEP_TARGET_MM, false, &guard,
+      (uint16_t)(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
+                 NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  if (abort_reason == NIGHTFALL_RUN_ABORT_NONE)
+  {
+    nightfall_trace_log_set_mode_flags((uint16_t)(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
+                                                   NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
+    abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(NIGHTFALL_F413_PATH_COAST_MS, &guard);
+  }
+  f413_ctrl_stop();
+  if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
+  {
+    nightfall_trace_log_set_mode_flags((uint16_t)(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
+                                                   nightfall_run_abort_reason_to_trace_flag(abort_reason)));
+    nightfall_trace_log_auto_step();
+  }
+  nightfall_trace_log_set_mode_flags(0U);
+  nightfall_trace_log_on_run_stop();
+  nightfall_run_guard_cleanup(&guard);
+
+  if (abort_reason == NIGHTFALL_RUN_ABORT_NONE)
+  {
+    trace_printf("[SEARCH-STEP] OK dist=%.0fmm angle=%.0fdeg\r\n",
+                 (double)f413_ctrl_get_distance(),
+                 (double)f413_ctrl_get_angle());
+  }
+  else
+  {
+    trace_printf("[SEARCH-STEP] aborted(%s) dist=%.0fmm angle=%.0fdeg\r\n",
+                 nightfall_run_abort_reason_to_text(abort_reason),
+                 (double)f413_ctrl_get_distance(),
+                 (double)f413_ctrl_get_angle());
+  }
 }
 
 static void nightfall_run_search_map_probe_once(void)
@@ -4994,6 +5115,10 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'G':
       nightfall_run_search_decision_preview_once();
+      break;
+
+    case 'N':
+      nightfall_run_search_forward_step_once();
       break;
 
     case 'O':
