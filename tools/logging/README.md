@@ -7,6 +7,7 @@
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
+- `render_search_dump.py`: F413 UART `@` の `[SEARCH-DUMP]` をASCII迷路へ変換
 - `serial_terminal.py`: ST-LINK VCPなどで使うシンプルな対話式UART端末
 - `serial_capture_csv.sh`: シェル版CSVキャプチャ
 - `serial_minicom.sh`: minicomベース受信
@@ -70,6 +71,17 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
+
+## `render_search_dump.py` の探索map表示
+
+- F413 UART `@` の `[SEARCH-DUMP] y=..:` 行を含むログを、壁付きのASCII迷路へ変換します。
+- 下位4bitを `W/S/E/N = 1/2/4/8` として解釈します。
+- 通常チェックでは、F405互換の開始セル強制東壁だけは片側表現として許容します。
+- 例:
+  - `python3 tools/logging/serial_capture_csv.py --show-noncsv --send @ tools/logging/logs /dev/cu.usbmodem112202 115200 > /tmp/search_dump.log`
+  - `python3 tools/logging/render_search_dump.py /tmp/search_dump.log`
+  - `python3 tools/logging/render_search_dump.py --summary-only /tmp/search_dump.log`
+  - `python3 tools/logging/render_search_dump.py --summary-only --strict-consistency /tmp/search_dump.log`
 
 ## 互換パス
 

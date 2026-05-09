@@ -289,6 +289,7 @@
 - Step23: UART `N` を状態保持型の探索1ステップ実行へ拡張した。初回だけ `map[][]` と `mouse` を初期化し、以後は `mouse.x/y/dir` を保持して壁snapshot→map更新→次方向決定→1動作を進める。直進は90mm、右/左/Uターンは既存角度目標制御でその場旋回し、成功後に `mouse` 状態を更新する。UART `B=search-reset` で探索ステップセッションをリセットできる。
 - Step24: 実迷路なしで探索移植の状態を確認するため、F413へ非走行UART `[`/`]`/`@` を追加した。`[` は探索状態とFRAM map整合状態を表示、`]` は空探索mapをFRAM保存してリセット、`@` はFRAM上のmapを32行HEXでdumpする。
 - Step25: F405互換操作UIの非走行メンテナンス移植として、F413 `mode9 case6..9` を接続した。case6は壁閾値/壁ADC確認、case7は非破壊NVMステータス表示、case8はidentity表示、case9はsensor params表示のみを行い、実パラメータ保存は安全のため行わない。
+- Step26: F413 UART `@` の `[SEARCH-DUMP]` をPC側で確認しやすくするため、`tools/logging/render_search_dump.py` を追加した。FRAM map dumpをASCII迷路へ変換し、境界壁欠落や隣接セル壁不一致を要約表示できる。通常モードではF405互換の開始セル強制東壁だけ片側表現として許容し、`--strict-consistency` で厳密検出できる。
 
 ### F405同等迷路走行までの残作業順序（2026-05-09）
 
