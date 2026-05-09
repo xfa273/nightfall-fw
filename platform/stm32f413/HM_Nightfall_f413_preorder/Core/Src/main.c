@@ -359,6 +359,9 @@ static void nightfall_run_search_decision_preview_once(void);
 static void nightfall_search_step_session_reset(void);
 static void nightfall_run_search_step_once(void);
 static void nightfall_run_search_map_probe_once(void);
+static void nightfall_run_search_status_once(void);
+static void nightfall_run_search_map_clear_once(void);
+static void nightfall_run_search_map_dump_once(void);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_run_wall_end_monitor_once(void);
@@ -1798,7 +1801,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
@@ -2978,6 +2981,105 @@ static void nightfall_run_search_map_probe_once(void)
                (long)wall.r_delta,
                (long)wall.fl_delta,
                (long)wall.l_delta);
+}
+
+
+static void nightfall_run_search_status_once(void)
+{
+  static uint16_t loaded[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
+  uint32_t visited_count = 0U;
+  uint32_t current_known_count = 0U;
+  uint32_t loaded_known_count = 0U;
+  uint32_t mismatch_count = 0U;
+  bool loaded_ok;
+  uint8_t x;
+  uint8_t y;
+
+  loaded_ok = nvm_maze_load_map(loaded, NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  for (y = 0U; y < MAZE_SIZE; y++)
+  {
+    for (x = 0U; x < MAZE_SIZE; x++)
+    {
+      uint32_t idx = (uint32_t)y * MAZE_SIZE + x;
+      if (visited[y][x])
+      {
+        visited_count++;
+      }
+      if ((map[y][x] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK) != 0U)
+      {
+        current_known_count++;
+      }
+      if (loaded_ok)
+      {
+        if ((loaded[idx] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK) != 0U)
+        {
+          loaded_known_count++;
+        }
+        if (loaded[idx] != map[y][x])
+        {
+          mismatch_count++;
+        }
+      }
+    }
+  }
+
+  trace_printf("[SEARCH-STATE] active=%u mouse=(%u,%u,%u) cell=0x%04X visited=%lu known=%lu fram=%s fram_known=%lu mismatch=%lu\r\n",
+               (unsigned int)g_search_step_session_active,
+               (unsigned int)mouse.x,
+               (unsigned int)mouse.y,
+               (unsigned int)mouse.dir,
+               (unsigned int)(((mouse.x < MAZE_SIZE) && (mouse.y < MAZE_SIZE)) ? map[mouse.y][mouse.x] : 0U),
+               (unsigned long)visited_count,
+               (unsigned long)current_known_count,
+               loaded_ok ? "OK" : "MISS",
+               (unsigned long)loaded_known_count,
+               (unsigned long)mismatch_count);
+}
+
+static void nightfall_run_search_map_clear_once(void)
+{
+  HAL_StatusTypeDef st;
+
+  nightfall_search_map_init_empty();
+  nightfall_search_step_session_reset();
+  st = nvm_maze_save_map(&map[0][0], NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  trace_printf("[SEARCH-CLEAR] save=%s mouse=(%u,%u,%u) start_cell=0x%04X\r\n",
+               (st == HAL_OK) ? "OK" : "FAIL",
+               (unsigned int)mouse.x,
+               (unsigned int)mouse.y,
+               (unsigned int)mouse.dir,
+               (unsigned int)map[START_Y][START_X]);
+}
+
+static void nightfall_run_search_map_dump_once(void)
+{
+  static uint16_t loaded[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
+  const uint16_t* cells = &map[0][0];
+  bool loaded_ok = nvm_maze_load_map(loaded, NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  int y;
+  uint8_t x;
+
+  if (loaded_ok)
+  {
+    cells = loaded;
+  }
+
+  trace_printf("[SEARCH-DUMP] source=%s size=%u active=%u mouse=(%u,%u,%u)\r\n",
+               loaded_ok ? "FRAM" : "RAM",
+               (unsigned int)MAZE_SIZE,
+               (unsigned int)g_search_step_session_active,
+               (unsigned int)mouse.x,
+               (unsigned int)mouse.y,
+               (unsigned int)mouse.dir);
+  for (y = (int)MAZE_SIZE - 1; y >= 0; y--)
+  {
+    trace_printf("[SEARCH-DUMP] y=%02d:", y);
+    for (x = 0U; x < MAZE_SIZE; x++)
+    {
+      trace_printf("%02X", (unsigned int)(cells[(uint32_t)y * MAZE_SIZE + x] & 0xFFU));
+    }
+    trace_printf("\r\n");
+  }
 }
 
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall)
@@ -5219,6 +5321,18 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'N':
       nightfall_run_search_step_once();
+      break;
+
+    case '[':
+      nightfall_run_search_status_once();
+      break;
+
+    case ']':
+      nightfall_run_search_map_clear_once();
+      break;
+
+    case '@':
+      nightfall_run_search_map_dump_once();
       break;
 
     case 'O':
