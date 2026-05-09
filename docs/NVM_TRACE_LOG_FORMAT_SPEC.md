@@ -178,6 +178,7 @@ CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 - bit6 (`0x0040`): right wall-end detected
 - bit7 (`0x0080`): left wall-end detected
 - bit8 (`0x0100`): wall-end detection gate enabled
+- bit9 (`0x0200`): wall control active
 - bit15 (`0x8000`): wall trace observe enabled
 
 `reserved_u16_1` は下位8bitに右壁切れ検出距離、上位8bitに左壁切れ検出距離を `distance_mm / 4` で格納する。

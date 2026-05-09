@@ -282,6 +282,7 @@
 - Step16: F413起動時に既存F405の下降音と区別できる機体識別用ブザー音（上昇3音＋間＋下降2音）を追加した。またテスト動作移植の第一段として、`mode2..7 case0 sub0..9` をF413の低速path-codeテストへ接続し、小回り/大回り/180/斜め45/V90/135/低速直進/高速直進を速度違いで試せるようにした。`mode9 case2` はencoder check、`mode9 case4` はfan PWM checkへ接続した
 - Step17: FRAMログをschema v2へ拡張し、走行・調整用動作の開始時に自動format、実行中に全テレメトリを定周期保存、終了後は手かざしなしで `mode9 case5` から直近実行ぶんを一括CSV出力できるようにした。CSVは `nightfall_trace_csv_v2` とし、距離・角度・目標/実速度・加速度補助速度・目標/実角速度・目標角・前後加速度・encoder・motor・壁ADC・vbat・mode/case/sub/test_id・予備フィールドを含む
 - Step18: F413壁センサsnapshot APIと壁切れ状態APIを追加し、UART `w` / `W` の非モータ確認で壁なし誤検出なしと左壁あり→なし検出を確認した。さらにFRAM v2 schemaを変更せず、`reserved_i32_0..3` に壁delta（FR/R/FL/L）、`reserved_u16_0/1` に壁有無・壁切れ状態と検出距離を記録する観測接続を追加した。`NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE` で後から無効化できる。
+- Step19: F413壁制御を直進待機ループへ弱い角度目標補正として接続した。直進中・壁検出中のみ `f413_ctrl_set_angle_target()` に±3deg以内の補正を入れ、`NIGHTFALL_F413_DISABLE_WALL_CONTROL` で後から無効化できる。壁制御active状態は `reserved_u16_0` bit9へ記録する。
 
 ### F405同等迷路走行までの残作業順序（2026-05-09）
 
@@ -304,7 +305,7 @@
    - 走行距離（タイヤ径/エンコーダ換算）→直進ゲイン→90/180旋回ゲイン→直進+旋回接続→壁判断→壁切れ→低速探索→低速最短→速度上げ→大回り/斜め系モーション、の順で調整する。
    - 各段階で `mode9 case5` または `V` によりFRAM v2 CSVを保存し、調整根拠を `docs/ai/WORKLOG.md` へ残す。
 
-次ステップ: 3の「F413壁制御を直進制御へ統合する」を開始する。まずは補正を弱く・フラグで無効化可能にし、FRAMログで `target_angle/real_angle/motor_out/adc_*` と壁delta/壁切れ状態を確認する。
+次ステップ: 4の「実探索ループをF413へ接続する」を開始する。壁制御は移植済み扱いとし、後の実走調整で `NIGHTFALL_F413_DISABLE_WALL_CONTROL` により個別に無効化・確認できる。
 
 ---
 

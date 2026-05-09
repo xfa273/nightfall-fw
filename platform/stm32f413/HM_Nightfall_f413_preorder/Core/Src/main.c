@@ -222,8 +222,17 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_WALL_TRACE_END_R_FLAG (0x0040U)
 #define NIGHTFALL_F413_WALL_TRACE_END_L_FLAG (0x0080U)
 #define NIGHTFALL_F413_WALL_TRACE_GATE_FLAG (0x0100U)
+#define NIGHTFALL_F413_WALL_TRACE_CTRL_FLAG (0x0200U)
 #define NIGHTFALL_F413_WALL_TRACE_ENABLED_FLAG (0x8000U)
 #define NIGHTFALL_F413_WALL_TRACE_VERSION (1U)
+#ifndef NIGHTFALL_F413_DISABLE_WALL_CONTROL
+#define NIGHTFALL_F413_DISABLE_WALL_CONTROL (0U)
+#endif
+#define NIGHTFALL_F413_WALL_CTRL_KP_DEG_PER_ADC (0.004f)
+#define NIGHTFALL_F413_WALL_CTRL_MAX_DEG (3.0f)
+#define NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA (0.15f)
+#define NIGHTFALL_F413_WALL_CTRL_SLEW_DEG (0.25f)
+#define NIGHTFALL_F413_WALL_CTRL_MIN_VEL_MM_S (20.0f)
 
 typedef enum
 {
@@ -326,6 +335,9 @@ static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t
 static void nightfall_wall_end_clear(void);
 static uint16_t nightfall_wall_trace_flags_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall,
                                                          bool gate_on);
+static void nightfall_wall_control_reset(void);
+static void nightfall_wall_control_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
+static void nightfall_wall_control_apply(bool straight_gate);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_run_wall_end_monitor_once(void);
@@ -355,6 +367,9 @@ static uint8_t g_op_enter_streak = 0U;
 static bool g_op_button_prev_pressed = false;
 static bool g_op_enter_latched = false;
 static nightfall_wall_end_state_t g_wall_end;
+static float g_wall_ctrl_angle_deg = 0.0f;
+static float g_wall_ctrl_error_lpf = 0.0f;
+static bool g_wall_ctrl_active = false;
 
 static const char* nightfall_identity_family_name(uint32_t family)
 {
@@ -636,6 +651,8 @@ static nightfall_run_abort_reason_t nightfall_wait_ctrl_target(
 
     nightfall_trace_log_set_mode_flags(trace_flags);
     reason = nightfall_trace_log_wait_with_auto_step_guarded(10U, guard);
+    nightfall_wall_control_apply(!is_angle &&
+        ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U));
     if (reason != NIGHTFALL_RUN_ABORT_NONE)
     {
       return reason;
@@ -953,6 +970,8 @@ static nightfall_run_abort_reason_t nightfall_test_wait_target(
     if (HAL_GetTick() >= deadline) break;
     nightfall_trace_log_set_mode_flags(flags);
     reason = nightfall_trace_log_wait_with_auto_step_guarded(10U, guard);
+    nightfall_wall_control_apply(!is_angle &&
+        ((flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U));
     if (reason != NIGHTFALL_RUN_ABORT_NONE) return reason;
   }
   return NIGHTFALL_RUN_ABORT_NONE;
@@ -1376,7 +1395,95 @@ static uint16_t nightfall_wall_trace_flags_from_snapshot(const nightfall_wall_se
     flags |= NIGHTFALL_F413_WALL_TRACE_GATE_FLAG;
   }
 
+  if (g_wall_ctrl_active)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_CTRL_FLAG;
+  }
   return flags;
+}
+
+static void nightfall_wall_control_reset(void)
+{
+  g_wall_ctrl_angle_deg = 0.0f;
+  g_wall_ctrl_error_lpf = 0.0f;
+  g_wall_ctrl_active = false;
+}
+
+static void nightfall_wall_control_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on)
+{
+  float wall_error = 0.0f;
+  float target_deg;
+  float delta;
+
+#if (NIGHTFALL_F413_DISABLE_WALL_CONTROL != 0U)
+  (void)wall;
+  (void)gate_on;
+  nightfall_wall_control_reset();
+  return;
+#else
+  if ((wall == NULL) || !gate_on || wall->saturated ||
+      (fabsf(f413_ctrl_get_target_velocity()) < NIGHTFALL_F413_WALL_CTRL_MIN_VEL_MM_S))
+  {
+    nightfall_wall_control_reset();
+    return;
+  }
+
+  if (wall->right_wall && wall->left_wall)
+  {
+    wall_error = (float)(wall->l_delta - WALL_CTRL_BASE_L) -
+                 (float)(wall->r_delta - WALL_CTRL_BASE_R);
+  }
+  else if (wall->right_wall && !wall->left_wall)
+  {
+    wall_error = -2.0f * (float)(wall->r_delta - WALL_BASE_R);
+  }
+  else if (!wall->right_wall && wall->left_wall)
+  {
+    wall_error = 2.0f * (float)(wall->l_delta - WALL_BASE_L);
+  }
+  else
+  {
+    nightfall_wall_control_reset();
+    return;
+  }
+
+  g_wall_ctrl_error_lpf += NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA *
+                           (wall_error - g_wall_ctrl_error_lpf);
+  target_deg = g_wall_ctrl_error_lpf * NIGHTFALL_F413_WALL_CTRL_KP_DEG_PER_ADC;
+  if (target_deg > NIGHTFALL_F413_WALL_CTRL_MAX_DEG)
+  {
+    target_deg = NIGHTFALL_F413_WALL_CTRL_MAX_DEG;
+  }
+  else if (target_deg < -NIGHTFALL_F413_WALL_CTRL_MAX_DEG)
+  {
+    target_deg = -NIGHTFALL_F413_WALL_CTRL_MAX_DEG;
+  }
+
+  delta = target_deg - g_wall_ctrl_angle_deg;
+  if (delta > NIGHTFALL_F413_WALL_CTRL_SLEW_DEG)
+  {
+    delta = NIGHTFALL_F413_WALL_CTRL_SLEW_DEG;
+  }
+  else if (delta < -NIGHTFALL_F413_WALL_CTRL_SLEW_DEG)
+  {
+    delta = -NIGHTFALL_F413_WALL_CTRL_SLEW_DEG;
+  }
+
+  g_wall_ctrl_angle_deg += delta;
+  g_wall_ctrl_active = true;
+#endif
+}
+
+static void nightfall_wall_control_apply(bool straight_gate)
+{
+#if (NIGHTFALL_F413_DISABLE_WALL_CONTROL != 0U)
+  (void)straight_gate;
+#else
+  if (straight_gate && g_wall_ctrl_active)
+  {
+    f413_ctrl_set_angle_target(g_wall_ctrl_angle_deg);
+  }
+#endif
 }
 
 static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out)
@@ -1397,6 +1504,7 @@ static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out)
 
   gate_on = (g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
   nightfall_wall_end_update(&wall, gate_on);
+  nightfall_wall_control_update(&wall, gate_on);
 
   out->adc_fr = wall.fr_on;
   out->adc_r = wall.r_on;
