@@ -47,3 +47,4 @@ compile_commands.json
 
 docs/ai/archive/delegation-legacy/HANDOFFS/*
 !docs/ai/archive/delegation-legacy/HANDOFFS/README.md
+tools/logging/logs/

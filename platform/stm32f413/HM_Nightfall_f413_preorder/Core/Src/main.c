@@ -1482,9 +1482,10 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
   trace_printf("[HW-TEST]  w=wall, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
-  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button, n=direct S3straight; OP mode2-7/case0/sub0-9=path-code tests\r\n");
+  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
+  trace_printf("[OP-UART] P=PUSH increment, E=FR enter, !=software reset\r\n");
 }
 
 static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
@@ -2658,6 +2659,35 @@ static void nightfall_op_print_selection(void)
   }
 }
 
+static bool nightfall_op_can_accept_input(void)
+{
+  if (g_trace_log_auto_enabled != 0U || f413_ctrl_is_running())
+  {
+    return false;
+  }
+  if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
+  {
+    return false;
+  }
+  return true;
+}
+
+static void nightfall_op_increment_selection(void)
+{
+  uint8_t selected = nightfall_op_selected_value();
+  selected++;
+  if (selected > NIGHTFALL_F413_OP_SELECT_MAX)
+  {
+    selected = 0U;
+  }
+  nightfall_op_set_selected_value(selected);
+  g_op_button_lock_until_ms = HAL_GetTick() + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
+  g_op_enter_streak = 0U;
+  nightfall_op_led_show_mode(selected);
+  nightfall_op_beep_mode(selected);
+  nightfall_op_print_selection();
+}
+
 static void nightfall_op_after_execute(void)
 {
   g_op_enter_streak = 0U;
@@ -2948,7 +2978,6 @@ static void nightfall_op_ui_step(void)
   uint32_t now = HAL_GetTick();
   bool button_pressed;
   bool enter_active;
-  uint8_t selected;
 
   if ((int32_t)(now - g_op_next_ui_poll_ms) < 0)
   {
@@ -2956,11 +2985,7 @@ static void nightfall_op_ui_step(void)
   }
   g_op_next_ui_poll_ms = now + NIGHTFALL_F413_OP_UI_POLL_MS;
 
-  if (g_trace_log_auto_enabled != 0U || f413_ctrl_is_running())
-  {
-    return;
-  }
-  if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
+  if (!nightfall_op_can_accept_input())
   {
     return;
   }
@@ -2970,18 +2995,7 @@ static void nightfall_op_ui_step(void)
   {
     if (!g_op_button_prev_pressed && ((int32_t)(now - g_op_button_lock_until_ms) >= 0))
     {
-      selected = nightfall_op_selected_value();
-      selected++;
-      if (selected > NIGHTFALL_F413_OP_SELECT_MAX)
-      {
-        selected = 0U;
-      }
-      nightfall_op_set_selected_value(selected);
-      g_op_button_lock_until_ms = now + NIGHTFALL_F413_OP_BUTTON_LOCK_MS;
-      g_op_enter_streak = 0U;
-      nightfall_op_led_show_mode(selected);
-      nightfall_op_beep_mode(selected);
-      nightfall_op_print_selection();
+      nightfall_op_increment_selection();
     }
     g_op_button_prev_pressed = true;
     return;
@@ -3009,6 +3023,36 @@ static void nightfall_op_ui_step(void)
     g_op_enter_streak = 0U;
     g_op_enter_latched = false;
   }
+}
+
+static void nightfall_op_uart_push_once(void)
+{
+  if (!nightfall_op_can_accept_input())
+  {
+    trace_printf("[OP-UART] ignored: operation UI is busy\r\n");
+    return;
+  }
+  g_op_button_prev_pressed = false;
+  nightfall_op_increment_selection();
+}
+
+static void nightfall_op_uart_enter_once(void)
+{
+  if (!nightfall_op_can_accept_input())
+  {
+    trace_printf("[OP-UART] ignored: operation UI is busy\r\n");
+    return;
+  }
+  g_op_enter_streak = 0U;
+  g_op_enter_latched = true;
+  nightfall_op_enter_selection();
+}
+
+static void nightfall_op_uart_reset_once(void)
+{
+  trace_printf("[OP-UART] software reset\r\n");
+  HAL_Delay(50U);
+  NVIC_SystemReset();
 }
 
 static void nightfall_motor_set(bool enable,
@@ -4101,6 +4145,10 @@ static void nightfall_handle_uart_command(uint8_t cmd)
       nightfall_run_switch_test_once();
       break;
 
+    case 'P':
+      nightfall_op_uart_push_once();
+      break;
+
     case 'i':
       nightfall_run_imu_test_once();
       break;
@@ -4125,6 +4173,14 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'e':
       nightfall_run_encoder_test_once();
+      break;
+
+    case 'E':
+      nightfall_op_uart_enter_once();
+      break;
+
+    case '!':
+      nightfall_op_uart_reset_once();
       break;
 
     case 'q':
@@ -4209,12 +4265,6 @@ static void nightfall_handle_uart_command(uint8_t cmd)
     case '4':
     case '5':
       nightfall_test_arm_for_button(cmd);
-      break;
-
-    case 'n':
-    case 'N':
-      trace_printf("[TEST] direct straight-only run via UART\r\n");
-      nightfall_op_run_test_after_delay('1');
       break;
 
     case 'f':
