@@ -362,6 +362,7 @@ static void nightfall_run_search_map_probe_once(void);
 static void nightfall_run_search_status_once(void);
 static void nightfall_run_search_map_clear_once(void);
 static void nightfall_run_search_map_dump_once(void);
+static void nightfall_verify_all_nvm_load_only(void);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_run_wall_end_monitor_once(void);
@@ -3738,6 +3739,106 @@ static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub)
   return "unknown";
 }
 
+static void nightfall_run_identity_status_once(void)
+{
+  if (g_boot_identity_status == NVM_STATUS_OK)
+  {
+    const char* family_name = nightfall_identity_family_name(g_boot_identity.family);
+    trace_printf("[IDENTITY] status=OK family=%s(%lu) board=0x%08lX rev=%u.%u unit=%lu cap=0x%08lX\r\n",
+                 family_name,
+                 (unsigned long)g_boot_identity.family,
+                 (unsigned long)g_boot_identity.board_id,
+                 (unsigned int)g_boot_identity.hw_rev_major,
+                 (unsigned int)g_boot_identity.hw_rev_minor,
+                 (unsigned long)g_boot_identity.unit_serial,
+                 (unsigned long)g_boot_identity.capability_flags);
+    trace_printf("[IDENTITY] uid=%08lX-%08lX-%08lX\r\n",
+                 (unsigned long)HAL_GetUIDw0(),
+                 (unsigned long)HAL_GetUIDw1(),
+                 (unsigned long)HAL_GetUIDw2());
+  }
+  else
+  {
+    trace_printf("[IDENTITY] status=%d uid=%08lX-%08lX-%08lX\r\n",
+                 (int)g_boot_identity_status,
+                 (unsigned long)HAL_GetUIDw0(),
+                 (unsigned long)HAL_GetUIDw1(),
+                 (unsigned long)HAL_GetUIDw2());
+  }
+}
+
+static void nightfall_run_sensor_params_status_once(void)
+{
+  nvm_sensor_params_t params;
+  bool loaded;
+
+  memset(&params, 0, sizeof(params));
+  loaded = nvm_params_sensor_load(&params);
+  if (!loaded)
+  {
+    nvm_params_sensor_defaults(&params);
+  }
+
+  trace_printf("[SENSOR-PARAM] source=%s base_l=%u base_r=%u base_f=%u off_r=%u off_l=%u off_fr=%u off_fl=%u imu_z=%.3f\r\n",
+               loaded ? "NVM" : "default",
+               (unsigned int)params.base_l,
+               (unsigned int)params.base_r,
+               (unsigned int)params.base_f,
+               (unsigned int)params.wall_offset_r,
+               (unsigned int)params.wall_offset_l,
+               (unsigned int)params.wall_offset_fr,
+               (unsigned int)params.wall_offset_fl,
+               (double)params.imu_offset_z);
+  trace_printf("[SENSOR-PARAM] save is intentionally not performed by OP mode9 case9\r\n");
+}
+
+
+static void nightfall_run_nvm_status_once(void)
+{
+  static uint16_t cells[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
+  nvm_trace_log_header_t header;
+  uint32_t known_count = 0U;
+  uint32_t i;
+  bool distance_ok;
+  bool sensor_ok;
+  bool maze_ok;
+  nvm_status_t trace_st;
+  nvm_sensor_params_t sensor_params;
+
+  distance_ok = nvm_params_distance_load_and_apply();
+  sensor_ok = nvm_params_sensor_load(&sensor_params);
+  maze_ok = nvm_maze_load_map(cells, NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  trace_st = nvm_trace_log_get_header(&header);
+
+  if (maze_ok)
+  {
+    for (i = 0U; i < NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT; i++)
+    {
+      if ((cells[i] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK) != 0U)
+      {
+        known_count++;
+      }
+    }
+  }
+
+  trace_printf("[NVM-STATUS] distance=%s sensor=%s maze=%s maze_known=%lu trace=%s(%d)\r\n",
+               distance_ok ? "OK" : "MISS",
+               sensor_ok ? "OK" : "MISS",
+               maze_ok ? "OK" : "MISS",
+               (unsigned long)known_count,
+               (trace_st == NVM_STATUS_OK) ? "OK" : "MISS",
+               (int)trace_st);
+  if (trace_st == NVM_STATUS_OK)
+  {
+    trace_printf("[NVM-STATUS] trace ver=0x%08lX rec_size=%lu cap=%lu write=%lu total=%lu\r\n",
+                 (unsigned long)header.version,
+                 (unsigned long)header.record_size,
+                 (unsigned long)header.record_capacity,
+                 (unsigned long)header.write_index,
+                 (unsigned long)header.total_records);
+  }
+}
+
 static uint8_t nightfall_op_selected_value(void)
 {
   if (g_op_level == NIGHTFALL_F413_OP_LEVEL_CASE)
@@ -4011,6 +4112,22 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
       else if (op_case == 5U)
       {
         nightfall_run_trace_log_dump_csv_all_once();
+      }
+      else if (op_case == 6U)
+      {
+        nightfall_run_wall_sensor_test_once();
+      }
+      else if (op_case == 7U)
+      {
+        nightfall_run_nvm_status_once();
+      }
+      else if (op_case == 8U)
+      {
+        nightfall_run_identity_status_once();
+      }
+      else if (op_case == 9U)
+      {
+        nightfall_run_sensor_params_status_once();
       }
       else
       {
