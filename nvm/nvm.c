@@ -13,6 +13,16 @@
 static inline void nvm_wait_spi2_free(void) {
     while (f413_ctrl_spi2_busy()) { /* spin */ }
 }
+static inline uint32_t nvm_stm32f413_spi2_lock_irq(void) {
+    uint32_t tim5_enabled = NVIC_GetEnableIRQ(TIM5_IRQn);
+    HAL_NVIC_DisableIRQ(TIM5_IRQn);
+    return tim5_enabled;
+}
+static inline void nvm_stm32f413_spi2_unlock_irq(uint32_t tim5_enabled) {
+    if (tim5_enabled != 0U) {
+        HAL_NVIC_EnableIRQ(TIM5_IRQn);
+    }
+}
 #else
 static inline void nvm_wait_spi2_free(void) { }
 #endif
@@ -324,27 +334,32 @@ static nvm_status_t nvm_stm32f405_write_area(const nvm_area_info_t* info,
 
 static HAL_StatusTypeDef nvm_stm32f413_fram_write_enable(void) {
     uint8_t cmd = NVM_STM32F413_FRAM_CMD_WREN;
+    uint32_t tim5_enabled;
+    HAL_StatusTypeDef result = HAL_OK;
 
     if (hspi2.Instance == NULL) {
         return HAL_ERROR;
     }
 
     nvm_wait_spi2_free();
+    tim5_enabled = nvm_stm32f413_spi2_lock_irq();
     HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_RESET);
 
     if (HAL_SPI_Transmit(&hspi2, &cmd, 1U, NVM_STM32F413_FRAM_SPI_TIMEOUT_MS) != HAL_OK) {
-        HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-        return HAL_ERROR;
+        result = HAL_ERROR;
     }
 
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-    return HAL_OK;
+    nvm_stm32f413_spi2_unlock_irq(tim5_enabled);
+    return result;
 }
 
 static HAL_StatusTypeDef nvm_stm32f413_fram_read_raw(uint32_t address, void* out, size_t len) {
     uint8_t cmd[4];
+    uint32_t tim5_enabled;
+    HAL_StatusTypeDef result = HAL_OK;
 
     if ((out == NULL) && (len > 0U)) {
         return HAL_ERROR;
@@ -360,6 +375,7 @@ static HAL_StatusTypeDef nvm_stm32f413_fram_read_raw(uint32_t address, void* out
     }
 
     nvm_wait_spi2_free();
+    tim5_enabled = nvm_stm32f413_spi2_lock_irq();
     cmd[0] = NVM_STM32F413_FRAM_CMD_READ;
     cmd[1] = (uint8_t)(address >> 16);
     cmd[2] = (uint8_t)(address >> 8);
@@ -370,21 +386,24 @@ static HAL_StatusTypeDef nvm_stm32f413_fram_read_raw(uint32_t address, void* out
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_RESET);
 
     if (HAL_SPI_Transmit(&hspi2, cmd, sizeof(cmd), NVM_STM32F413_FRAM_SPI_TIMEOUT_MS) != HAL_OK) {
-        HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-        return HAL_ERROR;
+        result = HAL_ERROR;
+        goto done;
     }
 
     if (HAL_SPI_Receive(&hspi2, (uint8_t*)out, (uint16_t)len, NVM_STM32F413_FRAM_SPI_TIMEOUT_MS) != HAL_OK) {
-        HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-        return HAL_ERROR;
+        result = HAL_ERROR;
     }
 
+done:
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-    return HAL_OK;
+    nvm_stm32f413_spi2_unlock_irq(tim5_enabled);
+    return result;
 }
 
 static HAL_StatusTypeDef nvm_stm32f413_fram_write_raw(uint32_t address, const void* data, size_t len) {
     uint8_t cmd[4];
+    uint32_t tim5_enabled;
+    HAL_StatusTypeDef result = HAL_OK;
 
     if ((data == NULL) && (len > 0U)) {
         return HAL_ERROR;
@@ -409,22 +428,24 @@ static HAL_StatusTypeDef nvm_stm32f413_fram_write_raw(uint32_t address, const vo
     cmd[3] = (uint8_t)address;
 
     nvm_wait_spi2_free();
+    tim5_enabled = nvm_stm32f413_spi2_lock_irq();
     HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_RESET);
 
     if (HAL_SPI_Transmit(&hspi2, cmd, sizeof(cmd), NVM_STM32F413_FRAM_SPI_TIMEOUT_MS) != HAL_OK) {
-        HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-        return HAL_ERROR;
+        result = HAL_ERROR;
+        goto done;
     }
 
     if (HAL_SPI_Transmit(&hspi2, (uint8_t*)data, (uint16_t)len, NVM_STM32F413_FRAM_SPI_TIMEOUT_MS) != HAL_OK) {
-        HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-        return HAL_ERROR;
+        result = HAL_ERROR;
     }
 
+done:
     HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
-    return HAL_OK;
+    nvm_stm32f413_spi2_unlock_irq(tim5_enabled);
+    return result;
 }
 
 static nvm_status_t nvm_stm32f413_fram_read_area(const nvm_area_info_t* info,

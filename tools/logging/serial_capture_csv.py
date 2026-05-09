@@ -220,6 +220,9 @@ def main() -> int:
         last_printed_columns: Optional[str] = None
         last_printed_file: Optional[Path] = None
         expected_csv_columns = 8
+        current_columns: list[str] = []
+        seq_column_index: Optional[int] = None
+        prev_seq: Optional[int] = None
         stdin_fd: Optional[int] = None
         stdin_pending = ""
         if sys.stdin.isatty():
@@ -288,7 +291,9 @@ def main() -> int:
                     pending_columns = line
                     formatted_columns = _format_mm_columns(pending_columns)
                     if formatted_columns:
-                        expected_csv_columns = len(formatted_columns.split(","))
+                        current_columns = [c.strip() for c in formatted_columns.split(",")]
+                        expected_csv_columns = len(current_columns)
+                        seq_column_index = current_columns.index("seq") if "seq" in current_columns else None
                     if out_path is None:
                         if pending_columns != last_printed_columns:
                             _print_mm_columns(pending_columns, None)
@@ -319,11 +324,29 @@ def main() -> int:
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) == expected_csv_columns and parts[0].isdigit() and all(_is_num(p) for p in parts[1:]):
                     ts = int(parts[0])
+                    seq: Optional[int] = None
+                    if seq_column_index is not None:
+                        seq = int(parts[seq_column_index])
+                    if (
+                        prev_ts is not None
+                        and ts < prev_ts
+                        and seq is not None
+                        and prev_seq is not None
+                        and seq != 0
+                    ):
+                        print(
+                            "[WARN] Dropped suspicious CSV row: "
+                            f"timestamp moved backward ({ts} < {prev_ts}) but seq={seq}",
+                            file=sys.stderr,
+                        )
+                        continue
+
                     if out_path is None or (prev_ts is not None and ts < prev_ts):
                         out_path = _new_output_file(save_dir)
                         print(f"\n[INFO] New capture file: {out_path}", file=sys.stderr)
                         wrote_columns = False
                         fw_meta_written_count = 0
+                        prev_seq = None
                         if pending_fw_meta:
                             with out_path.open("a", encoding="ascii", newline="\n") as f:
                                 for m in pending_fw_meta:
@@ -349,6 +372,7 @@ def main() -> int:
                         f.write(",".join(parts) + "\n")
 
                     prev_ts = ts
+                    prev_seq = seq
                 else:
                     if args.show_noncsv:
                         print(line, file=sys.stderr)
