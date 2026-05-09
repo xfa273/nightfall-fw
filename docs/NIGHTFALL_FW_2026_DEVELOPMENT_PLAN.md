@@ -284,6 +284,7 @@
 - Step18: F413壁センサsnapshot APIと壁切れ状態APIを追加し、UART `w` / `W` の非モータ確認で壁なし誤検出なしと左壁あり→なし検出を確認した。さらにFRAM v2 schemaを変更せず、`reserved_i32_0..3` に壁delta（FR/R/FL/L）、`reserved_u16_0/1` に壁有無・壁切れ状態と検出距離を記録する観測接続を追加した。`NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE` で後から無効化できる。
 - Step19: F413壁制御を直進待機ループへ弱い角度目標補正として接続した。直進中・壁検出中のみ `f413_ctrl_set_angle_target()` に±3deg以内の補正を入れ、`NIGHTFALL_F413_DISABLE_WALL_CONTROL` で後から無効化できる。壁制御active状態は `reserved_u16_0` bit9へ記録する。
 - Step20: 実探索ループ接続の前段として、F413で壁snapshotからF405互換 `map[][]` へ現在区画の壁情報を書き込み、FRAMへ1024セル保存・再読込検証できる非モータUART `O` を追加した。`store_map_in_eeprom()` もF413 FRAM保存へ接続した。
+- Step21: 実迷路を通信ケーブル付きで走らせる前に探索移植を進めるため、`solver_host` に仮想壁入力探索シミュレーション `--explore-sim` を追加した。KeriLab代表迷路を含む仮想壁で `map[][]` 更新→歩数マップ→次方向決定→仮想移動を検証できる。F413実機側にも非モータUART `G=search-preview` を追加し、現在の壁snapshotから次方向決定とmap保存まで確認できるようにした。
 
 ### F405同等迷路走行までの残作業順序（2026-05-09）
 

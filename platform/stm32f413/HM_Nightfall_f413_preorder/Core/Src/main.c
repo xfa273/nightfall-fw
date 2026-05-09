@@ -349,6 +349,10 @@ static void nightfall_wall_control_apply(bool straight_gate);
 static void nightfall_search_map_init_empty(void);
 static uint16_t nightfall_search_wall_info_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_search_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, uint16_t relative_wall_info);
+static int nightfall_search_make_goal_smap(uint8_t x, uint8_t y);
+static bool nightfall_search_choose_next_relative(uint8_t x, uint8_t y, uint8_t dir, uint8_t* out_rel);
+static const char* nightfall_search_relative_name(uint8_t rel);
+static void nightfall_run_search_decision_preview_once(void);
 static void nightfall_run_search_map_probe_once(void);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
@@ -1788,7 +1792,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
@@ -2535,6 +2539,172 @@ static void nightfall_search_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, u
   {
     map[START_Y][START_X + 1U] |= 0x11U;
   }
+}
+
+static int nightfall_search_make_goal_smap(uint8_t x, uint8_t y)
+{
+  static uint16_t q[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
+  uint16_t head = 0U;
+  uint16_t tail = 0U;
+  uint8_t ix;
+  uint8_t iy;
+  static const uint8_t goals[9][2] = {
+      {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
+      {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
+      {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
+  };
+
+  if ((x >= MAZE_SIZE) || (y >= MAZE_SIZE))
+  {
+    return -1;
+  }
+
+  for (iy = 0U; iy < MAZE_SIZE; iy++)
+  {
+    for (ix = 0U; ix < MAZE_SIZE; ix++)
+    {
+      smap[iy][ix] = 0xFFFFU;
+    }
+  }
+
+  for (ix = 0U; ix < 9U; ix++)
+  {
+    uint8_t gx = goals[ix][0];
+    uint8_t gy = goals[ix][1];
+    if (((gx == 0U) && (gy == 0U)) || (gx >= MAZE_SIZE) || (gy >= MAZE_SIZE))
+    {
+      continue;
+    }
+    smap[gy][gx] = 0U;
+    q[tail++] = (uint16_t)(gy * MAZE_SIZE + gx);
+  }
+
+  while ((head < tail) && (smap[y][x] == 0xFFFFU))
+  {
+    uint16_t idx = q[head++];
+    uint8_t cy = (uint8_t)(idx / MAZE_SIZE);
+    uint8_t cx = (uint8_t)(idx - (uint16_t)(cy * MAZE_SIZE));
+    uint16_t step = smap[cy][cx];
+    uint8_t cell = (uint8_t)(map[cy][cx] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK);
+
+    if (((cell & NIGHTFALL_F413_MAZE_WALL_N) == 0U) && (cy != (MAZE_SIZE - 1U)) && (smap[cy + 1U][cx] == 0xFFFFU))
+    {
+      smap[cy + 1U][cx] = (uint16_t)(step + 1U);
+      q[tail++] = (uint16_t)((cy + 1U) * MAZE_SIZE + cx);
+    }
+    if (((cell & NIGHTFALL_F413_MAZE_WALL_E) == 0U) && (cx != (MAZE_SIZE - 1U)) && (smap[cy][cx + 1U] == 0xFFFFU))
+    {
+      smap[cy][cx + 1U] = (uint16_t)(step + 1U);
+      q[tail++] = (uint16_t)(cy * MAZE_SIZE + (cx + 1U));
+    }
+    if (((cell & NIGHTFALL_F413_MAZE_WALL_S) == 0U) && (cy != 0U) && (smap[cy - 1U][cx] == 0xFFFFU))
+    {
+      smap[cy - 1U][cx] = (uint16_t)(step + 1U);
+      q[tail++] = (uint16_t)((cy - 1U) * MAZE_SIZE + cx);
+    }
+    if (((cell & NIGHTFALL_F413_MAZE_WALL_W) == 0U) && (cx != 0U) && (smap[cy][cx - 1U] == 0xFFFFU))
+    {
+      smap[cy][cx - 1U] = (uint16_t)(step + 1U);
+      q[tail++] = (uint16_t)(cy * MAZE_SIZE + (cx - 1U));
+    }
+  }
+
+  return (smap[y][x] == 0xFFFFU) ? -1 : (int)smap[y][x];
+}
+
+static bool nightfall_search_choose_next_relative(uint8_t x, uint8_t y, uint8_t dir, uint8_t* out_rel)
+{
+  static const uint8_t rel_priority[4] = {0U, 1U, 3U, 2U};
+  static const int8_t dx[4] = {0, 1, 0, -1};
+  static const int8_t dy[4] = {1, 0, -1, 0};
+  static const uint8_t wall_mask[4] = {NIGHTFALL_F413_MAZE_WALL_N, NIGHTFALL_F413_MAZE_WALL_E, NIGHTFALL_F413_MAZE_WALL_S, NIGHTFALL_F413_MAZE_WALL_W};
+  uint8_t i;
+  uint16_t current_step;
+
+  if ((out_rel == NULL) || (x >= MAZE_SIZE) || (y >= MAZE_SIZE) || (smap[y][x] == 0xFFFFU))
+  {
+    return false;
+  }
+
+  current_step = smap[y][x];
+  for (i = 0U; i < 4U; i++)
+  {
+    uint8_t rel = rel_priority[i];
+    uint8_t abs_dir = (uint8_t)((dir + rel) & 0x03U);
+    int16_t nx = (int16_t)x + dx[abs_dir];
+    int16_t ny = (int16_t)y + dy[abs_dir];
+    uint8_t cell = (uint8_t)(map[y][x] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK);
+
+    if ((cell & wall_mask[abs_dir]) != 0U)
+    {
+      continue;
+    }
+    if ((nx < 0) || (ny < 0) || (nx >= (int16_t)MAZE_SIZE) || (ny >= (int16_t)MAZE_SIZE))
+    {
+      continue;
+    }
+    if (smap[ny][nx] < current_step)
+    {
+      *out_rel = rel;
+      return true;
+    }
+  }
+  return false;
+}
+
+static const char* nightfall_search_relative_name(uint8_t rel)
+{
+  switch (rel)
+  {
+    case 0U: return "forward";
+    case 1U: return "right";
+    case 2U: return "back";
+    case 3U: return "left";
+    default: return "?";
+  }
+}
+
+static void nightfall_run_search_decision_preview_once(void)
+{
+  nightfall_wall_sensor_snapshot_t wall;
+  uint8_t next_rel = 0U;
+  int step;
+  HAL_StatusTypeDef st;
+
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    trace_printf("[SEARCH-PREVIEW] FAIL(read wall snapshot)\r\n");
+    return;
+  }
+
+  nightfall_search_map_init_empty();
+  mouse.x = START_X;
+  mouse.y = START_Y;
+  mouse.dir = 0U;
+  wall_info = nightfall_search_wall_info_from_snapshot(&wall);
+  nightfall_search_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y, (uint8_t)mouse.dir, wall_info);
+  step = nightfall_search_make_goal_smap((uint8_t)mouse.x, (uint8_t)mouse.y);
+
+  if ((step < 0) || !nightfall_search_choose_next_relative((uint8_t)mouse.x, (uint8_t)mouse.y, (uint8_t)mouse.dir, &next_rel))
+  {
+    trace_printf("[SEARCH-PREVIEW] FAIL(no route) wall_info=0x%04X cell=0x%04X\r\n",
+                 (unsigned int)wall_info,
+                 (unsigned int)map[START_Y][START_X]);
+    return;
+  }
+
+  st = nvm_maze_save_map(&map[0][0], NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  trace_printf("[SEARCH-PREVIEW] next=%s(%u) smap=%d save=%s wall_info=0x%04X cell=0x%04X dFR=%ld dR=%ld dFL=%ld dL=%ld\r\n",
+               nightfall_search_relative_name(next_rel),
+               (unsigned int)next_rel,
+               step,
+               (st == HAL_OK) ? "OK" : "FAIL",
+               (unsigned int)wall_info,
+               (unsigned int)map[START_Y][START_X],
+               (long)wall.fr_delta,
+               (long)wall.r_delta,
+               (long)wall.fl_delta,
+               (long)wall.l_delta);
 }
 
 static void nightfall_run_search_map_probe_once(void)
@@ -4820,6 +4990,10 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'E':
       nightfall_op_uart_enter_once();
+      break;
+
+    case 'G':
+      nightfall_run_search_decision_preview_once();
       break;
 
     case 'O':

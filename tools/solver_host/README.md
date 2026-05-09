@@ -47,3 +47,18 @@ tools/solver_host/run_solver_host.sh --maze-c-array path/to/maze.c --origin top-
 ```sh
 tools/solver_host/run_solver_host.sh --maze path/to/maze.maze --verbose-solver
 ```
+
+## 仮想壁入力による探索シミュレーション
+
+F413実機を迷路内で走らせずに、PC上で仮想迷路の壁を1区画ずつセンサ入力として与え、`map[][]` 更新と次方向決定を確認できます。
+
+```sh
+tools/solver_host/run_solver_host.sh --explore-sim
+tools/solver_host/run_solver_host.sh --maze build/solver_host/kerilab_data/32MM2023HX.maze --explore-sim --max-steps 2048
+```
+
+各ステップの位置・相対壁・mapセル値を表示する場合:
+
+```sh
+tools/solver_host/run_solver_host.sh --maze path/to/maze.maze --explore-sim --explore-verbose
+```

@@ -15,6 +15,12 @@ static uint8_t s_walls_bl[MAZE_SIZE][MAZE_SIZE];
 static unsigned int s_width = 16U;
 static unsigned int s_height = 16U;
 
+typedef struct {
+    uint8_t x;
+    uint8_t y;
+    uint8_t dir;
+} SimMouse;
+
 static void clear_sample_area(unsigned int width, unsigned int height)
 {
     for (unsigned int y = 0U; y < MAZE_SIZE; y++) {
@@ -283,6 +289,284 @@ void load_map_from_eeprom(void)
     }
 }
 
+static uint8_t abs_wall_from_dir(uint8_t dir)
+{
+    static const uint8_t wall_by_dir[4] = {NORTH_WALL, EAST_WALL, SOUTH_WALL, WEST_WALL};
+    return wall_by_dir[dir & 0x03U];
+}
+
+static bool sim_is_goal(uint8_t x, uint8_t y)
+{
+    const uint8_t goals[9][2] = {
+        {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
+        {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
+        {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
+    };
+
+    for (unsigned int i = 0U; i < 9U; i++) {
+        if (goals[i][0] == 0U && goals[i][1] == 0U) {
+            continue;
+        }
+        if (x == goals[i][0] && y == goals[i][1]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void sim_init_search_map(void)
+{
+    for (uint8_t y = 0U; y < MAZE_SIZE; y++) {
+        for (uint8_t x = 0U; x < MAZE_SIZE; x++) {
+            map[y][x] = 0xF0U;
+            visited[y][x] = false;
+        }
+    }
+    for (uint8_t y = 0U; y < MAZE_SIZE; y++) {
+        map[y][0] |= 0xF1U;
+        map[y][MAZE_SIZE - 1U] |= 0xF4U;
+    }
+    for (uint8_t x = 0U; x < MAZE_SIZE; x++) {
+        map[0][x] |= 0xF2U;
+        map[MAZE_SIZE - 1U][x] |= 0xF8U;
+    }
+    map[START_Y][START_X] |= 0x44U;
+    if (START_X > 0U) {
+        map[START_Y][START_X - 1U] |= 0x44U;
+    }
+    visited[START_Y][START_X] = true;
+}
+
+static uint16_t sim_relative_wall_info(uint8_t x, uint8_t y, uint8_t dir)
+{
+    uint8_t true_walls = s_walls_bl[y][x];
+    uint16_t info = 0U;
+
+    if ((true_walls & abs_wall_from_dir(dir)) != 0U) {
+        info |= 0x88U;
+    }
+    if ((true_walls & abs_wall_from_dir((uint8_t)(dir + 1U))) != 0U) {
+        info |= 0x44U;
+    }
+    if ((true_walls & abs_wall_from_dir((uint8_t)(dir + 3U))) != 0U) {
+        info |= 0x11U;
+    }
+    return info;
+}
+
+static void sim_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, uint16_t relative_wall_info)
+{
+    uint16_t m_temp;
+
+    if ((x >= MAZE_SIZE) || (y >= MAZE_SIZE)) {
+        return;
+    }
+
+    m_temp = (relative_wall_info >> (dir & 0x03U)) & 0x0FU;
+    if ((x == START_X) && (y == START_Y)) {
+        m_temp |= 0x07U;
+    }
+    m_temp |= (uint16_t)(m_temp << 4U);
+    map[y][x] = m_temp;
+
+    if (y != (MAZE_SIZE - 1U)) {
+        if ((m_temp & 0x88U) != 0U) {
+            map[y + 1U][x] |= 0x22U;
+        } else {
+            map[y + 1U][x] &= (uint16_t)~0x22U;
+        }
+    }
+    if (x != (MAZE_SIZE - 1U)) {
+        if ((m_temp & 0x44U) != 0U) {
+            map[y][x + 1U] |= 0x11U;
+        } else {
+            map[y][x + 1U] &= (uint16_t)~0x11U;
+        }
+    }
+    if (y != 0U) {
+        if ((m_temp & 0x22U) != 0U) {
+            map[y - 1U][x] |= 0x88U;
+        } else {
+            map[y - 1U][x] &= (uint16_t)~0x88U;
+        }
+    }
+    if (x != 0U) {
+        if ((m_temp & 0x11U) != 0U) {
+            map[y][x - 1U] |= 0x44U;
+        } else {
+            map[y][x - 1U] &= (uint16_t)~0x44U;
+        }
+    }
+    map[START_Y][START_X] |= 0x77U;
+    if ((START_X + 1U) < MAZE_SIZE) {
+        map[START_Y][START_X + 1U] |= 0x11U;
+    }
+}
+
+static int sim_make_goal_smap(const SimMouse *m)
+{
+    uint16_t q[MAZE_SIZE * MAZE_SIZE];
+    uint16_t head = 0U;
+    uint16_t tail = 0U;
+
+    for (uint8_t y = 0U; y < MAZE_SIZE; y++) {
+        for (uint8_t x = 0U; x < MAZE_SIZE; x++) {
+            smap[y][x] = 0xFFFFU;
+        }
+    }
+
+    const uint8_t goals[9][2] = {
+        {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
+        {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
+        {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
+    };
+    for (unsigned int i = 0U; i < 9U; i++) {
+        uint8_t gx = goals[i][0];
+        uint8_t gy = goals[i][1];
+        if ((gx == 0U && gy == 0U) || gx >= MAZE_SIZE || gy >= MAZE_SIZE) {
+            continue;
+        }
+        smap[gy][gx] = 0U;
+        q[tail++] = (uint16_t)(gy * MAZE_SIZE + gx);
+    }
+
+    while ((head < tail) && (smap[m->y][m->x] == 0xFFFFU)) {
+        uint16_t idx = q[head++];
+        uint8_t cy = (uint8_t)(idx / MAZE_SIZE);
+        uint8_t cx = (uint8_t)(idx - (uint16_t)(cy * MAZE_SIZE));
+        uint16_t step = smap[cy][cx];
+        uint8_t cell = (uint8_t)(map[cy][cx] & 0x0FU);
+
+        if (((cell & NORTH_WALL) == 0U) && cy != (MAZE_SIZE - 1U) && smap[cy + 1U][cx] == 0xFFFFU) {
+            smap[cy + 1U][cx] = (uint16_t)(step + 1U);
+            q[tail++] = (uint16_t)((cy + 1U) * MAZE_SIZE + cx);
+        }
+        if (((cell & EAST_WALL) == 0U) && cx != (MAZE_SIZE - 1U) && smap[cy][cx + 1U] == 0xFFFFU) {
+            smap[cy][cx + 1U] = (uint16_t)(step + 1U);
+            q[tail++] = (uint16_t)(cy * MAZE_SIZE + (cx + 1U));
+        }
+        if (((cell & SOUTH_WALL) == 0U) && cy != 0U && smap[cy - 1U][cx] == 0xFFFFU) {
+            smap[cy - 1U][cx] = (uint16_t)(step + 1U);
+            q[tail++] = (uint16_t)((cy - 1U) * MAZE_SIZE + cx);
+        }
+        if (((cell & WEST_WALL) == 0U) && cx != 0U && smap[cy][cx - 1U] == 0xFFFFU) {
+            smap[cy][cx - 1U] = (uint16_t)(step + 1U);
+            q[tail++] = (uint16_t)(cy * MAZE_SIZE + (cx - 1U));
+        }
+    }
+
+    return (smap[m->y][m->x] == 0xFFFFU) ? -1 : (int)smap[m->y][m->x];
+}
+
+static bool sim_next_move(const SimMouse *m, uint8_t *out_rel)
+{
+    static const uint8_t rel_priority[4] = {0U, 1U, 3U, 2U};
+    static const int8_t dx[4] = {0, 1, 0, -1};
+    static const int8_t dy[4] = {1, 0, -1, 0};
+    uint16_t current_step = smap[m->y][m->x];
+
+    for (unsigned int i = 0U; i < 4U; i++) {
+        uint8_t rel = rel_priority[i];
+        uint8_t abs_dir = (uint8_t)((m->dir + rel) & 0x03U);
+        int nx = (int)m->x + dx[abs_dir];
+        int ny = (int)m->y + dy[abs_dir];
+        uint8_t cell = (uint8_t)(map[m->y][m->x] & 0x0FU);
+
+        if ((cell & abs_wall_from_dir(abs_dir)) != 0U) {
+            continue;
+        }
+        if (nx < 0 || ny < 0 || nx >= (int)MAZE_SIZE || ny >= (int)MAZE_SIZE) {
+            continue;
+        }
+        if (smap[ny][nx] < current_step) {
+            *out_rel = rel;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool sim_apply_move(SimMouse *m, uint8_t rel)
+{
+    static const int8_t dx[4] = {0, 1, 0, -1};
+    static const int8_t dy[4] = {1, 0, -1, 0};
+    uint8_t abs_dir = (uint8_t)((m->dir + rel) & 0x03U);
+    int nx;
+    int ny;
+
+    if ((s_walls_bl[m->y][m->x] & abs_wall_from_dir(abs_dir)) != 0U) {
+        return false;
+    }
+
+    nx = (int)m->x + dx[abs_dir];
+    ny = (int)m->y + dy[abs_dir];
+    if (nx < 0 || ny < 0 || nx >= (int)s_width || ny >= (int)s_height) {
+        return false;
+    }
+
+    m->dir = abs_dir;
+    m->x = (uint8_t)nx;
+    m->y = (uint8_t)ny;
+    return true;
+}
+
+static bool run_explore_sim(unsigned int max_steps, bool verbose)
+{
+    SimMouse m = {START_X, START_Y, 0U};
+    unsigned int newly_visited = 0U;
+
+    sim_init_search_map();
+
+    for (unsigned int step = 0U; step <= max_steps; step++) {
+        uint16_t rel_walls;
+        int smap_step;
+        uint8_t rel;
+
+        if (m.x >= s_width || m.y >= s_height) {
+            printf("[explore] result=failed reason=start_or_move_out_of_loaded_maze\n");
+            return false;
+        }
+
+        rel_walls = sim_relative_wall_info(m.x, m.y, m.dir);
+        sim_write_map_cell(m.x, m.y, m.dir, rel_walls);
+        if (!visited[m.y][m.x]) {
+            newly_visited++;
+        }
+        visited[m.y][m.x] = true;
+
+        if (verbose) {
+            printf("[explore] step=%u pos=(%u,%u,%u) rel_wall=0x%02X map=0x%04X\n",
+                   step, (unsigned int)m.x, (unsigned int)m.y,
+                   (unsigned int)m.dir, (unsigned int)rel_walls,
+                   (unsigned int)map[m.y][m.x]);
+        }
+
+        if (sim_is_goal(m.x, m.y)) {
+            printf("[explore] result=ok steps=%u pos=(%u,%u,%u) newly_visited=%u\n",
+                   step, (unsigned int)m.x, (unsigned int)m.y,
+                   (unsigned int)m.dir, newly_visited);
+            return true;
+        }
+
+        smap_step = sim_make_goal_smap(&m);
+        if (smap_step < 0 || !sim_next_move(&m, &rel)) {
+            printf("[explore] result=failed reason=no_route pos=(%u,%u,%u)\n",
+                   (unsigned int)m.x, (unsigned int)m.y, (unsigned int)m.dir);
+            return false;
+        }
+        if (!sim_apply_move(&m, rel)) {
+            printf("[explore] result=failed reason=hit_virtual_wall step=%u rel=%u pos=(%u,%u,%u)\n",
+                   step, (unsigned int)rel, (unsigned int)m.x,
+                   (unsigned int)m.y, (unsigned int)m.dir);
+            return false;
+        }
+    }
+
+    printf("[explore] result=failed reason=max_steps steps=%u pos=(%u,%u,%u)\n",
+           max_steps, (unsigned int)m.x, (unsigned int)m.y, (unsigned int)m.dir);
+    return false;
+}
+
 static const char *path_code_name(uint16_t code, char *buf, size_t len)
 {
     if ((code > 200U) && (code < 300U)) {
@@ -332,7 +616,7 @@ static void print_path_summary(void)
 
 static void print_usage(const char *argv0)
 {
-    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver]\n", argv0);
+    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver] [--explore-sim] [--explore-verbose] [--max-steps N]\n", argv0);
 }
 
 static bool run_solver_quiet(uint8_t mode, uint8_t case_index)
@@ -367,6 +651,9 @@ int main(int argc, char **argv)
     const char *maze_text_file = NULL;
     bool top_left_origin = true;
     bool verbose_solver = false;
+    bool explore_sim = false;
+    bool explore_verbose = false;
+    unsigned int max_steps = 2048U;
     uint8_t mode = 2U;
     uint8_t case_index = 1U;
 
@@ -391,6 +678,12 @@ int main(int argc, char **argv)
             case_index = (uint8_t)strtoul(argv[++i], NULL, 0);
         } else if (strcmp(argv[i], "--verbose-solver") == 0) {
             verbose_solver = true;
+        } else if (strcmp(argv[i], "--explore-sim") == 0) {
+            explore_sim = true;
+        } else if (strcmp(argv[i], "--explore-verbose") == 0) {
+            explore_verbose = true;
+        } else if (strcmp(argv[i], "--max-steps") == 0 && (i + 1) < argc) {
+            max_steps = (unsigned int)strtoul(argv[++i], NULL, 0);
         } else if (strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -414,6 +707,14 @@ int main(int argc, char **argv)
     } else {
         build_internal_sample();
         printf("[host] loaded internal open 16x16 sample\n");
+    }
+
+    if (explore_sim) {
+        printf("[host] explore_sim start=(%u,%u) goal=(%u,%u) max_steps=%u size=%ux%u\n",
+               (unsigned int)START_X, (unsigned int)START_Y,
+               (unsigned int)GOAL_X, (unsigned int)GOAL_Y,
+               max_steps, s_width, s_height);
+        return run_explore_sim(max_steps, explore_verbose) ? 0 : 1;
     }
 
     printf("[host] solver_build_path mode=%u case=%u start=(%u,%u) goal=(%u,%u) firmware_maze_size=%u\n",
