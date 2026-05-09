@@ -310,7 +310,12 @@ def main() -> int:
                         wrote_columns = True
                     continue
 
-                if line.startswith("#fw_") or line.startswith("#log_format=") or line.startswith("#last_test_"):
+                if (
+                    line.startswith("#fw_")
+                    or line.startswith("#log_format=")
+                    or line.startswith("#last_test_")
+                    or line.startswith("#wall_trace_")
+                ):
                     if line not in pending_fw_meta:
                         pending_fw_meta.append(line)
                         print(f"[INFO] FW Meta: {line}", file=sys.stderr)

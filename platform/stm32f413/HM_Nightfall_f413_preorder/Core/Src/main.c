@@ -210,6 +210,20 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_TEST_DIAG_SCALE (0.75f)
 #define NIGHTFALL_F413_WALL_END_MONITOR_MS (4000U)
 #define NIGHTFALL_F413_WALL_END_MONITOR_SAMPLE_MS (50U)
+#ifndef NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE
+#define NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE (0U)
+#endif
+#define NIGHTFALL_F413_WALL_TRACE_FRONT_FLAG (0x0001U)
+#define NIGHTFALL_F413_WALL_TRACE_RIGHT_FLAG (0x0002U)
+#define NIGHTFALL_F413_WALL_TRACE_LEFT_FLAG (0x0004U)
+#define NIGHTFALL_F413_WALL_TRACE_SAT_FLAG (0x0008U)
+#define NIGHTFALL_F413_WALL_TRACE_END_WALL_R_FLAG (0x0010U)
+#define NIGHTFALL_F413_WALL_TRACE_END_WALL_L_FLAG (0x0020U)
+#define NIGHTFALL_F413_WALL_TRACE_END_R_FLAG (0x0040U)
+#define NIGHTFALL_F413_WALL_TRACE_END_L_FLAG (0x0080U)
+#define NIGHTFALL_F413_WALL_TRACE_GATE_FLAG (0x0100U)
+#define NIGHTFALL_F413_WALL_TRACE_ENABLED_FLAG (0x8000U)
+#define NIGHTFALL_F413_WALL_TRACE_VERSION (1U)
 
 typedef enum
 {
@@ -305,9 +319,13 @@ static void nightfall_trace_log_set_mode_flags(uint16_t flags);
 static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
 static int32_t nightfall_trace_log_scale_float(float value, float scale);
 static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
+static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out);
 static bool nightfall_adc_prepare_single_conversion(void);
 static bool nightfall_adc_read_single_channel(uint32_t channel, uint16_t* out);
 static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out);
+static void nightfall_wall_end_clear(void);
+static uint16_t nightfall_wall_trace_flags_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall,
+                                                         bool gate_on);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_run_wall_end_monitor_once(void);
@@ -1307,6 +1325,119 @@ static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t
          nightfall_adc_read_single_channel(ADC_CHANNEL_8, vbat);
 }
 
+static void nightfall_wall_end_clear(void)
+{
+  memset(&g_wall_end, 0, sizeof(g_wall_end));
+}
+
+static uint16_t nightfall_wall_trace_flags_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall,
+                                                         bool gate_on)
+{
+  uint16_t flags = NIGHTFALL_F413_WALL_TRACE_ENABLED_FLAG;
+
+  if (wall == NULL)
+  {
+    return flags;
+  }
+  if (wall->front_wall)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_FRONT_FLAG;
+  }
+  if (wall->right_wall)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_RIGHT_FLAG;
+  }
+  if (wall->left_wall)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_LEFT_FLAG;
+  }
+  if (wall->saturated)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_SAT_FLAG;
+  }
+  if (g_wall_end.right_wall)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_END_WALL_R_FLAG;
+  }
+  if (g_wall_end.left_wall)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_END_WALL_L_FLAG;
+  }
+  if (g_wall_end.detected_r)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_END_R_FLAG;
+  }
+  if (g_wall_end.detected_l)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_END_L_FLAG;
+  }
+  if (gate_on)
+  {
+    flags |= NIGHTFALL_F413_WALL_TRACE_GATE_FLAG;
+  }
+
+  return flags;
+}
+
+static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out)
+{
+  nightfall_wall_sensor_snapshot_t wall;
+  bool gate_on;
+  int32_t dist_r_q4 = 0;
+  int32_t dist_l_q4 = 0;
+
+  if (out == NULL)
+  {
+    return false;
+  }
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    return false;
+  }
+
+  gate_on = (g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
+  nightfall_wall_end_update(&wall, gate_on);
+
+  out->adc_fr = wall.fr_on;
+  out->adc_r = wall.r_on;
+  out->adc_fl = wall.fl_on;
+  out->adc_l = wall.l_on;
+  out->adc_vbat = wall.vbat_on;
+  out->reserved_i32_0 = wall.fr_delta;
+  out->reserved_i32_1 = wall.r_delta;
+  out->reserved_i32_2 = wall.fl_delta;
+  out->reserved_i32_3 = wall.l_delta;
+  out->reserved_u16_0 = nightfall_wall_trace_flags_from_snapshot(&wall, gate_on);
+
+  if (g_wall_end.detected_r)
+  {
+    dist_r_q4 = nightfall_trace_log_scale_float(g_wall_end.dist_r_mm, 0.25f);
+  }
+  if (g_wall_end.detected_l)
+  {
+    dist_l_q4 = nightfall_trace_log_scale_float(g_wall_end.dist_l_mm, 0.25f);
+  }
+  if (dist_r_q4 < 0)
+  {
+    dist_r_q4 = 0;
+  }
+  if (dist_l_q4 < 0)
+  {
+    dist_l_q4 = 0;
+  }
+  if (dist_r_q4 > 255)
+  {
+    dist_r_q4 = 255;
+  }
+  if (dist_l_q4 > 255)
+  {
+    dist_l_q4 = 255;
+  }
+  out->reserved_u16_1 = (uint16_t)(((uint16_t)dist_l_q4 << 8U) | (uint16_t)dist_r_q4);
+
+  return true;
+}
+
 static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
 {
   nvm_trace_log_header_t header;
@@ -1349,6 +1480,14 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   trace_printf("#fw_git_sha=%s\r\n", FW_GIT_SHA);
   trace_printf("#fw_git_dirty=%d\r\n", FW_GIT_DIRTY);
   trace_printf("#fw_log_schema=0x%08lX\r\n", (unsigned long)NVM_TRACE_LOG_SCHEMA_VERSION);
+#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
+  trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)NIGHTFALL_F413_WALL_TRACE_VERSION);
+  trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
+  trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
+  trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
+#else
+  trace_printf("#wall_trace_observe=disabled\r\n");
+#endif
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
     nightfall_trace_log_emit_identity_meta(&g_boot_identity);
@@ -1615,6 +1754,17 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
   out->motor_out_l = f413_ctrl_get_motor_out_l();
   out->motor_out_r = f413_ctrl_get_motor_out_r();
+#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
+  if (nightfall_trace_log_fill_wall_observe(out))
+  {
+    adc_fr = out->adc_fr;
+    adc_r = out->adc_r;
+    adc_fl = out->adc_fl;
+    adc_l = out->adc_l;
+    adc_vbat = out->adc_vbat;
+  }
+  else
+#endif
   if (nightfall_trace_log_read_adc_raw(&adc_fr, &adc_r, &adc_fl, &adc_l, &adc_vbat))
   {
     out->adc_fr = adc_fr;
@@ -1743,6 +1893,7 @@ static void nightfall_trace_log_auto_start(void)
   g_trace_log_auto_seq = 0U;
   g_trace_log_auto_mode_flags = 0U;
   g_trace_log_auto_next_tick_ms = HAL_GetTick() + g_trace_log_auto_period_ms;
+  nightfall_wall_end_clear();
   trace_printf("[TRACE-LOG] auto: START period=%lu ms (fresh format)\r\n",
                (unsigned long)g_trace_log_auto_period_ms);
 }

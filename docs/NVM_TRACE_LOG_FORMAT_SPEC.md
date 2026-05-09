@@ -114,7 +114,7 @@ typedef struct __attribute__((packed)) {
 - `real_omega_mdps`: IMU Z角速度（mdps）
 - `target_angle_mdeg`: 角度目標（mdeg）
 - `accel_forward_mm_s2`: 前後加速度（mm/s^2）
-- `reserved_i32_0..3`: 将来拡張用32bit符号付き予備
+- `reserved_i32_0..3`: `#wall_trace_observe=1` の場合は壁センサdelta（FR, R, FL, L）、それ以外は将来拡張用32bit符号付き予備
 - `encoder_l/r`: 左右エンコーダカウンタ値
 - `motor_out_l/r`: 左右モータ制御出力（符号付きPWM相当）
 - `adc_fr/r/fl/l`: 壁センサADC raw
@@ -124,7 +124,7 @@ typedef struct __attribute__((packed)) {
 - `op_case`: 操作UI case
 - `op_sub`: 操作UI sub
 - `test_id`: UART/テスト識別子
-- `reserved_u16_0..1`: 将来拡張用16bit予備
+- `reserved_u16_0..1`: `#wall_trace_observe=1` の場合は壁観測flags/壁切れ距離圧縮値、それ以外は将来拡張用16bit予備
 
 ### flags
 
@@ -158,10 +158,29 @@ typedef struct __attribute__((packed)) {
 #fw_git_sha=...
 #fw_git_dirty=...
 #fw_log_schema=0x00020000
+#wall_trace_observe=1
+#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l
+#wall_trace_reserved_u16_0=flags
+#wall_trace_reserved_u16_1=dist_q4_lr
 #mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
 ```
 
 CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
+
+`#wall_trace_observe=1` の場合、`reserved_u16_0` は以下のbitを持つ。
+
+- bit0 (`0x0001`): front wall
+- bit1 (`0x0002`): right wall
+- bit2 (`0x0004`): left wall
+- bit3 (`0x0008`): wall ADC saturation
+- bit4 (`0x0010`): wall-end state right wall
+- bit5 (`0x0020`): wall-end state left wall
+- bit6 (`0x0040`): right wall-end detected
+- bit7 (`0x0080`): left wall-end detected
+- bit8 (`0x0100`): wall-end detection gate enabled
+- bit15 (`0x8000`): wall trace observe enabled
+
+`reserved_u16_1` は下位8bitに右壁切れ検出距離、上位8bitに左壁切れ検出距離を `distance_mm / 4` で格納する。
 
 ---
 
