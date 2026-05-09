@@ -55,4 +55,7 @@ void load_map_from_eeprom(void)
  * solver.c は直接呼ばないが search.h で宣言されているためリンク時に
  * 必要になる可能性がある。
  */
-void store_map_in_eeprom(void) { /* stub */ }
+void store_map_in_eeprom(void)
+{
+    (void)nvm_maze_save_map(&map[0][0], (uint32_t)(MAZE_SIZE * MAZE_SIZE));
+}

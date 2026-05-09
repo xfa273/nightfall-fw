@@ -33,6 +33,7 @@
 #include "params.h"
 #include "shortest_run_params.h"
 #include "solver.h"
+#include "search.h"
 #include "trace.h"
 
 /* USER CODE END Includes */
@@ -233,6 +234,13 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA (0.15f)
 #define NIGHTFALL_F413_WALL_CTRL_SLEW_DEG (0.25f)
 #define NIGHTFALL_F413_WALL_CTRL_MIN_VEL_MM_S (20.0f)
+#define NIGHTFALL_F413_MAZE_WALL_W (0x01U)
+#define NIGHTFALL_F413_MAZE_WALL_S (0x02U)
+#define NIGHTFALL_F413_MAZE_WALL_E (0x04U)
+#define NIGHTFALL_F413_MAZE_WALL_N (0x08U)
+#define NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK (0x0FU)
+#define NIGHTFALL_F413_MAZE_START_FORCED_WALLS (0x07U)
+#define NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
 
 typedef enum
 {
@@ -338,6 +346,10 @@ static uint16_t nightfall_wall_trace_flags_from_snapshot(const nightfall_wall_se
 static void nightfall_wall_control_reset(void);
 static void nightfall_wall_control_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_wall_control_apply(bool straight_gate);
+static void nightfall_search_map_init_empty(void);
+static uint16_t nightfall_search_wall_info_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
+static void nightfall_search_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, uint16_t relative_wall_info);
+static void nightfall_run_search_map_probe_once(void);
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall);
 static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on);
 static void nightfall_run_wall_end_monitor_once(void);
@@ -1776,7 +1788,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
@@ -2400,6 +2412,188 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
 }
+static void nightfall_search_map_init_empty(void)
+{
+  uint8_t x;
+  uint8_t y;
+
+  for (y = 0U; y < MAZE_SIZE; y++)
+  {
+    for (x = 0U; x < MAZE_SIZE; x++)
+    {
+      map[y][x] = 0xF0U;
+      visited[y][x] = false;
+    }
+  }
+
+  for (y = 0U; y < MAZE_SIZE; y++)
+  {
+    map[y][0] |= 0xF1U;
+    map[y][MAZE_SIZE - 1U] |= 0xF4U;
+  }
+  for (x = 0U; x < MAZE_SIZE; x++)
+  {
+    map[0][x] |= 0xF2U;
+    map[MAZE_SIZE - 1U][x] |= 0xF8U;
+  }
+
+  map[START_Y][START_X] |= 0x44U;
+  if (START_X > 0U)
+  {
+    map[START_Y][START_X - 1U] |= 0x44U;
+  }
+  visited[START_Y][START_X] = true;
+}
+
+static uint16_t nightfall_search_wall_info_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall)
+{
+  uint16_t info = 0U;
+
+  if (wall == NULL)
+  {
+    return 0U;
+  }
+  if (wall->front_wall)
+  {
+    info |= 0x88U;
+  }
+  if (wall->right_wall)
+  {
+    info |= 0x44U;
+  }
+  if (wall->left_wall)
+  {
+    info |= 0x11U;
+  }
+  return info;
+}
+
+static void nightfall_search_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, uint16_t relative_wall_info)
+{
+  uint16_t m_temp;
+
+  if ((x >= MAZE_SIZE) || (y >= MAZE_SIZE))
+  {
+    return;
+  }
+
+  m_temp = (relative_wall_info >> (dir & 0x03U)) & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK;
+  if ((x == START_X) && (y == START_Y))
+  {
+    m_temp |= NIGHTFALL_F413_MAZE_START_FORCED_WALLS;
+  }
+  m_temp |= (uint16_t)(m_temp << 4U);
+
+  map[y][x] = m_temp;
+  if (y != (MAZE_SIZE - 1U))
+  {
+    if ((m_temp & 0x88U) != 0U)
+    {
+      map[y + 1U][x] |= 0x22U;
+    }
+    else
+    {
+      map[y + 1U][x] &= (uint16_t)~0x22U;
+    }
+  }
+  if (x != (MAZE_SIZE - 1U))
+  {
+    if ((m_temp & 0x44U) != 0U)
+    {
+      map[y][x + 1U] |= 0x11U;
+    }
+    else
+    {
+      map[y][x + 1U] &= (uint16_t)~0x11U;
+    }
+  }
+  if (y != 0U)
+  {
+    if ((m_temp & 0x22U) != 0U)
+    {
+      map[y - 1U][x] |= 0x88U;
+    }
+    else
+    {
+      map[y - 1U][x] &= (uint16_t)~0x88U;
+    }
+  }
+  if (x != 0U)
+  {
+    if ((m_temp & 0x11U) != 0U)
+    {
+      map[y][x - 1U] |= 0x44U;
+    }
+    else
+    {
+      map[y][x - 1U] &= (uint16_t)~0x44U;
+    }
+  }
+
+  map[START_Y][START_X] |= 0x77U;
+  if ((START_X + 1U) < MAZE_SIZE)
+  {
+    map[START_Y][START_X + 1U] |= 0x11U;
+  }
+}
+
+static void nightfall_run_search_map_probe_once(void)
+{
+  static uint16_t loaded[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
+  nightfall_wall_sensor_snapshot_t wall;
+  HAL_StatusTypeDef st;
+  uint32_t i;
+
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    trace_printf("[SEARCH-MAP] FAIL(read wall snapshot)\r\n");
+    return;
+  }
+
+  nightfall_search_map_init_empty();
+  mouse.x = START_X;
+  mouse.y = START_Y;
+  mouse.dir = 0U;
+  wall_info = nightfall_search_wall_info_from_snapshot(&wall);
+  nightfall_search_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y, (uint8_t)mouse.dir, wall_info);
+
+  st = nvm_maze_save_map(&map[0][0], NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
+  if (st != HAL_OK)
+  {
+    trace_printf("[SEARCH-MAP] FAIL(save HAL=%d)\r\n", (int)st);
+    return;
+  }
+
+  memset(loaded, 0, sizeof(loaded));
+  if (!nvm_maze_load_map(loaded, NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT))
+  {
+    trace_printf("[SEARCH-MAP] FAIL(load)\r\n");
+    return;
+  }
+  for (i = 0U; i < NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT; i++)
+  {
+    if (loaded[i] != (&map[0][0])[i])
+    {
+      trace_printf("[SEARCH-MAP] FAIL(verify i=%lu got=0x%04X exp=0x%04X)\r\n",
+                   (unsigned long)i,
+                   (unsigned int)loaded[i],
+                   (unsigned int)(&map[0][0])[i]);
+      return;
+    }
+  }
+
+  trace_printf("[SEARCH-MAP] PASS start=(%u,%u,%u) wall_info=0x%04X cell=0x%04X dFR=%ld dR=%ld dFL=%ld dL=%ld\r\n",
+               (unsigned int)mouse.x,
+               (unsigned int)mouse.y,
+               (unsigned int)mouse.dir,
+               (unsigned int)wall_info,
+               (unsigned int)map[START_Y][START_X],
+               (long)wall.fr_delta,
+               (long)wall.r_delta,
+               (long)wall.fl_delta,
+               (long)wall.l_delta);
+}
+
 static void nightfall_wall_end_reset_from_snapshot(const nightfall_wall_sensor_snapshot_t* wall)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
@@ -4626,6 +4820,10 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'E':
       nightfall_op_uart_enter_once();
+      break;
+
+    case 'O':
+      nightfall_run_search_map_probe_once();
       break;
 
     case 'q':
