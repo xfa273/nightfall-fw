@@ -227,6 +227,28 @@ typedef struct
   uint8_t adc_prepared;
 } nightfall_run_guard_t;
 
+typedef struct
+{
+  uint16_t fr_off;
+  uint16_t r_off;
+  uint16_t fl_off;
+  uint16_t l_off;
+  uint16_t vbat_off;
+  uint16_t fr_on;
+  uint16_t r_on;
+  uint16_t fl_on;
+  uint16_t l_on;
+  uint16_t vbat_on;
+  int32_t fr_delta;
+  int32_t r_delta;
+  int32_t fl_delta;
+  int32_t l_delta;
+  bool front_wall;
+  bool right_wall;
+  bool left_wall;
+  bool saturated;
+} nightfall_wall_sensor_snapshot_t;
+
 static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq);
 static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* lhs,
                                                  const nvm_trace_log_record_t* rhs);
@@ -264,6 +286,7 @@ static int32_t nightfall_trace_log_scale_float(float value, float scale);
 static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
 static bool nightfall_adc_prepare_single_conversion(void);
 static bool nightfall_adc_read_single_channel(uint32_t channel, uint16_t* out);
+static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
 static void nightfall_test_run(uint8_t test_id);
@@ -1985,21 +2008,16 @@ static void nightfall_ir_emitters_set(GPIO_PinState fr,
   HAL_GPIO_WritePin(IR_L_GPIO_Port, IR_L_Pin, l);
 }
 
-static bool nightfall_op_read_front_sensor_delta(int32_t* fr_delta, int32_t* fl_delta)
+static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out)
 {
-  uint16_t fr_off = 0U;
-  uint16_t fl_off = 0U;
-  uint16_t fr_on = 0U;
-  uint16_t fl_on = 0U;
   bool ok = false;
 
-  if ((fr_delta == NULL) || (fl_delta == NULL))
+  if (out == NULL)
   {
     return false;
   }
 
-  *fr_delta = 0;
-  *fl_delta = 0;
+  memset(out, 0, sizeof(*out));
 
   if (!nightfall_adc_prepare_single_conversion())
   {
@@ -2007,26 +2025,41 @@ static bool nightfall_op_read_front_sensor_delta(int32_t* fr_delta, int32_t* fl_
   }
 
   nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
-  HAL_Delay(1U);
-  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_off) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_off))
+  HAL_Delay(2U);
+  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &out->fr_off) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_1, &out->r_off) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &out->fl_off) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_3, &out->l_off) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_8, &out->vbat_off))
   {
-    goto op_sensor_cleanup;
+    goto wall_snapshot_cleanup;
   }
 
-  nightfall_ir_emitters_set(GPIO_PIN_SET, GPIO_PIN_RESET, GPIO_PIN_SET, GPIO_PIN_RESET);
-  HAL_Delay(1U);
-  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_on) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_on))
+  nightfall_ir_emitters_set(GPIO_PIN_SET, GPIO_PIN_SET, GPIO_PIN_SET, GPIO_PIN_SET);
+  HAL_Delay(2U);
+  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_0, &out->fr_on) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_1, &out->r_on) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &out->fl_on) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_3, &out->l_on) ||
+      !nightfall_adc_read_single_channel(ADC_CHANNEL_8, &out->vbat_on))
   {
-    goto op_sensor_cleanup;
+    goto wall_snapshot_cleanup;
   }
 
-  *fr_delta = (int32_t)fr_on - (int32_t)fr_off;
-  *fl_delta = (int32_t)fl_on - (int32_t)fl_off;
+  out->fr_delta = (int32_t)out->fr_on - (int32_t)out->fr_off;
+  out->r_delta = (int32_t)out->r_on - (int32_t)out->r_off;
+  out->fl_delta = (int32_t)out->fl_on - (int32_t)out->fl_off;
+  out->l_delta = (int32_t)out->l_on - (int32_t)out->l_off;
+  out->front_wall = (out->fr_delta > WALL_BASE_FR) || (out->fl_delta > WALL_BASE_FL);
+  out->right_wall = out->r_delta > WALL_BASE_R;
+  out->left_wall = out->l_delta > WALL_BASE_L;
+  out->saturated = (out->fr_on >= NIGHTFALL_F413_RUN_GUARD_WALL_SAT_ADC) ||
+                   (out->r_on >= NIGHTFALL_F413_RUN_GUARD_WALL_SAT_ADC) ||
+                   (out->fl_on >= NIGHTFALL_F413_RUN_GUARD_WALL_SAT_ADC) ||
+                   (out->l_on >= NIGHTFALL_F413_RUN_GUARD_WALL_SAT_ADC);
   ok = true;
 
-op_sensor_cleanup:
+wall_snapshot_cleanup:
   nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
   MX_ADC1_Init();
   return ok;
@@ -2034,87 +2067,55 @@ op_sensor_cleanup:
 
 static bool nightfall_op_enter_sensor_active(void)
 {
-  int32_t fr_delta = 0;
-  int32_t fl_delta = 0;
+  nightfall_wall_sensor_snapshot_t wall;
 
-  if (!nightfall_op_read_front_sensor_delta(&fr_delta, &fl_delta))
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
   {
     return false;
   }
 
-  return (fr_delta >= NIGHTFALL_F413_OP_ENTER_DELTA_ADC) &&
-         (fl_delta <= NIGHTFALL_F413_OP_ENTER_RELEASE_ADC);
+  return (wall.fr_delta >= NIGHTFALL_F413_OP_ENTER_DELTA_ADC) &&
+         (wall.fl_delta <= NIGHTFALL_F413_OP_ENTER_RELEASE_ADC);
 }
 
 static void nightfall_run_wall_sensor_test_once(void)
 {
-  uint16_t r_off = 0U;
-  uint16_t l_off = 0U;
-  uint16_t fr_off = 0U;
-  uint16_t fl_off = 0U;
-  uint16_t vb_off = 0U;
-  uint16_t r_on = 0U;
-  uint16_t l_on = 0U;
-  uint16_t fr_on = 0U;
-  uint16_t fl_on = 0U;
-  uint16_t vb_on = 0U;
-  bool ok = false;
+  nightfall_wall_sensor_snapshot_t wall;
 
-  if (!nightfall_adc_prepare_single_conversion())
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
   {
-    trace_printf("[HW-TEST][Wall] FAIL(adc prepare)\r\n");
+    trace_printf("[HW-TEST][Wall] FAIL(read snapshot)\r\n");
     return;
   }
 
-  nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
-  HAL_Delay(2U);
-  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_1, &r_off) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_3, &l_off) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_off) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_off) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_8, &vb_off))
-  {
-    trace_printf("[HW-TEST][Wall] FAIL(read off)\r\n");
-    goto wall_test_cleanup;
-  }
-
-  nightfall_ir_emitters_set(GPIO_PIN_SET, GPIO_PIN_SET, GPIO_PIN_SET, GPIO_PIN_SET);
-  HAL_Delay(2U);
-  if (!nightfall_adc_read_single_channel(ADC_CHANNEL_1, &r_on) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_3, &l_on) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_0, &fr_on) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_2, &fl_on) ||
-      !nightfall_adc_read_single_channel(ADC_CHANNEL_8, &vb_on))
-  {
-    trace_printf("[HW-TEST][Wall] FAIL(read on)\r\n");
-    goto wall_test_cleanup;
-  }
-
-  ok = true;
-
   trace_printf("[HW-TEST][Wall] off: R=%u L=%u FR=%u FL=%u VB=%u\r\n",
-               (unsigned int)r_off,
-               (unsigned int)l_off,
-               (unsigned int)fr_off,
-               (unsigned int)fl_off,
-               (unsigned int)vb_off);
+               (unsigned int)wall.r_off,
+               (unsigned int)wall.l_off,
+               (unsigned int)wall.fr_off,
+               (unsigned int)wall.fl_off,
+               (unsigned int)wall.vbat_off);
   trace_printf("[HW-TEST][Wall] on : R=%u L=%u FR=%u FL=%u VB=%u\r\n",
-               (unsigned int)r_on,
-               (unsigned int)l_on,
-               (unsigned int)fr_on,
-               (unsigned int)fl_on,
-               (unsigned int)vb_on);
-
-wall_test_cleanup:
-  nightfall_ir_emitters_set(GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET, GPIO_PIN_RESET);
-  MX_ADC1_Init();
-
-  if (ok)
-  {
-    trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
-  }
+               (unsigned int)wall.r_on,
+               (unsigned int)wall.l_on,
+               (unsigned int)wall.fr_on,
+               (unsigned int)wall.fl_on,
+               (unsigned int)wall.vbat_on);
+  trace_printf("[HW-TEST][Wall] delta: R=%ld L=%ld FR=%ld FL=%ld\r\n",
+               (long)wall.r_delta,
+               (long)wall.l_delta,
+               (long)wall.fr_delta,
+               (long)wall.fl_delta);
+  trace_printf("[HW-TEST][Wall] detect: front=%u right=%u left=%u sat=%u thr FR=%u FL=%u R=%u L=%u\r\n",
+               (unsigned int)wall.front_wall,
+               (unsigned int)wall.right_wall,
+               (unsigned int)wall.left_wall,
+               (unsigned int)wall.saturated,
+               (unsigned int)WALL_BASE_FR,
+               (unsigned int)WALL_BASE_FL,
+               (unsigned int)WALL_BASE_R,
+               (unsigned int)WALL_BASE_L);
+  trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
 }
-
 static void nightfall_run_switch_test_once(void)
 {
   GPIO_PinState raw = HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin);
