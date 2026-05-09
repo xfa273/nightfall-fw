@@ -77,12 +77,18 @@ def main() -> int:
     ap.add_argument("--no-reset", action="store_true", help="do not reset after write")
     ap.add_argument("--shared", action="store_true", help="use ST-LINK shared mode")
     ap.add_argument("--list", action="store_true", help="list ST-LINK probes and exit")
+    ap.add_argument("--reset-only", action="store_true", help="only connect and perform reset without flashing")
     args = ap.parse_args()
 
     cli = find_cube_cli(args.cli)
 
     if args.list:
         run([cli, "-l", "stlink-only"])
+        return 0
+
+    if args.reset_only:
+        run([cli, *build_connect_args(args), "-rst"], cwd=repo_root)
+        print("SUCCESS")
         return 0
 
     if args.build:

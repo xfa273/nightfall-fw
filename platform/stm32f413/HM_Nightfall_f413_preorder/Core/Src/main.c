@@ -1485,7 +1485,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case5=dump latest full log\r\n");
-  trace_printf("[OP-UART] P=PUSH increment, E=FR enter, !=software reset\r\n");
+  trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
 }
 
 static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
@@ -3048,13 +3048,6 @@ static void nightfall_op_uart_enter_once(void)
   nightfall_op_enter_selection();
 }
 
-static void nightfall_op_uart_reset_once(void)
-{
-  trace_printf("[OP-UART] software reset\r\n");
-  HAL_Delay(50U);
-  NVIC_SystemReset();
-}
-
 static void nightfall_motor_set(bool enable,
                                 bool left_forward,
                                 bool right_forward,
@@ -4177,10 +4170,6 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'E':
       nightfall_op_uart_enter_once();
-      break;
-
-    case '!':
-      nightfall_op_uart_reset_once();
       break;
 
     case 'q':
