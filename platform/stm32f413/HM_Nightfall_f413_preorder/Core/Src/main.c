@@ -229,10 +229,10 @@ static void MX_USART1_UART_Init(void);
 #ifndef NIGHTFALL_F413_DISABLE_WALL_CONTROL
 #define NIGHTFALL_F413_DISABLE_WALL_CONTROL (0U)
 #endif
-#define NIGHTFALL_F413_WALL_CTRL_KP_DEG_PER_ADC (0.004f)
-#define NIGHTFALL_F413_WALL_CTRL_MAX_DEG (3.0f)
-#define NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA (0.15f)
-#define NIGHTFALL_F413_WALL_CTRL_SLEW_DEG (0.25f)
+#define NIGHTFALL_F413_WALL_CTRL_KP_DEG_PER_ADC (KP_DEFAULT)
+#define NIGHTFALL_F413_WALL_CTRL_MAX_DEG (WALL_CTRL_MAX)
+#define NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA (WALL_LPF_ALPHA)
+#define NIGHTFALL_F413_WALL_CTRL_SLEW_DEG (WALL_CTRL_SLEW_MAX)
 #define NIGHTFALL_F413_WALL_CTRL_MIN_VEL_MM_S (20.0f)
 #define NIGHTFALL_F413_MAZE_WALL_W (0x01U)
 #define NIGHTFALL_F413_MAZE_WALL_S (0x02U)
@@ -1433,6 +1433,7 @@ static void nightfall_wall_control_reset(void)
   g_wall_ctrl_angle_deg = 0.0f;
   g_wall_ctrl_error_lpf = 0.0f;
   g_wall_ctrl_active = false;
+  f413_ctrl_set_heading_omega_correction(0.0f);
 }
 
 static void nightfall_wall_control_update(const nightfall_wall_sensor_snapshot_t* wall, bool gate_on)
@@ -1476,6 +1477,10 @@ static void nightfall_wall_control_update(const nightfall_wall_sensor_snapshot_t
   g_wall_ctrl_error_lpf += NIGHTFALL_F413_WALL_CTRL_LPF_ALPHA *
                            (wall_error - g_wall_ctrl_error_lpf);
   target_deg = g_wall_ctrl_error_lpf * NIGHTFALL_F413_WALL_CTRL_KP_DEG_PER_ADC;
+  if (fabsf(target_deg) < WALL_CTRL_MIN)
+  {
+    target_deg = 0.0f;
+  }
   if (target_deg > NIGHTFALL_F413_WALL_CTRL_MAX_DEG)
   {
     target_deg = NIGHTFALL_F413_WALL_CTRL_MAX_DEG;
@@ -1507,7 +1512,11 @@ static void nightfall_wall_control_apply(bool straight_gate)
 #else
   if (straight_gate && g_wall_ctrl_active)
   {
-    f413_ctrl_set_angle_target(g_wall_ctrl_angle_deg);
+    f413_ctrl_set_heading_omega_correction(-g_wall_ctrl_angle_deg);
+  }
+  else
+  {
+    f413_ctrl_set_heading_omega_correction(0.0f);
   }
 #endif
 }

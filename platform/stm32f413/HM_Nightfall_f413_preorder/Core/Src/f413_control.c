@@ -13,6 +13,7 @@
 
 #include "f413_control.h"
 #include "main.h"
+#include "params.h"
 #include <math.h>
 #include <string.h>
 
@@ -41,6 +42,26 @@
 #define F413_CTRL_ROT_PWM_MIN     (100.0f)
 #define F413_CTRL_ROT_MIN_OMEGA_REF (10.0f)
 #define F413_CTRL_ROT_MIN_VEL_ABS (1.0f)
+#ifndef CTRL_ENABLE_ANTI_WINDUP
+#define CTRL_ENABLE_ANTI_WINDUP 0
+#endif
+#ifndef CTRL_OUTPUT_MAX
+#define CTRL_OUTPUT_MAX 1000.0f
+#endif
+#ifndef CTRL_DISTANCE_OUTER_DIV
+#define CTRL_DISTANCE_OUTER_DIV 1
+#endif
+#if (CTRL_DISTANCE_OUTER_DIV < 1)
+#undef CTRL_DISTANCE_OUTER_DIV
+#define CTRL_DISTANCE_OUTER_DIV 1
+#endif
+#ifndef CTRL_ANGLE_OUTER_DIV
+#define CTRL_ANGLE_OUTER_DIV 1
+#endif
+#if (CTRL_ANGLE_OUTER_DIV < 1)
+#undef CTRL_ANGLE_OUTER_DIV
+#define CTRL_ANGLE_OUTER_DIV 1
+#endif
 
 /* ---------- IMU (ISM330DHCX) 定数 ---------- */
 #define F413_IMU_WHO_AM_I_REG     (0x0FU)
@@ -79,17 +100,46 @@ extern SPI_HandleTypeDef hspi2;
 static volatile bool s_running = false;
 static bool s_imu_ok = false;
 
+static volatile float s_acceleration_interrupt = 0.0f;
+static volatile float s_velocity_interrupt = 0.0f;
+static volatile float s_velocity_profile_target = 0.0f;
+static volatile uint8_t s_velocity_profile_clamp_enabled = 0U;
+static volatile float s_omega_interrupt = 0.0f;
+static volatile float s_target_distance = 0.0f;
 static volatile float s_target_velocity = 0.0f;
-static volatile float s_target_omega    = 0.0f;
-static volatile float s_target_angle    = 0.0f;
-static volatile bool  s_angle_target_enabled = false;
+static volatile float s_target_angle = 0.0f;
+static volatile float s_target_omega = 0.0f;
+static volatile float s_heading_omega_correction = 0.0f;
+static volatile bool s_angle_target_enabled = false;
 
-static volatile float s_real_velocity   = 0.0f;
-static volatile float s_real_omega      = 0.0f;
-static volatile float s_distance        = 0.0f;
-static volatile float s_angle           = 0.0f;
-static volatile int16_t s_motor_out_l   = 0;
-static volatile int16_t s_motor_out_r   = 0;
+static volatile float s_real_distance = 0.0f;
+static volatile float s_real_velocity = 0.0f;
+static volatile float s_real_angle = 0.0f;
+static volatile float s_real_omega = 0.0f;
+static volatile float s_encoder_distance_l = 0.0f;
+static volatile float s_encoder_distance_r = 0.0f;
+static volatile float s_encoder_speed_l = 0.0f;
+static volatile float s_encoder_speed_r = 0.0f;
+static volatile float s_distance_error = 0.0f;
+static volatile float s_distance_error_error = 0.0f;
+static volatile float s_previous_distance_error = 0.0f;
+static volatile float s_distance_integral = 0.0f;
+static volatile float s_velocity_error = 0.0f;
+static volatile float s_velocity_error_error = 0.0f;
+static volatile float s_previous_velocity_error = 0.0f;
+static volatile float s_velocity_integral = 0.0f;
+static volatile float s_angle_error = 0.0f;
+static volatile float s_angle_error_error = 0.0f;
+static volatile float s_previous_angle_error = 0.0f;
+static volatile float s_angle_integral = 0.0f;
+static volatile float s_omega_error = 0.0f;
+static volatile float s_omega_error_error = 0.0f;
+static volatile float s_previous_omega_error = 0.0f;
+static volatile float s_omega_integral = 0.0f;
+static volatile float s_out_translation = 0.0f;
+static volatile float s_out_rotate = 0.0f;
+static volatile int16_t s_motor_out_l = 0;
+static volatile int16_t s_motor_out_r = 0;
 
 static float s_omega_z_offset  = 0.0f;
 static float s_omega_z_filtered = 0.0f;
@@ -98,12 +148,76 @@ static float s_accel_forward_offset = 0.0f;
 static float s_accel_forward_filtered = 0.0f;
 static bool  s_accel_forward_lpf_inited = false;
 static float s_accel_velocity = 0.0f;
-static float s_omega_integral = 0.0f;
-static float s_previous_omega_error = 0.0f;
-static float s_angle_integral = 0.0f;
-static float s_previous_angle_error = 0.0f;
+static float s_real_velocity_lpf = 0.0f;
+static bool s_real_velocity_lpf_inited = false;
+static uint16_t s_distance_outer_count = 0U;
+static float s_distance_velocity_feedback = 0.0f;
+static uint16_t s_angle_outer_count = 0U;
 
 static volatile bool s_spi2_busy = false;
+
+static bool f413_ctrl_use_fan_on_gains(void)
+{
+    return false;
+}
+
+static void f413_ctrl_reset_pid_state(void)
+{
+    s_target_distance = 0.0f;
+    s_target_velocity = 0.0f;
+    s_target_angle = 0.0f;
+    s_target_omega = 0.0f;
+    s_heading_omega_correction = 0.0f;
+    s_real_distance = 0.0f;
+    s_real_velocity = 0.0f;
+    s_real_angle = 0.0f;
+    s_real_omega = 0.0f;
+    s_encoder_distance_l = 0.0f;
+    s_encoder_distance_r = 0.0f;
+    s_encoder_speed_l = 0.0f;
+    s_encoder_speed_r = 0.0f;
+    s_distance_error = 0.0f;
+    s_distance_error_error = 0.0f;
+    s_previous_distance_error = 0.0f;
+    s_distance_integral = 0.0f;
+    s_velocity_error = 0.0f;
+    s_velocity_error_error = 0.0f;
+    s_previous_velocity_error = 0.0f;
+    s_velocity_integral = 0.0f;
+    s_angle_error = 0.0f;
+    s_angle_error_error = 0.0f;
+    s_previous_angle_error = 0.0f;
+    s_angle_integral = 0.0f;
+    s_omega_error = 0.0f;
+    s_omega_error_error = 0.0f;
+    s_previous_omega_error = 0.0f;
+    s_omega_integral = 0.0f;
+    s_out_translation = 0.0f;
+    s_out_rotate = 0.0f;
+    s_motor_out_l = 0;
+    s_motor_out_r = 0;
+    s_omega_z_filtered = 0.0f;
+    s_omega_z_lpf_inited = false;
+    s_accel_forward_filtered = 0.0f;
+    s_accel_forward_lpf_inited = false;
+    s_accel_velocity = 0.0f;
+    s_real_velocity_lpf = 0.0f;
+    s_real_velocity_lpf_inited = false;
+    s_distance_outer_count = 0U;
+    s_distance_velocity_feedback = 0.0f;
+    s_angle_outer_count = 0U;
+}
+
+static void f413_ctrl_reset_profile_state(void)
+{
+    s_acceleration_interrupt = 0.0f;
+    s_velocity_interrupt = 0.0f;
+    s_velocity_profile_target = 0.0f;
+    s_velocity_profile_clamp_enabled = 0U;
+    s_omega_interrupt = 0.0f;
+    s_heading_omega_correction = 0.0f;
+    s_angle_target_enabled = false;
+}
 
 /* ========================================================== */
 /* IMU SPI helpers (ISM330DHCX on SPI2, CS = IMU_CS)          */
@@ -214,24 +328,9 @@ static void imu_get_motion_offsets(void)
 void f413_ctrl_init(void)
 {
     s_running = false;
-    s_target_velocity = 0.0f;
-    s_target_omega    = 0.0f;
-    s_target_angle    = 0.0f;
-    s_angle_target_enabled = false;
-    s_real_velocity   = 0.0f;
-    s_real_omega      = 0.0f;
-    s_distance        = 0.0f;
-    s_angle           = 0.0f;
-    s_motor_out_l     = 0;
-    s_motor_out_r     = 0;
+    f413_ctrl_reset_profile_state();
+    f413_ctrl_reset_pid_state();
     s_accel_forward_offset = 0.0f;
-    s_accel_forward_filtered = 0.0f;
-    s_accel_forward_lpf_inited = false;
-    s_accel_velocity = 0.0f;
-    s_omega_integral = 0.0f;
-    s_previous_omega_error = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
 
     /* IMU 初期化 + ジャイロオフセット取得 */
     s_imu_ok = imu_init_ism330();
@@ -259,25 +358,8 @@ void f413_ctrl_start(void)
     }
 
     /* 状態をリセットしてから有効化 */
-    s_target_velocity = 0.0f;
-    s_target_omega    = 0.0f;
-    s_target_angle    = 0.0f;
-    s_angle_target_enabled = false;
-    s_real_velocity   = 0.0f;
-    s_real_omega      = 0.0f;
-    s_distance        = 0.0f;
-    s_angle           = 0.0f;
-    s_motor_out_l     = 0;
-    s_motor_out_r     = 0;
-    s_omega_z_filtered = 0.0f;
-    s_omega_z_lpf_inited = false;
-    s_accel_forward_filtered = 0.0f;
-    s_accel_forward_lpf_inited = false;
-    s_accel_velocity = 0.0f;
-    s_omega_integral = 0.0f;
-    s_previous_omega_error = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
+    f413_ctrl_reset_profile_state();
+    f413_ctrl_reset_pid_state();
 
     __HAL_TIM_SET_COUNTER(&htim3, F413_CTRL_ENCODER_CENTER);
     __HAL_TIM_SET_COUNTER(&htim4, F413_CTRL_ENCODER_CENTER);
@@ -298,14 +380,13 @@ void f413_ctrl_start(void)
 void f413_ctrl_stop(void)
 {
     s_running = false;
+    f413_ctrl_reset_profile_state();
     s_target_velocity = 0.0f;
     s_target_omega    = 0.0f;
-    s_angle_target_enabled = false;
-    s_accel_velocity = 0.0f;
+    s_out_translation = 0.0f;
+    s_out_rotate = 0.0f;
+    s_velocity_integral = 0.0f;
     s_omega_integral = 0.0f;
-    s_previous_omega_error = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
     s_motor_out_l = 0;
     s_motor_out_r = 0;
 
@@ -321,38 +402,73 @@ void f413_ctrl_stop(void)
 
 void f413_ctrl_set_velocity(float velocity_mm_s)
 {
+    s_velocity_interrupt = velocity_mm_s;
     s_target_velocity = velocity_mm_s;
 }
 
 void f413_ctrl_set_omega(float omega_deg_s)
 {
-    s_target_omega = omega_deg_s;
+    s_omega_interrupt = omega_deg_s;
+    s_target_omega = 0.0f;
 }
 
 void f413_ctrl_set_angle_target(float angle_deg)
 {
     s_target_angle = angle_deg;
     s_angle_target_enabled = true;
+    s_target_omega = 0.0f;
     s_angle_integral = 0.0f;
     s_previous_angle_error = 0.0f;
+    s_angle_outer_count = 0U;
 }
 
 void f413_ctrl_clear_angle_target(void)
 {
     s_angle_target_enabled = false;
+    s_target_omega = 0.0f;
+    s_angle_integral = 0.0f;
+    s_previous_angle_error = 0.0f;
+    s_angle_outer_count = 0U;
+}
+
+void f413_ctrl_set_heading_omega_correction(float omega_deg_s)
+{
+    if (omega_deg_s > WALL_CTRL_MAX)
+    {
+        omega_deg_s = WALL_CTRL_MAX;
+    }
+    else if (omega_deg_s < -WALL_CTRL_MAX)
+    {
+        omega_deg_s = -WALL_CTRL_MAX;
+    }
+    s_heading_omega_correction = omega_deg_s;
+}
+
+float f413_ctrl_get_distance(void)      { return s_real_distance; }
+float f413_ctrl_get_angle(void)         { return s_real_angle; }
+void  f413_ctrl_reset_distance(void)
+{
+    s_real_distance = 0.0f;
+    s_encoder_distance_l = 0.0f;
+    s_encoder_distance_r = 0.0f;
+    s_target_distance = 0.0f;
+    s_distance_error = 0.0f;
+    s_distance_error_error = 0.0f;
+    s_previous_distance_error = 0.0f;
+    s_distance_integral = 0.0f;
+    s_distance_velocity_feedback = 0.0f;
+    s_distance_outer_count = 0U;
+}
+void  f413_ctrl_reset_angle(void)
+{
+    s_real_angle = 0.0f;
     s_target_angle = 0.0f;
     s_angle_integral = 0.0f;
     s_previous_angle_error = 0.0f;
-}
-
-float f413_ctrl_get_distance(void)      { return s_distance; }
-float f413_ctrl_get_angle(void)         { return s_angle; }
-void  f413_ctrl_reset_distance(void)    { s_distance = 0.0f; }
-void  f413_ctrl_reset_angle(void)
-{
-    s_angle = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
+    s_angle_error = 0.0f;
+    s_angle_error_error = 0.0f;
+    s_target_omega = 0.0f;
+    s_angle_outer_count = 0U;
 }
 float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
@@ -373,6 +489,31 @@ bool  f413_ctrl_spi2_busy(void)         { return s_spi2_busy; }
 
 void f413_ctrl_tick(void)
 {
+    float real_velocity_raw;
+    float velocity_encoder;
+    float omega_raw = s_real_omega;
+    float out_l;
+    float out_r;
+    uint32_t duty_l;
+    uint32_t duty_r;
+    uint32_t compare_l = 0U;
+    uint32_t compare_r = 0U;
+    GPIO_PinState in2_l = GPIO_PIN_RESET;
+    GPIO_PinState in2_r = GPIO_PIN_RESET;
+    const bool use_fan_on_gains = f413_ctrl_use_fan_on_gains();
+    const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
+    const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
+    const float kd_d = use_fan_on_gains ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+    const float kp_v = use_fan_on_gains ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
+    const float ki_v = use_fan_on_gains ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
+    const float kd_v = use_fan_on_gains ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
+    const float kp_a = use_fan_on_gains ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
+    const float ki_a = use_fan_on_gains ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
+    const float kd_a = use_fan_on_gains ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+    const float kp_o = use_fan_on_gains ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
+    const float ki_o = use_fan_on_gains ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
+    const float kd_o = use_fan_on_gains ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
+
     if (!s_running)
     {
         return;
@@ -388,9 +529,33 @@ void f413_ctrl_tick(void)
        （実機ログ 2026-05-01 で確認済み: forward→counter decrease） */
     float dist_l = (float)enc_l * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_L;
     float dist_r = (float)enc_r * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_R;
-    float distance_delta = (dist_l + dist_r) * 0.5f;
-    float velocity_encoder = distance_delta / F413_CTRL_DT;
-    float velocity_est = velocity_encoder;
+    s_encoder_speed_l = dist_l / F413_CTRL_DT;
+    s_encoder_speed_r = dist_r / F413_CTRL_DT;
+    s_encoder_distance_l += dist_l;
+    s_encoder_distance_r += dist_r;
+    real_velocity_raw = (s_encoder_speed_l + s_encoder_speed_r) * 0.5f;
+    velocity_encoder = real_velocity_raw;
+
+    if (!s_real_velocity_lpf_inited)
+    {
+        s_real_velocity_lpf = real_velocity_raw;
+        s_real_velocity_lpf_inited = true;
+    }
+    else
+    {
+        float alpha_velocity = F413_CTRL_DT / (VELOCITY_LPF_TAU + F413_CTRL_DT);
+        if (alpha_velocity < 0.0f)
+        {
+            alpha_velocity = 0.0f;
+        }
+        else if (alpha_velocity > 1.0f)
+        {
+            alpha_velocity = 1.0f;
+        }
+        s_real_velocity_lpf += alpha_velocity * (real_velocity_raw - s_real_velocity_lpf);
+    }
+    s_real_velocity = s_real_velocity_lpf;
+    s_real_distance = (s_encoder_distance_l + s_encoder_distance_r) * 0.5f;
 
     /* 角速度 [deg/s] — IMU ジャイロから (F405 read_IMU() と同等)
        SPI2 が FRAM 操作中（HAL busy）ならこの tick の IMU 読取をスキップし前回値を維持 */
@@ -410,7 +575,7 @@ void f413_ctrl_tick(void)
             float alpha = F413_CTRL_DT / (F413_IMU_OMEGA_LPF_TAU + F413_CTRL_DT);
             s_omega_z_filtered += alpha * (omega_raw - s_omega_z_filtered);
         }
-        s_real_omega = s_omega_z_filtered;
+        omega_raw = s_omega_z_filtered;
 
         float accel_raw = imu_read_accel_forward_mm_s2() - s_accel_forward_offset;
         if (!s_accel_forward_lpf_inited)
@@ -434,81 +599,136 @@ void f413_ctrl_tick(void)
         {
             s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
         }
-        velocity_est = s_accel_velocity;
         s_spi2_busy = false;
     }
 
-    /* 累積 */
-    s_real_velocity = velocity_est;
-    s_distance += distance_delta;
-    s_angle    += s_real_omega    * F413_CTRL_DT;
+    s_real_omega = omega_raw;
+    s_real_angle += s_real_omega * F413_CTRL_DT;
 
-    /* ---- 並進 P 制御 + 回転 角度外側/角速度内側制御 ---- */
-    float vel_err = s_target_velocity - s_real_velocity;
-    float omega_ref = s_target_omega;
-
-    if (s_angle_target_enabled)
+    s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
+    if (s_velocity_profile_clamp_enabled && (s_acceleration_interrupt != 0.0f))
     {
-        float angle_err = s_target_angle - s_angle;
-        float angle_deriv = (angle_err - s_previous_angle_error) / F413_CTRL_DT;
-        float angle_corr;
-
-        s_angle_integral += angle_err * F413_CTRL_DT;
-        s_previous_angle_error = angle_err;
-
-        angle_corr = F413_CTRL_KP_ANGLE * angle_err +
-                     F413_CTRL_KI_ANGLE * s_angle_integral +
-                     F413_CTRL_KD_ANGLE * angle_deriv;
-        if (angle_corr > F413_CTRL_ANGLE_OMEGA_MAX)
+        if ((s_acceleration_interrupt > 0.0f) &&
+            (s_velocity_interrupt > s_velocity_profile_target))
         {
-            angle_corr = F413_CTRL_ANGLE_OMEGA_MAX;
+            s_velocity_interrupt = s_velocity_profile_target;
         }
-        else if (angle_corr < -F413_CTRL_ANGLE_OMEGA_MAX)
+        else if ((s_acceleration_interrupt < 0.0f) &&
+                 (s_velocity_interrupt < s_velocity_profile_target))
         {
-            angle_corr = -F413_CTRL_ANGLE_OMEGA_MAX;
+            s_velocity_interrupt = s_velocity_profile_target;
         }
-        omega_ref += angle_corr;
+    }
+    s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
+
+    s_distance_error = s_target_distance - s_real_distance;
+    s_distance_outer_count++;
+    if (s_distance_outer_count >= (uint16_t)CTRL_DISTANCE_OUTER_DIV)
+    {
+        s_distance_outer_count = 0U;
+        s_distance_integral += s_distance_error;
+        s_distance_error_error = s_distance_error - s_previous_distance_error;
+        s_previous_distance_error = s_distance_error;
+        s_distance_velocity_feedback = (kp_d * s_distance_error) +
+                                       (ki_d * s_distance_integral) +
+                                       (kd_d * s_distance_error_error);
+    }
+    s_target_velocity = s_velocity_interrupt + s_distance_velocity_feedback;
+
+    s_velocity_error = s_target_velocity - s_real_velocity;
+    {
+        float v_i_next = s_velocity_integral + s_velocity_error;
+        s_velocity_error_error = s_velocity_error - s_previous_velocity_error;
+        if (CTRL_ENABLE_ANTI_WINDUP)
+        {
+            const float out_candidate = (kp_v * s_velocity_error) +
+                                        (ki_v * v_i_next) +
+                                        (kd_v * s_velocity_error_error);
+            const int would_saturate = (fabsf(out_candidate) > CTRL_OUTPUT_MAX) ? 1 : 0;
+            const int drives_further = (((out_candidate > 0.0f) && (s_velocity_error > 0.0f)) ||
+                                        ((out_candidate < 0.0f) && (s_velocity_error < 0.0f))) ? 1 : 0;
+            if (!(would_saturate && drives_further))
+            {
+                s_velocity_integral = v_i_next;
+            }
+        }
+        else
+        {
+            s_velocity_integral = v_i_next;
+        }
+        s_out_translation = (kp_v * s_velocity_error) +
+                            (ki_v * s_velocity_integral) +
+                            (kd_v * s_velocity_error_error);
+        s_previous_velocity_error = s_velocity_error;
     }
 
-    float omega_err = omega_ref - s_real_omega;
-    s_omega_integral += omega_err * F413_CTRL_DT;
-    if (s_omega_integral > F413_CTRL_OMEGA_I_LIMIT)
+    if (!s_angle_target_enabled)
     {
-        s_omega_integral = F413_CTRL_OMEGA_I_LIMIT;
+        s_target_angle += s_omega_interrupt * F413_CTRL_DT;
     }
-    else if (s_omega_integral < -F413_CTRL_OMEGA_I_LIMIT)
+    if ((kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
     {
-        s_omega_integral = -F413_CTRL_OMEGA_I_LIMIT;
+        s_target_omega = 0.0f;
+        s_angle_outer_count = 0U;
+        s_angle_error = 0.0f;
+        s_previous_angle_error = 0.0f;
+        s_angle_error_error = 0.0f;
+        s_angle_integral = 0.0f;
     }
-    float omega_deriv = (omega_err - s_previous_omega_error) / F413_CTRL_DT;
-    s_previous_omega_error = omega_err;
+    else
+    {
+        s_angle_error = s_target_angle - s_real_angle;
+        s_angle_outer_count++;
+        if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
+        {
+            s_angle_outer_count = 0U;
+            s_angle_integral += s_angle_error;
+            s_angle_error_error = s_angle_error - s_previous_angle_error;
+            s_previous_angle_error = s_angle_error;
+            s_target_omega = (kp_a * s_angle_error) +
+                             (ki_a * s_angle_integral) +
+                             (kd_a * s_angle_error_error);
+        }
+    }
 
-    float out_trans = F413_CTRL_FF_VEL   * s_target_velocity + F413_CTRL_KP_VEL   * vel_err;
-    float out_rot   = F413_CTRL_FF_OMEGA * omega_ref +
-                      F413_CTRL_KP_OMEGA * omega_err +
-                      F413_CTRL_KI_OMEGA * s_omega_integral +
-                      F413_CTRL_KD_OMEGA * omega_deriv;
-    if ((fabsf(s_target_velocity) < F413_CTRL_ROT_MIN_VEL_ABS) &&
-        (fabsf(omega_ref) >= F413_CTRL_ROT_MIN_OMEGA_REF) &&
-        (fabsf(out_rot) > 0.0f) &&
-        (fabsf(out_rot) < F413_CTRL_ROT_PWM_MIN))
     {
-        out_rot = copysignf(F413_CTRL_ROT_PWM_MIN, out_rot);
+        const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
+        float o_i_next;
+        s_omega_error = s_real_omega - omega_ref;
+        o_i_next = s_omega_integral + s_omega_error;
+        s_omega_error_error = s_omega_error - s_previous_omega_error;
+        if (CTRL_ENABLE_ANTI_WINDUP)
+        {
+            const float out_candidate = (kp_o * s_omega_error) +
+                                        (ki_o * o_i_next) +
+                                        (kd_o * s_omega_error_error);
+            const int would_saturate = (fabsf(out_candidate) > CTRL_OUTPUT_MAX) ? 1 : 0;
+            const int drives_further = (((out_candidate > 0.0f) && (s_omega_error > 0.0f)) ||
+                                        ((out_candidate < 0.0f) && (s_omega_error < 0.0f))) ? 1 : 0;
+            if (!(would_saturate && drives_further))
+            {
+                s_omega_integral = o_i_next;
+            }
+        }
+        else
+        {
+            s_omega_integral = o_i_next;
+        }
+        s_out_rotate = (kp_o * s_omega_error) +
+                       (ki_o * s_omega_integral) +
+                       (kd_o * s_omega_error_error);
+        s_previous_omega_error = s_omega_error;
     }
 
     /* 左右出力 */
-    float out_l = out_trans - out_rot;
-    float out_r = out_trans + out_rot;
+    out_l = s_out_translation + s_out_rotate;
+    out_r = s_out_translation - s_out_rotate;
     s_motor_out_l = (int16_t)lrintf(fmaxf(fminf(out_l, (float)F413_CTRL_PWM_MAX), -(float)F413_CTRL_PWM_MAX));
     s_motor_out_r = (int16_t)lrintf(fmaxf(fminf(out_r, (float)F413_CTRL_PWM_MAX), -(float)F413_CTRL_PWM_MAX));
 
     /* ---- モータ出力 ---- */
-    uint32_t duty_l = (uint32_t)fminf(fabsf(out_l), (float)F413_CTRL_PWM_MAX);
-    uint32_t duty_r = (uint32_t)fminf(fabsf(out_r), (float)F413_CTRL_PWM_MAX);
-    uint32_t compare_l = 0U;
-    uint32_t compare_r = 0U;
-    GPIO_PinState in2_l = GPIO_PIN_RESET;
-    GPIO_PinState in2_r = GPIO_PIN_RESET;
+    duty_l = (uint32_t)fminf(fabsf(out_l), (float)F413_CTRL_PWM_MAX);
+    duty_r = (uint32_t)fminf(fabsf(out_r), (float)F413_CTRL_PWM_MAX);
 
     if (duty_l != 0U)
     {
