@@ -12,6 +12,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define F413_CTRL_TUNE_AXIS_VELOCITY  (0U)
+#define F413_CTRL_TUNE_AXIS_OMEGA     (1U)
+#define F413_CTRL_TUNE_AXIS_DISTANCE  (2U)
+#define F413_CTRL_TUNE_AXIS_ANGLE     (3U)
+
+#define F413_CTRL_TUNE_PATTERN_STEP      (0U)
+#define F413_CTRL_TUNE_PATTERN_TRIANGLE  (1U)
+#define F413_CTRL_TUNE_PATTERN_TRAPEZOID (2U)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -29,6 +38,15 @@ void f413_ctrl_set_omega(float omega_deg_s);
 void f413_ctrl_set_angle_target(float angle_deg);
 void f413_ctrl_clear_angle_target(void);
 void f413_ctrl_set_heading_omega_correction(float omega_deg_s);
+void f413_ctrl_tune_start(uint8_t axis, uint8_t set, uint8_t pattern);
+void f413_ctrl_tune_stop(void);
+bool f413_ctrl_tune_is_active(void);
+bool f413_ctrl_tune_is_done(void);
+void f413_ctrl_tune_clear_done(void);
+uint8_t f413_ctrl_tune_get_axis(void);
+uint8_t f413_ctrl_tune_get_set(void);
+uint8_t f413_ctrl_tune_get_pattern(void);
+float f413_ctrl_tune_get_reference(void);
 
 /* 累積量取得 */
 float f413_ctrl_get_distance(void);

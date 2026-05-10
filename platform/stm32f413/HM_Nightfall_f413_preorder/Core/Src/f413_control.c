@@ -84,6 +84,11 @@
 #define F413_IMU_FORWARD_ACCEL_SIGN (1.0f)
 #define F413_CTRL_VEL_CORR_TAU    (0.035f)
 #define F413_CTRL_VEL_EST_MAX     (1200.0f)
+#define F413_CTRL_TUNE_TOTAL_MS   (800U)
+#define F413_CTRL_TUNE_RAMP_MS    (400U)
+#define F413_CTRL_TUNE_TRAP_EDGE_MS (100U)
+#define F413_CTRL_TUNE_DIST_LIMIT_MM (650.0f)
+#define F413_CTRL_TUNE_ANGLE_LIMIT_DEG (400.0f)
 
 /* ---------- エンコーダ変換定数 ---------- */
 static const float s_enc_to_mm =
@@ -155,6 +160,13 @@ static float s_distance_velocity_feedback = 0.0f;
 static uint16_t s_angle_outer_count = 0U;
 
 static volatile bool s_spi2_busy = false;
+static volatile bool s_tune_active = false;
+static volatile bool s_tune_done = false;
+static volatile uint8_t s_tune_axis = F413_CTRL_TUNE_AXIS_VELOCITY;
+static volatile uint8_t s_tune_set = 0U;
+static volatile uint8_t s_tune_pattern = F413_CTRL_TUNE_PATTERN_STEP;
+static volatile uint16_t s_tune_tick = 0U;
+static volatile float s_tune_reference = 0.0f;
 
 static bool f413_ctrl_use_fan_on_gains(void)
 {
@@ -217,6 +229,93 @@ static void f413_ctrl_reset_profile_state(void)
     s_omega_interrupt = 0.0f;
     s_heading_omega_correction = 0.0f;
     s_angle_target_enabled = false;
+}
+
+static float f413_ctrl_tune_get_peak(uint8_t axis, uint8_t set)
+{
+    if ((axis == F413_CTRL_TUNE_AXIS_DISTANCE) ||
+        (axis == F413_CTRL_TUNE_AXIS_ANGLE))
+    {
+        switch (set)
+        {
+            case 0U: return 90.0f;
+            case 1U: return 180.0f;
+            case 2U: return 360.0f;
+            default: return 90.0f;
+        }
+    }
+    switch (set)
+    {
+        case 0U: return 500.0f;
+        case 1U: return 1000.0f;
+        case 2U: return 2000.0f;
+        default: return 500.0f;
+    }
+}
+
+static float f413_ctrl_tune_ref_step(float peak, uint16_t t_ms, uint16_t on_ms)
+{
+    return (t_ms < on_ms) ? peak : 0.0f;
+}
+
+static float f413_ctrl_tune_ref_triangle(float peak, uint16_t t_ms, uint16_t ramp_ms)
+{
+    if (ramp_ms == 0U)
+    {
+        return 0.0f;
+    }
+    if (t_ms < ramp_ms)
+    {
+        return peak * ((float)t_ms / (float)ramp_ms);
+    }
+    if (t_ms < (uint16_t)(2U * ramp_ms))
+    {
+        return peak * ((float)((2U * ramp_ms) - t_ms) / (float)ramp_ms);
+    }
+    return 0.0f;
+}
+
+static float f413_ctrl_tune_ref_trapezoid(float peak,
+                                          uint16_t t_ms,
+                                          uint16_t acc_ms,
+                                          uint16_t hold_ms,
+                                          uint16_t dec_ms)
+{
+    const uint16_t t1 = acc_ms;
+    const uint16_t t2 = (uint16_t)(acc_ms + hold_ms);
+    const uint16_t t3 = (uint16_t)(acc_ms + hold_ms + dec_ms);
+    if ((acc_ms == 0U) || (dec_ms == 0U))
+    {
+        return 0.0f;
+    }
+    if (t_ms < t1)
+    {
+        return peak * ((float)t_ms / (float)acc_ms);
+    }
+    if (t_ms < t2)
+    {
+        return peak;
+    }
+    if (t_ms < t3)
+    {
+        return peak * ((float)(t3 - t_ms) / (float)dec_ms);
+    }
+    return 0.0f;
+}
+
+static void f413_ctrl_tune_finish_now(void)
+{
+    s_tune_active = false;
+    s_tune_done = true;
+    s_tune_reference = 0.0f;
+    s_acceleration_interrupt = 0.0f;
+    s_velocity_interrupt = 0.0f;
+    s_omega_interrupt = 0.0f;
+    s_target_velocity = 0.0f;
+    s_target_omega = 0.0f;
+    s_heading_omega_correction = 0.0f;
+    s_out_translation = 0.0f;
+    s_out_rotate = 0.0f;
 }
 
 /* ========================================================== */
@@ -380,6 +479,7 @@ void f413_ctrl_start(void)
 void f413_ctrl_stop(void)
 {
     s_running = false;
+    s_tune_active = false;
     f413_ctrl_reset_profile_state();
     s_target_velocity = 0.0f;
     s_target_omega    = 0.0f;
@@ -444,6 +544,72 @@ void f413_ctrl_set_heading_omega_correction(float omega_deg_s)
     s_heading_omega_correction = omega_deg_s;
 }
 
+void f413_ctrl_tune_start(uint8_t axis, uint8_t set, uint8_t pattern)
+{
+    if (axis > F413_CTRL_TUNE_AXIS_ANGLE)
+    {
+        axis = F413_CTRL_TUNE_AXIS_VELOCITY;
+    }
+    if (set > 2U)
+    {
+        set = 0U;
+    }
+    if (pattern > F413_CTRL_TUNE_PATTERN_TRAPEZOID)
+    {
+        pattern = F413_CTRL_TUNE_PATTERN_STEP;
+    }
+
+    f413_ctrl_reset_profile_state();
+    f413_ctrl_reset_pid_state();
+    s_tune_axis = axis;
+    s_tune_set = set;
+    s_tune_pattern = pattern;
+    s_tune_tick = 0U;
+    s_tune_reference = 0.0f;
+    s_tune_done = false;
+    s_tune_active = true;
+}
+
+void f413_ctrl_tune_stop(void)
+{
+    f413_ctrl_tune_finish_now();
+}
+
+bool f413_ctrl_tune_is_active(void)
+{
+    return s_tune_active;
+}
+
+bool f413_ctrl_tune_is_done(void)
+{
+    return s_tune_done;
+}
+
+void f413_ctrl_tune_clear_done(void)
+{
+    s_tune_done = false;
+}
+
+uint8_t f413_ctrl_tune_get_axis(void)
+{
+    return s_tune_axis;
+}
+
+uint8_t f413_ctrl_tune_get_set(void)
+{
+    return s_tune_set;
+}
+
+uint8_t f413_ctrl_tune_get_pattern(void)
+{
+    return s_tune_pattern;
+}
+
+float f413_ctrl_tune_get_reference(void)
+{
+    return s_tune_reference;
+}
+
 float f413_ctrl_get_distance(void)      { return s_real_distance; }
 float f413_ctrl_get_angle(void)         { return s_real_angle; }
 void  f413_ctrl_reset_distance(void)
@@ -473,7 +639,7 @@ void  f413_ctrl_reset_angle(void)
 float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
 float f413_ctrl_get_target_velocity(void) { return s_target_velocity; }
-float f413_ctrl_get_target_omega(void)    { return s_target_omega; }
+float f413_ctrl_get_target_omega(void)    { return s_omega_interrupt + s_target_omega + s_heading_omega_correction; }
 float f413_ctrl_get_target_angle(void)    { return s_target_angle; }
 float f413_ctrl_get_accel_velocity(void)  { return s_accel_velocity; }
 float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
@@ -605,6 +771,190 @@ void f413_ctrl_tick(void)
     s_real_omega = omega_raw;
     s_real_angle += s_real_omega * F413_CTRL_DT;
 
+    if (s_tune_active)
+    {
+        const uint16_t t_ms = s_tune_tick;
+        const float peak = f413_ctrl_tune_get_peak(s_tune_axis, s_tune_set);
+        uint16_t on_ms = F413_CTRL_TUNE_TOTAL_MS;
+        uint16_t ramp_ms = F413_CTRL_TUNE_RAMP_MS;
+        uint16_t hold_ms = (uint16_t)(F413_CTRL_TUNE_TOTAL_MS - (2U * F413_CTRL_TUNE_TRAP_EDGE_MS));
+        float ref;
+
+        if (s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY)
+        {
+            const float span_ms = (F413_CTRL_TUNE_DIST_LIMIT_MM * 1000.0f) / fmaxf(peak, 1.0f);
+            on_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_TOTAL_MS, span_ms);
+            ramp_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_RAMP_MS, span_ms);
+            hold_ms = (span_ms > 100.0f) ? (uint16_t)fminf(600.0f, span_ms - 100.0f) : 0U;
+        }
+        else if (s_tune_axis == F413_CTRL_TUNE_AXIS_OMEGA)
+        {
+            const float span_ms = (360.0f * 1000.0f) / fmaxf(peak, 1.0f);
+            on_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_TOTAL_MS, span_ms);
+            ramp_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_RAMP_MS, span_ms);
+            hold_ms = (span_ms > 100.0f) ? (uint16_t)fminf(600.0f, span_ms - 100.0f) : 0U;
+        }
+
+        if (s_tune_pattern == F413_CTRL_TUNE_PATTERN_STEP)
+        {
+            ref = f413_ctrl_tune_ref_step(peak, t_ms, on_ms);
+        }
+        else if (s_tune_pattern == F413_CTRL_TUNE_PATTERN_TRIANGLE)
+        {
+            ref = f413_ctrl_tune_ref_triangle(peak, t_ms, ramp_ms);
+        }
+        else
+        {
+            ref = f413_ctrl_tune_ref_trapezoid(peak, t_ms,
+                                               F413_CTRL_TUNE_TRAP_EDGE_MS,
+                                               hold_ms,
+                                               F413_CTRL_TUNE_TRAP_EDGE_MS);
+        }
+        s_tune_reference = ref;
+
+        if (((s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
+             (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE)) &&
+            (fabsf(s_real_distance) > F413_CTRL_TUNE_DIST_LIMIT_MM))
+        {
+            f413_ctrl_tune_finish_now();
+        }
+        else if (((s_tune_axis == F413_CTRL_TUNE_AXIS_OMEGA) ||
+                  (s_tune_axis == F413_CTRL_TUNE_AXIS_ANGLE)) &&
+                 (fabsf(s_real_angle) > F413_CTRL_TUNE_ANGLE_LIMIT_DEG))
+        {
+            f413_ctrl_tune_finish_now();
+        }
+        else
+        {
+            if (s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY)
+            {
+                s_velocity_interrupt = ref;
+                s_target_distance += ref * F413_CTRL_DT;
+                s_target_velocity = ref;
+                s_omega_interrupt = 0.0f;
+                s_target_omega = 0.0f;
+                s_heading_omega_correction = 0.0f;
+            }
+            else if (s_tune_axis == F413_CTRL_TUNE_AXIS_OMEGA)
+            {
+                s_velocity_interrupt = 0.0f;
+                s_target_velocity = 0.0f;
+                s_out_translation = 0.0f;
+                s_omega_interrupt = ref;
+                s_target_angle += ref * F413_CTRL_DT;
+                s_target_omega = 0.0f;
+                s_heading_omega_correction = 0.0f;
+            }
+            else if (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE)
+            {
+                s_velocity_interrupt = 0.0f;
+                s_target_distance = ref;
+                s_distance_error = s_target_distance - s_real_distance;
+                s_distance_outer_count++;
+                if (s_distance_outer_count >= (uint16_t)CTRL_DISTANCE_OUTER_DIV)
+                {
+                    s_distance_outer_count = 0U;
+                    s_distance_integral += s_distance_error;
+                    s_distance_error_error = s_distance_error - s_previous_distance_error;
+                    s_previous_distance_error = s_distance_error;
+                    s_distance_velocity_feedback = (kp_d * s_distance_error) +
+                                                   (ki_d * s_distance_integral) +
+                                                   (kd_d * s_distance_error_error);
+                }
+                s_target_velocity = s_distance_velocity_feedback;
+                s_omega_interrupt = 0.0f;
+                s_target_omega = 0.0f;
+                s_heading_omega_correction = 0.0f;
+            }
+            else
+            {
+                s_velocity_interrupt = 0.0f;
+                s_target_velocity = 0.0f;
+                s_out_translation = 0.0f;
+                s_omega_interrupt = 0.0f;
+                s_target_angle = ref;
+                s_angle_error = s_target_angle - s_real_angle;
+                s_angle_outer_count++;
+                if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
+                {
+                    s_angle_outer_count = 0U;
+                    s_angle_integral += s_angle_error;
+                    s_angle_error_error = s_angle_error - s_previous_angle_error;
+                    s_previous_angle_error = s_angle_error;
+                    s_target_omega = (kp_a * s_angle_error) +
+                                     (ki_a * s_angle_integral) +
+                                     (kd_a * s_angle_error_error);
+                }
+                s_heading_omega_correction = 0.0f;
+            }
+
+            if ((s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
+                (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE))
+            {
+                float v_i_next = s_velocity_integral + (s_target_velocity - s_real_velocity);
+                s_velocity_error = s_target_velocity - s_real_velocity;
+                s_velocity_error_error = s_velocity_error - s_previous_velocity_error;
+                if (CTRL_ENABLE_ANTI_WINDUP)
+                {
+                    const float out_candidate = (kp_v * s_velocity_error) +
+                                                (ki_v * v_i_next) +
+                                                (kd_v * s_velocity_error_error);
+                    const int would_saturate = (fabsf(out_candidate) > CTRL_OUTPUT_MAX) ? 1 : 0;
+                    const int drives_further = (((out_candidate > 0.0f) && (s_velocity_error > 0.0f)) ||
+                                                ((out_candidate < 0.0f) && (s_velocity_error < 0.0f))) ? 1 : 0;
+                    if (!(would_saturate && drives_further))
+                    {
+                        s_velocity_integral = v_i_next;
+                    }
+                }
+                else
+                {
+                    s_velocity_integral = v_i_next;
+                }
+                s_out_translation = (kp_v * s_velocity_error) +
+                                    (ki_v * s_velocity_integral) +
+                                    (kd_v * s_velocity_error_error);
+                s_previous_velocity_error = s_velocity_error;
+            }
+
+            {
+                const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
+                float o_i_next;
+                s_omega_error = s_real_omega - omega_ref;
+                o_i_next = s_omega_integral + s_omega_error;
+                s_omega_error_error = s_omega_error - s_previous_omega_error;
+                if (CTRL_ENABLE_ANTI_WINDUP)
+                {
+                    const float out_candidate = (kp_o * s_omega_error) +
+                                                (ki_o * o_i_next) +
+                                                (kd_o * s_omega_error_error);
+                    const int would_saturate = (fabsf(out_candidate) > CTRL_OUTPUT_MAX) ? 1 : 0;
+                    const int drives_further = (((out_candidate > 0.0f) && (s_omega_error > 0.0f)) ||
+                                                ((out_candidate < 0.0f) && (s_omega_error < 0.0f))) ? 1 : 0;
+                    if (!(would_saturate && drives_further))
+                    {
+                        s_omega_integral = o_i_next;
+                    }
+                }
+                else
+                {
+                    s_omega_integral = o_i_next;
+                }
+                s_out_rotate = (kp_o * s_omega_error) +
+                               (ki_o * s_omega_integral) +
+                               (kd_o * s_omega_error_error);
+                s_previous_omega_error = s_omega_error;
+            }
+
+            s_tune_tick++;
+            if (s_tune_tick >= F413_CTRL_TUNE_TOTAL_MS)
+            {
+                f413_ctrl_tune_finish_now();
+            }
+        }
+    }
+    else
+    {
     s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
     if (s_velocity_profile_clamp_enabled && (s_acceleration_interrupt != 0.0f))
     {
@@ -718,6 +1068,7 @@ void f413_ctrl_tick(void)
                        (ki_o * s_omega_integral) +
                        (kd_o * s_omega_error_error);
         s_previous_omega_error = s_omega_error;
+    }
     }
 
     /* 左右出力 */
