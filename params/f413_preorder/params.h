@@ -91,7 +91,7 @@
 #endif
 
 #ifndef KP_DISTANCE_FAN_OFF
-#define KP_DISTANCE_FAN_OFF 0.07F
+#define KP_DISTANCE_FAN_OFF 3.00F
 #endif
 #ifndef KI_DISTANCE_FAN_OFF
 #define KI_DISTANCE_FAN_OFF 0.0F
