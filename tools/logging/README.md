@@ -86,7 +86,9 @@ tools/logging/visualizer/run_visualizer.sh
 
 - `*.plotjuggler.csv` は一覧から除外します。
 - FRAM v2ログは `distance / velocity / motor / angle / omega / flags` の固定グラフで表示します。
+- 各グラフには単位付きY軸、個別の時間軸、右側の系列名を表示します。
 - `tune_ref` / `tune_error` などの派生列は内部で自動生成します。
+- アップロードしたCSVは `tools/logging/logs/uploaded/` に保存されます。
 - 旧8列CSVは従来通り、プリセットや列名指定で表示できます。
 
 新しいログを取得した後は、Web UI左側の `Refresh log list` を押してからCSVを選びます。`Auto-refresh log list` を有効にすると、数秒ごとに一覧が更新されます。PlotJugglerのCSV読み込みポップアップは使わないため、調整作業中は毎回同じ操作で確認できます。

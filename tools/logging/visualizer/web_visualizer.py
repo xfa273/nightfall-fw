@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sys
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -21,6 +22,10 @@ def _default_logs_dir() -> Path:
     if env_dir:
         return Path(env_dir).expanduser()
     return _repo_root_from_this_file() / "tools/logging/logs"
+
+
+def _uploaded_logs_dir(logs_dir: Path) -> Path:
+    return logs_dir / "uploaded"
 
 
 def _coerce_8cols(df):
@@ -63,19 +68,42 @@ def _list_csvs(logs_dir: Path) -> List[Tuple[str, Path, float, int]]:
         return []
 
     out: List[Tuple[str, Path, float, int]] = []
-    for p in logs_dir.iterdir():
-        if not (p.is_file() and p.suffix.lower() == ".csv"):
-            continue
-        if p.name.endswith(".plotjuggler.csv"):
-            continue
-        try:
-            st = p.stat()
-        except Exception:
-            continue
-        out.append((p.name, p, st.st_mtime, st.st_size))
+    search_dirs = [logs_dir]
+    uploaded_dir = _uploaded_logs_dir(logs_dir)
+    if uploaded_dir.is_dir():
+        search_dirs.append(uploaded_dir)
+
+    for search_dir in search_dirs:
+        for p in search_dir.iterdir():
+            if not (p.is_file() and p.suffix.lower() == ".csv"):
+                continue
+            if p.name.endswith(".plotjuggler.csv"):
+                continue
+            if search_dir == logs_dir and p.name.startswith("uploaded_"):
+                continue
+            try:
+                st = p.stat()
+            except Exception:
+                continue
+            try:
+                display_name = str(p.relative_to(logs_dir))
+            except ValueError:
+                display_name = p.name
+            out.append((display_name, p, st.st_mtime, st.st_size))
 
     out.sort(key=lambda x: x[2], reverse=True)
     return out
+
+
+def _uploaded_csv_path(logs_dir: Path, upload_name: str, content: bytes) -> Path:
+    upload_dir = _uploaded_logs_dir(logs_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = Path(upload_name).name.replace("/", "_").replace("\\", "_")
+    if not safe_name.lower().endswith(".csv"):
+        safe_name = f"{safe_name}.csv"
+    digest = hashlib.sha256(content).hexdigest()[:12]
+    stem = Path(safe_name).stem
+    return upload_dir / f"{stem}_{digest}.csv"
 
 
 def _format_mtime(ts: float) -> str:
@@ -222,42 +250,61 @@ def _build_nightfall_plot(df):
     import plotly.express as px
 
     groups = [
-        ("Distance / tune", ["distance_mm", "tune_ref", "tune_error"]),
-        ("Velocity", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
-        ("Motor", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
-        ("Angle", ["angle_deg", "target_angle_deg"]),
-        ("Omega", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
-        ("Flags", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
+        ("Distance / tune", "mm", ["distance_mm", "tune_ref", "tune_error"]),
+        ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
+        ("Motor", "PWM", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
+        ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
+        ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
+        ("Flags", "0/1", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
     ]
 
-    available_groups = [(title, cols) for title, cols in groups if any(c in df.columns for c in cols)]
+    available_groups = [(title, unit, cols) for title, unit, cols in groups if any(c in df.columns for c in cols)]
     fig = make_subplots(
         rows=len(available_groups),
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.025,
-        subplot_titles=[title for title, _ in available_groups],
+        subplot_titles=[f"{title} [{unit}]" for title, unit, _ in available_groups],
     )
 
     palette = px.colors.qualitative.Plotly
-    for row, (title, cols) in enumerate(available_groups, start=1):
+    annotations = []
+    for row, (title, unit, cols) in enumerate(available_groups, start=1):
         color_i = 0
+        legend_lines = []
         for col in cols:
             if col not in df.columns:
                 continue
+            color = palette[color_i % len(palette)]
             fig.add_trace(
-                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=dict(color=palette[color_i % len(palette)])),
+                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=dict(color=color), showlegend=False),
                 row=row,
                 col=1,
             )
+            legend_lines.append(f"<span style='color:{color}'>■</span> {col}")
             color_i += 1
-        fig.update_yaxes(title_text=title, row=row, col=1)
+        fig.update_yaxes(title_text=f"{title} [{unit}]", row=row, col=1)
+        fig.update_xaxes(title_text="time_ms", showticklabels=True, row=row, col=1)
+        y_domain = fig.layout[f"yaxis{row if row > 1 else ''}"].domain
+        annotations.append(
+            dict(
+                x=1.01,
+                y=sum(y_domain) * 0.5,
+                xref="paper",
+                yref="paper",
+                text="<br>".join(legend_lines),
+                showarrow=False,
+                align="left",
+                xanchor="left",
+                yanchor="middle",
+                font=dict(size=11),
+            )
+        )
 
-    fig.update_xaxes(title_text="time_ms", row=len(available_groups), col=1)
     fig.update_layout(
-        height=max(650, 210 * len(available_groups)),
-        margin=dict(l=40, r=20, t=40, b=40),
-        legend_title_text="signals",
+        height=max(720, 240 * len(available_groups)),
+        margin=dict(l=65, r=260, t=45, b=45),
+        annotations=tuple(fig.layout.annotations) + tuple(annotations),
         hovermode="x unified",
     )
     return fig
@@ -371,11 +418,12 @@ def main() -> int:
     upload = sidebar.file_uploader("Upload CSV", type=["csv"])
     if upload is not None:
         tmp_dir = logs_dir if logs_dir.is_dir() else default_logs_dir
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        uploaded_path = tmp_dir / f"uploaded_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{upload.name}"
-        uploaded_path.write_bytes(upload.getbuffer())
+        content = upload.getbuffer().tobytes()
+        uploaded_path = _uploaded_csv_path(tmp_dir, upload.name, content)
+        if not uploaded_path.exists():
+            uploaded_path.write_bytes(content)
         selected_csv = uploaded_path
-        sidebar.success(f"Uploaded: {uploaded_path.name}")
+        sidebar.success(f"Uploaded: {uploaded_path.relative_to(tmp_dir)}")
 
     if selected_csv is None:
         st.info("左のサイドバーでCSVを選択してください。")
