@@ -760,7 +760,7 @@ void f413_ctrl_tick(void)
         s_spi2_busy = true;
         /* IMU Z軸: CCW(左旋回)=正, CW(右旋回)=負 → 制御系と一致。符号反転不要。
            （2026-05-01: 旋回逆転の原因はPWMチャネル左右逆だった） */
-        float omega_raw = imu_read_gyro_z_dps() - s_omega_z_offset;
+        omega_raw = imu_read_gyro_z_dps() - s_omega_z_offset;
         if (!s_omega_z_lpf_inited)
         {
             s_omega_z_filtered = omega_raw;
