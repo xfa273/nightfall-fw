@@ -7,6 +7,7 @@
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
+- `export_plotjuggler_csv.py`: FRAM trace CSVをPlotJugglerで読みやすいCSVへ変換
 - `render_search_dump.py`: F413 UART `@` の `[SEARCH-DUMP]` をASCII迷路へ変換
 - `serial_terminal.py`: ST-LINK VCPなどで使うシンプルな対話式UART端末
 - `serial_capture_csv.sh`: シェル版CSVキャプチャ
@@ -71,6 +72,56 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
+
+## PlotJugglerでのFRAM trace CSV表示
+
+PlotJugglerで見る場合は、元CSVを直接読むより `export_plotjuggler_csv.py` で相対秒 `time` 列付きCSVへ変換してから読むのが安定です。
+
+macOSで未インストールの場合:
+
+```bash
+brew install --cask plotjuggler
+```
+
+最新ログを変換:
+
+```bash
+python3 tools/logging/export_plotjuggler_csv.py tools/logging/logs
+```
+
+CSVを指定して変換:
+
+```bash
+python3 tools/logging/export_plotjuggler_csv.py tools/logging/logs/stm32_log_20260510_153411.csv
+```
+
+出力例:
+
+```text
+tools/logging/logs/stm32_log_20260510_153411.plotjuggler.csv
+```
+
+PlotJugglerでの読み込み:
+
+1. PlotJugglerを起動する。
+2. `File` → `Load data...` で変換後の `*.plotjuggler.csv` を選ぶ。
+3. CSV読み込みダイアログで区切り文字は `,`、時刻列は `time` を選ぶ。
+4. `File` → `Load layout...` で `tools/logging/plotjuggler/nightfall_f413_tune.xml` を読む。
+5. 左側の一覧から追加で見たい系列があれば右側へドラッグする。
+6. 自分用に調整したら `File` → `Save layout...` でXMLレイアウトとして保存する。
+7. 次回以降は先に同じ形式の `*.plotjuggler.csv` を読み込み、`File` → `Load layout...` で保存したXMLを読む。
+
+まず見ると便利な系列:
+
+- `distance_mm` と `tune_ref`: distance調整の目標と実測
+- `target_velocity_mm_s` と `real_velocity_mm_s`: 速度追従
+- `velocity_error_mm_s`: 速度誤差
+- `motor_out_l` と `motor_out_r`: 左右モータ出力
+- `angle_deg` と `target_angle_deg`: 角度追従
+- `target_omega_dps` と `real_omega_dps`: 角速度追従
+- `flag_motor_forward` / `flag_motor_coast` / `flag_motor_reverse`: 走行位相
+
+調整用ログの場合、`tune_ref` と `tune_error` も追加されます。`reserved_i32_0` は生値のまま残し、`tune_ref` は `reserved_i32_0 / 1000` に変換した値です。
 
 ## `render_search_dump.py` の探索map表示
 

@@ -1,0 +1,71 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<root>
+ <tabbed_widget parent="main_window" name="Main Window">
+  <Tab containers="1" tab_name="F413 Tune">
+   <Container>
+    <DockSplitter count="1" orientation="-" sizes="1">
+     <DockSplitter count="5" orientation="-" sizes="0.22;0.22;0.20;0.20;0.16">
+      <DockArea name="distance">
+       <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
+        <range bottom="0" left="0" right="1" top="100"/>
+        <limitY/>
+        <curve color="#1f77b4" name="distance_mm"/>
+        <curve color="#d62728" name="tune_ref"/>
+        <curve color="#ff7f0e" name="tune_error"/>
+       </plot>
+      </DockArea>
+      <DockArea name="velocity">
+       <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
+        <range bottom="-100" left="0" right="1" top="600"/>
+        <limitY/>
+        <curve color="#1f77b4" name="target_velocity_mm_s"/>
+        <curve color="#d62728" name="real_velocity_mm_s"/>
+        <curve color="#2ca02c" name="velocity_error_mm_s"/>
+       </plot>
+      </DockArea>
+      <DockArea name="motor">
+       <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
+        <range bottom="-1000" left="0" right="1" top="1000"/>
+        <limitY/>
+        <curve color="#1f77b4" name="motor_out_l"/>
+        <curve color="#d62728" name="motor_out_r"/>
+        <curve color="#2ca02c" name="motor_out_avg"/>
+        <curve color="#9467bd" name="motor_out_diff"/>
+       </plot>
+      </DockArea>
+      <DockArea name="angle_omega">
+       <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
+        <range bottom="-400" left="0" right="1" top="400"/>
+        <limitY/>
+        <curve color="#1f77b4" name="angle_deg"/>
+        <curve color="#d62728" name="target_angle_deg"/>
+        <curve color="#2ca02c" name="target_omega_dps"/>
+        <curve color="#ff7f0e" name="real_omega_dps"/>
+       </plot>
+      </DockArea>
+      <DockArea name="flags">
+       <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
+        <range bottom="0" left="0" right="1" top="1.2"/>
+        <limitY/>
+        <curve color="#1f77b4" name="flag_motor_forward"/>
+        <curve color="#ff7f0e" name="flag_motor_coast"/>
+        <curve color="#d62728" name="flag_motor_reverse"/>
+        <curve color="#9467bd" name="flag_angle_target"/>
+       </plot>
+      </DockArea>
+     </DockSplitter>
+    </DockSplitter>
+   </Container>
+  </Tab>
+  <currentTabIndex index="0"/>
+ </tabbed_widget>
+ <use_relative_time_offset enabled="1"/>
+ <Plugins>
+  <plugin ID="DataLoad CSV">
+   <default delimiter="0" time_axis="time"/>
+  </plugin>
+ </Plugins>
+ <previouslyLoaded_Datafiles/>
+ <customMathEquations/>
+ <snippets/>
+</root>
