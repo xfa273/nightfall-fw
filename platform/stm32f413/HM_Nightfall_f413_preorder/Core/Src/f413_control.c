@@ -692,6 +692,7 @@ float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
 float f413_ctrl_get_log_angle(void)      { return s_imu_motion_sample_valid ? s_real_angle : s_encoder_angle; }
 float f413_ctrl_get_log_real_omega(void) { return s_imu_motion_sample_valid ? s_real_omega : s_encoder_omega; }
+float f413_ctrl_get_target_distance(void) { return s_target_distance; }
 float f413_ctrl_get_target_velocity(void) { return s_target_velocity; }
 float f413_ctrl_get_target_omega(void)    { return s_omega_interrupt + s_target_omega + s_heading_omega_correction; }
 float f413_ctrl_get_target_angle(void)    { return s_target_angle; }

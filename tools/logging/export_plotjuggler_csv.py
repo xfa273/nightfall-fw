@@ -142,6 +142,22 @@ def _infer_tune_axis(rows: list[dict[str, str]], meta: dict[str, str]) -> Option
     return None
 
 
+def _reserved_i32_layout(meta: dict[str, str]) -> list[str]:
+    layout = meta.get("tune_reserved_i32", "")
+    if not layout:
+        layout = meta.get("wall_trace_reserved_i32", "")
+    return [x.strip() for x in layout.split(",") if x.strip()]
+
+
+def _target_distance_mm(row: dict[str, str], meta: dict[str, str]) -> Optional[float]:
+    if "target_distance_mm" in row:
+        return _num(row, "target_distance_mm")
+    layout = _reserved_i32_layout(meta)
+    if len(layout) >= 3 and layout[2] == "target_distance_x1000":
+        return _num(row, "reserved_i32_2") / 1000.0
+    return None
+
+
 def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str, str], with_derived: bool) -> tuple[list[str], list[list[str]]]:
     first_ts = _num(rows[0], "timestamp_ms")
     base_columns = ["time", "time_ms"] + columns
@@ -150,6 +166,8 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
 
     if with_derived:
         derived_columns.extend([
+            "target_distance_mm",
+            "distance_error_mm",
             "angle_deg",
             "target_angle_deg",
             "target_omega_dps",
@@ -174,6 +192,8 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
 
     out_columns = base_columns + derived_columns
     out_rows: list[list[str]] = []
+    target_distance_integrated = 0.0
+    prev_timestamp_ms = first_ts
 
     for row in rows:
         timestamp_ms = _num(row, "timestamp_ms")
@@ -183,11 +203,20 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
 
         if with_derived:
             flags = _int(row, "flags")
+            target_distance = _target_distance_mm(row, meta)
+            tune_ref = _num(row, "reserved_i32_0") / 1000.0
+            if target_distance is None and tune_axis == "velocity":
+                target_distance_integrated += tune_ref * max(0.0, timestamp_ms - prev_timestamp_ms) * 0.001
+                target_distance = target_distance_integrated
+            elif target_distance is None and tune_axis == "distance":
+                target_distance = tune_ref
             target_omega_dps = _num(row, "target_omega_mdps") / 1000.0
             real_omega_dps = _num(row, "real_omega_mdps") / 1000.0
             motor_l = _num(row, "motor_out_l")
             motor_r = _num(row, "motor_out_r")
             values.extend([
+                _fmt(target_distance if target_distance is not None else 0.0),
+                _fmt((target_distance - _num(row, "distance_mm")) if target_distance is not None else 0.0),
                 _fmt(_num(row, "angle_mdeg") / 1000.0),
                 _fmt(_num(row, "target_angle_mdeg") / 1000.0),
                 _fmt(target_omega_dps),
@@ -208,7 +237,6 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 "1" if flags & FLAG_AUTO else "0",
             ])
             if tune_axis is not None:
-                tune_ref = _num(row, "reserved_i32_0") / 1000.0
                 if tune_axis == "distance":
                     tune_actual = _num(row, "distance_mm")
                 elif tune_axis == "velocity":
@@ -222,6 +250,7 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 values.extend([_fmt(tune_ref), _fmt(tune_ref - tune_actual)])
 
         out_rows.append(values)
+        prev_timestamp_ms = timestamp_ms
 
     return out_columns, out_rows
 

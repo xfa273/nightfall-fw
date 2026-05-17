@@ -340,6 +340,9 @@ static void nightfall_trace_log_auto_step(void);
 static void nightfall_trace_log_set_mode_flags(uint16_t flags);
 static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
 static int32_t nightfall_trace_log_scale_float(float value, float scale);
+static const char* nightfall_op_mode_name(uint8_t mode);
+static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case);
+static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub);
 static const char* nightfall_tune_axis_name(uint8_t axis);
 static const char* nightfall_tune_pattern_name(uint8_t pattern);
 static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
@@ -1723,6 +1726,20 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   trace_printf("#fw_git_sha=%s\r\n", FW_GIT_SHA);
   trace_printf("#fw_git_dirty=%d\r\n", FW_GIT_DIRTY);
   trace_printf("#fw_log_schema=0x%08lX\r\n", (unsigned long)NVM_TRACE_LOG_SCHEMA_VERSION);
+  trace_printf("#op_mode=%u\r\n", (unsigned int)g_trace_log_context_mode);
+  trace_printf("#op_mode_name=%s\r\n", nightfall_op_mode_name(g_trace_log_context_mode));
+  trace_printf("#op_case=%u\r\n", (unsigned int)g_trace_log_context_case);
+  trace_printf("#op_case_name=%s\r\n", nightfall_op_case_name(g_trace_log_context_mode, g_trace_log_context_case));
+  trace_printf("#op_sub=%u\r\n", (unsigned int)g_trace_log_context_sub);
+  trace_printf("#op_sub_name=%s\r\n", nightfall_op_sub_name(g_trace_log_context_mode, g_trace_log_context_sub));
+  trace_printf("#op_test_id=%u\r\n", (unsigned int)g_trace_log_context_test_id);
+  trace_printf("#op_label=mode%u %s / case%u %s / sub%u %s\r\n",
+               (unsigned int)g_trace_log_context_mode,
+               nightfall_op_mode_name(g_trace_log_context_mode),
+               (unsigned int)g_trace_log_context_case,
+               nightfall_op_case_name(g_trace_log_context_mode, g_trace_log_context_case),
+               (unsigned int)g_trace_log_context_sub,
+               nightfall_op_sub_name(g_trace_log_context_mode, g_trace_log_context_sub));
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)NIGHTFALL_F413_WALL_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
@@ -1736,7 +1753,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     trace_printf("#tune_axis=%s\r\n", nightfall_tune_axis_name(g_last_tune_axis));
     trace_printf("#tune_set=%u\r\n", (unsigned int)g_last_tune_set);
     trace_printf("#tune_pattern=%s\r\n", nightfall_tune_pattern_name(g_last_tune_pattern));
-    trace_printf("#tune_reserved_i32=ref_x1000,axis,set,pattern\r\n");
+    trace_printf("#tune_reserved_i32=primary_ref_x1000,axis,target_distance_x1000,target_angle_x1000\r\n");
     trace_printf("#tune_reserved_u16_0=axis_pattern\r\n");
     trace_printf("#tune_reserved_u16_1=set\r\n");
   }
@@ -2039,8 +2056,8 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   {
     out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
     out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
-    out->reserved_i32_2 = (int32_t)f413_ctrl_tune_get_set();
-    out->reserved_i32_3 = (int32_t)f413_ctrl_tune_get_pattern();
+    out->reserved_i32_2 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
+    out->reserved_i32_3 = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
     out->reserved_u16_0 = (uint16_t)(((uint16_t)f413_ctrl_tune_get_axis() << 8U) |
                                      (uint16_t)f413_ctrl_tune_get_pattern());
     out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();

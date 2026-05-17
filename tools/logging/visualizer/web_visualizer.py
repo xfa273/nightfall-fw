@@ -251,7 +251,7 @@ def _build_nightfall_plot(df):
     import plotly.express as px
 
     groups = [
-        ("Distance", "mm", ["distance_mm", "tune_ref", "tune_error"]),
+        ("Distance", "mm", ["target_distance_mm", "distance_mm", "distance_error_mm"]),
         ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
         ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
@@ -331,7 +331,26 @@ def _build_nightfall_plot(df):
     return fig
 
 
-def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sha: str) -> None:
+def _trace_op_label(meta: Dict[str, str], df) -> str:
+    label = meta.get("op_label", "")
+    if label:
+        return label
+    mode = meta.get("op_mode")
+    case = meta.get("op_case")
+    sub = meta.get("op_sub")
+    if mode is None and "op_mode" in df.columns and len(df) > 0:
+        try:
+            mode = str(int(df["op_mode"].iloc[0]))
+            case = str(int(df["op_case"].iloc[0])) if "op_case" in df.columns else "?"
+            sub = str(int(df["op_sub"].iloc[0])) if "op_sub" in df.columns else "?"
+        except Exception:
+            mode = None
+    if mode is None:
+        return "-"
+    return f"mode{mode} / case{case if case is not None else '?'} / sub{sub if sub is not None else '?'}"
+
+
+def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sha: str, op_label: str) -> None:
     import streamlit as st
 
     items = [
@@ -339,6 +358,7 @@ def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sh
         ("Duration", f"{duration_ms:.0f} ms"),
         ("Format", log_format),
         ("Git", git_sha),
+        ("Op", op_label),
     ]
     cells = []
     for label, value in items:
@@ -349,7 +369,7 @@ def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sh
             "</div>"
         )
     st.markdown(
-        "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;margin:0.25rem 0 1.0rem 0;'>"
+        "<div style='display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1.5rem;margin:0.25rem 0 1.0rem 0;'>"
         + "".join(cells)
         + "</div>",
         unsafe_allow_html=True,
@@ -536,6 +556,7 @@ def main() -> int:
             duration_ms,
             meta.get("log_format", "nightfall_trace"),
             meta.get("fw_git_sha", "-"),
+            _trace_op_label(meta, df_named),
         )
 
         st.plotly_chart(fig, use_container_width=True)
