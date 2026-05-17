@@ -253,7 +253,7 @@ def _build_nightfall_plot(df):
     groups = [
         ("Distance", "mm", ["distance_mm", "tune_ref", "tune_error"]),
         ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
-        ("Motor", "PWM", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
+        ("Motor", "Duty", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
         ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
         ("Flags", "0/1", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
@@ -303,7 +303,7 @@ def _build_nightfall_plot(df):
 
     fig.update_layout(
         height=max(720, 240 * len(available_groups)),
-        margin=dict(l=65, r=260, t=45, b=45),
+        margin=dict(l=45, r=170, t=20, b=30),
         annotations=tuple(fig.layout.annotations) + tuple(annotations),
         hovermode="x unified",
     )
