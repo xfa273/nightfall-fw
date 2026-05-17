@@ -254,6 +254,16 @@ static float f413_ctrl_tune_get_peak(uint8_t axis, uint8_t set)
             default: return 90.0f;
         }
     }
+    if (axis == F413_CTRL_TUNE_AXIS_VELOCITY)
+    {
+        switch (set)
+        {
+            case 0U: return 300.0f;
+            case 1U: return 1000.0f;
+            case 2U: return 2000.0f;
+            default: return 300.0f;
+        }
+    }
     switch (set)
     {
         case 0U: return 500.0f;
