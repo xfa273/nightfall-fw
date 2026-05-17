@@ -976,7 +976,7 @@ void f413_ctrl_tick(void)
             {
                 const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
                 float o_i_next;
-                s_omega_error = s_real_omega - omega_ref;
+                s_omega_error = omega_ref - s_real_omega;
                 o_i_next = s_omega_integral + s_omega_error;
                 s_omega_error_error = s_omega_error - s_previous_omega_error;
                 if (CTRL_ENABLE_ANTI_WINDUP)
@@ -1100,7 +1100,7 @@ void f413_ctrl_tick(void)
     {
         const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
         float o_i_next;
-        s_omega_error = s_real_omega - omega_ref;
+        s_omega_error = omega_ref - s_real_omega;
         o_i_next = s_omega_integral + s_omega_error;
         s_omega_error_error = s_omega_error - s_previous_omega_error;
         if (CTRL_ENABLE_ANTI_WINDUP)
