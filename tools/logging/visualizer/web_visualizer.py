@@ -284,7 +284,7 @@ def _build_nightfall_plot(df):
             legend_lines.append(f"<span style='color:{color}'>■</span> {col}")
             color_i += 1
         fig.update_yaxes(title_text=f"{title} [{unit}]", row=row, col=1)
-        fig.update_xaxes(showticklabels=True, row=row, col=1)
+        fig.update_xaxes(showticklabels=True, showgrid=True, gridcolor="rgba(128,128,128,0.25)", row=row, col=1)
         y_domain = fig.layout[f"yaxis{row if row > 1 else ''}"].domain
         annotations.append(
             dict(
@@ -411,7 +411,7 @@ def main() -> int:
     st.set_page_config(page_title="Micromouse Log Visualizer (Web)", layout="wide")
     _apply_page_style()
 
-    st.title("Micromouse Log Visualizer (Web)")
+    st.markdown("## Micromouse Log Visualizer (Web)")
 
     default_logs_dir = _default_logs_dir()
 
