@@ -251,7 +251,7 @@ def _build_nightfall_plot(df):
     import plotly.express as px
 
     groups = [
-        ("Distance / tune", "mm", ["distance_mm", "tune_ref", "tune_error"]),
+        ("Distance", "mm", ["distance_mm", "tune_ref", "tune_error"]),
         ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
         ("Motor", "PWM", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
@@ -265,7 +265,6 @@ def _build_nightfall_plot(df):
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.025,
-        subplot_titles=[title for title, _unit, _cols in available_groups],
     )
 
     palette = px.colors.qualitative.Plotly
