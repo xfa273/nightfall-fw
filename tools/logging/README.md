@@ -8,6 +8,7 @@
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
 - `export_plotjuggler_csv.py`: FRAM trace CSVをPlotJugglerで読みやすいCSVへ変換
+- `run_plotjuggler.sh`: CSV変換後、固定テンプレート付きでPlotJugglerを起動
 - `render_search_dump.py`: F413 UART `@` の `[SEARCH-DUMP]` をASCII迷路へ変換
 - `serial_terminal.py`: ST-LINK VCPなどで使うシンプルな対話式UART端末
 - `serial_capture_csv.sh`: シェル版CSVキャプチャ
@@ -73,9 +74,9 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
 
-## PlotJugglerでのFRAM trace CSV表示
+## PlotJugglerでのFRAM trace CSV表示（標準運用）
 
-PlotJugglerで見る場合は、元CSVを直接読むより `export_plotjuggler_csv.py` で相対秒 `time` 列付きCSVへ変換してから読むのが安定です。
+PlotJugglerで見る場合は `run_plotjuggler.sh` を使います。Nightfall標準テンプレート `tools/logging/plotjuggler/nightfall_f413_tune.xml` を固定で読み込むため、CSVを選ぶだけで同じグラフ構成で表示できます。
 
 macOSで未インストールの場合:
 
@@ -83,33 +84,46 @@ macOSで未インストールの場合:
 brew install --cask plotjuggler
 ```
 
-最新ログを変換:
+最新ログを開く:
 
 ```bash
-python3 tools/logging/export_plotjuggler_csv.py tools/logging/logs
+tools/logging/run_plotjuggler.sh
 ```
 
-CSVを指定して変換:
+CSVを指定して開く:
 
 ```bash
-python3 tools/logging/export_plotjuggler_csv.py tools/logging/logs/stm32_log_20260510_153411.csv
+tools/logging/run_plotjuggler.sh tools/logging/logs/stm32_log_20260510_153411.csv
 ```
 
-出力例:
+ファイル選択ダイアログでCSVを選んで開く:
 
-```text
-tools/logging/logs/stm32_log_20260510_153411.plotjuggler.csv
+```bash
+tools/logging/run_plotjuggler.sh --pick
 ```
 
-PlotJugglerでの読み込み:
+内部では、元CSVを相対秒 `time` 列付きの `*.plotjuggler.csv` に変換してから、次の形で起動します。
+
+```bash
+plotjuggler --nosplash --datafile path/to/log.plotjuggler.csv --layout tools/logging/plotjuggler/nightfall_f413_tune.xml
+```
+
+別テンプレートを試す場合:
+
+```bash
+tools/logging/run_plotjuggler.sh --layout path/to/custom.xml tools/logging/logs/stm32_log_20260510_153411.csv
+```
+
+手動で読み込む場合:
 
 1. PlotJugglerを起動する。
-2. `File` → `Load data...` で変換後の `*.plotjuggler.csv` を選ぶ。
-3. CSV読み込みダイアログで区切り文字は `,`、時刻列は `time` を選ぶ。
-4. `File` → `Load layout...` で `tools/logging/plotjuggler/nightfall_f413_tune.xml` を読む。
-5. 左側の一覧から追加で見たい系列があれば右側へドラッグする。
-6. 自分用に調整したら `File` → `Save layout...` でXMLレイアウトとして保存する。
-7. 次回以降は先に同じ形式の `*.plotjuggler.csv` を読み込み、`File` → `Load layout...` で保存したXMLを読む。
+2. `python3 tools/logging/export_plotjuggler_csv.py tools/logging/logs` で変換後の `*.plotjuggler.csv` を作る。
+3. `File` → `Load data...` で変換後の `*.plotjuggler.csv` を選ぶ。
+4. CSV読み込みダイアログで区切り文字は `,`、時刻列は `time` を選ぶ。
+5. `File` → `Load layout...` で `tools/logging/plotjuggler/nightfall_f413_tune.xml` を読む。
+6. 左側の一覧から追加で見たい系列があれば右側へドラッグする。
+7. 自分用に調整したら `File` → `Save layout...` でXMLレイアウトとして保存する。
+8. 次回以降は先に同じ形式の `*.plotjuggler.csv` を読み込み、`File` → `Load layout...` で保存したXMLを読む。
 
 まず見ると便利な系列:
 

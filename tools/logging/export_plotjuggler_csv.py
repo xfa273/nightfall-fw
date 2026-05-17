@@ -46,7 +46,7 @@ def _select_input(path: Path) -> Path:
         return path
     if not path.is_dir():
         raise FileNotFoundError(path)
-    candidates = [p for p in path.glob("*.csv") if _has_csv_rows(p)]
+    candidates = [p for p in path.glob("*.csv") if not p.name.endswith(".plotjuggler.csv") and _has_csv_rows(p)]
     if not candidates:
         raise FileNotFoundError(f"CSV not found in {path}")
     return max(candidates, key=lambda p: p.stat().st_mtime)
