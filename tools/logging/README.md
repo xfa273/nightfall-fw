@@ -74,9 +74,26 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
 
-## PlotJugglerでのFRAM trace CSV表示（標準運用）
+## FRAM trace CSV表示（調整時の標準運用）
 
-PlotJugglerで見る場合は `run_plotjuggler.sh` を使います。Nightfall標準テンプレート `tools/logging/plotjuggler/nightfall_f413_tune.xml` を固定で読み込むため、CSVを選ぶだけで同じグラフ構成で表示できます。
+調整作業ではWeb版ビューアを使います。Web UI起動後は、左サイドバーのCSVメニューでログを選ぶだけで、FRAM v2ログ用の固定グラフが即時表示されます。
+
+```bash
+tools/logging/visualizer/run_visualizer.sh
+```
+
+表示対象:
+
+- `*.plotjuggler.csv` は一覧から除外します。
+- FRAM v2ログは `distance / velocity / motor / angle / omega / flags` の固定グラフで表示します。
+- `tune_ref` / `tune_error` などの派生列は内部で自動生成します。
+- 旧8列CSVは従来通り、プリセットや列名指定で表示できます。
+
+新しいログを取得した後は、Web UI左側の `Refresh log list` を押してからCSVを選びます。`Auto-refresh log list` を有効にすると、数秒ごとに一覧が更新されます。PlotJugglerのCSV読み込みポップアップは使わないため、調整作業中は毎回同じ操作で確認できます。
+
+## PlotJugglerでのFRAM trace CSV表示（詳細確認用）
+
+PlotJugglerで見る場合は `run_plotjuggler.sh` を使います。Nightfall標準テンプレート `tools/logging/plotjuggler/nightfall_f413_tune.xml` を指定して起動します。
 
 macOSで未インストールの場合:
 

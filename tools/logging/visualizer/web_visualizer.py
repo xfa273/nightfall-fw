@@ -5,6 +5,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+TOOLS_DIR = Path(__file__).resolve().parents[1]
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+
+from export_plotjuggler_csv import _build_output, _load_nightfall_csv
+
 
 def _repo_root_from_this_file() -> Path:
     return Path(__file__).resolve().parents[3]
@@ -41,6 +47,17 @@ def _coerce_8cols(df):
     return df
 
 
+def _is_nightfall_trace_csv(path: Path) -> bool:
+    cols = _extract_mm_columns(path)
+    if cols is not None:
+        return "timestamp_ms" in cols and "flags" in cols
+    try:
+        cols, _rows, _meta = _load_nightfall_csv(path)
+    except Exception:
+        return False
+    return "timestamp_ms" in cols and "flags" in cols
+
+
 def _list_csvs(logs_dir: Path) -> List[Tuple[str, Path, float, int]]:
     if not logs_dir.is_dir():
         return []
@@ -48,6 +65,8 @@ def _list_csvs(logs_dir: Path) -> List[Tuple[str, Path, float, int]]:
     out: List[Tuple[str, Path, float, int]] = []
     for p in logs_dir.iterdir():
         if not (p.is_file() and p.suffix.lower() == ".csv"):
+            continue
+        if p.name.endswith(".plotjuggler.csv"):
             continue
         try:
             st = p.stat()
@@ -150,6 +169,16 @@ def _downsample(df, max_points: int):
     return df.iloc[::step, :].reset_index(drop=True)
 
 
+def _load_nightfall_trace_df(path: Path):
+    import pandas as pd
+
+    columns, rows, meta = _load_nightfall_csv(path)
+    out_columns, out_rows = _build_output(columns, rows, meta, True)
+    df = pd.DataFrame(out_rows, columns=out_columns)
+    df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
+    return df, meta
+
+
 def _build_plot(df, y_cols: List[str], mode: str):
     import plotly.graph_objects as go
     import plotly.express as px
@@ -187,6 +216,106 @@ def _build_plot(df, y_cols: List[str], mode: str):
     return fig
 
 
+def _build_nightfall_plot(df):
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+    import plotly.express as px
+
+    groups = [
+        ("Distance / tune", ["distance_mm", "tune_ref", "tune_error"]),
+        ("Velocity", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
+        ("Motor", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
+        ("Angle", ["angle_deg", "target_angle_deg"]),
+        ("Omega", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
+        ("Flags", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
+    ]
+
+    available_groups = [(title, cols) for title, cols in groups if any(c in df.columns for c in cols)]
+    fig = make_subplots(
+        rows=len(available_groups),
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.025,
+        subplot_titles=[title for title, _ in available_groups],
+    )
+
+    palette = px.colors.qualitative.Plotly
+    for row, (title, cols) in enumerate(available_groups, start=1):
+        color_i = 0
+        for col in cols:
+            if col not in df.columns:
+                continue
+            fig.add_trace(
+                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=dict(color=palette[color_i % len(palette)])),
+                row=row,
+                col=1,
+            )
+            color_i += 1
+        fig.update_yaxes(title_text=title, row=row, col=1)
+
+    fig.update_xaxes(title_text="time_ms", row=len(available_groups), col=1)
+    fig.update_layout(
+        height=max(650, 210 * len(available_groups)),
+        margin=dict(l=40, r=20, t=40, b=40),
+        legend_title_text="signals",
+        hovermode="x unified",
+    )
+    return fig
+
+
+def _render_export(fig, selected_csv: Path) -> int:
+    import streamlit as st
+
+    st.divider()
+    st.subheader("Export")
+
+    export_col1, export_col2 = st.columns([1, 2])
+    with export_col1:
+        export_name = st.text_input("PNG name", value=f"{selected_csv.stem}.png")
+        save_dir = st.text_input("Save folder", value=str(selected_csv.parent))
+        no_open = st.checkbox("Do not open after save", value=False)
+
+        if st.button("Save PNG"):
+            out_dir = Path(save_dir).expanduser()
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / export_name
+            try:
+                png_bytes = fig.to_image(format="png")
+            except Exception:
+                st.error("PNG出力には kaleido が必要です。kaleido 1.x の場合は Google Chrome も必要です（plotly_get_chrome）。")
+                return 0
+
+            out_path.write_bytes(png_bytes)
+            st.success(f"Saved: {out_path}")
+
+            if (not no_open) and sys.platform == "darwin":
+                try:
+                    import subprocess
+
+                    subprocess.run(["open", str(out_path)], check=False)
+                except Exception:
+                    pass
+
+    with export_col2:
+        try:
+            png_bytes2 = fig.to_image(format="png")
+            st.download_button("Download PNG", data=png_bytes2, file_name=f"{selected_csv.stem}.png", mime="image/png")
+        except Exception:
+            st.info("Downloadボタンも kaleido が必要です。kaleido 1.x の場合は Google Chrome も必要です（plotly_get_chrome）。")
+
+    return 0
+
+
+def _enable_auto_reload(seconds: int) -> None:
+    import streamlit.components.v1 as components
+
+    milliseconds = max(1, seconds) * 1000
+    components.html(
+        f"<script>setTimeout(function() {{ window.parent.location.reload(); }}, {milliseconds});</script>",
+        height=0,
+    )
+
+
 def main() -> int:
     import streamlit as st
 
@@ -204,6 +333,15 @@ def main() -> int:
 
     if not logs_dir.is_dir():
         sidebar.error(f"Folder not found: {logs_dir}")
+
+    if sidebar.button("Refresh log list"):
+        st.cache_data.clear()
+        st.rerun()
+
+    auto_reload = sidebar.checkbox("Auto-refresh log list", value=False)
+    if auto_reload:
+        reload_seconds = sidebar.number_input("Refresh interval (sec)", min_value=1, max_value=60, value=3, step=1)
+        _enable_auto_reload(int(reload_seconds))
 
     csv_entries = _list_csvs(logs_dir)
 
@@ -246,7 +384,11 @@ def main() -> int:
     st.caption(f"CSV: {selected_csv}")
 
     @st.cache_data(show_spinner=False)
-    def _load_csv_cached(path_str: str):
+    def _load_trace_cached(path_str: str, mtime: float):
+        return _load_nightfall_trace_df(Path(path_str))
+
+    @st.cache_data(show_spinner=False)
+    def _load_csv_cached(path_str: str, mtime: float):
         import pandas as pd
 
         p = Path(path_str)
@@ -254,7 +396,43 @@ def main() -> int:
         df0 = pd.read_csv(path_str, header=None, comment="#")
         return _coerce_8cols(df0), mm_cols
 
-    df, mm_cols = _load_csv_cached(str(selected_csv))
+    selected_mtime = selected_csv.stat().st_mtime
+    x_min = sidebar.text_input("X min (ms)", value="")
+    x_max = sidebar.text_input("X max (ms)", value="")
+    max_points = sidebar.number_input("Max points (downsample)", min_value=1000, max_value=500000, value=80000, step=1000)
+
+    if _is_nightfall_trace_csv(selected_csv):
+        df_named, meta = _load_trace_cached(str(selected_csv), selected_mtime)
+        df_view = df_named
+
+        try:
+            left = float(x_min) if x_min.strip() else None
+            right = float(x_max) if x_max.strip() else None
+            if left is not None:
+                df_view = df_view[df_view["time_ms"] >= left]
+            if right is not None:
+                df_view = df_view[df_view["time_ms"] <= right]
+        except ValueError:
+            st.warning("X min / X max は数値で入力してください（空欄は自動）。")
+
+        df_view = _downsample(df_view, int(max_points))
+        fig = _build_nightfall_plot(df_view)
+
+        duration_ms = float(df_named["time_ms"].max()) if "time_ms" in df_named.columns else 0.0
+        info_cols = st.columns(4)
+        info_cols[0].metric("Rows", f"{len(df_named)}")
+        info_cols[1].metric("Duration", f"{duration_ms:.0f} ms")
+        info_cols[2].metric("Format", meta.get("log_format", "nightfall_trace"))
+        info_cols[3].metric("Git", meta.get("fw_git_sha", "-"))
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        with st.expander("Preview (head)", expanded=False):
+            st.dataframe(df_named.head(50))
+
+        return _render_export(fig, selected_csv)
+
+    df, mm_cols = _load_csv_cached(str(selected_csv), selected_mtime)
 
     sidebar.header("Columns")
     preset_names = _presets()
@@ -278,11 +456,6 @@ def main() -> int:
 
     plot_mode = sidebar.radio("Mode", options=["Overlay (single graph)", "Stacked (multiple graphs)"], index=0)
 
-    x_min = sidebar.text_input("X min (ms)", value="")
-    x_max = sidebar.text_input("X max (ms)", value="")
-
-    max_points = sidebar.number_input("Max points (downsample)", min_value=1000, max_value=500000, value=80000, step=1000)
-
     if not selected_cols:
         st.warning("表示するパラメータを選択してください。")
         return 0
@@ -300,7 +473,6 @@ def main() -> int:
         st.warning("X min / X max は数値で入力してください（空欄は自動）。")
 
     df_view = _downsample(df_view, int(max_points))
-
     fig = _build_plot(df_view, selected_cols, plot_mode)
 
     st.plotly_chart(fig, use_container_width=True)
@@ -308,44 +480,8 @@ def main() -> int:
     with st.expander("Preview (head)", expanded=False):
         st.dataframe(df_named.head(50))
 
-    st.divider()
-    st.subheader("Export")
+    return _render_export(fig, selected_csv)
 
-    export_col1, export_col2 = st.columns([1, 2])
-    with export_col1:
-        export_name = st.text_input("PNG name", value=f"{selected_csv.stem}.png")
-        save_dir = st.text_input("Save folder", value=str(selected_csv.parent))
-        no_open = st.checkbox("Do not open after save", value=False)
-
-        if st.button("Save PNG"):
-            out_dir = Path(save_dir).expanduser()
-            out_dir.mkdir(parents=True, exist_ok=True)
-            out_path = out_dir / export_name
-            try:
-                png_bytes = fig.to_image(format="png")
-            except Exception:
-                st.error("PNG出力には kaleido が必要です。kaleido 1.x の場合は Google Chrome も必要です（plotly_get_chrome）。")
-                return 0
-
-            out_path.write_bytes(png_bytes)
-            st.success(f"Saved: {out_path}")
-
-            if (not no_open) and sys.platform == "darwin":
-                try:
-                    import subprocess
-
-                    subprocess.run(["open", str(out_path)], check=False)
-                except Exception:
-                    pass
-
-    with export_col2:
-        try:
-            png_bytes2 = fig.to_image(format="png")
-            st.download_button("Download PNG", data=png_bytes2, file_name=f"{selected_csv.stem}.png", mime="image/png")
-        except Exception:
-            st.info("Downloadボタンも kaleido が必要です。kaleido 1.x の場合は Google Chrome も必要です（plotly_get_chrome）。")
-
-    return 0
 
 
 if __name__ == "__main__":
