@@ -59,6 +59,8 @@ void f413_ctrl_reset_angle(void);
 /* 実測値取得（デバッグ/ログ用） */
 float f413_ctrl_get_real_velocity(void);
 float f413_ctrl_get_real_omega(void);
+float f413_ctrl_get_log_angle(void);
+float f413_ctrl_get_log_real_omega(void);
 float f413_ctrl_get_target_velocity(void);
 float f413_ctrl_get_target_omega(void);
 float f413_ctrl_get_target_angle(void);

@@ -121,6 +121,8 @@ static volatile float s_real_distance = 0.0f;
 static volatile float s_real_velocity = 0.0f;
 static volatile float s_real_angle = 0.0f;
 static volatile float s_real_omega = 0.0f;
+static volatile float s_encoder_angle = 0.0f;
+static volatile float s_encoder_omega = 0.0f;
 static volatile float s_encoder_distance_l = 0.0f;
 static volatile float s_encoder_distance_r = 0.0f;
 static volatile float s_encoder_speed_l = 0.0f;
@@ -160,6 +162,7 @@ static float s_distance_velocity_feedback = 0.0f;
 static uint16_t s_angle_outer_count = 0U;
 
 static volatile bool s_spi2_busy = false;
+static volatile bool s_imu_motion_sample_valid = false;
 static volatile bool s_tune_active = false;
 static volatile bool s_tune_done = false;
 static volatile uint8_t s_tune_axis = F413_CTRL_TUNE_AXIS_VELOCITY;
@@ -184,6 +187,8 @@ static void f413_ctrl_reset_pid_state(void)
     s_real_velocity = 0.0f;
     s_real_angle = 0.0f;
     s_real_omega = 0.0f;
+    s_encoder_angle = 0.0f;
+    s_encoder_omega = 0.0f;
     s_encoder_distance_l = 0.0f;
     s_encoder_distance_r = 0.0f;
     s_encoder_speed_l = 0.0f;
@@ -215,6 +220,7 @@ static void f413_ctrl_reset_pid_state(void)
     s_accel_velocity = 0.0f;
     s_real_velocity_lpf = 0.0f;
     s_real_velocity_lpf_inited = false;
+    s_imu_motion_sample_valid = false;
     s_distance_outer_count = 0U;
     s_distance_velocity_feedback = 0.0f;
     s_angle_outer_count = 0U;
@@ -628,6 +634,8 @@ void  f413_ctrl_reset_distance(void)
 void  f413_ctrl_reset_angle(void)
 {
     s_real_angle = 0.0f;
+    s_encoder_angle = 0.0f;
+    s_encoder_omega = 0.0f;
     s_target_angle = 0.0f;
     s_angle_integral = 0.0f;
     s_previous_angle_error = 0.0f;
@@ -638,6 +646,8 @@ void  f413_ctrl_reset_angle(void)
 }
 float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
+float f413_ctrl_get_log_angle(void)      { return s_imu_motion_sample_valid ? s_real_angle : s_encoder_angle; }
+float f413_ctrl_get_log_real_omega(void) { return s_imu_motion_sample_valid ? s_real_omega : s_encoder_omega; }
 float f413_ctrl_get_target_velocity(void) { return s_target_velocity; }
 float f413_ctrl_get_target_omega(void)    { return s_omega_interrupt + s_target_omega + s_heading_omega_correction; }
 float f413_ctrl_get_target_angle(void)    { return s_target_angle; }
@@ -697,6 +707,8 @@ void f413_ctrl_tick(void)
     float dist_r = (float)enc_r * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_R;
     s_encoder_speed_l = dist_l / F413_CTRL_DT;
     s_encoder_speed_r = dist_r / F413_CTRL_DT;
+    s_encoder_omega = ((s_encoder_speed_r - s_encoder_speed_l) / F413_CTRL_TREAD) * (180.0f / 3.14159265f);
+    s_encoder_angle += s_encoder_omega * F413_CTRL_DT;
     s_encoder_distance_l += dist_l;
     s_encoder_distance_r += dist_r;
     real_velocity_raw = (s_encoder_speed_l + s_encoder_speed_r) * 0.5f;
@@ -766,6 +778,7 @@ void f413_ctrl_tick(void)
             s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
         }
         s_spi2_busy = false;
+        s_imu_motion_sample_valid = true;
     }
 
     s_real_omega = omega_raw;

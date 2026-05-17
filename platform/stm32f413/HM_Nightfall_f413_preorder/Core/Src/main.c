@@ -1996,12 +1996,12 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   out->seq = seq;
   out->timestamp_ms = HAL_GetTick();
   out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
-  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_angle(), 1000.0f);
+  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_log_angle(), 1000.0f);
   out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
   out->real_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_real_velocity(), 1.0f);
   out->accel_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
   out->target_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
-  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_real_omega(), 1000.0f);
+  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
   out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
   out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
   out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
