@@ -116,8 +116,7 @@ function(nightfall_add_firmware target variant variant_define mcu_family)
         list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/packed-refs")
     endif()
 
-    add_custom_command(
-        OUTPUT ${build_info_h}
+    add_custom_target(build_info_${target}
         COMMAND ${CMAKE_COMMAND}
             -DOUTPUT_FILE=${build_info_h}
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
@@ -125,12 +124,12 @@ function(nightfall_add_firmware target variant variant_define mcu_family)
             -DFW_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DFW_VERSION=${FW_VERSION}
             -P ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake
+        BYPRODUCTS ${build_info_h}
         DEPENDS ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake ${_git_deps} ${_src_deps}
         VERBATIM
         COMMENT "Generating build_info.h for ${target}"
     )
 
-    add_custom_target(build_info_${target} DEPENDS ${build_info_h})
     add_dependencies(${target} build_info_${target})
 
     target_sources(${target} PRIVATE ${NIGHTFALL_STM32F405_USER_SOURCES} ${_variant_src})
@@ -168,8 +167,7 @@ function(nightfall_add_platform_target target mcu_family)
         list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/packed-refs")
     endif()
 
-    add_custom_command(
-        OUTPUT ${build_info_h}
+    add_custom_target(build_info_${target}
         COMMAND ${CMAKE_COMMAND}
             -DOUTPUT_FILE=${build_info_h}
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
@@ -177,12 +175,12 @@ function(nightfall_add_platform_target target mcu_family)
             -DFW_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DFW_VERSION=${FW_VERSION}
             -P ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake
+        BYPRODUCTS ${build_info_h}
         DEPENDS ${CMAKE_SOURCE_DIR}/cmake/gen_build_info.cmake ${_git_deps}
         VERBATIM
         COMMENT "Generating build_info.h for ${target}"
     )
 
-    add_custom_target(build_info_${target} DEPENDS ${build_info_h})
     add_dependencies(${target} build_info_${target})
 
     nightfall_apply_mcu(${target} ${mcu_family})

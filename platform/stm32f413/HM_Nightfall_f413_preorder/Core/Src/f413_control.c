@@ -33,6 +33,18 @@
 #define F413_CTRL_KI_ANGLE        (0.0f)
 #define F413_CTRL_KD_ANGLE        (0.0f)
 #define F413_CTRL_ANGLE_OMEGA_MAX (300.0f)
+#ifndef F413_CTRL_TUNE_STRAIGHT_KP_ANGLE
+#define F413_CTRL_TUNE_STRAIGHT_KP_ANGLE (4.0f)
+#endif
+#ifndef F413_CTRL_TUNE_STRAIGHT_KI_ANGLE
+#define F413_CTRL_TUNE_STRAIGHT_KI_ANGLE (0.0f)
+#endif
+#ifndef F413_CTRL_TUNE_STRAIGHT_KD_ANGLE
+#define F413_CTRL_TUNE_STRAIGHT_KD_ANGLE (0.0f)
+#endif
+#ifndef F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX
+#define F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX (60.0f)
+#endif
 #define F413_CTRL_KP_OMEGA        (1.4f)     /* [PWM counts / (deg/s)] */
 #define F413_CTRL_KI_OMEGA        (0.06f)
 #define F413_CTRL_KD_OMEGA        (0.0f)
@@ -278,17 +290,22 @@ static float f413_ctrl_tune_ref_step(float peak, uint16_t t_ms, uint16_t on_ms)
     return (t_ms < on_ms) ? peak : 0.0f;
 }
 
-static float f413_ctrl_clamp_angle_omega(float omega_deg_s)
+static float f413_ctrl_clamp_omega_abs(float omega_deg_s, float omega_max_deg_s)
 {
-    if (omega_deg_s > F413_CTRL_ANGLE_OMEGA_MAX)
+    if (omega_deg_s > omega_max_deg_s)
     {
-        return F413_CTRL_ANGLE_OMEGA_MAX;
+        return omega_max_deg_s;
     }
-    if (omega_deg_s < -F413_CTRL_ANGLE_OMEGA_MAX)
+    if (omega_deg_s < -omega_max_deg_s)
     {
-        return -F413_CTRL_ANGLE_OMEGA_MAX;
+        return -omega_max_deg_s;
     }
     return omega_deg_s;
+}
+
+static float f413_ctrl_clamp_angle_omega(float omega_deg_s)
+{
+    return f413_ctrl_clamp_omega_abs(omega_deg_s, F413_CTRL_ANGLE_OMEGA_MAX);
 }
 
 static float f413_ctrl_tune_ref_triangle(float peak, uint16_t t_ms, uint16_t ramp_ms)
@@ -952,9 +969,10 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
-                                                                      (ki_a * s_angle_integral) +
-                                                                      (kd_a * s_angle_error_error));
+                        s_target_omega = f413_ctrl_clamp_omega_abs((F413_CTRL_TUNE_STRAIGHT_KP_ANGLE * s_angle_error) +
+                                                                    (F413_CTRL_TUNE_STRAIGHT_KI_ANGLE * s_angle_integral) +
+                                                                    (F413_CTRL_TUNE_STRAIGHT_KD_ANGLE * s_angle_error_error),
+                                                                    F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX);
                     }
                 }
             }
