@@ -2004,8 +2004,16 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
   out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
   out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
-  out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-  out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
+  if (f413_ctrl_is_running())
+  {
+    out->encoder_l = f413_ctrl_get_log_encoder_delta_l();
+    out->encoder_r = f413_ctrl_get_log_encoder_delta_r();
+  }
+  else
+  {
+    out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+    out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
+  }
   out->motor_out_l = f413_ctrl_get_motor_out_l();
   out->motor_out_r = f413_ctrl_get_motor_out_r();
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)

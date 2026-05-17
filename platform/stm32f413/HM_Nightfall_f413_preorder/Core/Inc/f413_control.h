@@ -68,6 +68,8 @@ float f413_ctrl_get_accel_velocity(void);
 float f413_ctrl_get_accel_forward(void);
 int16_t f413_ctrl_get_motor_out_l(void);
 int16_t f413_ctrl_get_motor_out_r(void);
+int16_t f413_ctrl_get_log_encoder_delta_l(void);
+int16_t f413_ctrl_get_log_encoder_delta_r(void);
 bool f413_ctrl_angle_target_enabled(void);
 
 /* 1kHz 割り込みハンドラ（HAL_TIM_PeriodElapsedCallback から呼ぶ） */

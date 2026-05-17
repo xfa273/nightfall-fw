@@ -127,6 +127,8 @@ static volatile float s_encoder_distance_l = 0.0f;
 static volatile float s_encoder_distance_r = 0.0f;
 static volatile float s_encoder_speed_l = 0.0f;
 static volatile float s_encoder_speed_r = 0.0f;
+static volatile int16_t s_encoder_delta_l = 0;
+static volatile int16_t s_encoder_delta_r = 0;
 static volatile float s_distance_error = 0.0f;
 static volatile float s_distance_error_error = 0.0f;
 static volatile float s_previous_distance_error = 0.0f;
@@ -193,6 +195,8 @@ static void f413_ctrl_reset_pid_state(void)
     s_encoder_distance_r = 0.0f;
     s_encoder_speed_l = 0.0f;
     s_encoder_speed_r = 0.0f;
+    s_encoder_delta_l = 0;
+    s_encoder_delta_r = 0;
     s_distance_error = 0.0f;
     s_distance_error_error = 0.0f;
     s_previous_distance_error = 0.0f;
@@ -655,6 +659,8 @@ float f413_ctrl_get_accel_velocity(void)  { return s_accel_velocity; }
 float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
 int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
 int16_t f413_ctrl_get_motor_out_r(void)   { return s_motor_out_r; }
+int16_t f413_ctrl_get_log_encoder_delta_l(void) { return s_encoder_delta_l; }
+int16_t f413_ctrl_get_log_encoder_delta_r(void) { return s_encoder_delta_r; }
 bool f413_ctrl_angle_target_enabled(void) { return s_angle_target_enabled; }
 bool  f413_ctrl_is_running(void)        { return s_running; }
 bool  f413_ctrl_spi2_busy(void)         { return s_spi2_busy; }
@@ -705,6 +711,8 @@ void f413_ctrl_tick(void)
        （実機ログ 2026-05-01 で確認済み: forward→counter decrease） */
     float dist_l = (float)enc_l * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_L;
     float dist_r = (float)enc_r * s_enc_to_mm * F413_CTRL_ENCODER_SIGN_R;
+    s_encoder_delta_l = (int16_t)lrintf((float)enc_l * F413_CTRL_ENCODER_SIGN_L);
+    s_encoder_delta_r = (int16_t)lrintf((float)enc_r * F413_CTRL_ENCODER_SIGN_R);
     s_encoder_speed_l = dist_l / F413_CTRL_DT;
     s_encoder_speed_r = dist_r / F413_CTRL_DT;
     s_encoder_omega = ((s_encoder_speed_r - s_encoder_speed_l) / F413_CTRL_TREAD) * (180.0f / 3.14159265f);
