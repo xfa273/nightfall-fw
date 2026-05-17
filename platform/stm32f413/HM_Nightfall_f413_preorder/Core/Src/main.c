@@ -3850,8 +3850,8 @@ static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub)
   {
     switch (sub)
     {
-      case 0U: return "velocity step 500";
-      case 1U: return "velocity trapezoid 500";
+      case 0U: return "velocity step 300";
+      case 1U: return "velocity trapezoid 300";
       case 2U: return "omega step 500";
       case 3U: return "omega trapezoid 500";
       case 4U: return "distance step 90";
