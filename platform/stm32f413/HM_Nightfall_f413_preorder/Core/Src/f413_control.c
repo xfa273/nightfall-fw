@@ -860,7 +860,6 @@ void f413_ctrl_tick(void)
             {
                 s_velocity_interrupt = 0.0f;
                 s_target_velocity = 0.0f;
-                s_out_translation = 0.0f;
                 s_omega_interrupt = ref;
                 s_target_angle += ref * F413_CTRL_DT;
                 s_target_omega = 0.0f;
@@ -891,7 +890,6 @@ void f413_ctrl_tick(void)
             {
                 s_velocity_interrupt = 0.0f;
                 s_target_velocity = 0.0f;
-                s_out_translation = 0.0f;
                 s_omega_interrupt = 0.0f;
                 s_target_angle = ref;
                 s_angle_error = s_target_angle - s_real_angle;
@@ -911,6 +909,33 @@ void f413_ctrl_tick(void)
 
             if ((s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
                 (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE))
+            {
+                if ((kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
+                {
+                    s_target_omega = 0.0f;
+                    s_angle_outer_count = 0U;
+                    s_angle_error = 0.0f;
+                    s_previous_angle_error = 0.0f;
+                    s_angle_error_error = 0.0f;
+                    s_angle_integral = 0.0f;
+                }
+                else
+                {
+                    s_angle_error = s_target_angle - s_real_angle;
+                    s_angle_outer_count++;
+                    if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
+                    {
+                        s_angle_outer_count = 0U;
+                        s_angle_integral += s_angle_error;
+                        s_angle_error_error = s_angle_error - s_previous_angle_error;
+                        s_previous_angle_error = s_angle_error;
+                        s_target_omega = (kp_a * s_angle_error) +
+                                         (ki_a * s_angle_integral) +
+                                         (kd_a * s_angle_error_error);
+                    }
+                }
+            }
+
             {
                 float v_i_next = s_velocity_integral + (s_target_velocity - s_real_velocity);
                 s_velocity_error = s_target_velocity - s_real_velocity;
