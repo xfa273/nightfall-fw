@@ -303,7 +303,7 @@ def _build_nightfall_plot(df):
 
     fig.update_layout(
         height=max(720, 240 * len(available_groups)),
-        margin=dict(l=45, r=170, t=20, b=30),
+        margin=dict(l=45, r=120, t=20, b=30),
         annotations=tuple(fig.layout.annotations) + tuple(annotations),
         hovermode="x unified",
     )
