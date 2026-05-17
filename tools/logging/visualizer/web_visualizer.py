@@ -277,19 +277,33 @@ def _build_nightfall_plot(df):
                 continue
             color = palette[color_i % len(palette)]
             line = dict(color=color)
+            mode = "lines"
+            marker = None
             if col == "motor_out_avg":
                 line.update(width=1, dash="dot")
             elif col == "motor_out_diff":
                 line.update(width=1, dash="dash")
-            elif col in ("motor_out_l", "motor_out_r"):
-                line.update(width=2)
+            elif col == "motor_out_l":
+                line.update(width=4)
+                mode = "lines+markers"
+                marker = dict(symbol="circle-open", size=5, line=dict(width=1))
+            elif col == "motor_out_r":
+                line.update(width=2, dash="dash")
+                mode = "lines+markers"
+                marker = dict(symbol="x", size=6)
+            trace_kwargs = dict(x=df["time_ms"], y=df[col], mode=mode, name=col, line=line, showlegend=False)
+            if marker is not None:
+                trace_kwargs["marker"] = marker
             fig.add_trace(
-                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=line, showlegend=False),
+                go.Scatter(**trace_kwargs),
                 row=row,
                 col=1,
             )
             legend_lines.append(f"<span style='color:{color}'>■</span> {col}")
             color_i += 1
+        if title == "Motor" and "motor_out_l" in df.columns and "motor_out_r" in df.columns:
+            if bool((df["motor_out_l"] == df["motor_out_r"]).all()):
+                legend_lines.append("<span style='color:#aaaaaa'>■</span> motor_out_l/r overlap")
         fig.update_yaxes(title_text=f"{title} [{unit}]", row=row, col=1)
         fig.update_xaxes(showticklabels=True, showgrid=True, gridcolor="rgba(128,128,128,0.25)", row=row, col=1)
         y_domain = fig.layout[f"yaxis{row if row > 1 else ''}"].domain
