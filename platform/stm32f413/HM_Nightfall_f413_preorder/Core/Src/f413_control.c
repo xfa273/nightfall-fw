@@ -278,6 +278,19 @@ static float f413_ctrl_tune_ref_step(float peak, uint16_t t_ms, uint16_t on_ms)
     return (t_ms < on_ms) ? peak : 0.0f;
 }
 
+static float f413_ctrl_clamp_angle_omega(float omega_deg_s)
+{
+    if (omega_deg_s > F413_CTRL_ANGLE_OMEGA_MAX)
+    {
+        return F413_CTRL_ANGLE_OMEGA_MAX;
+    }
+    if (omega_deg_s < -F413_CTRL_ANGLE_OMEGA_MAX)
+    {
+        return -F413_CTRL_ANGLE_OMEGA_MAX;
+    }
+    return omega_deg_s;
+}
+
 static float f413_ctrl_tune_ref_triangle(float peak, uint16_t t_ms, uint16_t ramp_ms)
 {
     if (ramp_ms == 0U)
@@ -910,9 +923,9 @@ void f413_ctrl_tick(void)
                     s_angle_integral += s_angle_error;
                     s_angle_error_error = s_angle_error - s_previous_angle_error;
                     s_previous_angle_error = s_angle_error;
-                    s_target_omega = (kp_a * s_angle_error) +
-                                     (ki_a * s_angle_integral) +
-                                     (kd_a * s_angle_error_error);
+                    s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
+                                                                  (ki_a * s_angle_integral) +
+                                                                  (kd_a * s_angle_error_error));
                 }
                 s_heading_omega_correction = 0.0f;
             }
@@ -939,9 +952,9 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = (kp_a * s_angle_error) +
-                                         (ki_a * s_angle_integral) +
-                                         (kd_a * s_angle_error_error);
+                        s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
+                                                                      (ki_a * s_angle_integral) +
+                                                                      (kd_a * s_angle_error_error));
                     }
                 }
             }
@@ -976,7 +989,7 @@ void f413_ctrl_tick(void)
             {
                 const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
                 float o_i_next;
-                s_omega_error = omega_ref - s_real_omega;
+                s_omega_error = s_real_omega - omega_ref;
                 o_i_next = s_omega_integral + s_omega_error;
                 s_omega_error_error = s_omega_error - s_previous_omega_error;
                 if (CTRL_ENABLE_ANTI_WINDUP)
@@ -1091,16 +1104,16 @@ void f413_ctrl_tick(void)
             s_angle_integral += s_angle_error;
             s_angle_error_error = s_angle_error - s_previous_angle_error;
             s_previous_angle_error = s_angle_error;
-            s_target_omega = (kp_a * s_angle_error) +
-                             (ki_a * s_angle_integral) +
-                             (kd_a * s_angle_error_error);
+            s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
+                                                          (ki_a * s_angle_integral) +
+                                                          (kd_a * s_angle_error_error));
         }
     }
 
     {
         const float omega_ref = s_omega_interrupt + s_target_omega + s_heading_omega_correction;
         float o_i_next;
-        s_omega_error = omega_ref - s_real_omega;
+        s_omega_error = s_real_omega - omega_ref;
         o_i_next = s_omega_integral + s_omega_error;
         s_omega_error_error = s_omega_error - s_previous_omega_error;
         if (CTRL_ENABLE_ANTI_WINDUP)
