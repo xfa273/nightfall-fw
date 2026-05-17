@@ -2,6 +2,7 @@
 import os
 import sys
 import hashlib
+import html
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -264,7 +265,7 @@ def _build_nightfall_plot(df):
         cols=1,
         shared_xaxes=True,
         vertical_spacing=0.025,
-        subplot_titles=[f"{title} [{unit}]" for title, unit, _ in available_groups],
+        subplot_titles=[title for title, _unit, _cols in available_groups],
     )
 
     palette = px.colors.qualitative.Plotly
@@ -284,7 +285,7 @@ def _build_nightfall_plot(df):
             legend_lines.append(f"<span style='color:{color}'>■</span> {col}")
             color_i += 1
         fig.update_yaxes(title_text=f"{title} [{unit}]", row=row, col=1)
-        fig.update_xaxes(title_text="time_ms", showticklabels=True, row=row, col=1)
+        fig.update_xaxes(showticklabels=True, row=row, col=1)
         y_domain = fig.layout[f"yaxis{row if row > 1 else ''}"].domain
         annotations.append(
             dict(
@@ -308,6 +309,31 @@ def _build_nightfall_plot(df):
         hovermode="x unified",
     )
     return fig
+
+
+def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sha: str) -> None:
+    import streamlit as st
+
+    items = [
+        ("Rows", str(rows)),
+        ("Duration", f"{duration_ms:.0f} ms"),
+        ("Format", log_format),
+        ("Git", git_sha),
+    ]
+    cells = []
+    for label, value in items:
+        cells.append(
+            "<div>"
+            f"<div style='font-size:0.58rem;font-weight:600;opacity:0.75;margin-bottom:0.12rem;'>{html.escape(label)}</div>"
+            f"<div style='font-size:1.05rem;line-height:1.15;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' title='{html.escape(value)}'>{html.escape(value)}</div>"
+            "</div>"
+        )
+    st.markdown(
+        "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;margin:0.25rem 0 1.0rem 0;'>"
+        + "".join(cells)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _render_export(fig, selected_csv: Path) -> int:
@@ -467,11 +493,12 @@ def main() -> int:
         fig = _build_nightfall_plot(df_view)
 
         duration_ms = float(df_named["time_ms"].max()) if "time_ms" in df_named.columns else 0.0
-        info_cols = st.columns(4)
-        info_cols[0].metric("Rows", f"{len(df_named)}")
-        info_cols[1].metric("Duration", f"{duration_ms:.0f} ms")
-        info_cols[2].metric("Format", meta.get("log_format", "nightfall_trace"))
-        info_cols[3].metric("Git", meta.get("fw_git_sha", "-"))
+        _render_trace_summary(
+            len(df_named),
+            duration_ms,
+            meta.get("log_format", "nightfall_trace"),
+            meta.get("fw_git_sha", "-"),
+        )
 
         st.plotly_chart(fig, use_container_width=True)
 
