@@ -303,7 +303,7 @@ def _build_nightfall_plot(df):
 
     fig.update_layout(
         height=max(720, 240 * len(available_groups)),
-        margin=dict(l=20, r=20, t=20, b=30),
+        margin=dict(l=45, r=170, t=20, b=30),
         annotations=tuple(fig.layout.annotations) + tuple(annotations),
         hovermode="x unified",
     )
@@ -331,6 +331,23 @@ def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sh
         "<div style='display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;margin:0.25rem 0 1.0rem 0;'>"
         + "".join(cells)
         + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _apply_page_style() -> None:
+    import streamlit as st
+
+    st.markdown(
+        """
+<style>
+div.block-container {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  max-width: none;
+}
+</style>
+""",
         unsafe_allow_html=True,
     )
 
@@ -392,6 +409,7 @@ def main() -> int:
     import streamlit as st
 
     st.set_page_config(page_title="Micromouse Log Visualizer (Web)", layout="wide")
+    _apply_page_style()
 
     st.title("Micromouse Log Visualizer (Web)")
 
