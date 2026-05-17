@@ -253,7 +253,7 @@ def _build_nightfall_plot(df):
     groups = [
         ("Distance", "mm", ["distance_mm", "tune_ref", "tune_error"]),
         ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
-        ("Motor", "Duty", ["motor_out_l", "motor_out_r", "motor_out_avg", "motor_out_diff"]),
+        ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
         ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
         ("Flags", "0/1", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
@@ -276,8 +276,15 @@ def _build_nightfall_plot(df):
             if col not in df.columns:
                 continue
             color = palette[color_i % len(palette)]
+            line = dict(color=color)
+            if col == "motor_out_avg":
+                line.update(width=1, dash="dot")
+            elif col == "motor_out_diff":
+                line.update(width=1, dash="dash")
+            elif col in ("motor_out_l", "motor_out_r"):
+                line.update(width=2)
             fig.add_trace(
-                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=dict(color=color), showlegend=False),
+                go.Scatter(x=df["time_ms"], y=df[col], mode="lines", name=col, line=line, showlegend=False),
                 row=row,
                 col=1,
             )

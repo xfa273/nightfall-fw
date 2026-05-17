@@ -27,10 +27,10 @@
        <plot style="Lines" mode="TimeSeries" flip_y="false" flip_x="false">
         <range bottom="-1000" left="0" right="1" top="1000"/>
         <limitY/>
-        <curve color="#1f77b4" name="motor_out_l"/>
-        <curve color="#d62728" name="motor_out_r"/>
         <curve color="#2ca02c" name="motor_out_avg"/>
         <curve color="#9467bd" name="motor_out_diff"/>
+        <curve color="#1f77b4" name="motor_out_l"/>
+        <curve color="#d62728" name="motor_out_r"/>
        </plot>
       </DockArea>
       <DockArea name="angle_omega">
