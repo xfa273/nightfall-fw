@@ -75,7 +75,7 @@ UART_HandleTypeDef huart1;
 static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
 static nvm_identity_block_t g_boot_identity;
 static uint8_t g_trace_log_auto_enabled = 0U;
-static uint32_t g_trace_log_auto_period_ms = 10U;
+static uint32_t g_trace_log_auto_period_ms = 1U;
 static uint32_t g_trace_log_auto_next_tick_ms = 0U;
 static uint32_t g_trace_log_auto_seq = 0U;
 static uint16_t g_trace_log_auto_mode_flags = 0U;
