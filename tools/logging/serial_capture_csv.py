@@ -98,7 +98,14 @@ def _configure_serial(fd: int, baud: int) -> None:
 
 def _new_output_file(save_dir: Path) -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    return save_dir / f"stm32_log_{ts}.csv"
+    base = save_dir / f"stm32_log_{ts}.csv"
+    if not base.exists():
+        return base
+    for i in range(1, 1000):
+        candidate = save_dir / f"stm32_log_{ts}_{i:03d}.csv"
+        if not candidate.exists():
+            return candidate
+    return save_dir / f"stm32_log_{ts}_{time.monotonic_ns()}.csv"
 
 
 def _format_mm_columns(line: str) -> str:
@@ -310,10 +317,25 @@ def main() -> int:
                         wrote_columns = True
                     continue
 
+                if line.startswith("#log_format="):
+                    pending_fw_meta = [line]
+                    fw_meta_written_count = 0
+                    pending_columns = None
+                    current_columns = []
+                    expected_csv_columns = 8
+                    seq_column_index = None
+                    out_path = None
+                    wrote_columns = False
+                    prev_ts = None
+                    prev_seq = None
+                    print(f"[INFO] FW Meta: {line}", file=sys.stderr)
+                    continue
+
                 if (
                     line.startswith("#fw_")
-                    or line.startswith("#log_format=")
                     or line.startswith("#last_test_")
+                    or line.startswith("#op_")
+                    or line.startswith("#tune_")
                     or line.startswith("#wall_trace_")
                 ):
                     if line not in pending_fw_meta:
@@ -332,6 +354,12 @@ def main() -> int:
                     seq: Optional[int] = None
                     if seq_column_index is not None:
                         seq = int(parts[seq_column_index])
+                    seq_reset = (
+                        seq is not None
+                        and prev_seq is not None
+                        and seq == 0
+                        and prev_seq != 0
+                    )
                     if (
                         prev_ts is not None
                         and ts < prev_ts
@@ -346,7 +374,7 @@ def main() -> int:
                         )
                         continue
 
-                    if out_path is None or (prev_ts is not None and ts < prev_ts):
+                    if out_path is None or (prev_ts is not None and ts < prev_ts) or seq_reset:
                         out_path = _new_output_file(save_dir)
                         print(f"\n[INFO] New capture file: {out_path}", file=sys.stderr)
                         wrote_columns = False
