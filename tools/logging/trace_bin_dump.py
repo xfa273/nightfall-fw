@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import csv
+import fcntl
 import glob
 import os
 import select
@@ -12,6 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 MAGIC = b"NFTB"
+DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
+IOSSIOSPEED = 0x80045402
 FRAME_STRUCT = struct.Struct("<IIIIIIII")
 HEADER_STRUCT = struct.Struct("<IIIIIIII")
 RECORD_COLUMNS = [
@@ -76,11 +79,20 @@ def _configure_serial(fd: int, baud: int) -> None:
     attrs[1] = 0
     attrs[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
     attrs[3] = 0
-    attrs[4] = _baud_const(baud)
-    attrs[5] = _baud_const(baud)
+    try:
+        speed = _baud_const(baud)
+    except ValueError:
+        speed = _baud_const(9600)
+        custom_baud = True
+    else:
+        custom_baud = False
+    attrs[4] = speed
+    attrs[5] = speed
     attrs[6][termios.VMIN] = 0
     attrs[6][termios.VTIME] = 1
     termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    if custom_baud:
+        fcntl.ioctl(fd, IOSSIOSPEED, struct.pack("I", baud))
 
 
 def capture_raw(port: str, baud: int, command: str, timeout_s: float) -> bytes:
@@ -217,7 +229,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Capture or decode Nightfall trace binary dump")
     ap.add_argument("input", nargs="?", help="raw binary/SWV log file to decode; omit to capture from serial")
     ap.add_argument("--port", default="auto")
-    ap.add_argument("--baud", type=int, default=115200)
+    ap.add_argument("--baud", type=int, default=DEFAULT_BAUD)
     ap.add_argument("--send", default=">", help="UART command to request dump when capturing")
     ap.add_argument("--timeout", type=float, default=8.0)
     ap.add_argument("--raw-out", default=None)

@@ -172,7 +172,10 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_REAL_GOAL_Y (15U)
 
 #ifndef NIGHTFALL_F413_REAL_RUN_PATH_ENABLED
-#define NIGHTFALL_F413_REAL_RUN_PATH_ENABLED (0U)
+#define NIGHTFALL_F413_REAL_RUN_PATH_ENABLED (1U)
+#endif
+#ifndef NIGHTFALL_F413_UART_BAUD_RATE
+#define NIGHTFALL_F413_UART_BAUD_RATE (115200U)
 #endif
 
 #if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
@@ -6822,7 +6825,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = NIGHTFALL_F413_UART_BAUD_RATE;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;

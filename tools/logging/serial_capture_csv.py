@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import fcntl
 import glob
 import os
 import re
@@ -13,6 +14,8 @@ from typing import Optional
 
 
 _NUM_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
+DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
+IOSSIOSPEED = 0x80045402
 
 
 def _repo_root_from_this_file() -> Path:
@@ -79,7 +82,13 @@ def _configure_serial(fd: int, baud: int) -> None:
     cc[termios.VMIN] = 1
     cc[termios.VTIME] = 0
 
-    speed = _termios_baud(baud)
+    try:
+        speed = _termios_baud(baud)
+    except ValueError:
+        speed = _termios_baud(9600)
+        custom_baud = True
+    else:
+        custom_baud = False
     try:
         termios.cfsetispeed(attrs, speed)
         termios.cfsetospeed(attrs, speed)
@@ -94,6 +103,8 @@ def _configure_serial(fd: int, baud: int) -> None:
     attrs[6] = cc
 
     termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    if custom_baud:
+        fcntl.ioctl(fd, IOSSIOSPEED, int(baud).to_bytes(4, "little"))
 
 
 def _new_output_file(save_dir: Path) -> Path:
@@ -165,7 +176,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("save_dir", nargs="?", default=None)
     ap.add_argument("port", nargs="?", default="auto")
-    ap.add_argument("baud", nargs="?", type=int, default=115200)
+    ap.add_argument("baud", nargs="?", type=int, default=DEFAULT_BAUD)
     ap.add_argument("--show-noncsv", action="store_true")
     ap.add_argument(
         "--send",

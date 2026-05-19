@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import fcntl
 import glob
 import os
 import select
@@ -21,6 +22,8 @@ PORT_PATTERNS_OTHER = [
     "/dev/ttyACM*",
     "/dev/ttyUSB*",
 ]
+DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
+IOSSIOSPEED = 0x80045402
 
 
 def detect_port() -> str:
@@ -66,7 +69,13 @@ def configure_serial(fd: int, baud: int) -> None:
     cc[termios.VMIN] = 0
     cc[termios.VTIME] = 1
 
-    speed = termios_baud(baud)
+    try:
+        speed = termios_baud(baud)
+    except RuntimeError:
+        speed = termios_baud(9600)
+        custom_baud = True
+    else:
+        custom_baud = False
     try:
         termios.cfsetispeed(attrs, speed)
         termios.cfsetospeed(attrs, speed)
@@ -80,6 +89,8 @@ def configure_serial(fd: int, baud: int) -> None:
     attrs[3] = lflag
     attrs[6] = cc
     termios.tcsetattr(fd, termios.TCSANOW, attrs)
+    if custom_baud:
+        fcntl.ioctl(fd, IOSSIOSPEED, int(baud).to_bytes(4, "little"))
     termios.tcflush(fd, termios.TCIOFLUSH)
 
 
@@ -106,7 +117,7 @@ def write_log(log_file, data: bytes) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Simple serial terminal for Nightfall STM32 UART")
     ap.add_argument("--port", default=None, help="serial port, e.g. /dev/cu.usbmodem112202")
-    ap.add_argument("--baud", type=int, default=115200)
+    ap.add_argument("--baud", type=int, default=DEFAULT_BAUD)
     ap.add_argument("--send", default=None, help="send ASCII text at startup")
     ap.add_argument("--log", default=None, help="save received bytes to file")
     ap.add_argument("--list", action="store_true", help="list serial port candidates and exit")
