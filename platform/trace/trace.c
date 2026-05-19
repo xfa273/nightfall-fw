@@ -30,11 +30,24 @@ void trace_init(void) {}
 
 #else
 
-#define NIGHTFALL_TRACE_SWO_BAUD_HZ 2000000U
+#define NIGHTFALL_TRACE_SWO_BAUD_HZ 1000000U
+
+static void trace_swo_gpio_init(void) {
+    GPIO_InitTypeDef gpio = {0};
+
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    gpio.Pin = GPIO_PIN_3;
+    gpio.Mode = GPIO_MODE_AF_PP;
+    gpio.Pull = GPIO_NOPULL;
+    gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    gpio.Alternate = GPIO_AF0_TRACE;
+    HAL_GPIO_Init(GPIOB, &gpio);
+}
 
 static void trace_port_putc(char ch) {
     if (((CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk) == 0U) ||
         ((ITM->TCR & ITM_TCR_ITMENA_Msk) == 0U) ||
+        ((ITM->TCR & ITM_TCR_SWOENA_Msk) == 0U) ||
         ((ITM->TER & 1UL) == 0U)) {
         return;
     }
@@ -53,11 +66,15 @@ int __io_putchar(int ch) {
 }
 
 void trace_init(void) {
+    trace_swo_gpio_init();
+
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    ITM->LAR = 0xC5ACCE55UL;
     DBGMCU->CR &= ~DBGMCU_CR_TRACE_MODE;
     DBGMCU->CR |= DBGMCU_CR_TRACE_IOEN | DBGMCU_CR_TRACE_MODE_0;
 
     TPI->SPPR = 2U;
+    TPI->FFCR = 0U;
 
     {
         uint32_t hclk = HAL_RCC_GetHCLKFreq();
@@ -68,7 +85,10 @@ void trace_init(void) {
         }
     }
 
-    ITM->TCR = ITM_TCR_ITMENA_Msk;
+    ITM->TCR = ITM_TCR_ITMENA_Msk |
+               ITM_TCR_SWOENA_Msk |
+               ITM_TCR_SYNCENA_Msk |
+               (1UL << ITM_TCR_TraceBusID_Pos);
     ITM->TPR = 0U;
     ITM->TER = 1U;
 }

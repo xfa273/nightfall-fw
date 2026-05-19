@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+import argparse
+import csv
+import glob
+import os
+import select
+import struct
+import sys
+import termios
+import time
+from pathlib import Path
+from typing import Optional
+
+MAGIC = b"NFTB"
+FRAME_STRUCT = struct.Struct("<IIIIIIII")
+HEADER_STRUCT = struct.Struct("<IIIIIIII")
+RECORD_COLUMNS = [
+    "timestamp_ms",
+    "seq",
+    "op_mode",
+    "op_case",
+    "op_sub",
+    "test_id",
+    "target_distance_mm",
+    "distance_mm",
+    "angle_mdeg",
+    "target_velocity_mm_s",
+    "real_velocity_mm_s",
+    "accel_velocity_mm_s",
+    "target_omega_mdps",
+    "real_omega_mdps",
+    "target_angle_mdeg",
+    "accel_forward_mm_s2",
+    "encoder_l",
+    "encoder_r",
+    "motor_out_l",
+    "motor_out_r",
+    "adc_fr",
+    "adc_r",
+    "adc_fl",
+    "adc_l",
+    "adc_vbat",
+    "flags",
+    "reserved_i32_0",
+    "reserved_i32_1",
+    "reserved_i32_2",
+    "reserved_i32_3",
+    "reserved_u16_0",
+    "reserved_u16_1",
+]
+RECORD_STRUCT = struct.Struct("<II14i4h6H4B2H")
+
+
+def _detect_port() -> Optional[str]:
+    candidates: list[str] = []
+    if sys.platform == "darwin":
+        for pattern in ("/dev/cu.usbmodem*", "/dev/cu.usbserial*"):
+            candidates.extend(glob.glob(pattern))
+    else:
+        for pattern in ("/dev/ttyACM*", "/dev/ttyUSB*"):
+            candidates.extend(glob.glob(pattern))
+    candidates = sorted(set(candidates))
+    return candidates[0] if candidates else None
+
+
+def _baud_const(baud: int) -> int:
+    name = f"B{baud}"
+    if not hasattr(termios, name):
+        raise ValueError(f"unsupported baud by termios: {baud}")
+    return int(getattr(termios, name))
+
+
+def _configure_serial(fd: int, baud: int) -> None:
+    attrs = termios.tcgetattr(fd)
+    attrs[0] = 0
+    attrs[1] = 0
+    attrs[2] = termios.CS8 | termios.CREAD | termios.CLOCAL
+    attrs[3] = 0
+    attrs[4] = _baud_const(baud)
+    attrs[5] = _baud_const(baud)
+    attrs[6][termios.VMIN] = 0
+    attrs[6][termios.VTIME] = 1
+    termios.tcsetattr(fd, termios.TCSANOW, attrs)
+
+
+def capture_raw(port: str, baud: int, command: str, timeout_s: float) -> bytes:
+    fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
+    try:
+        _configure_serial(fd, baud)
+        time.sleep(0.1)
+        if command:
+            os.write(fd, command.encode("ascii"))
+        deadline = time.monotonic() + timeout_s
+        chunks: list[bytes] = []
+        while time.monotonic() < deadline:
+            r, _w, _x = select.select([fd], [], [], 0.1)
+            if not r:
+                continue
+            try:
+                chunk = os.read(fd, 4096)
+            except BlockingIOError:
+                continue
+            if chunk:
+                chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+
+def checksum(data: bytes) -> int:
+    return sum(data) & 0xFFFFFFFF
+
+
+def _record_to_row(values: tuple[int, ...]) -> list[str]:
+    seq = values[0]
+    timestamp_ms = values[1]
+    i32 = values[2:16]
+    h = values[16:20]
+    u16 = values[20:26]
+    op_mode, op_case, op_sub, test_id = values[26:30]
+    ru16_0, ru16_1 = values[30:32]
+    target_distance = i32[0] / 1000.0
+    return [
+        str(timestamp_ms),
+        str(seq),
+        str(op_mode),
+        str(op_case),
+        str(op_sub),
+        str(test_id),
+        f"{target_distance:.3f}",
+        str(i32[1]),
+        str(i32[2]),
+        str(i32[3]),
+        str(i32[4]),
+        str(i32[5]),
+        str(i32[6]),
+        str(i32[7]),
+        str(i32[8]),
+        str(i32[9]),
+        str(h[0]),
+        str(h[1]),
+        str(h[2]),
+        str(h[3]),
+        str(u16[0]),
+        str(u16[1]),
+        str(u16[2]),
+        str(u16[3]),
+        str(u16[4]),
+        str(u16[5]),
+        str(i32[10]),
+        str(i32[11]),
+        str(i32[12]),
+        str(i32[13]),
+        str(ru16_0),
+        str(ru16_1),
+    ]
+
+
+def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list[str]], int]:
+    pos = 0
+    while True:
+        idx = raw.find(MAGIC, pos)
+        if idx < 0:
+            raise ValueError("trace binary magic not found")
+        if idx + FRAME_STRUCT.size > len(raw):
+            raise ValueError("incomplete frame header")
+        fields = FRAME_STRUCT.unpack_from(raw, idx)
+        frame = {
+            "magic": fields[0],
+            "version": fields[1],
+            "schema": fields[2],
+            "header_size": fields[3],
+            "record_size": fields[4],
+            "record_count": fields[5],
+            "available_count": fields[6],
+            "payload_checksum": fields[7],
+        }
+        total_len = FRAME_STRUCT.size + frame["header_size"] + frame["record_size"] * frame["record_count"]
+        if frame["version"] == 1 and frame["header_size"] == HEADER_STRUCT.size and frame["record_size"] == RECORD_STRUCT.size and idx + total_len <= len(raw):
+            payload = raw[idx + FRAME_STRUCT.size : idx + total_len]
+            if checksum(payload) == frame["payload_checksum"]:
+                header_values = HEADER_STRUCT.unpack_from(payload, 0)
+                header = {
+                    "magic": header_values[0],
+                    "version": header_values[1],
+                    "length": header_values[2],
+                    "crc": header_values[3],
+                    "record_size": header_values[4],
+                    "record_capacity": header_values[5],
+                    "write_index": header_values[6],
+                    "total_records": header_values[7],
+                }
+                rows: list[list[str]] = []
+                off = frame["header_size"]
+                for _ in range(frame["record_count"]):
+                    rec = RECORD_STRUCT.unpack_from(payload, off)
+                    rows.append(_record_to_row(rec))
+                    off += frame["record_size"]
+                return frame, header, rows, idx
+        pos = idx + 1
+
+
+def write_csv(path: Path, frame: dict[str, int], header: dict[str, int], rows: list[list[str]]) -> None:
+    with path.open("w", encoding="ascii", newline="") as f:
+        f.write("#log_format=nightfall_trace_bin_v1_decoded\n")
+        f.write(f"#fw_log_schema=0x{frame['schema']:08X}\n")
+        f.write(f"#bin_record_count={frame['record_count']}\n")
+        f.write(f"#bin_available_count={frame['available_count']}\n")
+        f.write(f"#bin_header_total_records={header['total_records']}\n")
+        f.write("#mm_columns=" + ",".join(RECORD_COLUMNS) + "\n")
+        writer = csv.writer(f)
+        for row in rows:
+            writer.writerow(row)
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Capture or decode Nightfall trace binary dump")
+    ap.add_argument("input", nargs="?", help="raw binary/SWV log file to decode; omit to capture from serial")
+    ap.add_argument("--port", default="auto")
+    ap.add_argument("--baud", type=int, default=115200)
+    ap.add_argument("--send", default=">", help="UART command to request dump when capturing")
+    ap.add_argument("--timeout", type=float, default=8.0)
+    ap.add_argument("--raw-out", default=None)
+    ap.add_argument("--csv-out", default=None)
+    args = ap.parse_args()
+
+    if args.input:
+        raw_path = Path(args.input).expanduser()
+        raw = raw_path.read_bytes()
+    else:
+        port = _detect_port() if args.port in ("", "auto") else args.port
+        if not port:
+            print("UART port not found", file=sys.stderr)
+            return 1
+        raw = capture_raw(port, args.baud, args.send, args.timeout)
+        raw_path = Path(args.raw_out) if args.raw_out else Path("tools/logging/logs") / f"trace_bin_{time.strftime('%Y%m%d_%H%M%S')}.raw"
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
+        raw_path.write_bytes(raw)
+        print(f"raw: {raw_path} ({len(raw)} bytes)")
+
+    frame, header, rows, offset = extract_frame(raw)
+    csv_path = Path(args.csv_out) if args.csv_out else raw_path.with_suffix(".csv")
+    write_csv(csv_path, frame, header, rows)
+    print(f"frame_offset={offset} records={len(rows)} csv={csv_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

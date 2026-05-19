@@ -1870,6 +1870,127 @@ static void nightfall_run_trace_log_dump_csv_all_once(void)
   nightfall_run_trace_log_dump_csv_impl(0U);
 }
 
+#define NIGHTFALL_TRACE_BIN_MAGIC (0x4254464EUL)
+#define NIGHTFALL_TRACE_BIN_VERSION (1UL)
+
+typedef struct __attribute__((packed)) {
+  uint32_t magic;
+  uint32_t version;
+  uint32_t schema;
+  uint32_t header_size;
+  uint32_t record_size;
+  uint32_t record_count;
+  uint32_t available_count;
+  uint32_t payload_checksum;
+} nightfall_trace_bin_frame_t;
+
+static uint32_t nightfall_trace_bin_checksum_update(uint32_t sum, const void* data, uint32_t len)
+{
+  const uint8_t* p = (const uint8_t*)data;
+  uint32_t i;
+
+  if (p == NULL)
+  {
+    return sum;
+  }
+
+  for (i = 0U; i < len; i++)
+  {
+    sum += p[i];
+  }
+  return sum;
+}
+
+static void nightfall_run_trace_log_dump_bin_impl(uint32_t max_records)
+{
+  nvm_trace_log_header_t header;
+  nightfall_trace_bin_frame_t frame;
+  nvm_status_t st;
+  uint32_t available;
+  uint32_t dump_count;
+  uint32_t checksum;
+  uint32_t i;
+
+  st = nvm_trace_log_get_header(&header);
+  if (st != NVM_STATUS_OK)
+  {
+    trace_printf("[TRACE-LOG] bin: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
+    return;
+  }
+
+  available = header.total_records;
+  if (available > header.record_capacity)
+  {
+    available = header.record_capacity;
+  }
+  if (available == 0U)
+  {
+    trace_printf("[TRACE-LOG] bin: no records\r\n");
+    return;
+  }
+
+  dump_count = available;
+  if ((max_records > 0U) && (dump_count > max_records))
+  {
+    dump_count = max_records;
+  }
+
+  checksum = nightfall_trace_bin_checksum_update(0U, &header, (uint32_t)sizeof(header));
+  for (i = dump_count; i > 0U; i--)
+  {
+    nvm_trace_log_record_t rec;
+    st = nvm_trace_log_read_latest(i - 1U, &rec);
+    if (st != NVM_STATUS_OK)
+    {
+      trace_printf("[TRACE-LOG] bin: FAIL(read idx=%lu NVM=%d)\r\n",
+                   (unsigned long)(i - 1U),
+                   (int)st);
+      return;
+    }
+    checksum = nightfall_trace_bin_checksum_update(checksum, &rec, (uint32_t)sizeof(rec));
+  }
+
+  frame.magic = NIGHTFALL_TRACE_BIN_MAGIC;
+  frame.version = NIGHTFALL_TRACE_BIN_VERSION;
+  frame.schema = NVM_TRACE_LOG_SCHEMA_VERSION;
+  frame.header_size = (uint32_t)sizeof(nvm_trace_log_header_t);
+  frame.record_size = (uint32_t)sizeof(nvm_trace_log_record_t);
+  frame.record_count = dump_count;
+  frame.available_count = available;
+  frame.payload_checksum = checksum;
+
+  trace_printf("[TRACE-LOG] bin latest %lu/%lu bytes=%lu\r\n",
+               (unsigned long)dump_count,
+               (unsigned long)available,
+               (unsigned long)(sizeof(frame) + sizeof(header) + (dump_count * sizeof(nvm_trace_log_record_t))));
+  trace_write((const char*)&frame, sizeof(frame));
+  trace_write((const char*)&header, sizeof(header));
+  for (i = dump_count; i > 0U; i--)
+  {
+    nvm_trace_log_record_t rec;
+    st = nvm_trace_log_read_latest(i - 1U, &rec);
+    if (st != NVM_STATUS_OK)
+    {
+      trace_printf("[TRACE-LOG] bin: FAIL(read2 idx=%lu NVM=%d)\r\n",
+                   (unsigned long)(i - 1U),
+                   (int)st);
+      return;
+    }
+    trace_write((const char*)&rec, sizeof(rec));
+  }
+  trace_printf("\r\n[TRACE-LOG] bin: done\r\n");
+}
+
+static void nightfall_run_trace_log_dump_bin_once(void)
+{
+  nightfall_run_trace_log_dump_bin_impl(NIGHTFALL_F413_TRACE_CSV_MAX_RECORDS);
+}
+
+static void nightfall_run_trace_log_dump_bin_all_once(void)
+{
+  nightfall_run_trace_log_dump_bin_impl(0U);
+}
+
 static void nightfall_run_trace_log_selftest_once(void)
 {
   nvm_trace_log_header_t header;
@@ -1963,7 +2084,7 @@ static void nightfall_print_nvm_cli_help(void)
 {
   trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
-  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v=dump csv(256), V=dump csv(all/full), k=selftest, u=run-start hook, U=run-stop hook\r\n");
+  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
   trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
@@ -5836,6 +5957,14 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'V':
       nightfall_run_trace_log_dump_csv_all_once();
+      break;
+
+    case '<':
+      nightfall_run_trace_log_dump_bin_once();
+      break;
+
+    case '>':
+      nightfall_run_trace_log_dump_bin_all_once();
       break;
 
     case 'k':

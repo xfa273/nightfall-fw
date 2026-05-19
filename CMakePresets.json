@@ -18,6 +18,14 @@
             }
         },
         {
+            "name": "Debug-swo",
+            "inherits": "Debug",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "NIGHTFALL_TRACE_F413_USE_UART": "0"
+            }
+        },
+        {
             "name": "RelWithDebInfo",
             "inherits": "default",
             "cacheVariables": {
@@ -54,6 +62,13 @@
         {
             "name": "Debug-stm32f413",
             "configurePreset": "Debug",
+            "targets": [
+                "nightfall_stm32f413"
+            ]
+        },
+        {
+            "name": "Debug-stm32f413-swo",
+            "configurePreset": "Debug-swo",
             "targets": [
                 "nightfall_stm32f413"
             ]
