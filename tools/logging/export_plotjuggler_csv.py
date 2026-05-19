@@ -161,31 +161,35 @@ def _target_distance_mm(row: dict[str, str], meta: dict[str, str]) -> Optional[f
 def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str, str], with_derived: bool) -> tuple[list[str], list[list[str]]]:
     first_ts = _num(rows[0], "timestamp_ms")
     base_columns = ["time", "time_ms"] + columns
+    base_column_set = set(base_columns)
     derived_columns: list[str] = []
     tune_axis = _infer_tune_axis(rows, meta)
 
     if with_derived:
+        if "target_distance_mm" not in base_column_set:
+            derived_columns.append("target_distance_mm")
         derived_columns.extend([
-            "target_distance_mm",
-            "distance_error_mm",
-            "angle_deg",
-            "target_angle_deg",
-            "target_omega_dps",
-            "real_omega_dps",
-            "velocity_error_mm_s",
-            "omega_error_dps",
-            "motor_out_avg",
-            "motor_out_diff",
-            "flag_idle",
-            "flag_motor_forward",
-            "flag_motor_coast",
-            "flag_motor_reverse",
-            "flag_abort_switch",
-            "flag_abort_wall_fault",
-            "flag_abort_encoder_fault",
-            "flag_abort_imu_fault",
-            "flag_angle_target",
-            "flag_auto",
+            c for c in [
+                "distance_error_mm",
+                "angle_deg",
+                "target_angle_deg",
+                "target_omega_dps",
+                "real_omega_dps",
+                "velocity_error_mm_s",
+                "omega_error_dps",
+                "motor_out_avg",
+                "motor_out_diff",
+                "flag_idle",
+                "flag_motor_forward",
+                "flag_motor_coast",
+                "flag_motor_reverse",
+                "flag_abort_switch",
+                "flag_abort_wall_fault",
+                "flag_abort_encoder_fault",
+                "flag_abort_imu_fault",
+                "flag_angle_target",
+                "flag_auto",
+            ] if c not in base_column_set
         ])
         if tune_axis is not None:
             derived_columns.extend(["tune_ref", "tune_error"])
@@ -214,28 +218,29 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
             real_omega_dps = _num(row, "real_omega_mdps") / 1000.0
             motor_l = _num(row, "motor_out_l")
             motor_r = _num(row, "motor_out_r")
-            values.extend([
-                _fmt(target_distance if target_distance is not None else 0.0),
-                _fmt((target_distance - _num(row, "distance_mm")) if target_distance is not None else 0.0),
-                _fmt(_num(row, "angle_mdeg") / 1000.0),
-                _fmt(_num(row, "target_angle_mdeg") / 1000.0),
-                _fmt(target_omega_dps),
-                _fmt(real_omega_dps),
-                _fmt(_num(row, "target_velocity_mm_s") - _num(row, "real_velocity_mm_s")),
-                _fmt(target_omega_dps - real_omega_dps),
-                _fmt((motor_l + motor_r) * 0.5),
-                _fmt(motor_l - motor_r),
-                "1" if flags & FLAG_IDLE else "0",
-                "1" if flags & FLAG_MOTOR_FWD else "0",
-                "1" if flags & FLAG_MOTOR_COAST else "0",
-                "1" if flags & FLAG_MOTOR_REV else "0",
-                "1" if flags & FLAG_ABORT_SWITCH else "0",
-                "1" if flags & FLAG_ABORT_WALL_FAULT else "0",
-                "1" if flags & FLAG_ABORT_ENCODER_FAULT else "0",
-                "1" if flags & FLAG_ABORT_IMU_FAULT else "0",
-                "1" if flags & FLAG_ANGLE_TARGET else "0",
-                "1" if flags & FLAG_AUTO else "0",
-            ])
+            derived_values = [
+                ("target_distance_mm", _fmt(target_distance if target_distance is not None else 0.0)),
+                ("distance_error_mm", _fmt((target_distance - _num(row, "distance_mm")) if target_distance is not None else 0.0)),
+                ("angle_deg", _fmt(_num(row, "angle_mdeg") / 1000.0)),
+                ("target_angle_deg", _fmt(_num(row, "target_angle_mdeg") / 1000.0)),
+                ("target_omega_dps", _fmt(target_omega_dps)),
+                ("real_omega_dps", _fmt(real_omega_dps)),
+                ("velocity_error_mm_s", _fmt(_num(row, "target_velocity_mm_s") - _num(row, "real_velocity_mm_s"))),
+                ("omega_error_dps", _fmt(target_omega_dps - real_omega_dps)),
+                ("motor_out_avg", _fmt((motor_l + motor_r) * 0.5)),
+                ("motor_out_diff", _fmt(motor_l - motor_r)),
+                ("flag_idle", "1" if flags & FLAG_IDLE else "0"),
+                ("flag_motor_forward", "1" if flags & FLAG_MOTOR_FWD else "0"),
+                ("flag_motor_coast", "1" if flags & FLAG_MOTOR_COAST else "0"),
+                ("flag_motor_reverse", "1" if flags & FLAG_MOTOR_REV else "0"),
+                ("flag_abort_switch", "1" if flags & FLAG_ABORT_SWITCH else "0"),
+                ("flag_abort_wall_fault", "1" if flags & FLAG_ABORT_WALL_FAULT else "0"),
+                ("flag_abort_encoder_fault", "1" if flags & FLAG_ABORT_ENCODER_FAULT else "0"),
+                ("flag_abort_imu_fault", "1" if flags & FLAG_ABORT_IMU_FAULT else "0"),
+                ("flag_angle_target", "1" if flags & FLAG_ANGLE_TARGET else "0"),
+                ("flag_auto", "1" if flags & FLAG_AUTO else "0"),
+            ]
+            values.extend(v for c, v in derived_values if c not in base_column_set)
             if tune_axis is not None:
                 if tune_axis == "distance":
                     tune_actual = _num(row, "distance_mm")

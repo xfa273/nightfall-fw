@@ -1724,7 +1724,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
                (unsigned long)dump_count,
                (unsigned long)available);
-  trace_printf("#log_format=nightfall_trace_csv_v2\r\n");
+  trace_printf("#log_format=nightfall_trace_csv_v3\r\n");
   trace_printf("#fw_target=%s\r\n", FW_TARGET);
   trace_printf("#fw_version=%s\r\n", FW_VERSION);
   trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
@@ -1780,7 +1780,7 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
   }
   trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,");
-  trace_printf("distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
+  trace_printf("target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
   trace_printf("target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,");
   trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
   trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
@@ -1798,13 +1798,14 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
       return;
     }
 
-    trace_printf("%lu,%lu,%u,%u,%u,%u,%ld,%ld,%ld,%ld,",
+    trace_printf("%lu,%lu,%u,%u,%u,%u,%.3f,%ld,%ld,%ld,%ld,",
                  (unsigned long)rec.timestamp_ms,
                  (unsigned long)rec.seq,
                  (unsigned int)rec.op_mode,
                  (unsigned int)rec.op_case,
                  (unsigned int)rec.op_sub,
                  (unsigned int)rec.test_id,
+                 (double)rec.target_distance_x1000 / 1000.0,
                  (long)rec.distance_mm,
                  (long)rec.angle_mdeg,
                  (long)rec.target_velocity_mm_s,
@@ -2017,6 +2018,7 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   memset(out, 0, sizeof(*out));
   out->seq = seq;
   out->timestamp_ms = HAL_GetTick();
+  out->target_distance_x1000 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
   out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
   out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_log_angle(), 1000.0f);
   out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
@@ -2090,6 +2092,7 @@ static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out
   memset(out, 0, sizeof(*out));
   out->seq = seq;
   out->timestamp_ms = 1000U + seq * 10U;
+  out->target_distance_x1000 = (int32_t)(5000 + (int32_t)seq);
   out->distance_mm = (int32_t)(10 + (int32_t)seq);
   out->angle_mdeg = (int32_t)(-1000 - (int32_t)seq);
   out->target_velocity_mm_s = (int32_t)(200 + (int32_t)seq);

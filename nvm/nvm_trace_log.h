@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 #define NVM_TRACE_LOG_MAGIC (0x544C4F47UL)
-#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00020000UL)
+#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00030000UL)
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
@@ -26,6 +26,7 @@ typedef struct __attribute__((packed)) {
 typedef struct __attribute__((packed)) {
     uint32_t seq;
     uint32_t timestamp_ms;
+    int32_t target_distance_x1000;
     int32_t distance_mm;
     int32_t angle_mdeg;
     int32_t target_velocity_mm_s;
