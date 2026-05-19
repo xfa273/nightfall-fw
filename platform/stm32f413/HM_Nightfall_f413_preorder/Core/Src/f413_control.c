@@ -255,15 +255,24 @@ static void f413_ctrl_reset_profile_state(void)
 
 static float f413_ctrl_tune_get_peak(uint8_t axis, uint8_t set)
 {
-    if ((axis == F413_CTRL_TUNE_AXIS_DISTANCE) ||
-        (axis == F413_CTRL_TUNE_AXIS_ANGLE))
+    if (axis == F413_CTRL_TUNE_AXIS_DISTANCE)
     {
         switch (set)
         {
-            case 0U: return 90.0f;
+            case 0U: return 270.0f;
             case 1U: return 180.0f;
             case 2U: return 360.0f;
-            default: return 90.0f;
+            default: return 270.0f;
+        }
+    }
+    if (axis == F413_CTRL_TUNE_AXIS_ANGLE)
+    {
+        switch (set)
+        {
+            case 0U: return 360.0f;
+            case 1U: return 180.0f;
+            case 2U: return 360.0f;
+            default: return 360.0f;
         }
     }
     if (axis == F413_CTRL_TUNE_AXIS_VELOCITY)
@@ -278,10 +287,10 @@ static float f413_ctrl_tune_get_peak(uint8_t axis, uint8_t set)
     }
     switch (set)
     {
-        case 0U: return 500.0f;
+        case 0U: return 1000.0f;
         case 1U: return 1000.0f;
         case 2U: return 2000.0f;
-        default: return 500.0f;
+        default: return 1000.0f;
     }
 }
 
