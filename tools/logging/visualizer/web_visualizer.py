@@ -314,12 +314,12 @@ def _build_nightfall_plot(df):
 
 def _trace_op_label(meta: Dict[str, str], df) -> str:
     label = meta.get("op_label", "")
-    if label:
+    if label and not label.startswith("mode255 "):
         return label
     mode = meta.get("op_mode")
     case = meta.get("op_case")
     sub = meta.get("op_sub")
-    if mode is None and "op_mode" in df.columns and len(df) > 0:
+    if (mode is None or mode == "255") and "op_mode" in df.columns and len(df) > 0:
         try:
             mode = str(int(df["op_mode"].iloc[0]))
             case = str(int(df["op_case"].iloc[0])) if "op_case" in df.columns else "?"

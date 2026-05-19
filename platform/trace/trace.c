@@ -18,7 +18,7 @@ extern UART_HandleTypeDef huart1;
 
 static void trace_port_putc(char ch) {
     uint8_t b = (uint8_t)ch;
-    HAL_UART_Transmit(&huart1, &b, 1, 1);
+    HAL_UART_Transmit(&huart1, &b, 1, 10);
 }
 
 int __io_putchar(int ch) {
@@ -79,7 +79,7 @@ void trace_init(void) {
 
 static void trace_port_putc(char ch) {
     uint8_t b = (uint8_t)ch;
-    HAL_UART_Transmit(&huart1, &b, 1, 1);
+    HAL_UART_Transmit(&huart1, &b, 1, 10);
 }
 
 void trace_init(void) {}
@@ -101,7 +101,7 @@ void trace_write(const char* data, size_t len) {
 }
 
 int trace_printf(const char* fmt, ...) {
-    char buf[256];
+    char buf[512];
     va_list ap;
     va_start(ap, fmt);
     int n = vsnprintf(buf, sizeof(buf), fmt, ap);

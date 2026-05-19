@@ -362,6 +362,82 @@ static float f413_ctrl_tune_ref_trapezoid(float peak,
     return 0.0f;
 }
 
+static uint16_t f413_ctrl_tune_ceil_ms(float value_ms)
+{
+    if (value_ms < 1.0f)
+    {
+        return 1U;
+    }
+    if (value_ms > 60000.0f)
+    {
+        return 60000U;
+    }
+    return (uint16_t)ceilf(value_ms);
+}
+
+static float f413_ctrl_tune_get_integral_target(uint8_t axis, uint8_t set)
+{
+    if ((axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
+        (axis == F413_CTRL_TUNE_AXIS_DISTANCE))
+    {
+        return f413_ctrl_tune_get_peak(F413_CTRL_TUNE_AXIS_DISTANCE, set);
+    }
+    return f413_ctrl_tune_get_peak(F413_CTRL_TUNE_AXIS_ANGLE, set);
+}
+
+static float f413_ctrl_tune_get_rate_peak(uint8_t axis, uint8_t set)
+{
+    if ((axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
+        (axis == F413_CTRL_TUNE_AXIS_DISTANCE))
+    {
+        return f413_ctrl_tune_get_peak(F413_CTRL_TUNE_AXIS_VELOCITY, set);
+    }
+    return f413_ctrl_tune_get_peak(F413_CTRL_TUNE_AXIS_OMEGA, set);
+}
+
+static void f413_ctrl_tune_get_profile(uint8_t axis,
+                                       uint8_t set,
+                                       uint8_t pattern,
+                                       float* rate_peak,
+                                       uint16_t* on_ms,
+                                       uint16_t* ramp_ms,
+                                       uint16_t* hold_ms,
+                                       uint16_t* end_ms)
+{
+    const float peak = f413_ctrl_tune_get_rate_peak(axis, set);
+    const float target = f413_ctrl_tune_get_integral_target(axis, set);
+
+    *rate_peak = peak;
+    *on_ms = F413_CTRL_TUNE_TOTAL_MS;
+    *ramp_ms = F413_CTRL_TUNE_RAMP_MS;
+    *hold_ms = (uint16_t)(F413_CTRL_TUNE_TOTAL_MS - (2U * F413_CTRL_TUNE_TRAP_EDGE_MS));
+    *end_ms = F413_CTRL_TUNE_TOTAL_MS;
+
+    if (pattern == F413_CTRL_TUNE_PATTERN_STEP)
+    {
+        *on_ms = f413_ctrl_tune_ceil_ms((target * 1000.0f) / fmaxf(peak, 1.0f));
+        *end_ms = *on_ms;
+    }
+    else if (pattern == F413_CTRL_TUNE_PATTERN_TRIANGLE)
+    {
+        *ramp_ms = f413_ctrl_tune_ceil_ms((target * 1000.0f) / fmaxf(peak, 1.0f));
+        *end_ms = (uint16_t)(2U * (*ramp_ms));
+    }
+    else
+    {
+        const float effective_ms = (target * 1000.0f) / fmaxf(peak, 1.0f);
+        if (effective_ms <= (float)F413_CTRL_TUNE_TRAP_EDGE_MS)
+        {
+            *hold_ms = 0U;
+        }
+        else
+        {
+            *hold_ms = f413_ctrl_tune_ceil_ms(effective_ms - (float)F413_CTRL_TUNE_TRAP_EDGE_MS);
+        }
+        *end_ms = (uint16_t)((2U * F413_CTRL_TUNE_TRAP_EDGE_MS) + *hold_ms);
+    }
+}
+
 static void f413_ctrl_tune_finish_now(void)
 {
     s_tune_active = false;
@@ -845,43 +921,39 @@ void f413_ctrl_tick(void)
     if (s_tune_active)
     {
         const uint16_t t_ms = s_tune_tick;
-        const float peak = f413_ctrl_tune_get_peak(s_tune_axis, s_tune_set);
-        uint16_t on_ms = F413_CTRL_TUNE_TOTAL_MS;
-        uint16_t ramp_ms = F413_CTRL_TUNE_RAMP_MS;
-        uint16_t hold_ms = (uint16_t)(F413_CTRL_TUNE_TOTAL_MS - (2U * F413_CTRL_TUNE_TRAP_EDGE_MS));
+        float rate_peak;
+        uint16_t on_ms;
+        uint16_t ramp_ms;
+        uint16_t hold_ms;
+        uint16_t end_ms;
+        float rate_ref;
         float ref;
 
-        if (s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY)
-        {
-            const float span_ms = (F413_CTRL_TUNE_DIST_LIMIT_MM * 1000.0f) / fmaxf(peak, 1.0f);
-            on_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_TOTAL_MS, span_ms);
-            ramp_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_RAMP_MS, span_ms);
-            hold_ms = (span_ms > 100.0f) ? (uint16_t)fminf(600.0f, span_ms - 100.0f) : 0U;
-        }
-        else if (s_tune_axis == F413_CTRL_TUNE_AXIS_OMEGA)
-        {
-            const float span_ms = (360.0f * 1000.0f) / fmaxf(peak, 1.0f);
-            on_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_TOTAL_MS, span_ms);
-            ramp_ms = (uint16_t)fminf((float)F413_CTRL_TUNE_RAMP_MS, span_ms);
-            hold_ms = (span_ms > 100.0f) ? (uint16_t)fminf(600.0f, span_ms - 100.0f) : 0U;
-        }
+        f413_ctrl_tune_get_profile(s_tune_axis,
+                                   s_tune_set,
+                                   s_tune_pattern,
+                                   &rate_peak,
+                                   &on_ms,
+                                   &ramp_ms,
+                                   &hold_ms,
+                                   &end_ms);
 
         if (s_tune_pattern == F413_CTRL_TUNE_PATTERN_STEP)
         {
-            ref = f413_ctrl_tune_ref_step(peak, t_ms, on_ms);
+            rate_ref = f413_ctrl_tune_ref_step(rate_peak, t_ms, on_ms);
         }
         else if (s_tune_pattern == F413_CTRL_TUNE_PATTERN_TRIANGLE)
         {
-            ref = f413_ctrl_tune_ref_triangle(peak, t_ms, ramp_ms);
+            rate_ref = f413_ctrl_tune_ref_triangle(rate_peak, t_ms, ramp_ms);
         }
         else
         {
-            ref = f413_ctrl_tune_ref_trapezoid(peak, t_ms,
-                                               F413_CTRL_TUNE_TRAP_EDGE_MS,
-                                               hold_ms,
-                                               F413_CTRL_TUNE_TRAP_EDGE_MS);
+            rate_ref = f413_ctrl_tune_ref_trapezoid(rate_peak, t_ms,
+                                                    F413_CTRL_TUNE_TRAP_EDGE_MS,
+                                                    hold_ms,
+                                                    F413_CTRL_TUNE_TRAP_EDGE_MS);
         }
-        s_tune_reference = ref;
+        ref = rate_ref;
 
         if (((s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
              (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE)) &&
@@ -899,9 +971,9 @@ void f413_ctrl_tick(void)
         {
             if (s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY)
             {
-                s_velocity_interrupt = ref;
-                s_target_distance += ref * F413_CTRL_DT;
-                s_target_velocity = ref;
+                s_velocity_interrupt = rate_ref;
+                s_target_distance += rate_ref * F413_CTRL_DT;
+                s_target_velocity = rate_ref;
                 s_omega_interrupt = 0.0f;
                 s_target_omega = 0.0f;
                 s_heading_omega_correction = 0.0f;
@@ -910,15 +982,16 @@ void f413_ctrl_tick(void)
             {
                 s_velocity_interrupt = 0.0f;
                 s_target_velocity = 0.0f;
-                s_omega_interrupt = ref;
-                s_target_angle += ref * F413_CTRL_DT;
+                s_omega_interrupt = rate_ref;
+                s_target_angle += rate_ref * F413_CTRL_DT;
                 s_target_omega = 0.0f;
                 s_heading_omega_correction = 0.0f;
             }
             else if (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE)
             {
                 s_velocity_interrupt = 0.0f;
-                s_target_distance = ref;
+                s_target_distance += rate_ref * F413_CTRL_DT;
+                ref = s_target_distance;
                 s_distance_error = s_target_distance - s_real_distance;
                 s_distance_outer_count++;
                 if (s_distance_outer_count >= (uint16_t)CTRL_DISTANCE_OUTER_DIV)
@@ -941,7 +1014,8 @@ void f413_ctrl_tick(void)
                 s_velocity_interrupt = 0.0f;
                 s_target_velocity = 0.0f;
                 s_omega_interrupt = 0.0f;
-                s_target_angle = ref;
+                s_target_angle += rate_ref * F413_CTRL_DT;
+                ref = s_target_angle;
                 s_angle_error = s_target_angle - s_real_angle;
                 s_angle_outer_count++;
                 if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
@@ -956,6 +1030,8 @@ void f413_ctrl_tick(void)
                 }
                 s_heading_omega_correction = 0.0f;
             }
+
+            s_tune_reference = ref;
 
             if ((s_tune_axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
                 (s_tune_axis == F413_CTRL_TUNE_AXIS_DISTANCE))
@@ -1044,7 +1120,7 @@ void f413_ctrl_tick(void)
             }
 
             s_tune_tick++;
-            if (s_tune_tick >= F413_CTRL_TUNE_TOTAL_MS)
+            if (s_tune_tick >= end_ms)
             {
                 f413_ctrl_tune_finish_now();
             }

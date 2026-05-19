@@ -1696,6 +1696,10 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   uint32_t available;
   uint32_t dump_count;
   uint32_t i;
+  uint8_t meta_mode;
+  uint8_t meta_case;
+  uint8_t meta_sub;
+  uint8_t meta_test_id;
 
   st = nvm_trace_log_get_header(&header);
   if (st != NVM_STATUS_OK)
@@ -1721,6 +1725,24 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     dump_count = max_records;
   }
 
+  meta_mode = g_trace_log_context_mode;
+  meta_case = g_trace_log_context_case;
+  meta_sub = g_trace_log_context_sub;
+  meta_test_id = g_trace_log_context_test_id;
+  for (i = 0U; i < dump_count; i++)
+  {
+    nvm_trace_log_record_t meta_rec;
+    st = nvm_trace_log_read_latest(i, &meta_rec);
+    if ((st == NVM_STATUS_OK) && (meta_rec.op_mode != 0xFFU))
+    {
+      meta_mode = meta_rec.op_mode;
+      meta_case = meta_rec.op_case;
+      meta_sub = meta_rec.op_sub;
+      meta_test_id = meta_rec.test_id;
+      break;
+    }
+  }
+
   trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
                (unsigned long)dump_count,
                (unsigned long)available);
@@ -1731,20 +1753,20 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
   trace_printf("#fw_git_sha=%s\r\n", FW_GIT_SHA);
   trace_printf("#fw_git_dirty=%d\r\n", FW_GIT_DIRTY);
   trace_printf("#fw_log_schema=0x%08lX\r\n", (unsigned long)NVM_TRACE_LOG_SCHEMA_VERSION);
-  trace_printf("#op_mode=%u\r\n", (unsigned int)g_trace_log_context_mode);
-  trace_printf("#op_mode_name=%s\r\n", nightfall_op_mode_name(g_trace_log_context_mode));
-  trace_printf("#op_case=%u\r\n", (unsigned int)g_trace_log_context_case);
-  trace_printf("#op_case_name=%s\r\n", nightfall_op_case_name(g_trace_log_context_mode, g_trace_log_context_case));
-  trace_printf("#op_sub=%u\r\n", (unsigned int)g_trace_log_context_sub);
-  trace_printf("#op_sub_name=%s\r\n", nightfall_op_sub_name(g_trace_log_context_mode, g_trace_log_context_sub));
-  trace_printf("#op_test_id=%u\r\n", (unsigned int)g_trace_log_context_test_id);
+  trace_printf("#op_mode=%u\r\n", (unsigned int)meta_mode);
+  trace_printf("#op_mode_name=%s\r\n", nightfall_op_mode_name(meta_mode));
+  trace_printf("#op_case=%u\r\n", (unsigned int)meta_case);
+  trace_printf("#op_case_name=%s\r\n", nightfall_op_case_name(meta_mode, meta_case));
+  trace_printf("#op_sub=%u\r\n", (unsigned int)meta_sub);
+  trace_printf("#op_sub_name=%s\r\n", nightfall_op_sub_name(meta_mode, meta_sub));
+  trace_printf("#op_test_id=%u\r\n", (unsigned int)meta_test_id);
   trace_printf("#op_label=mode%u %s / case%u %s / sub%u %s\r\n",
-               (unsigned int)g_trace_log_context_mode,
-               nightfall_op_mode_name(g_trace_log_context_mode),
-               (unsigned int)g_trace_log_context_case,
-               nightfall_op_case_name(g_trace_log_context_mode, g_trace_log_context_case),
-               (unsigned int)g_trace_log_context_sub,
-               nightfall_op_sub_name(g_trace_log_context_mode, g_trace_log_context_sub));
+               (unsigned int)meta_mode,
+               nightfall_op_mode_name(meta_mode),
+               (unsigned int)meta_case,
+               nightfall_op_case_name(meta_mode, meta_case),
+               (unsigned int)meta_sub,
+               nightfall_op_sub_name(meta_mode, meta_sub));
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)NIGHTFALL_F413_WALL_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
@@ -3909,12 +3931,12 @@ static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub)
     {
       case 0U: return "velocity step 300";
       case 1U: return "velocity trapezoid 300";
-      case 2U: return "omega step 500";
-      case 3U: return "omega trapezoid 500";
-      case 4U: return "distance step 90";
-      case 5U: return "distance trapezoid 90";
-      case 6U: return "angle step 90";
-      case 7U: return "angle trapezoid 90";
+      case 2U: return "omega step 1000";
+      case 3U: return "omega trapezoid 1000";
+      case 4U: return "distance rate-step 270";
+      case 5U: return "distance rate-trapezoid 270";
+      case 6U: return "angle rate-step 360";
+      case 7U: return "angle rate-trapezoid 360";
       case 8U: return "velocity trapezoid 1000";
       case 9U: return "omega trapezoid 1000";
       default: return "unknown";
