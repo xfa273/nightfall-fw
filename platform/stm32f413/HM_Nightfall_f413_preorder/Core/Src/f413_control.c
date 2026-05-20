@@ -32,7 +32,7 @@
 #define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
 #define F413_CTRL_KI_ANGLE        (0.0f)
 #define F413_CTRL_KD_ANGLE        (0.0f)
-#define F413_CTRL_ANGLE_OMEGA_MAX (1000.0f)
+#define F413_CTRL_ANGLE_OMEGA_MAX (4000.0f)
 #ifndef F413_CTRL_TUNE_STRAIGHT_KP_ANGLE
 #define F413_CTRL_TUNE_STRAIGHT_KP_ANGLE (4.0f)
 #endif
