@@ -12,6 +12,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+import trace_bin_dump
+
 
 _NUM_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?$")
 DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
@@ -117,6 +123,50 @@ def _new_output_file(save_dir: Path) -> Path:
         if not candidate.exists():
             return candidate
     return save_dir / f"stm32_log_{ts}_{time.monotonic_ns()}.csv"
+
+
+def _new_binary_raw_file(save_dir: Path) -> Path:
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    base = save_dir / f"trace_bin_{ts}.raw"
+    if not base.exists():
+        return base
+    for i in range(1, 1000):
+        candidate = save_dir / f"trace_bin_{ts}_{i:03d}.raw"
+        if not candidate.exists():
+            return candidate
+    return save_dir / f"trace_bin_{ts}_{time.monotonic_ns()}.raw"
+
+
+def _binary_frame_total_len(buf: bytes) -> Optional[int]:
+    if len(buf) < trace_bin_dump.FRAME_STRUCT.size:
+        return None
+    fields = trace_bin_dump.FRAME_STRUCT.unpack_from(buf, 0)
+    version = fields[1]
+    header_size = fields[3]
+    record_size = fields[4]
+    record_count = fields[5]
+    if version != 1 or header_size != trace_bin_dump.HEADER_STRUCT.size or record_size != trace_bin_dump.RECORD_STRUCT.size:
+        return -1
+    total_len = trace_bin_dump.FRAME_STRUCT.size + header_size + record_size * record_count
+    if len(buf) < total_len:
+        return None
+    payload = buf[trace_bin_dump.FRAME_STRUCT.size : total_len]
+    if trace_bin_dump.checksum(payload) != fields[7]:
+        return -1
+    return total_len
+
+
+def _save_binary_frame(save_dir: Path, frame_bytes: bytes) -> None:
+    raw_path = _new_binary_raw_file(save_dir)
+    raw_path.write_bytes(frame_bytes)
+    frame, header, rows, offset = trace_bin_dump.extract_frame(frame_bytes)
+    csv_path = raw_path.with_suffix(".csv")
+    trace_bin_dump.write_csv(csv_path, frame, header, rows)
+    print(
+        f"\n[INFO] Binary trace frame: raw={raw_path} csv={csv_path} "
+        f"records={len(rows)} offset={offset}",
+        file=sys.stderr,
+    )
 
 
 def _format_mm_columns(line: str) -> str:
@@ -294,6 +344,39 @@ def main() -> int:
             buf += chunk
 
             while True:
+                magic_idx = buf.find(trace_bin_dump.MAGIC)
+                if magic_idx == 0:
+                    total_len = _binary_frame_total_len(buf)
+                    if total_len is None:
+                        break
+                    if total_len < 0:
+                        buf = buf[1:]
+                        continue
+                    frame_bytes = buf[:total_len]
+                    buf = buf[total_len:]
+                    try:
+                        _save_binary_frame(save_dir, frame_bytes)
+                    except Exception as e:
+                        print(f"[WARN] Failed to decode binary trace frame: {e}", file=sys.stderr)
+                    out_path = None
+                    pending_columns = None
+                    current_columns = []
+                    expected_csv_columns = 8
+                    seq_column_index = None
+                    wrote_columns = False
+                    prev_ts = None
+                    prev_seq = None
+                    continue
+                if magic_idx > 0:
+                    first_nl = buf.find(b"\n")
+                    if first_nl < 0 or first_nl > magic_idx:
+                        if args.show_noncsv:
+                            prefix = buf[:magic_idx].decode("ascii", errors="ignore").strip()
+                            if prefix:
+                                print(prefix, file=sys.stderr)
+                        buf = buf[magic_idx:]
+                        continue
+
                 nl = buf.find(b"\n")
                 if nl < 0:
                     break

@@ -2094,7 +2094,7 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin)\r\n");
   trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
 }
 
@@ -4036,7 +4036,7 @@ static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case)
       case 2U: return "encoder check";
       case 3U: return "sensor AD check";
       case 4U: return "fan noise check";
-      case 5U: return "dump latest full log";
+      case 5U: return "dump latest full log bin";
       case 6U: return "wall threshold check";
       case 7U: return "NVM check";
       case 8U: return "identity check";
@@ -4549,7 +4549,7 @@ static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
       }
       else if (op_case == 5U)
       {
-        nightfall_run_trace_log_dump_csv_all_once();
+        nightfall_run_trace_log_dump_bin_all_once();
       }
       else if (op_case == 6U)
       {
