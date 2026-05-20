@@ -71,10 +71,10 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 2.0F
+#define KP_VELOCITY_FAN_OFF 2.5F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.02F
+#define KI_VELOCITY_FAN_OFF 0.0F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
@@ -91,10 +91,10 @@
 #endif
 
 #ifndef KP_DISTANCE_FAN_OFF
-#define KP_DISTANCE_FAN_OFF 3.00F
+#define KP_DISTANCE_FAN_OFF 90.00F
 #endif
 #ifndef KI_DISTANCE_FAN_OFF
-#define KI_DISTANCE_FAN_OFF 0.0F
+#define KI_DISTANCE_FAN_OFF 0.3F
 #endif
 #ifndef KD_DISTANCE_FAN_OFF
 #define KD_DISTANCE_FAN_OFF 0.0F
@@ -141,13 +141,13 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 0.65F
+#define KP_OMEGA_FAN_OFF 1.2F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
-#define KI_OMEGA_FAN_OFF 0.008F
+#define KI_OMEGA_FAN_OFF 0.03F
 #endif
 #ifndef KD_OMEGA_FAN_OFF
-#define KD_OMEGA_FAN_OFF 0.0F
+#define KD_OMEGA_FAN_OFF 2.2F
 #endif
 
 #define FF_OMEGA 0.0F
