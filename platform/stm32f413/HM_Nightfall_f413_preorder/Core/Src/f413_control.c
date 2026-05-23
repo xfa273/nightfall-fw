@@ -812,12 +812,14 @@ void f413_ctrl_tick(void)
     const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
     const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
     const float kd_d = use_fan_on_gains ? KD_DISTANCE_FAN_ON : KD_DISTANCE_FAN_OFF;
+    const float ff_d = use_fan_on_gains ? FF_DISTANCE_FAN_ON : FF_DISTANCE_FAN_OFF;
     const float kp_v = use_fan_on_gains ? KP_VELOCITY_FAN_ON : KP_VELOCITY_FAN_OFF;
     const float ki_v = use_fan_on_gains ? KI_VELOCITY_FAN_ON : KI_VELOCITY_FAN_OFF;
     const float kd_v = use_fan_on_gains ? KD_VELOCITY_FAN_ON : KD_VELOCITY_FAN_OFF;
     const float kp_a = use_fan_on_gains ? KP_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF;
     const float ki_a = use_fan_on_gains ? KI_ANGLE_FAN_ON : KI_ANGLE_FAN_OFF;
     const float kd_a = use_fan_on_gains ? KD_ANGLE_FAN_ON : KD_ANGLE_FAN_OFF;
+    const float ff_a = use_fan_on_gains ? FF_ANGLE_FAN_ON : FF_ANGLE_FAN_OFF;
     const float kp_o = use_fan_on_gains ? KP_OMEGA_FAN_ON : KP_OMEGA_FAN_OFF;
     const float ki_o = use_fan_on_gains ? KI_OMEGA_FAN_ON : KI_OMEGA_FAN_OFF;
     const float kd_o = use_fan_on_gains ? KD_OMEGA_FAN_ON : KD_OMEGA_FAN_OFF;
@@ -1004,7 +1006,7 @@ void f413_ctrl_tick(void)
                                                    (ki_d * s_distance_integral) +
                                                    (kd_d * s_distance_error_error);
                 }
-                s_target_velocity = s_distance_velocity_feedback;
+                s_target_velocity = (ff_d * rate_ref) + s_distance_velocity_feedback;
                 s_omega_interrupt = 0.0f;
                 s_target_omega = 0.0f;
                 s_heading_omega_correction = 0.0f;
@@ -1024,7 +1026,8 @@ void f413_ctrl_tick(void)
                     s_angle_integral += s_angle_error;
                     s_angle_error_error = s_angle_error - s_previous_angle_error;
                     s_previous_angle_error = s_angle_error;
-                    s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
+                    s_target_omega = f413_ctrl_clamp_angle_omega((ff_a * rate_ref) +
+                                                                  (kp_a * s_angle_error) +
                                                                   (ki_a * s_angle_integral) +
                                                                   (kd_a * s_angle_error_error));
                 }
@@ -1156,7 +1159,7 @@ void f413_ctrl_tick(void)
                                        (ki_d * s_distance_integral) +
                                        (kd_d * s_distance_error_error);
     }
-    s_target_velocity = s_velocity_interrupt + s_distance_velocity_feedback;
+    s_target_velocity = (ff_d * s_velocity_interrupt) + s_distance_velocity_feedback;
 
     s_velocity_error = s_target_velocity - s_real_velocity;
     {
@@ -1189,7 +1192,7 @@ void f413_ctrl_tick(void)
     {
         s_target_angle += s_omega_interrupt * F413_CTRL_DT;
     }
-    if ((kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
+    if ((ff_a == 1.0f) && (kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
     {
         s_target_omega = 0.0f;
         s_angle_outer_count = 0U;
@@ -1208,7 +1211,8 @@ void f413_ctrl_tick(void)
             s_angle_integral += s_angle_error;
             s_angle_error_error = s_angle_error - s_previous_angle_error;
             s_previous_angle_error = s_angle_error;
-            s_target_omega = f413_ctrl_clamp_angle_omega((kp_a * s_angle_error) +
+            s_target_omega = f413_ctrl_clamp_angle_omega(((ff_a - 1.0f) * s_omega_interrupt) +
+                                                          (kp_a * s_angle_error) +
                                                           (ki_a * s_angle_integral) +
                                                           (kd_a * s_angle_error_error));
         }

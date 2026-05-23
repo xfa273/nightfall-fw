@@ -89,6 +89,9 @@
 #ifndef KD_DISTANCE_FAN_ON
 #define KD_DISTANCE_FAN_ON  0.0F
 #endif
+#ifndef FF_DISTANCE_FAN_ON
+#define FF_DISTANCE_FAN_ON  1.0F
+#endif
 
 #ifndef KP_DISTANCE_FAN_OFF
 #define KP_DISTANCE_FAN_OFF 90.00F
@@ -98,6 +101,9 @@
 #endif
 #ifndef KD_DISTANCE_FAN_OFF
 #define KD_DISTANCE_FAN_OFF 0.0F
+#endif
+#ifndef FF_DISTANCE_FAN_OFF
+#define FF_DISTANCE_FAN_OFF 1.0F
 #endif
 
 #define SUCTION_FAN_STABILIZE_DELAY_MS 100
@@ -115,6 +121,9 @@
 #ifndef KD_ANGLE_FAN_ON
 #define KD_ANGLE_FAN_ON 0.0F
 #endif
+#ifndef FF_ANGLE_FAN_ON
+#define FF_ANGLE_FAN_ON 1.0F
+#endif
 
 #ifndef KP_ANGLE_FAN_OFF
 #define KP_ANGLE_FAN_OFF 20.0F
@@ -124,6 +133,9 @@
 #endif
 #ifndef KD_ANGLE_FAN_OFF
 #define KD_ANGLE_FAN_OFF 0.0F
+#endif
+#ifndef FF_ANGLE_FAN_OFF
+#define FF_ANGLE_FAN_OFF 1.0F
 #endif
 
 #ifndef TURN_OMEGA_PROFILE_ROUNDING_SCALE
