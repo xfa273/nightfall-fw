@@ -76,18 +76,29 @@ UART_HandleTypeDef huart1;
 
 static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
 static nvm_identity_block_t g_boot_identity;
-static uint8_t g_trace_log_auto_enabled = 0U;
+static volatile uint8_t g_trace_log_auto_enabled = 0U;
 static uint32_t g_trace_log_auto_period_ms = 1U;
-static uint32_t g_trace_log_auto_next_tick_ms = 0U;
-static uint32_t g_trace_log_auto_seq = 0U;
-static uint16_t g_trace_log_auto_mode_flags = 0U;
+static volatile uint32_t g_trace_log_auto_next_tick_ms = 0U;
+static volatile uint32_t g_trace_log_auto_seq = 0U;
+static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
 static nvm_trace_log_record_t g_trace_log_auto_buffer[NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
-static uint32_t g_trace_log_auto_buffer_count = 0U;
-static uint8_t g_trace_log_auto_buffer_overflow = 0U;
-static uint8_t g_trace_log_context_mode = 0xFFU;
-static uint8_t g_trace_log_context_case = 0xFFU;
-static uint8_t g_trace_log_context_sub = 0xFFU;
-static uint8_t g_trace_log_context_test_id = 0U;
+static volatile uint32_t g_trace_log_auto_buffer_count = 0U;
+static volatile uint8_t g_trace_log_auto_buffer_overflow = 0U;
+static volatile uint8_t g_trace_log_context_mode = 0xFFU;
+static volatile uint8_t g_trace_log_context_case = 0xFFU;
+static volatile uint8_t g_trace_log_context_sub = 0xFFU;
+static volatile uint8_t g_trace_log_context_test_id = 0U;
+static volatile uint16_t g_trace_log_adc_fr = 0U;
+static volatile uint16_t g_trace_log_adc_r = 0U;
+static volatile uint16_t g_trace_log_adc_fl = 0U;
+static volatile uint16_t g_trace_log_adc_l = 0U;
+static volatile uint16_t g_trace_log_adc_vbat = 0U;
+static volatile int32_t g_trace_log_reserved_i32_0 = 0;
+static volatile int32_t g_trace_log_reserved_i32_1 = 0;
+static volatile int32_t g_trace_log_reserved_i32_2 = 0;
+static volatile int32_t g_trace_log_reserved_i32_3 = 0;
+static volatile uint16_t g_trace_log_reserved_u16_0 = 0U;
+static volatile uint16_t g_trace_log_reserved_u16_1 = 0U;
 
 /* USER CODE END PV */
 
@@ -345,6 +356,8 @@ static const char* nightfall_run_abort_reason_to_text(nightfall_run_abort_reason
 static void nightfall_trace_log_on_run_start(void);
 static void nightfall_trace_log_on_run_stop(void);
 static void nightfall_trace_log_auto_step(void);
+static void nightfall_trace_log_auto_tick_sample(void);
+static void nightfall_trace_log_update_observe_cache(void);
 static void nightfall_trace_log_set_mode_flags(uint16_t flags);
 static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
 static int32_t nightfall_trace_log_scale_float(float value, float scale);
@@ -1692,6 +1705,44 @@ static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out)
   return true;
 }
 
+static void nightfall_trace_log_update_observe_cache(void)
+{
+  nvm_trace_log_record_t rec;
+  uint16_t adc_fr = 0U;
+  uint16_t adc_r = 0U;
+  uint16_t adc_fl = 0U;
+  uint16_t adc_l = 0U;
+  uint16_t adc_vbat = 0U;
+
+#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
+  memset(&rec, 0, sizeof(rec));
+  if (nightfall_trace_log_fill_wall_observe(&rec))
+  {
+    g_trace_log_adc_fr = rec.adc_fr;
+    g_trace_log_adc_r = rec.adc_r;
+    g_trace_log_adc_fl = rec.adc_fl;
+    g_trace_log_adc_l = rec.adc_l;
+    g_trace_log_adc_vbat = rec.adc_vbat;
+    g_trace_log_reserved_i32_0 = rec.reserved_i32_0;
+    g_trace_log_reserved_i32_1 = rec.reserved_i32_1;
+    g_trace_log_reserved_i32_2 = rec.reserved_i32_2;
+    g_trace_log_reserved_i32_3 = rec.reserved_i32_3;
+    g_trace_log_reserved_u16_0 = rec.reserved_u16_0;
+    g_trace_log_reserved_u16_1 = rec.reserved_u16_1;
+    return;
+  }
+#endif
+
+  if (nightfall_trace_log_read_adc_raw(&adc_fr, &adc_r, &adc_fl, &adc_l, &adc_vbat))
+  {
+    g_trace_log_adc_fr = adc_fr;
+    g_trace_log_adc_r = adc_r;
+    g_trace_log_adc_fl = adc_fl;
+    g_trace_log_adc_l = adc_l;
+    g_trace_log_adc_vbat = adc_vbat;
+  }
+}
+
 static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
 {
   nvm_trace_log_header_t header;
@@ -2228,6 +2279,66 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
   out->test_id = g_trace_log_context_test_id;
 }
 
+static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
+                                                    uint32_t seq,
+                                                    uint32_t timestamp_ms)
+{
+  if (out == NULL)
+  {
+    return;
+  }
+
+  memset(out, 0, sizeof(*out));
+  out->seq = seq;
+  out->timestamp_ms = timestamp_ms;
+  out->target_distance_x1000 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
+  out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
+  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_log_angle(), 1000.0f);
+  out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
+  out->real_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_real_velocity(), 1.0f);
+  out->accel_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
+  out->target_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
+  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
+  out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
+  out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
+  out->encoder_l = f413_ctrl_get_log_encoder_delta_l();
+  out->encoder_r = f413_ctrl_get_log_encoder_delta_r();
+  out->motor_out_l = f413_ctrl_get_motor_out_l();
+  out->motor_out_r = f413_ctrl_get_motor_out_r();
+  out->adc_fr = g_trace_log_adc_fr;
+  out->adc_r = g_trace_log_adc_r;
+  out->adc_fl = g_trace_log_adc_fl;
+  out->adc_l = g_trace_log_adc_l;
+  out->adc_vbat = g_trace_log_adc_vbat;
+  out->reserved_i32_0 = g_trace_log_reserved_i32_0;
+  out->reserved_i32_1 = g_trace_log_reserved_i32_1;
+  out->reserved_i32_2 = g_trace_log_reserved_i32_2;
+  out->reserved_i32_3 = g_trace_log_reserved_i32_3;
+  out->reserved_u16_0 = g_trace_log_reserved_u16_0;
+  out->reserved_u16_1 = g_trace_log_reserved_u16_1;
+  if ((g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
+  {
+    out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
+    out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
+    out->reserved_i32_2 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
+    out->reserved_i32_3 = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
+    out->reserved_u16_0 = (uint16_t)(((uint16_t)f413_ctrl_tune_get_axis() << 8U) |
+                                     (uint16_t)f413_ctrl_tune_get_pattern());
+    out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();
+  }
+  out->flags = (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET)
+                   ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
+                   : 0U;
+  if (f413_ctrl_angle_target_enabled())
+  {
+    out->flags |= NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG;
+  }
+  out->op_mode = g_trace_log_context_mode;
+  out->op_case = g_trace_log_context_case;
+  out->op_sub = g_trace_log_context_sub;
+  out->test_id = g_trace_log_context_test_id;
+}
+
 static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq)
 {
   if (out == NULL)
@@ -2349,13 +2460,14 @@ static void nightfall_trace_log_auto_start(void)
     return;
   }
 
-  g_trace_log_auto_enabled = 1U;
   g_trace_log_auto_seq = 0U;
   g_trace_log_auto_mode_flags = 0U;
   g_trace_log_auto_buffer_count = 0U;
   g_trace_log_auto_buffer_overflow = 0U;
-  g_trace_log_auto_next_tick_ms = HAL_GetTick() + g_trace_log_auto_period_ms;
+  g_trace_log_auto_next_tick_ms = HAL_GetTick();
   nightfall_wall_end_clear();
+  nightfall_trace_log_update_observe_cache();
+  g_trace_log_auto_enabled = 1U;
   trace_printf("[TRACE-LOG] auto: START period=%lu ms (fresh format)\r\n",
                (unsigned long)g_trace_log_auto_period_ms);
 }
@@ -2373,9 +2485,9 @@ static void nightfall_trace_log_auto_stop(void)
     return;
   }
 
+  g_trace_log_auto_enabled = 0U;
   buffered = g_trace_log_auto_buffer_count;
   overflow = g_trace_log_auto_buffer_overflow;
-  g_trace_log_auto_enabled = 0U;
   g_trace_log_auto_mode_flags = 0U;
 
   st = nightfall_trace_log_auto_flush_buffer();
@@ -2408,7 +2520,6 @@ static void nightfall_trace_log_set_mode_flags(uint16_t mode_flags)
 
 static void nightfall_trace_log_auto_step(void)
 {
-  nvm_trace_log_record_t* rec;
   uint32_t now;
 
   if (g_trace_log_auto_enabled == 0U)
@@ -2422,19 +2533,34 @@ static void nightfall_trace_log_auto_step(void)
     return;
   }
 
-  if (g_trace_log_auto_buffer_count >= NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS)
+  nightfall_trace_log_update_observe_cache();
+  g_trace_log_auto_next_tick_ms = now + g_trace_log_auto_period_ms;
+}
+
+static void nightfall_trace_log_auto_tick_sample(void)
+{
+  nvm_trace_log_record_t* rec;
+  uint32_t index;
+  uint32_t seq;
+
+  if (g_trace_log_auto_enabled == 0U)
   {
-    g_trace_log_auto_buffer_overflow = 1U;
-    g_trace_log_auto_next_tick_ms = now + g_trace_log_auto_period_ms;
     return;
   }
 
-  rec = &g_trace_log_auto_buffer[g_trace_log_auto_buffer_count];
-  nightfall_fill_trace_log_sample(rec, g_trace_log_auto_seq);
+  index = g_trace_log_auto_buffer_count;
+  if (index >= NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS)
+  {
+    g_trace_log_auto_buffer_overflow = 1U;
+    return;
+  }
+
+  seq = g_trace_log_auto_seq;
+  rec = &g_trace_log_auto_buffer[index];
+  nightfall_fill_trace_log_control_sample(rec, seq, HAL_GetTick());
   rec->flags |= (uint16_t)(NIGHTFALL_F413_TRACE_AUTO_FLAG | g_trace_log_auto_mode_flags);
-  g_trace_log_auto_buffer_count += 1U;
-  g_trace_log_auto_seq += 1U;
-  g_trace_log_auto_next_tick_ms = now + g_trace_log_auto_period_ms;
+  g_trace_log_auto_seq = seq + 1U;
+  g_trace_log_auto_buffer_count = index + 1U;
 }
 
 static void nightfall_trace_log_on_run_start(void)
@@ -6951,6 +7077,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM5)
   {
     f413_ctrl_tick();
+    nightfall_trace_log_auto_tick_sample();
   }
 }
 
