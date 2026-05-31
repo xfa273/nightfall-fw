@@ -22,8 +22,10 @@
 
 ## 現在の公式配置
 
-- `hardware/mini_r2_0/`: STM32F413 新機体
-- `hardware/mini_r1_0/`: 現行 mini 機体（雛形）
-- `hardware/classic_r1_0/`: 現行 classic 機体（雛形）
+- `hardware/mini_r2_0/`: `f413_preorder` / STM32F413 搭載ハーフサイズ / Eagle `HM_Nightfall-mini-2e`
+- `hardware/mini_r1_0/`: STM32F405 搭載ハーフサイズ最終版 / Eagle `HM_Nightfall-mini_v1`
+- `hardware/classic_r1_0/`: STM32F405 搭載クラシックサイズ最終版 / Eagle `CM_Nightfall-Air_v1`
+
+上記以外の Eagle プロジェクトは旧機体の参考資料として扱い、現役基板とは分けて保管します。
 
 `_sandbox/` 配下は実験・一時作業用とし、正式成果物は本ディレクトリに集約します。
