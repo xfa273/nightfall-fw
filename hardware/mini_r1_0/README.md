@@ -14,3 +14,4 @@
 
 - STM32F405 搭載ハーフサイズの最終版です。
 - 対応する Eagle プロジェクトは `HM_Nightfall-mini_v1` です。
+- `cad/eagle/` に Eagle 移行前原本を保存しています。
