@@ -42,6 +42,20 @@ compile_commands.json
 
 *.bak
 
+# EAGLE local/autobackup files
+*.epf
+*.s#[0-9]
+*.b#[0-9]
+*.l#[0-9]
+*.b##
+
+# KiCad local/autobackup files
+*.kicad_prl
+*.kicad_sch-bak
+*.kicad_pcb-bak
+*-backups/
+fp-info-cache
+
 .ai/worktrees/*
 !.ai/worktrees/.gitkeep
 
