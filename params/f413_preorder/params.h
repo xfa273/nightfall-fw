@@ -126,7 +126,7 @@
 #endif
 
 #ifndef KP_ANGLE_FAN_OFF
-#define KP_ANGLE_FAN_OFF 20.0F
+#define KP_ANGLE_FAN_OFF 10.0F
 #endif
 #ifndef KI_ANGLE_FAN_OFF
 #define KI_ANGLE_FAN_OFF 0.1F
@@ -143,7 +143,7 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  1.0F
+#define KP_OMEGA_FAN_ON  0.9F
 #endif
 #ifndef KI_OMEGA_FAN_ON
 #define KI_OMEGA_FAN_ON  0.035F
@@ -153,13 +153,13 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 1.2F
+#define KP_OMEGA_FAN_OFF 1.0F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
 #define KI_OMEGA_FAN_OFF 0.03F
 #endif
 #ifndef KD_OMEGA_FAN_OFF
-#define KD_OMEGA_FAN_OFF 2.2F
+#define KD_OMEGA_FAN_OFF 2.0F
 #endif
 
 #define FF_OMEGA 0.0F
