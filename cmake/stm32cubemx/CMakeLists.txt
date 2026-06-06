@@ -95,6 +95,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_log.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_sensor.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_it.c

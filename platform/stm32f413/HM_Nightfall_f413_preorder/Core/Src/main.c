@@ -30,6 +30,7 @@
 #include "nvm_params.h"
 #include "nvm_trace_log.h"
 #include "f413_control.h"
+#include "f413_trace_log.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
 #include "shortest_run_params.h"
@@ -73,26 +74,8 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-#define NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS (2048U)
-#define NIGHTFALL_F413_TRACE_AUTO_FLUSH_RECORDS_PER_STEP (8U)
-#define NIGHTFALL_F413_TRACE_AUTO_HEADER_COMMIT_RECORDS (8U)
-
 static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
 static nvm_identity_block_t g_boot_identity;
-static volatile uint8_t g_trace_log_auto_enabled = 0U;
-static uint32_t g_trace_log_auto_period_ms = 1U;
-static volatile uint32_t g_trace_log_auto_seq = 0U;
-static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
-static nvm_trace_log_record_t g_trace_log_auto_buffer[NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
-static volatile uint32_t g_trace_log_auto_buffer_head = 0U;
-static volatile uint32_t g_trace_log_auto_buffer_tail = 0U;
-static volatile uint8_t g_trace_log_auto_buffer_overflow = 0U;
-static nvm_trace_log_header_t g_trace_log_auto_nvm_header;
-static uint8_t g_trace_log_auto_nvm_header_valid = 0U;
-static uint32_t g_trace_log_auto_uncommitted_records = 0U;
-static uint32_t g_trace_log_auto_flushed_records = 0U;
-static uint8_t g_trace_log_auto_nvm_error = 0U;
-static nvm_status_t g_trace_log_auto_nvm_status = NVM_STATUS_OK;
 static volatile uint8_t g_trace_log_context_mode = 0xFFU;
 static volatile uint8_t g_trace_log_context_case = 0xFFU;
 static volatile uint8_t g_trace_log_context_sub = 0xFFU;
@@ -156,7 +139,6 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG (0x1000U)
 #define NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG (0x2000U)
 #define NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG (0x4000U)
-#define NIGHTFALL_F413_TRACE_AUTO_FLAG (0x8000U)
 #define NIGHTFALL_F413_RUN_SESSION_IDLE_MS (1000U)
 #define NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY (120U)
 #define NIGHTFALL_F413_RUN_SESSION_MOTOR_PULSE_MS (300U)
@@ -724,7 +706,7 @@ static void nightfall_run_solver_path_session_once(uint16_t base_trace_flag)
   uint16_t pi;
   uint16_t code;
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[RUN-TEST] busy(auto already running)\r\n");
     return;
@@ -882,7 +864,7 @@ static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mod
     trace_printf("[OP-UI][PATH-TEST] no sequence\r\n");
     return;
   }
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[OP-UI][PATH-TEST] busy(auto already running)\r\n");
     return;
@@ -1053,7 +1035,7 @@ static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t p
   uint32_t deadline;
   uint16_t flags = NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG;
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[TUNE] busy(auto already running)\r\n");
     return;
@@ -1639,7 +1621,7 @@ static bool nightfall_trace_log_fill_wall_observe(nvm_trace_log_record_t* out)
     return false;
   }
 
-  gate_on = (g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
+  gate_on = (f413_trace_log_get_mode_flags() & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
   nightfall_wall_end_update(&wall, gate_on);
   nightfall_wall_control_update(&wall, gate_on);
 
@@ -2029,8 +2011,7 @@ static void nightfall_run_trace_log_selftest_once(void)
   nvm_status_t st;
   uint32_t i;
 
-  g_trace_log_auto_enabled = 0U;
-  g_trace_log_auto_mode_flags = 0U;
+  f413_trace_log_auto_abort();
 
   st = nvm_trace_log_format();
   if (st != NVM_STATUS_OK)
@@ -2156,8 +2137,7 @@ static void nightfall_run_trace_log_format_once(void)
   nvm_trace_log_header_t header;
   nvm_status_t st;
 
-  g_trace_log_auto_enabled = 0U;
-  g_trace_log_auto_mode_flags = 0U;
+  f413_trace_log_auto_abort();
 
   st = nvm_trace_log_format();
   if (st != NVM_STATUS_OK)
@@ -2234,7 +2214,7 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
     out->adc_l = adc_l;
     out->adc_vbat = adc_vbat;
   }
-  if ((g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
+  if ((f413_trace_log_get_mode_flags() & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
   {
     out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
     out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
@@ -2259,7 +2239,8 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
 
 static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
                                                     uint32_t seq,
-                                                    uint32_t timestamp_ms)
+                                                    uint32_t timestamp_ms,
+                                                    uint16_t mode_flags)
 {
   nightfall_wall_sensor_snapshot_t wall;
 
@@ -2298,7 +2279,7 @@ static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
   out->reserved_u16_1 = g_trace_log_reserved_u16_1;
   if (nightfall_wall_sensor_read_snapshot(&wall))
   {
-    bool gate_on = (g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
+    bool gate_on = (mode_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U;
 
     out->adc_fr = (uint16_t)wall.fr_delta;
     out->adc_r = (uint16_t)wall.r_delta;
@@ -2311,7 +2292,7 @@ static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
     out->reserved_i32_3 = wall.l_delta;
     out->reserved_u16_0 = nightfall_wall_trace_flags_from_snapshot(&wall, gate_on);
   }
-  if ((g_trace_log_auto_mode_flags & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
+  if ((mode_flags & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
   {
     out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
     out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
@@ -2421,251 +2402,31 @@ static void nightfall_run_trace_log_append_sample_once(void)
                (unsigned int)rec.flags);
 }
 
-static nvm_status_t nightfall_trace_log_auto_flush_buffer(void)
-{
-  nvm_status_t st;
-
-  if (g_trace_log_auto_nvm_header_valid == 0U)
-  {
-    return NVM_STATUS_INTEGRITY_ERROR;
-  }
-
-  while (g_trace_log_auto_buffer_tail != g_trace_log_auto_buffer_head)
-  {
-    nvm_trace_log_record_t* rec =
-        &g_trace_log_auto_buffer[g_trace_log_auto_buffer_tail % NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
-    uint8_t commit_header =
-        (g_trace_log_auto_uncommitted_records + 1U >= NIGHTFALL_F413_TRACE_AUTO_HEADER_COMMIT_RECORDS) ? 1U : 0U;
-
-    st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, rec, commit_header);
-    if (st != NVM_STATUS_OK)
-    {
-      g_trace_log_auto_nvm_status = st;
-      g_trace_log_auto_nvm_error = 1U;
-      return st;
-    }
-    g_trace_log_auto_buffer_tail += 1U;
-    g_trace_log_auto_flushed_records += 1U;
-    g_trace_log_auto_uncommitted_records += 1U;
-    if (commit_header != 0U)
-    {
-      g_trace_log_auto_uncommitted_records = 0U;
-    }
-  }
-
-  if (g_trace_log_auto_uncommitted_records != 0U)
-  {
-    st = nvm_trace_log_commit_header(&g_trace_log_auto_nvm_header);
-    if (st != NVM_STATUS_OK)
-    {
-      g_trace_log_auto_nvm_status = st;
-      g_trace_log_auto_nvm_error = 1U;
-      return st;
-    }
-    g_trace_log_auto_uncommitted_records = 0U;
-  }
-  return NVM_STATUS_OK;
-}
-
-static nvm_status_t nightfall_trace_log_auto_flush_step(void)
-{
-  nvm_trace_log_record_t* rec;
-  nvm_status_t st;
-  uint8_t commit_header;
-
-  if (g_trace_log_auto_buffer_tail == g_trace_log_auto_buffer_head)
-  {
-    return NVM_STATUS_OK;
-  }
-  if (g_trace_log_auto_nvm_header_valid == 0U)
-  {
-    g_trace_log_auto_nvm_status = NVM_STATUS_INTEGRITY_ERROR;
-    g_trace_log_auto_nvm_error = 1U;
-    return NVM_STATUS_INTEGRITY_ERROR;
-  }
-
-  rec = &g_trace_log_auto_buffer[g_trace_log_auto_buffer_tail % NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
-  commit_header =
-      (g_trace_log_auto_uncommitted_records + 1U >= NIGHTFALL_F413_TRACE_AUTO_HEADER_COMMIT_RECORDS) ? 1U : 0U;
-  st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, rec, commit_header);
-  if (st != NVM_STATUS_OK)
-  {
-    g_trace_log_auto_nvm_status = st;
-    g_trace_log_auto_nvm_error = 1U;
-    return st;
-  }
-
-  g_trace_log_auto_buffer_tail += 1U;
-  g_trace_log_auto_flushed_records += 1U;
-  g_trace_log_auto_uncommitted_records += 1U;
-  if (commit_header != 0U)
-  {
-    g_trace_log_auto_uncommitted_records = 0U;
-  }
-  return NVM_STATUS_OK;
-}
-
-static void nightfall_trace_log_auto_start(void)
-{
-  nvm_status_t st;
-
-  if (g_trace_log_auto_enabled != 0U)
-  {
-    trace_printf("[TRACE-LOG] auto: already running\r\n");
-    return;
-  }
-
-  st = nvm_trace_log_format();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] auto: FAIL(format NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  st = nvm_trace_log_get_header(&g_trace_log_auto_nvm_header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] auto: FAIL(header NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  g_trace_log_auto_seq = 0U;
-  g_trace_log_auto_mode_flags = 0U;
-  g_trace_log_auto_buffer_head = 0U;
-  g_trace_log_auto_buffer_tail = 0U;
-  g_trace_log_auto_buffer_overflow = 0U;
-  g_trace_log_auto_nvm_header_valid = 1U;
-  g_trace_log_auto_uncommitted_records = 0U;
-  g_trace_log_auto_flushed_records = 0U;
-  g_trace_log_auto_nvm_error = 0U;
-  g_trace_log_auto_nvm_status = NVM_STATUS_OK;
-  nightfall_wall_end_clear();
-  nightfall_trace_log_update_observe_cache();
-  g_trace_log_auto_enabled = 1U;
-  trace_printf("[TRACE-LOG] auto: START period=%lu ms cap=%lu rec (streaming FRAM)\r\n",
-               (unsigned long)g_trace_log_auto_period_ms,
-               (unsigned long)g_trace_log_auto_nvm_header.record_capacity);
-}
-
-static void nightfall_trace_log_auto_stop(void)
-{
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-  uint32_t buffered;
-  uint32_t flushed;
-  uint8_t overflow;
-  uint8_t nvm_error;
-
-  if (g_trace_log_auto_enabled == 0U)
-  {
-    trace_printf("[TRACE-LOG] auto: already stopped\r\n");
-    return;
-  }
-
-  g_trace_log_auto_enabled = 0U;
-  buffered = g_trace_log_auto_buffer_head - g_trace_log_auto_buffer_tail;
-  flushed = g_trace_log_auto_flushed_records;
-  overflow = g_trace_log_auto_buffer_overflow;
-  nvm_error = g_trace_log_auto_nvm_error;
-  g_trace_log_auto_mode_flags = 0U;
-
-  st = nightfall_trace_log_auto_flush_buffer();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] auto: STOP (flush NVM=%d pending=%lu flushed=%lu)\r\n",
-                 (int)st,
-                 (unsigned long)buffered,
-                 (unsigned long)flushed);
-    return;
-  }
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] auto: STOP (header NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  trace_printf("[TRACE-LOG] auto: STOP total=%lu stored=%lu pending_start=%lu flushed_start=%lu flushed_total=%lu overflow=%u nvm_error=%u\r\n",
-               (unsigned long)header.total_records,
-               (unsigned long)((header.total_records > header.record_capacity) ? header.record_capacity : header.total_records),
-               (unsigned long)buffered,
-               (unsigned long)flushed,
-               (unsigned long)g_trace_log_auto_flushed_records,
-               (unsigned int)overflow,
-               (unsigned int)nvm_error);
-}
-
 static void nightfall_trace_log_set_mode_flags(uint16_t mode_flags)
 {
-  g_trace_log_auto_mode_flags = mode_flags;
+  f413_trace_log_set_mode_flags(mode_flags);
 }
 
 static void nightfall_trace_log_auto_step(void)
 {
-  uint32_t i;
-
-  if (g_trace_log_auto_enabled == 0U)
-  {
-    return;
-  }
-
-  nightfall_trace_log_update_observe_cache();
-
-  if (g_trace_log_auto_nvm_error == 0U)
-  {
-    for (i = 0U; i < NIGHTFALL_F413_TRACE_AUTO_FLUSH_RECORDS_PER_STEP; i++)
-    {
-      if (g_trace_log_auto_buffer_tail == g_trace_log_auto_buffer_head)
-      {
-        break;
-      }
-      if (nightfall_trace_log_auto_flush_step() != NVM_STATUS_OK)
-      {
-        break;
-      }
-    }
-  }
+  f413_trace_log_auto_step();
 }
 
 static void nightfall_trace_log_auto_tick_sample(void)
 {
-  nvm_trace_log_record_t* rec;
-  uint32_t head;
-  uint32_t tail;
-  uint32_t seq;
-
-  if (g_trace_log_auto_enabled == 0U)
-  {
-    return;
-  }
-
-  head = g_trace_log_auto_buffer_head;
-  tail = g_trace_log_auto_buffer_tail;
-  if ((head - tail) >= NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS)
-  {
-    g_trace_log_auto_buffer_overflow = 1U;
-    return;
-  }
-
-  seq = g_trace_log_auto_seq;
-  rec = &g_trace_log_auto_buffer[head % NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
-  nightfall_fill_trace_log_control_sample(rec, seq, HAL_GetTick());
-  rec->flags |= (uint16_t)(NIGHTFALL_F413_TRACE_AUTO_FLAG | g_trace_log_auto_mode_flags);
-  g_trace_log_auto_seq = seq + 1U;
-  g_trace_log_auto_buffer_head = head + 1U;
+  f413_trace_log_auto_tick_sample(HAL_GetTick());
 }
 
 static void nightfall_trace_log_on_run_start(void)
 {
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
-  nightfall_trace_log_auto_start();
+  f413_trace_log_auto_start();
 }
 
 static void nightfall_trace_log_on_run_stop(void)
 {
   trace_printf("[TRACE-LOG] run-hook: stop\r\n");
-  nightfall_trace_log_auto_stop();
+  f413_trace_log_auto_stop();
 }
 
 static void nightfall_run_trace_log_dump_latest_once(void)
@@ -3254,7 +3015,7 @@ static void nightfall_run_search_step_once(void)
   bool is_turn;
   float turn_target_deg;
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[SEARCH-STEP] busy(auto already running)\r\n");
     return;
@@ -4405,7 +4166,7 @@ static void nightfall_op_print_selection(void)
 
 static bool nightfall_op_can_accept_input(void)
 {
-  if (g_trace_log_auto_enabled != 0U || f413_ctrl_is_running())
+  if (f413_trace_log_auto_is_enabled() || f413_ctrl_is_running())
   {
     return false;
   }
@@ -5243,7 +5004,7 @@ static nightfall_run_abort_reason_t nightfall_trace_log_wait_with_auto_step_guar
 
 static void nightfall_run_idle_trace_session_once(void)
 {
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[RUN-TEST] busy(auto already running)\r\n");
     return;
@@ -5266,7 +5027,7 @@ static void nightfall_run_motor_trace_session_once(void)
   bool enc_started_l = false;
   bool enc_started_r = false;
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[RUN-TEST] busy(auto already running)\r\n");
     return;
@@ -5336,7 +5097,7 @@ static void nightfall_run_search_safe_trace_session_once(void)
   nightfall_run_guard_t guard = {0};
   uint32_t step;
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[RUN-TEST] busy(auto already running)\r\n");
     return;
@@ -5450,7 +5211,7 @@ static void nightfall_run_shortest_safe_trace_session_once(void)
   nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
   nightfall_run_guard_t guard = {0};
 
-  if (g_trace_log_auto_enabled != 0U)
+  if (f413_trace_log_auto_is_enabled())
   {
     trace_printf("[RUN-TEST] busy(auto already running)\r\n");
     return;
@@ -6225,6 +5986,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   trace_init();
+  f413_trace_log_config(nightfall_fill_trace_log_control_sample,
+                        nightfall_trace_log_update_observe_cache,
+                        nightfall_wall_end_clear);
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
