@@ -64,6 +64,156 @@ static void f413_op_ui_after_execute(void)
   f413_hw_show_mode_leds(f413_op_ui_selected_value());
 }
 
+static void f413_op_ui_execute_action(f413_op_ui_action_t action,
+                                      uint8_t mode,
+                                      uint8_t op_case,
+                                      uint8_t sub)
+{
+  if ((action != F413_OP_UI_ACTION_NONE) && (s_config.execute_action != NULL))
+  {
+    s_config.execute_action(action, mode, op_case, sub);
+  }
+}
+
+static void f413_op_ui_execute_case(uint8_t mode, uint8_t op_case)
+{
+  trace_printf("[OP-UI] execute mode=%u %s case=%u %s\r\n",
+               (unsigned int)mode,
+               f413_op_ui_mode_name(mode),
+               (unsigned int)op_case,
+               f413_op_ui_case_name(mode, op_case));
+
+  switch (mode)
+  {
+    case 1U:
+      if (op_case == 4U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY, mode, op_case, 0xFFU);
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 mode1 case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
+      break;
+    case 2U:
+      if (op_case == 1U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY, mode, op_case, 0xFFU);
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F413 shortest runner is currently wired to mode2 case1 only\r\n");
+      }
+      break;
+    case 8U:
+      if (op_case == 1U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_1, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 2U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_2, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 3U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_3, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 4U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_5, mode, op_case, 0xFFU);
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 test_run case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
+      break;
+    case 9U:
+      if (op_case == 1U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_IMU_TEST, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 2U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_ENCODER_TEST, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 3U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_WALL_SENSOR_TEST, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 4U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_FAN_PWM_TEST, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 5U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_TRACE_DUMP_BIN_ALL, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 6U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_WALL_SENSOR_TEST, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 7U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_NVM_STATUS, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 8U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_IDENTITY_STATUS, mode, op_case, 0xFFU);
+      }
+      else if (op_case == 9U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS, mode, op_case, 0xFFU);
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: F405 test_mode case%u is not fully ported on F413 yet\r\n",
+                     (unsigned int)op_case);
+      }
+      break;
+    default:
+      trace_printf("[OP-UI] no-op: F405 mode%u case%u is not fully ported on F413 yet\r\n",
+                   (unsigned int)mode,
+                   (unsigned int)op_case);
+      break;
+  }
+}
+
+static void f413_op_ui_execute_sub(uint8_t mode, uint8_t sub)
+{
+  trace_printf("[OP-UI] execute mode=%u %s case=0 sub=%u %s\r\n",
+               (unsigned int)mode,
+               f413_op_ui_mode_name(mode),
+               (unsigned int)sub,
+               f413_op_ui_sub_name(mode, sub));
+
+  if (mode == 9U)
+  {
+    f413_op_ui_execute_action(F413_OP_UI_ACTION_CONTROL_TUNE_SUB, mode, 0U, sub);
+  }
+  else if ((mode >= 2U) && (mode <= 7U))
+  {
+    f413_op_ui_execute_action(F413_OP_UI_ACTION_PATH_CASE0_SUB, mode, 0U, sub);
+  }
+  else if (mode == 1U)
+  {
+    if (sub == 3U)
+    {
+      f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_1, mode, 0U, sub);
+    }
+    else
+    {
+      trace_printf("[OP-UI] no-op: F405 mode1 case0 sub%u is not fully ported on F413 yet\r\n",
+                   (unsigned int)sub);
+    }
+  }
+  else
+  {
+    trace_printf("[OP-UI] no-op: unsupported sub selection\r\n");
+  }
+}
+
 void f413_op_ui_config(const f413_op_ui_config_t* config)
 {
   if (config == NULL)
@@ -71,8 +221,7 @@ void f413_op_ui_config(const f413_op_ui_config_t* config)
     s_config.can_accept_input = NULL;
     s_config.stop_switch_pressed = NULL;
     s_config.enter_sensor_active = NULL;
-    s_config.execute_case = NULL;
-    s_config.execute_sub = NULL;
+    s_config.execute_action = NULL;
     return;
   }
 
@@ -341,18 +490,12 @@ void f413_op_ui_enter_selection(void)
       f413_op_ui_after_execute();
       return;
     }
-    if (s_config.execute_case != NULL)
-    {
-      s_config.execute_case(s_mode, selected);
-    }
+    f413_op_ui_execute_case(s_mode, selected);
     f413_op_ui_after_execute();
     return;
   }
 
-  if (s_config.execute_sub != NULL)
-  {
-    s_config.execute_sub(s_mode, selected);
-  }
+  f413_op_ui_execute_sub(s_mode, selected);
   s_level = F413_OP_UI_LEVEL_CASE;
   f413_op_ui_after_execute();
 }

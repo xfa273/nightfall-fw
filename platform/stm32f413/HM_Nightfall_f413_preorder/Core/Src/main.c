@@ -362,6 +362,7 @@ static void nightfall_test_run(uint8_t test_id);
 static void nightfall_test_arm_for_button(uint8_t test_id);
 static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t pattern);
 static void nightfall_op_run_tune_sub_after_delay(uint8_t sub);
+static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub);
 static void nightfall_op_ui_step(void);
 static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev);
 static void nightfall_run_imu_manual_turn_test_once(void);
@@ -3572,149 +3573,66 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 #endif
 }
 
-static void nightfall_op_execute_case(uint8_t mode, uint8_t op_case)
+static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub)
 {
-  trace_printf("[OP-UI] execute mode=%u %s case=%u %s\r\n",
-               (unsigned int)mode,
-               nightfall_op_mode_name(mode),
-               (unsigned int)op_case,
-               nightfall_op_case_name(mode, op_case));
-
-  switch (mode)
+  switch (action)
   {
-    case 1U:
-      if (op_case == 4U)
-      {
-        nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
-        HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-        nightfall_run_search_trace_entry_once();
-      }
-      else
-      {
-        trace_printf("[OP-UI] no-op: F405 mode1 case%u is not fully ported on F413 yet\r\n",
-                     (unsigned int)op_case);
-      }
+    case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
+      nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_run_search_trace_entry_once();
       break;
-    case 2U:
-      if (op_case == 1U)
-      {
-        nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
-        HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-        nightfall_run_shortest_trace_entry_once();
-      }
-      else
-      {
-        trace_printf("[OP-UI] no-op: F413 shortest runner is currently wired to mode2 case1 only\r\n");
-      }
+    case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
+      nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_run_shortest_trace_entry_once();
       break;
-    case 8U:
-      if (op_case == 1U)
-      {
-        nightfall_op_run_test_after_delay('1');
-      }
-      else if (op_case == 2U)
-      {
-        nightfall_op_run_test_after_delay('2');
-      }
-      else if (op_case == 3U)
-      {
-        nightfall_op_run_test_after_delay('3');
-      }
-      else if (op_case == 4U)
-      {
-        nightfall_op_run_test_after_delay('5');
-      }
-      else
-      {
-        trace_printf("[OP-UI] no-op: F405 test_run case%u is not fully ported on F413 yet\r\n",
-                     (unsigned int)op_case);
-      }
-      break;
-    case 9U:
-      if (op_case == 1U)
-      {
-        nightfall_run_imu_test_once();
-      }
-      else if (op_case == 2U)
-      {
-        nightfall_run_encoder_test_once();
-      }
-      else if (op_case == 3U)
-      {
-        nightfall_run_wall_sensor_test_once();
-      }
-      else if (op_case == 4U)
-      {
-        nightfall_run_fan_pwm_test_once();
-      }
-      else if (op_case == 5U)
-      {
-        nightfall_run_trace_log_dump_bin_all_once();
-      }
-      else if (op_case == 6U)
-      {
-        nightfall_run_wall_sensor_test_once();
-      }
-      else if (op_case == 7U)
-      {
-        nightfall_run_nvm_status_once();
-      }
-      else if (op_case == 8U)
-      {
-        nightfall_run_identity_status_once();
-      }
-      else if (op_case == 9U)
-      {
-        nightfall_run_sensor_params_status_once();
-      }
-      else
-      {
-        trace_printf("[OP-UI] no-op: F405 test_mode case%u is not fully ported on F413 yet\r\n",
-                     (unsigned int)op_case);
-      }
-      break;
-    default:
-      trace_printf("[OP-UI] no-op: F405 mode%u case%u is not fully ported on F413 yet\r\n",
-                   (unsigned int)mode,
-                   (unsigned int)op_case);
-      break;
-  }
-
-}
-
-static void nightfall_op_execute_sub(uint8_t mode, uint8_t sub)
-{
-  trace_printf("[OP-UI] execute mode=%u %s case=0 sub=%u %s\r\n",
-               (unsigned int)mode,
-               nightfall_op_mode_name(mode),
-               (unsigned int)sub,
-               nightfall_op_sub_name(mode, sub));
-
-  if (mode == 9U)
-  {
-    nightfall_op_run_tune_sub_after_delay(sub);
-  }
-  else if ((mode >= 2U) && (mode <= 7U))
-  {
-    nightfall_op_run_case0_sub_after_delay(mode, sub);
-  }
-  else if (mode == 1U)
-  {
-    if (sub == 3U)
-    {
+    case F413_OP_UI_ACTION_TEST_RUN_1:
       nightfall_op_run_test_after_delay('1');
-    }
-    else
-    {
-      trace_printf("[OP-UI] no-op: F405 mode1 case0 sub%u is not fully ported on F413 yet\r\n",
-                   (unsigned int)sub);
-    }
+      break;
+    case F413_OP_UI_ACTION_TEST_RUN_2:
+      nightfall_op_run_test_after_delay('2');
+      break;
+    case F413_OP_UI_ACTION_TEST_RUN_3:
+      nightfall_op_run_test_after_delay('3');
+      break;
+    case F413_OP_UI_ACTION_TEST_RUN_5:
+      nightfall_op_run_test_after_delay('5');
+      break;
+    case F413_OP_UI_ACTION_IMU_TEST:
+      nightfall_run_imu_test_once();
+      break;
+    case F413_OP_UI_ACTION_ENCODER_TEST:
+      nightfall_run_encoder_test_once();
+      break;
+    case F413_OP_UI_ACTION_WALL_SENSOR_TEST:
+      nightfall_run_wall_sensor_test_once();
+      break;
+    case F413_OP_UI_ACTION_FAN_PWM_TEST:
+      nightfall_run_fan_pwm_test_once();
+      break;
+    case F413_OP_UI_ACTION_TRACE_DUMP_BIN_ALL:
+      nightfall_run_trace_log_dump_bin_all_once();
+      break;
+    case F413_OP_UI_ACTION_NVM_STATUS:
+      nightfall_run_nvm_status_once();
+      break;
+    case F413_OP_UI_ACTION_IDENTITY_STATUS:
+      nightfall_run_identity_status_once();
+      break;
+    case F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS:
+      nightfall_run_sensor_params_status_once();
+      break;
+    case F413_OP_UI_ACTION_CONTROL_TUNE_SUB:
+      nightfall_op_run_tune_sub_after_delay(sub);
+      break;
+    case F413_OP_UI_ACTION_PATH_CASE0_SUB:
+      nightfall_op_run_case0_sub_after_delay(mode, sub);
+      break;
+    case F413_OP_UI_ACTION_NONE:
+    default:
+      break;
   }
-  else
-  {
-    trace_printf("[OP-UI] no-op: unsupported sub selection\r\n");
-  }
-
 }
 
 static void nightfall_op_ui_step(void)
@@ -4702,8 +4620,7 @@ int main(void)
       nightfall_op_can_accept_input,
       nightfall_run_stop_switch_pressed,
       nightfall_op_enter_sensor_active,
-      nightfall_op_execute_case,
-      nightfall_op_execute_sub
+      nightfall_op_execute_action
     };
     f413_op_ui_config(&op_ui_config);
   }

@@ -9,15 +9,37 @@
 #define F413_OP_UI_LEVEL_SUB  (2U)
 
 typedef bool (*f413_op_ui_bool_fn)(void);
-typedef void (*f413_op_ui_execute_case_fn)(uint8_t mode, uint8_t op_case);
-typedef void (*f413_op_ui_execute_sub_fn)(uint8_t mode, uint8_t sub);
+
+typedef enum {
+  F413_OP_UI_ACTION_NONE = 0,
+  F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY,
+  F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY,
+  F413_OP_UI_ACTION_TEST_RUN_1,
+  F413_OP_UI_ACTION_TEST_RUN_2,
+  F413_OP_UI_ACTION_TEST_RUN_3,
+  F413_OP_UI_ACTION_TEST_RUN_5,
+  F413_OP_UI_ACTION_IMU_TEST,
+  F413_OP_UI_ACTION_ENCODER_TEST,
+  F413_OP_UI_ACTION_WALL_SENSOR_TEST,
+  F413_OP_UI_ACTION_FAN_PWM_TEST,
+  F413_OP_UI_ACTION_TRACE_DUMP_BIN_ALL,
+  F413_OP_UI_ACTION_NVM_STATUS,
+  F413_OP_UI_ACTION_IDENTITY_STATUS,
+  F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS,
+  F413_OP_UI_ACTION_CONTROL_TUNE_SUB,
+  F413_OP_UI_ACTION_PATH_CASE0_SUB
+} f413_op_ui_action_t;
+
+typedef void (*f413_op_ui_execute_action_fn)(f413_op_ui_action_t action,
+                                             uint8_t mode,
+                                             uint8_t op_case,
+                                             uint8_t sub);
 
 typedef struct {
   f413_op_ui_bool_fn can_accept_input;
   f413_op_ui_bool_fn stop_switch_pressed;
   f413_op_ui_bool_fn enter_sensor_active;
-  f413_op_ui_execute_case_fn execute_case;
-  f413_op_ui_execute_sub_fn execute_sub;
+  f413_op_ui_execute_action_fn execute_action;
 } f413_op_ui_config_t;
 
 void f413_op_ui_config(const f413_op_ui_config_t* config);
