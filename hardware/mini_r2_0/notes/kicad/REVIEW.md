@@ -6,8 +6,35 @@ KiCad 10.0.3 で Eagle から初回インポートした直後の ERC/DRC レポ
 
 - 初回インポート直後の違反は、変換由来、Eagle 時代の設計ルール差、実設計上の要確認項目に分けて扱います。
 - KiCad 側の `.kicad_dru` は全基板とも `(version 1)` のみで、Eagle の設計ルールは十分には移行されていません。
-- DRC の clearance / solder_mask / silk 系は、まず Eagle 側の製造条件と KiCad の Board Setup を合わせてから再評価します。
+- PCB は通常 JLCPCB へ発注するため、KiCad の Board Setup は JLCPCB の標準的な2層PCB向けに安全側へ揃えます。
+- JLCPCB の注文説明では、1/2層基板でソルダーレジストブリッジを成立させるにはパッド/ピン間隔が通常 0.2 mm 以上必要とされています。
 - 回路図やPCBの自動修正は行わず、KiCad GUIで対象位置を目視確認してから個別に修正します。
+
+## JLCPCB 向け Board Setup
+
+全KiCadプロジェクトの `.kicad_pro` に以下の基準を設定します。
+
+- `min_clearance`: 0.2 mm
+- `min_track_width`: 0.15 mm
+- `min_via_diameter`: 0.5 mm
+- `min_via_annular_width`: 0.1 mm
+- `min_through_hole_diameter`: 0.3 mm
+- `min_hole_clearance`: 0.25 mm
+- `min_hole_to_hole`: 0.25 mm
+- `min_copper_edge_clearance`: 0.2 mm
+- `min_silk_clearance`: 0.1 mm
+- `solder_mask_to_copper_clearance`: 0.0 mm
+- track width presets: 0.15 / 0.2 / 0.25 / 0.5 mm
+- via preset: 0.5 mm diameter / 0.3 mm drill
+
+## GNDゾーン復元
+
+Eagle 原本の本体基板には `GND` / `GND2` のポリゴンが4つありました。
+
+- `GND`: F.Cu / B.Cu
+- `GND2`: F.Cu / B.Cu
+
+KiCad 初回インポート後のPCBには `zone` が0件だったため、これらをKiCadゾーンとして復元し、`kicad-cli pcb drc --refill-zones --save-board` で塗り直しました。
 
 ## 優先度 A: 実接続に影響する可能性がある項目
 
@@ -16,11 +43,11 @@ KiCad 10.0.3 で Eagle から初回インポートした直後の ERC/DRC レポ
 - `shorting_items`: 3件
   - `MOTOR_L_OUT1` と U3 周辺の無ネットポリゴン
   - `MOTOR_R_OUT1` と U2 周辺の無ネットポリゴン
-- `unconnected_items`: 84件
-- `via_dangling`: 69件
-- `track_dangling`: 2件
+- `unconnected_items`: 0件
+- `via_dangling`: 0件
+- JLCPCB 向けルール適用後のDRC: 461 errors / 253 warnings
 
-これらは変換後のポリゴンネット割り当て、GNDベタ、モータドライバ周辺、ビア接続状態を優先確認します。
+GND/GND2ゾーン復元により大量の未接続とGNDビアのdanglingは解消しました。残る `shorting_items` はモータドライバ U2/U3 周辺のポリゴン/パッド接続として、KiCad GUIで実位置を確認します。
 
 ### 回路図 ERC
 
@@ -57,13 +84,13 @@ KiCad 10.0.3 で Eagle から初回インポートした直後の ERC/DRC レポ
 - `text_height`
 - `copper_edge_clearance`
 
-これらは製造先の最小配線幅、最小クリアランス、ソルダーマスク最小幅、シルク条件を KiCad Board Setup に設定したあと再実行します。
+これらはJLCPCB向け Board Setup 適用後も残っています。多くは既存Eagle設計の密度、シルク配置、ソルダーマスクブリッジ条件に由来する可能性があるため、Gerber生成前に個別確認します。
 
 ## 基板別の初回レビュー優先度
 
 | 基板 | 優先確認 |
 | --- | --- |
-| 本体基板 | `shorting_items`, `unconnected_items`, GNDポリゴン, モータドライバU2/U3, IMU/FRAM SPI2, SWD/UART |
+| 本体基板 | `shorting_items`, モータドライバU2/U3, JLCPCBクリアランス, ソルダーマスクブリッジ, IMU/FRAM SPI2, SWD/UART |
 | 左エンコーダ基板 | 電源未駆動、未解決テキスト変数、GND/3V3、外形近傍クリアランス |
 | 右エンコーダ基板 | 電源未駆動、未解決テキスト変数、GND/3V3、外形近傍クリアランス |
 | ST-LINK変換基板 | +5V/+3V3/GNDの電源未駆動、NRST/BOOT0ラベル、ソルダーマスクブリッジ |
@@ -71,8 +98,7 @@ KiCad 10.0.3 で Eagle から初回インポートした直後の ERC/DRC レポ
 
 ## 次の作業
 
-1. Eagle 時代に使用していた製造ルール、または発注先の最小ルールを確認します。
-2. KiCad の Board Setup にクリアランス、トラック幅、ビア、ソルダーマスク、シルク条件を設定します。
-3. 本体基板の `shorting_items` と `unconnected_items` をKiCad GUIで優先確認します。
-4. 電源未駆動は、実回路として問題ない電源ネットに `PWR_FLAG` を追加するか、ERC除外にするかを個別判断します。
-5. レビュー後にERC/DRCを再生成し、レポートを更新します。
+1. 本体基板の `shorting_items` 3件をKiCad GUIで優先確認します。
+2. JLCPCB向けDRCで残る `clearance` / `solder_mask_bridge` を製造上許容できるか確認します。
+3. 電源未駆動は、実回路として問題ない電源ネットに `PWR_FLAG` を追加するか、ERC除外にするかを個別判断します。
+4. レビュー後にERC/DRCを再生成し、レポートを更新します。

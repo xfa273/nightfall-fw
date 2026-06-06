@@ -1,0 +1,314 @@
+** Drc report for UART-Adapter.kicad_pcb **
+** Created on 2026-06-06T14:49:17 **
+** Report includes: Errors, Warnings, Exclusions **
+
+** Found 74 DRC violations **
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 106.2736 mm): PTHパッド 2 [GND] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K2)
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K2)
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K2)
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K2)
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(161.7091 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K2)
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3741 mm, 101.8286 mm): セグメント of K2 、F.Silkscreen 上
+    @(158.1531 mm, 104.3686 mm): R1のリファレンスフィールド
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(152.4381 mm, 105.5116 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 105.0036 mm): PTHパッド P [BOOT0] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(154.4701 mm, 105.7656 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 105.0036 mm): PTHパッド P [BOOT0] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(154.4701 mm, 106.7816 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 107.5436 mm): PTHパッド O [+5V] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(154.4701 mm, 107.2896 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 107.5436 mm): PTHパッド O [+5V] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(152.4381 mm, 102.7176 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 102.4636 mm): PTHパッド S [N$1] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(152.4381 mm, 107.0356 mm): セグメント of POWER0 、F.Silkscreen 上
+    @(153.4541 mm, 107.5436 mm): PTHパッド O [+5V] (POWER0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3741 mm, 108.1786 mm): セグメント of K2 、F.Silkscreen 上
+    @(160.4391 mm, 107.5436 mm): PTHパッド 1 [+5V] (K2)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3741 mm, 108.1786 mm): セグメント of K2 、F.Silkscreen 上
+    @(161.7091 mm, 107.5436 mm): PTHパッド 10 [SWO] (K2)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(162.7741 mm, 101.8286 mm): セグメント of K2 、F.Silkscreen 上
+    @(160.4391 mm, 102.4636 mm): PTHパッド 5 [NRST] (K2)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(162.7741 mm, 101.8286 mm): セグメント of K2 、F.Silkscreen 上
+    @(161.7091 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K2)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 105.6386 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 106.9086 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 105.0036 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.1201 mm, 105.0036 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 104.3686 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 105.6386 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 103.0986 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 104.3686 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 102.4636 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.1201 mm, 102.4636 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 101.8286 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 103.0986 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 103.7336 mm): PTHパッド 2 [GND] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 109.4486 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 107.5436 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 110.0836 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 109.4486 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.2151 mm, 101.8286 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 99.9236 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 100.5586 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 100.5586 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 101.1936 mm): PTHパッド 1 [+5V] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.8501 mm, 107.5436 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 106.9086 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 106.2736 mm): PTHパッド 3 [USART1_RX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 108.1786 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.7551 mm, 108.1786 mm): セグメント of JP1 、F.Silkscreen 上
+    @(147.4851 mm, 108.8136 mm): PTHパッド 4 [USART1_TX] (JP1)
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **
