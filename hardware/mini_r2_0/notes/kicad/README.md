@@ -21,3 +21,14 @@
 - 回路図では未接続ピン、未解決テキスト変数、電源駆動、フットプリントライブラリ参照を優先確認します。
 - PCBではクリアランス、外形、GNDポリゴン、モータドライバ周辺、SWD/UART、IMU/FRAM SPI2 周辺を優先確認します。
 - レビュー完了までは Eagle 原本を併存させます。
+
+## サブ基板
+
+以下の Eagle 原本は本体基板とは独立した小基板として、KiCad でも 1 基板 1 プロジェクトで管理します。
+
+| 用途 | Eagle 原本 | KiCad 出力先 |
+| --- | --- | --- |
+| 左エンコーダ基板 | `cad/eagle/HM_Nightfall-mini-2e_Encoder-PCB-L_v1.sch` / `.brd` | `cad/kicad/HM_Nightfall-mini-2e_Encoder-PCB-L/` |
+| 右エンコーダ基板 | `cad/eagle/HM_Nightfall-mini-2e_Encoder-PCB-R_v1.sch` / `.brd` | `cad/kicad/HM_Nightfall-mini-2e_Encoder-PCB-R/` |
+| ST-LINK 変換基板 | `cad/eagle/STLink-Adapter.sch` / `.brd` | `cad/kicad/STLink-Adapter/` |
+| UART 変換基板 | `cad/eagle/UART-Adapter.sch` / `.brd` | `cad/kicad/UART-Adapter/` |
