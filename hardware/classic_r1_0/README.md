@@ -16,3 +16,4 @@
 - 対応する Eagle プロジェクトは `CM_Nightfall-Air_v1` です。
 - `cad/eagle/` に Eagle 移行前原本を保存しています。
 - OneDrive 側の発注用 zip は未取り込みです。必要になった発注版だけ `cad/export/` または GitHub Release で管理します。
+- Eagle 9.6.2 で生成した参照アーカイブは `cad/export/reference/eagle_archive_20260606/` に保存しています。

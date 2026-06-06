@@ -18,6 +18,7 @@
 - Eagle の `.sch` / `.brd` / `.dru` / `.cam` と KiCad の `.kicad_pro` / `.kicad_sch` / `.kicad_pcb` は原本として管理します。
 - Eagle の `.s#1` / `.b#1` / `.l#1` などの自動バックアップと、KiCad のローカル状態・自動バックアップは管理しません。
 - 発注用の Gerber zip や PDF は、再現性が必要な発注版だけを `cad/export/` または GitHub Release で管理します。
+- Eagle が使えるうちに確保した旧設計の参照アーカイブは `cad/export/reference/eagle_archive_YYYYMMDD/` に置きます。
 - 旧設計や大きな archive は現役基板と分け、必要に応じて別リポジトリ化します。
 
 ## 現在の公式配置

@@ -21,7 +21,9 @@
 
 - 旧 Eagle 発注済み Gerber: `cad/export/reference/eagle_ordered_2026-03-22/HM_Nightfall-mini-2e_v1_eagle_ordered_2026-03-22.zip`
 - KiCad 正式候補 Gerber: `cad/export/jlcpcb/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606.zip`
+- Eagle 参照アーカイブ: `cad/export/reference/eagle_archive_20260606/mini_r2_0_eagle_sources_20260606.zip` / `mini_r2_0_eagle_exports_20260606.zip`
 - KiCad 正式候補は JLCPCB Gerber Viewer で旧 Eagle 発注データと比較し、外形・穴・主要配線・旧 `GTO` 相当のトップシルクが概ね一致することを確認済みです。
+- Eagle 参照アーカイブには、本体基板・左右エンコーダ基板・ST-LINK変換基板・UART変換基板の Eagle 原本、CAM出力、ドリル、ネットリスト、部品表、ボード画像を保存しています。
 
 ## レビュー方針
 
