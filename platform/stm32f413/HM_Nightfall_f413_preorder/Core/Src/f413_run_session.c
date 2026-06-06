@@ -1,0 +1,213 @@
+#include "f413_run_session.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "stm32f4xx_hal.h"
+
+#define F413_RUN_SESSION_GUARD_WALL_CHECK_MS (20U)
+#define F413_RUN_SESSION_GUARD_IMU_CHECK_MS (100U)
+#define F413_RUN_SESSION_GUARD_ENCODER_DELTA_MAX (6000)
+#define F413_RUN_SESSION_TRACE_ABORT_SWITCH_FLAG (0x0100U)
+#define F413_RUN_SESSION_TRACE_ABORT_WALL_FAULT_FLAG (0x0200U)
+#define F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG (0x0400U)
+#define F413_RUN_SESSION_TRACE_ABORT_IMU_FAULT_FLAG (0x0800U)
+
+static f413_run_session_config_t s_config;
+
+static int32_t f413_run_session_abs_i32(int32_t v)
+{
+  return (v < 0) ? -v : v;
+}
+
+static bool f413_run_session_stop_switch_pressed(void)
+{
+  return (s_config.stop_switch_pressed != NULL) && s_config.stop_switch_pressed();
+}
+
+static int16_t f413_run_session_encoder_l_count(void)
+{
+  if (s_config.encoder_l_count == NULL)
+  {
+    return 0;
+  }
+  return s_config.encoder_l_count();
+}
+
+static int16_t f413_run_session_encoder_r_count(void)
+{
+  if (s_config.encoder_r_count == NULL)
+  {
+    return 0;
+  }
+  return s_config.encoder_r_count();
+}
+
+static bool f413_run_session_wall_sensor_ok(void)
+{
+  return (s_config.wall_sensor_ok == NULL) || s_config.wall_sensor_ok();
+}
+
+static bool f413_run_session_imu_ok(void)
+{
+  return (s_config.imu_ok == NULL) || s_config.imu_ok();
+}
+
+static void f413_run_session_trace_auto_step(void)
+{
+  if (s_config.trace_auto_step != NULL)
+  {
+    s_config.trace_auto_step();
+  }
+}
+
+void f413_run_session_config(const f413_run_session_config_t* config)
+{
+  if (config == NULL)
+  {
+    memset(&s_config, 0, sizeof(s_config));
+    return;
+  }
+  s_config = *config;
+}
+
+bool f413_run_session_guard_prepare(f413_run_session_guard_t* guard)
+{
+  if (guard == NULL)
+  {
+    return false;
+  }
+
+  memset(guard, 0, sizeof(*guard));
+  guard->prev_encoder_l = f413_run_session_encoder_l_count();
+  guard->prev_encoder_r = f413_run_session_encoder_r_count();
+  guard->next_wall_check_ms = HAL_GetTick();
+  guard->next_imu_check_ms = HAL_GetTick();
+  return true;
+}
+
+void f413_run_session_guard_cleanup(f413_run_session_guard_t* guard)
+{
+  (void)guard;
+}
+
+f413_run_session_abort_reason_t f413_run_session_guard_check(f413_run_session_guard_t* guard)
+{
+  int16_t enc_l_now;
+  int16_t enc_r_now;
+  int32_t d_l;
+  int32_t d_r;
+  uint32_t now;
+
+  if (guard == NULL)
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+
+  if (f413_run_session_stop_switch_pressed())
+  {
+    return F413_RUN_SESSION_ABORT_SWITCH;
+  }
+
+  enc_l_now = f413_run_session_encoder_l_count();
+  enc_r_now = f413_run_session_encoder_r_count();
+  d_l = (int32_t)enc_l_now - (int32_t)guard->prev_encoder_l;
+  d_r = (int32_t)enc_r_now - (int32_t)guard->prev_encoder_r;
+  guard->prev_encoder_l = enc_l_now;
+  guard->prev_encoder_r = enc_r_now;
+
+  if ((f413_run_session_abs_i32(d_l) > F413_RUN_SESSION_GUARD_ENCODER_DELTA_MAX) ||
+      (f413_run_session_abs_i32(d_r) > F413_RUN_SESSION_GUARD_ENCODER_DELTA_MAX))
+  {
+    return F413_RUN_SESSION_ABORT_ENCODER_FAULT;
+  }
+
+  now = HAL_GetTick();
+  if ((int32_t)(now - guard->next_wall_check_ms) >= 0)
+  {
+    guard->next_wall_check_ms = now + F413_RUN_SESSION_GUARD_WALL_CHECK_MS;
+    if (!f413_run_session_wall_sensor_ok())
+    {
+      return F413_RUN_SESSION_ABORT_WALL_FAULT;
+    }
+  }
+
+  if ((int32_t)(now - guard->next_imu_check_ms) >= 0)
+  {
+    guard->next_imu_check_ms = now + F413_RUN_SESSION_GUARD_IMU_CHECK_MS;
+    if (!f413_run_session_imu_ok())
+    {
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
+  }
+
+  return F413_RUN_SESSION_ABORT_NONE;
+}
+
+f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uint32_t duration_ms,
+                                                                             f413_run_session_guard_t* guard)
+{
+  uint32_t deadline = HAL_GetTick() + duration_ms;
+
+  while ((int32_t)(HAL_GetTick() - deadline) < 0)
+  {
+    f413_run_session_abort_reason_t reason = f413_run_session_guard_check(guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+    f413_run_session_trace_auto_step();
+    HAL_Delay(1U);
+  }
+
+  f413_run_session_trace_auto_step();
+  return f413_run_session_guard_check(guard);
+}
+
+void f413_run_session_wait_with_auto_step(uint32_t duration_ms)
+{
+  uint32_t deadline = HAL_GetTick() + duration_ms;
+
+  while ((int32_t)(HAL_GetTick() - deadline) < 0)
+  {
+    f413_run_session_trace_auto_step();
+    HAL_Delay(1U);
+  }
+  f413_run_session_trace_auto_step();
+}
+
+uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason)
+{
+  switch (reason)
+  {
+    case F413_RUN_SESSION_ABORT_SWITCH:
+      return F413_RUN_SESSION_TRACE_ABORT_SWITCH_FLAG;
+    case F413_RUN_SESSION_ABORT_WALL_FAULT:
+      return F413_RUN_SESSION_TRACE_ABORT_WALL_FAULT_FLAG;
+    case F413_RUN_SESSION_ABORT_ENCODER_FAULT:
+      return F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG;
+    case F413_RUN_SESSION_ABORT_IMU_FAULT:
+      return F413_RUN_SESSION_TRACE_ABORT_IMU_FAULT_FLAG;
+    case F413_RUN_SESSION_ABORT_NONE:
+    default:
+      return 0U;
+  }
+}
+
+const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_t reason)
+{
+  switch (reason)
+  {
+    case F413_RUN_SESSION_ABORT_SWITCH:
+      return "switch pressed";
+    case F413_RUN_SESSION_ABORT_WALL_FAULT:
+      return "wall sensor fault";
+    case F413_RUN_SESSION_ABORT_ENCODER_FAULT:
+      return "encoder jump fault";
+    case F413_RUN_SESSION_ABORT_IMU_FAULT:
+      return "imu fault";
+    case F413_RUN_SESSION_ABORT_NONE:
+    default:
+      return "none";
+  }
+}

@@ -34,6 +34,7 @@
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_op_ui.h"
+#include "f413_run_session.h"
 #include "f413_trace_log.h"
 #include "f413_trace_diag.h"
 #include "f413_wall_sensor.h"
@@ -134,10 +135,6 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_TRACE_MODE_SMOKE_FLAG (0x0020U)
 #define NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG (0x0040U)
 #define NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG (0x0080U)
-#define NIGHTFALL_F413_TRACE_ABORT_SWITCH_FLAG (0x0100U)
-#define NIGHTFALL_F413_TRACE_ABORT_WALL_FAULT_FLAG (0x0200U)
-#define NIGHTFALL_F413_TRACE_ABORT_ENCODER_FAULT_FLAG (0x0400U)
-#define NIGHTFALL_F413_TRACE_ABORT_IMU_FAULT_FLAG (0x0800U)
 #define NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG (0x1000U)
 #define NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG (0x2000U)
 #define NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG (0x4000U)
@@ -150,10 +147,6 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_TURN_MS (120U)
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS (80U)
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_EXPLORE_STEPS (4U)
-#define NIGHTFALL_F413_RUN_GUARD_WALL_CHECK_MS (20U)
-#define NIGHTFALL_F413_RUN_GUARD_IMU_CHECK_MS (100U)
-#define NIGHTFALL_F413_RUN_GUARD_ENCODER_DELTA_MAX (6000)
-#define NIGHTFALL_F413_RUN_GUARD_WALL_SAT_ADC (4090U)
 #define NIGHTFALL_F413_IMU_WHO_AM_I_REG (0x0FU)
 #define NIGHTFALL_F413_IMU_WHO_AM_I_EXPECTED (0x6BU)
 #define NIGHTFALL_F413_IMU_CTRL1_XL (0x10U)
@@ -249,22 +242,13 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
 #define NIGHTFALL_F413_TUNE_TIMEOUT_MS (1500U)
 
-typedef enum
-{
-  NIGHTFALL_RUN_ABORT_NONE = 0,
-  NIGHTFALL_RUN_ABORT_SWITCH,
-  NIGHTFALL_RUN_ABORT_WALL_FAULT,
-  NIGHTFALL_RUN_ABORT_ENCODER_FAULT,
-  NIGHTFALL_RUN_ABORT_IMU_FAULT,
-} nightfall_run_abort_reason_t;
-
-typedef struct
-{
-  int16_t prev_encoder_l;
-  int16_t prev_encoder_r;
-  uint32_t next_wall_check_ms;
-  uint32_t next_imu_check_ms;
-} nightfall_run_guard_t;
+#define NIGHTFALL_RUN_ABORT_NONE F413_RUN_SESSION_ABORT_NONE
+#define NIGHTFALL_RUN_ABORT_SWITCH F413_RUN_SESSION_ABORT_SWITCH
+#define NIGHTFALL_RUN_ABORT_WALL_FAULT F413_RUN_SESSION_ABORT_WALL_FAULT
+#define NIGHTFALL_RUN_ABORT_ENCODER_FAULT F413_RUN_SESSION_ABORT_ENCODER_FAULT
+#define NIGHTFALL_RUN_ABORT_IMU_FAULT F413_RUN_SESSION_ABORT_IMU_FAULT
+typedef f413_run_session_abort_reason_t nightfall_run_abort_reason_t;
+typedef f413_run_session_guard_t nightfall_run_guard_t;
 
 typedef f413_wall_sensor_snapshot_t nightfall_wall_sensor_snapshot_t;
 
@@ -306,6 +290,10 @@ static bool nightfall_f413_path_turn_from_code(uint16_t code,
                                                float* abs_angle_deg);
 #endif
 static bool nightfall_run_stop_switch_pressed(void);
+static int16_t nightfall_run_session_encoder_l_count(void);
+static int16_t nightfall_run_session_encoder_r_count(void);
+static bool nightfall_run_session_wall_sensor_ok(void);
+static bool nightfall_run_session_imu_ok(void);
 static bool nightfall_run_guard_prepare(nightfall_run_guard_t* guard);
 static void nightfall_run_guard_cleanup(nightfall_run_guard_t* guard);
 static nightfall_run_abort_reason_t nightfall_trace_log_wait_with_auto_step_guarded(uint32_t duration_ms,
@@ -3700,14 +3688,7 @@ static void nightfall_run_hardware_smoke_tests_with_trace_session(void)
 
 static void nightfall_trace_log_wait_with_auto_step(uint32_t duration_ms)
 {
-  uint32_t deadline = HAL_GetTick() + duration_ms;
-
-  while ((int32_t)(HAL_GetTick() - deadline) < 0)
-  {
-    nightfall_trace_log_auto_step();
-    HAL_Delay(1U);
-  }
-  nightfall_trace_log_auto_step();
+  f413_run_session_wait_with_auto_step(duration_ms);
 }
 
 static bool nightfall_run_stop_switch_pressed(void)
@@ -3715,9 +3696,33 @@ static bool nightfall_run_stop_switch_pressed(void)
   return f413_hw_stop_switch_pressed();
 }
 
-static int32_t nightfall_abs_i32(int32_t v)
+static int16_t nightfall_run_session_encoder_l_count(void)
 {
-  return (v < 0) ? -v : v;
+  return (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
+}
+
+static int16_t nightfall_run_session_encoder_r_count(void)
+{
+  return (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
+}
+
+static bool nightfall_run_session_wall_sensor_ok(void)
+{
+  nightfall_wall_sensor_snapshot_t wall;
+
+  if (!nightfall_wall_sensor_read_snapshot(&wall))
+  {
+    return false;
+  }
+  return !wall.saturated;
+}
+
+static bool nightfall_run_session_imu_ok(void)
+{
+  uint8_t who = 0U;
+
+  return nightfall_imu_read_reg(NIGHTFALL_F413_IMU_WHO_AM_I_REG, &who) &&
+         (who == NIGHTFALL_F413_IMU_WHO_AM_I_EXPECTED);
 }
 
 static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev)
@@ -3727,140 +3732,28 @@ static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev)
 
 static uint16_t nightfall_run_abort_reason_to_trace_flag(nightfall_run_abort_reason_t reason)
 {
-  switch (reason)
-  {
-    case NIGHTFALL_RUN_ABORT_SWITCH:
-      return NIGHTFALL_F413_TRACE_ABORT_SWITCH_FLAG;
-    case NIGHTFALL_RUN_ABORT_WALL_FAULT:
-      return NIGHTFALL_F413_TRACE_ABORT_WALL_FAULT_FLAG;
-    case NIGHTFALL_RUN_ABORT_ENCODER_FAULT:
-      return NIGHTFALL_F413_TRACE_ABORT_ENCODER_FAULT_FLAG;
-    case NIGHTFALL_RUN_ABORT_IMU_FAULT:
-      return NIGHTFALL_F413_TRACE_ABORT_IMU_FAULT_FLAG;
-    case NIGHTFALL_RUN_ABORT_NONE:
-    default:
-      return 0U;
-  }
+  return f413_run_session_abort_reason_to_trace_flag(reason);
 }
 
 static const char* nightfall_run_abort_reason_to_text(nightfall_run_abort_reason_t reason)
 {
-  switch (reason)
-  {
-    case NIGHTFALL_RUN_ABORT_SWITCH:
-      return "switch pressed";
-    case NIGHTFALL_RUN_ABORT_WALL_FAULT:
-      return "wall sensor fault";
-    case NIGHTFALL_RUN_ABORT_ENCODER_FAULT:
-      return "encoder jump fault";
-    case NIGHTFALL_RUN_ABORT_IMU_FAULT:
-      return "imu fault";
-    case NIGHTFALL_RUN_ABORT_NONE:
-    default:
-      return "none";
-  }
+  return f413_run_session_abort_reason_to_text(reason);
 }
 
 static bool nightfall_run_guard_prepare(nightfall_run_guard_t* guard)
 {
-  if (guard == NULL)
-  {
-    return false;
-  }
-
-  memset(guard, 0, sizeof(*guard));
-  guard->prev_encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-  guard->prev_encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
-  guard->next_wall_check_ms = HAL_GetTick();
-  guard->next_imu_check_ms = HAL_GetTick();
-  return true;
+  return f413_run_session_guard_prepare(guard);
 }
 
 static void nightfall_run_guard_cleanup(nightfall_run_guard_t* guard)
 {
-  (void)guard;
-}
-
-static nightfall_run_abort_reason_t nightfall_run_guard_check(nightfall_run_guard_t* guard)
-{
-  int16_t enc_l_now;
-  int16_t enc_r_now;
-  int32_t d_l;
-  int32_t d_r;
-  uint32_t now;
-
-  if (guard == NULL)
-  {
-    return NIGHTFALL_RUN_ABORT_IMU_FAULT;
-  }
-
-  if (nightfall_run_stop_switch_pressed())
-  {
-    return NIGHTFALL_RUN_ABORT_SWITCH;
-  }
-
-  enc_l_now = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-  enc_r_now = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
-  d_l = (int32_t)enc_l_now - (int32_t)guard->prev_encoder_l;
-  d_r = (int32_t)enc_r_now - (int32_t)guard->prev_encoder_r;
-  guard->prev_encoder_l = enc_l_now;
-  guard->prev_encoder_r = enc_r_now;
-
-  if ((nightfall_abs_i32(d_l) > NIGHTFALL_F413_RUN_GUARD_ENCODER_DELTA_MAX) ||
-      (nightfall_abs_i32(d_r) > NIGHTFALL_F413_RUN_GUARD_ENCODER_DELTA_MAX))
-  {
-    return NIGHTFALL_RUN_ABORT_ENCODER_FAULT;
-  }
-
-  now = HAL_GetTick();
-  if ((int32_t)(now - guard->next_wall_check_ms) >= 0)
-  {
-    nightfall_wall_sensor_snapshot_t wall;
-
-    guard->next_wall_check_ms = now + NIGHTFALL_F413_RUN_GUARD_WALL_CHECK_MS;
-    if (!nightfall_wall_sensor_read_snapshot(&wall))
-    {
-      return NIGHTFALL_RUN_ABORT_WALL_FAULT;
-    }
-    if (wall.saturated)
-    {
-      return NIGHTFALL_RUN_ABORT_WALL_FAULT;
-    }
-  }
-
-  if ((int32_t)(now - guard->next_imu_check_ms) >= 0)
-  {
-    uint8_t who = 0U;
-
-    guard->next_imu_check_ms = now + NIGHTFALL_F413_RUN_GUARD_IMU_CHECK_MS;
-    if (!nightfall_imu_read_reg(NIGHTFALL_F413_IMU_WHO_AM_I_REG, &who) ||
-        (who != NIGHTFALL_F413_IMU_WHO_AM_I_EXPECTED))
-    {
-      return NIGHTFALL_RUN_ABORT_IMU_FAULT;
-    }
-  }
-
-  return NIGHTFALL_RUN_ABORT_NONE;
+  f413_run_session_guard_cleanup(guard);
 }
 
 static nightfall_run_abort_reason_t nightfall_trace_log_wait_with_auto_step_guarded(uint32_t duration_ms,
                                                                                      nightfall_run_guard_t* guard)
 {
-  uint32_t deadline = HAL_GetTick() + duration_ms;
-
-  while ((int32_t)(HAL_GetTick() - deadline) < 0)
-  {
-    nightfall_run_abort_reason_t reason = nightfall_run_guard_check(guard);
-    if (reason != NIGHTFALL_RUN_ABORT_NONE)
-    {
-      return reason;
-    }
-    nightfall_trace_log_auto_step();
-    HAL_Delay(1U);
-  }
-
-  nightfall_trace_log_auto_step();
-  return nightfall_run_guard_check(guard);
+  return f413_run_session_wait_with_auto_step_guarded(duration_ms, guard);
 }
 
 static void nightfall_run_idle_trace_session_once(void)
@@ -4623,6 +4516,17 @@ int main(void)
       nightfall_op_execute_action
     };
     f413_op_ui_config(&op_ui_config);
+  }
+  {
+    const f413_run_session_config_t run_session_config = {
+      nightfall_run_stop_switch_pressed,
+      nightfall_run_session_encoder_l_count,
+      nightfall_run_session_encoder_r_count,
+      nightfall_run_session_wall_sensor_ok,
+      nightfall_run_session_imu_ok,
+      nightfall_trace_log_auto_step
+    };
+    f413_run_session_config(&run_session_config);
   }
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);

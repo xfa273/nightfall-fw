@@ -99,6 +99,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_log.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_sensor.c
