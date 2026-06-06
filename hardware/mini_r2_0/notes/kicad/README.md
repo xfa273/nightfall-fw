@@ -32,3 +32,8 @@
 | 右エンコーダ基板 | `cad/eagle/HM_Nightfall-mini-2e_Encoder-PCB-R_v1.sch` / `.brd` | `cad/kicad/HM_Nightfall-mini-2e_Encoder-PCB-R/` |
 | ST-LINK 変換基板 | `cad/eagle/STLink-Adapter.sch` / `.brd` | `cad/kicad/STLink-Adapter/` |
 | UART 変換基板 | `cad/eagle/UART-Adapter.sch` / `.brd` | `cad/kicad/UART-Adapter/` |
+
+### 左エンコーダ基板 初回チェック結果
+
+- ERC: 7 errors / 7 warnings
+- DRC: 12 errors / 13 warnings

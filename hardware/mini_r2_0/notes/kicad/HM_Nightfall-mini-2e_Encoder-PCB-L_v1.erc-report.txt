@@ -1,0 +1,54 @@
+ERC report (2026-06-06T14:23:52, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(124.46 mm, 129.54 mm): シンボル EC_L1 [PTR1TP06SQ]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(129.54 mm, 129.54 mm): シンボル EC_L2 [PTR1TP06SQ]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(134.62 mm, 129.54 mm): シンボル EC_L3 [PTR1TP06SQ]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(124.46 mm, 132.08 mm): Symbol EC_L1 ピン TP [TP, 入力, ライン]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(139.70 mm, 129.54 mm): シンボル EC_L4 [PTR1TP06SQ]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(129.54 mm, 132.08 mm): Symbol EC_L2 ピン TP [TP, 入力, ライン]
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(167.64 mm, 66.04 mm): 水平ワイヤー, 長さ 5.08 mm
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(121.92 mm, 66.04 mm): シンボル IC1 [NJL5820R-TE4]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(124.46 mm, 129.54 mm): シンボル EC_L1 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(129.54 mm, 129.54 mm): シンボル EC_L2 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(134.62 mm, 129.54 mm): シンボル EC_L3 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(139.70 mm, 129.54 mm): シンボル EC_L4 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(144.78 mm, 78.74 mm): シンボル C1 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_Encoder-PCB-L_v1' が含まれていません
+    ; warning
+    @(177.80 mm, 66.04 mm): シンボル R1 [R-EU_R0402]
+
+ ** ERC messages: 14  Errors 7  Warnings 7
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters
