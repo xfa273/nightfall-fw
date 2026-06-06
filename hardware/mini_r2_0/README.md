@@ -17,4 +17,6 @@ STM32F413 系 mini 新機体 (`mini_r2_0`) のハードウェア情報です。
 - 以後の更新は `hardware/mini_r2_0/` 側を正として管理します。
 - 対応する Eagle プロジェクトは `HM_Nightfall-mini-2e` です。
 - 対応するソフトウェア側プロファイルは `f413_preorder` です。
-- KiCad 移行中は Eagle 原本と KiCad 原本を併存させ、変換確認後は `cad/kicad/` を編集正とします。
+- KiCad 10.0.3 で `cad/kicad/HM_Nightfall-mini-2e/` へ初回インポート済みです。
+- 初回インポート結果は `notes/kicad/` の ERC/DRC レポートを確認しながらレビューします。
+- KiCad レビュー完了までは Eagle 原本と KiCad 原本を併存させ、確認後に `cad/kicad/` を編集正とします。

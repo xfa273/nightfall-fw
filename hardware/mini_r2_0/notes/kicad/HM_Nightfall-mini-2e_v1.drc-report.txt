@@ -1,0 +1,3335 @@
+** Drc report for HM_Nightfall-mini-2e_v1.kicad_pcb **
+** Created on 2026-06-06T14:10:01 **
+** Report includes: Errors, Warnings, Exclusions **
+
+** Found 766 DRC violations **
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(147.3411 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.2500 mm )
+    @(147.3411 mm, 105.7536 mm): パッド 4 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1730 mm)
+    Local override; error
+    @(145.3261 mm, 100.5586 mm): 配線 [GND] ( F.Cu 上、長さ: 0.6350 mm )
+    @(144.6761 mm, 99.6696 mm): パッド 1 [N$5] - C_MCU-C0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1878 mm)
+    Local override; error
+    @(137.0711 mm, 87.0966 mm): 配線 [GND] ( F.Cu 上、長さ: 2.1553 mm )
+    @(138.8491 mm, 87.8586 mm): ビア [IR_FL] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+    @(148.5011 mm, 105.9136 mm): 配線 [GND] ( F.Cu 上、長さ: 0.2540 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.4137 mm, 100.3087 mm): 配線 [GND] ( F.Cu 上、長さ: 2.7191 mm )
+    @(160.8201 mm, 98.1456 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.3592 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(154.5971 mm, 108.9406 mm): 配線 [NRST] ( B.Cu 上、長さ: 0.8890 mm )
+    @(155.1051 mm, 109.5756 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1920 mm)
+    Local override; error
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(158.9151 mm, 117.1956 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 8.0822 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.2603 mm, 115.6858 mm): 配線 [MOTOR_R_DIR] ( B.Cu 上、長さ: 1.6003 mm )
+    @(140.5001 mm, 116.5606 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 3.3020 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(139.7381 mm, 116.4336 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 0.8980 mm )
+    @(139.6111 mm, 114.7826 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 0.8890 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(160.4391 mm, 119.7356 mm): ビア [LED_2] (F.Cu - B.Cu 上)
+    @(160.1851 mm, 119.1006 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 0.6350 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(154.7217 mm, 100.0506 mm): ビア [LED_2] (F.Cu - B.Cu 上)
+    @(154.0891 mm, 98.3000 mm): 配線 [USART1_RX] ( F.Cu 上、長さ: 2.3855 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.5501 mm, 104.7496 mm): 配線 [SWO] ( B.Cu 上、長さ: 12.3190 mm )
+    @(160.2077 mm, 114.0206 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.8971 mm, 125.1712 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.7874 mm )
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1843 mm)
+    Local override; error
+    @(142.3933 mm, 118.8496 mm): パッド 7 [<no net>] - U2 ( F.Cu 上)
+    @(141.8932 mm, 119.3507 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.9036 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1899 mm)
+    Local override; error
+    @(154.7217 mm, 100.0506 mm): ビア [LED_2] (F.Cu - B.Cu 上)
+    @(154.0891 mm, 100.6856 mm): ビア [USART1_RX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(143.6751 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.8980 mm )
+    @(142.5431 mm, 116.9495 mm): 配線 [MOTOR_R_OUT1] ( F.Cu 上、長さ: 2.1401 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.3121 mm, 107.2896 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+    @(160.9697 mm, 107.0172 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 2.6628 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(154.7241 mm, 100.0530 mm): 配線 [LED_2] ( B.Cu 上、長さ: 1.8359 mm )
+    @(154.0891 mm, 100.6856 mm): ビア [USART1_RX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(160.3121 mm, 118.5926 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.1430 mm )
+    @(158.5341 mm, 117.4496 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 2.3349 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1972 mm)
+    Local override; error
+    @(162.9565 mm, 89.3826 mm): ビア [N$28] (F.Cu - B.Cu 上)
+    @(160.0581 mm, 87.4776 mm): 配線 [N$18] ( F.Cu 上、長さ: 4.3105 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.7431 mm, 117.4496 mm): 配線 [+5V] ( F.Cu 上、長さ: 1.0050 mm )
+    @(140.7431 mm, 117.9497 mm): 配線 [MOTOR_R_OUT2] ( F.Cu 上、長さ: 1.8000 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(142.5431 mm, 123.5377 mm): 配線 [MOTOR_L_OUT2] ( F.Cu 上、長さ: 2.1401 mm )
+    @(143.6867 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.8980 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.6931 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
+    @(142.5431 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1436 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+    @(142.6845 mm, 125.1712 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.0417 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1563 mm)
+    Local override; error
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+    @(141.8932 mm, 124.4376 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.7297 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(142.5431 mm, 116.9495 mm): 配線 [MOTOR_R_OUT1] ( F.Cu 上、長さ: 2.1401 mm )
+    @(142.5431 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1320 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1730 mm)
+    Local override; error
+    @(145.3261 mm, 99.9236 mm): 配線 [GND] ( F.Cu 上、長さ: 0.3592 mm )
+    @(144.6761 mm, 99.6696 mm): パッド 1 [N$5] - C_MCU-C0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.7911 mm, 76.6236 mm): 配線 [GND] ( F.Cu 上、長さ: 5.3340 mm )
+    @(147.7391 mm, 78.9766 mm): 配線 [N$16] ( F.Cu 上、長さ: 0.7659 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.3411 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.6201 mm )
+    @(148.0467 mm, 104.5143 mm): 配線 [SPI2_MOSI] ( F.Cu 上、長さ: 0.5514 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1783 mm)
+    Local override; error
+    @(155.9941 mm, 113.5126 mm): 配線 [GND] ( F.Cu 上、長さ: 0.3592 mm )
+    @(155.4099 mm, 113.0046 mm): パッド 3 [N$23] - UBUZ0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1526 mm)
+    Local override; error
+    @(159.6771 mm, 100.9396 mm): 配線 [GND] ( F.Cu 上、長さ: 0.4381 mm )
+    @(159.6771 mm, 100.0506 mm): パッド TP [+3V3] - EC_R1 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1735 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+    @(147.9612 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.4605 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.1975 mm, 78.4350 mm): 配線 [N$16] ( F.Cu 上、長さ: 3.1738 mm )
+    @(146.0881 mm, 75.9206 mm): 配線 [GND] ( F.Cu 上、長さ: 0.9943 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+    @(148.2918 mm, 105.3292 mm): 配線 [GND] ( F.Cu 上、長さ: 0.6552 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+    @(147.3411 mm, 104.7536 mm): 配線 [GND] ( F.Cu 上、長さ: 0.2500 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1526 mm)
+    Local override; error
+    @(159.9869 mm, 100.6298 mm): 配線 [GND] ( F.Cu 上、長さ: 0.1057 mm )
+    @(159.6771 mm, 100.0506 mm): パッド TP [+3V3] - EC_R1 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.5001 mm, 113.2586 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 1.9757 mm )
+    @(141.1351 mm, 113.8936 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 0.6350 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.8041 mm, 103.5480 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+    @(159.6771 mm, 102.7176 mm): パッド TP [EC_R_B] - EC_R3 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.7431 mm, 123.0376 mm): 配線 [+5V] ( F.Cu 上、長さ: 1.0050 mm )
+    @(140.6931 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(159.0421 mm, 117.3226 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.7961 mm )
+    @(158.5341 mm, 117.4496 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 2.3349 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.9917 mm, 100.5586 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.2676 mm )
+    @(155.3591 mm, 101.4476 mm): ビア [SWDIO] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.2499 mm, 120.1138 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(147.4851 mm, 120.2436 mm): 配線 [+5V] ( B.Cu 上、長さ: 2.1553 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1920 mm)
+    Local override; error
+    @(165.9001 mm, 122.9106 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.9757 mm )
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(165.2651 mm, 117.9576 mm): ビア [SWDIO] (F.Cu - B.Cu 上)
+    @(166.3855 mm, 117.3000 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.8824 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(155.9917 mm, 101.8262 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 4.3139 mm )
+    @(159.5501 mm, 104.7496 mm): 配線 [SWO] ( B.Cu 上、長さ: 4.1309 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(159.5501 mm, 104.7496 mm): 配線 [SWO] ( B.Cu 上、長さ: 4.1309 mm )
+    @(159.0421 mm, 104.8766 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 12.4460 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.3101 mm, 114.7826 mm): 配線 [LED_3] ( F.Cu 上、長さ: 10.5434 mm )
+    @(144.7165 mm, 104.8512 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 0.8621 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7165 mm, 114.6143 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 9.7631 mm )
+    @(146.5961 mm, 117.0686 mm): 配線 [LED_3] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(139.8651 mm, 125.1966 mm): 配線 [MOTOR_L_DIR] ( F.Cu 上、長さ: 1.4368 mm )
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.0025 mm, 116.9003 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 3.2329 mm )
+    @(146.5961 mm, 124.1806 mm): 配線 [LED_3] ( F.Cu 上、長さ: 7.1120 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1940 mm)
+    Local override; error
+    @(145.3261 mm, 104.2416 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+    @(144.4347 mm, 104.1146 mm): ビア [LED_3] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1803 mm)
+    Local override; error
+    @(152.0571 mm, 90.2716 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(152.6270 mm, 90.6526 mm): 配線 [SWO] ( F.Cu 上、長さ: 0.8328 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(153.4597 mm, 90.6526 mm): 配線 [SWO] ( F.Cu 上、長さ: 1.7881 mm )
+    @(153.3271 mm, 91.4146 mm): ビア [LED_1] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.2321 mm, 116.3066 mm): 配線 [+3V3] ( F.Cu 上、長さ: 6.2310 mm )
+    @(154.8511 mm, 116.9392 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(152.8191 mm, 98.4443 mm): 配線 [FRAM_CS] ( F.Cu 上、長さ: 3.5113 mm )
+    @(153.4541 mm, 101.3206 mm): ビア [USART1_TX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(143.4211 mm, 124.4346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(143.0401 mm, 123.7996 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.7620 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1858 mm)
+    Local override; error
+    @(138.2221 mm, 116.4336 mm): パッド 2 [+5V] - R4 ( F.Cu 上)
+    @(138.4681 mm, 117.3226 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(130.4647 mm, 118.9656 mm): 配線 [GND2] ( B.Cu 上、長さ: 0.5241 mm )
+    @(129.8321 mm, 119.2276 mm): ビア [N$11] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(129.8321 mm, 119.2276 mm): ビア [N$11] (F.Cu - B.Cu 上)
+    @(130.4647 mm, 122.0597 mm): 配線 [GND2] ( B.Cu 上、長さ: 3.0942 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(129.8321 mm, 119.2276 mm): ビア [N$11] (F.Cu - B.Cu 上)
+    @(130.0941 mm, 118.5950 mm): 配線 [GND2] ( B.Cu 上、長さ: 0.5241 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.4691 mm, 120.7516 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.7184 mm )
+    @(146.8088 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.5580 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.0071 mm, 122.0216 mm): PTHパッド 2 [N$7] (P1)
+    @(132.7126 mm, 124.3076 mm): 配線 [GND2] ( B.Cu 上、長さ: 3.1790 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.0344 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.2257 mm )
+    @(147.4851 mm, 120.2436 mm): 配線 [+5V] ( B.Cu 上、長さ: 2.1553 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(152.0571 mm, 90.2716 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(151.5491 mm, 89.6140 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 1.6284 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.1051 mm, 87.2236 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(154.8716 mm, 87.9201 mm): 配線 [LED_1] ( F.Cu 上、長さ: 0.5998 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(152.0571 mm, 90.2716 mm): 配線 [IR_R] ( B.Cu 上、長さ: 4.3105 mm )
+    @(154.8716 mm, 88.3871 mm): ビア [LED_1] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.4281 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.7961 mm )
+    @(145.2597 mm, 83.9470 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.6100 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(140.6271 mm, 84.4296 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.5388 mm )
+    @(141.1351 mm, 83.2358 mm): パッド 3 [N$10] - UL0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.8812 mm, 88.9709 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.7266 mm )
+    @(145.9611 mm, 88.7578 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.7871 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.3675 mm, 87.1390 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.4675 mm )
+    @(147.1045 mm, 84.5562 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 2.4206 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(141.0081 mm, 84.0486 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.6510 mm )
+    @(141.1351 mm, 83.2358 mm): パッド 3 [N$10] - UL0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.6981 mm, 84.8106 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.9979 mm )
+    @(147.1045 mm, 84.5562 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 2.4206 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.1045 mm, 86.9768 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.4675 mm )
+    @(146.3675 mm, 88.4571 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.3181 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.2597 mm, 83.9470 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.6100 mm )
+    @(143.1671 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 2.2610 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(135.6487 mm, 83.3882 mm): 配線 [SENSOR_FL] ( B.Cu 上、長さ: 12.2800 mm )
+    @(134.9911 mm, 88.1126 mm): ビア [N$8] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.7911 mm, 76.6236 mm): 配線 [GND] ( F.Cu 上、長さ: 5.3340 mm )
+    @(147.1975 mm, 78.4350 mm): 配線 [N$16] ( F.Cu 上、長さ: 3.1738 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1822 mm)
+    Local override; error
+    @(145.4805 mm, 87.8312 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 1.1532 mm )
+    @(144.8181 mm, 88.6206 mm): ビア [LED_3] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.0697 mm, 85.8186 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.5241 mm )
+    @(144.4371 mm, 86.0806 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.0697 mm, 86.3426 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.5241 mm )
+    @(144.4371 mm, 86.0806 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.5763 mm, 90.6018 mm): 配線 [LED_3] ( B.Cu 上、長さ: 5.2804 mm )
+    @(144.7927 mm, 94.1832 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 5.3882 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.9827 mm, 90.3732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 2.0222 mm )
+    @(143.0848 mm, 85.6742 mm): 配線 [LED_3] ( B.Cu 上、長さ: 3.5475 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1573 mm)
+    Local override; error
+    @(144.1831 mm, 84.8106 mm): ビア [+3V3] (F.Cu - B.Cu 上)
+    @(144.1751 mm, 85.4480 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.3199 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.4371 mm, 86.0806 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+    @(144.8181 mm, 86.5942 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.3558 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1593 mm)
+    Local override; error
+    @(144.4371 mm, 86.0806 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+    @(144.8181 mm, 88.6206 mm): 配線 [LED_3] ( B.Cu 上、長さ: 2.0264 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(144.3101 mm, 103.3526 mm): 配線 [LED_3] ( B.Cu 上、長さ: 9.0170 mm )
+    @(144.7927 mm, 94.1832 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 5.3882 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.9827 mm, 88.3510 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 3.2108 mm )
+    @(143.9489 mm, 85.6742 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.8641 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7927 mm, 94.1832 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 5.3882 mm )
+    @(140.5763 mm, 88.1827 mm): 配線 [LED_3] ( B.Cu 上、長さ: 2.4191 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(144.1831 mm, 84.8106 mm): ビア [+3V3] (F.Cu - B.Cu 上)
+    @(144.6991 mm, 85.4480 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.5241 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(153.1775 mm, 89.6140 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 5.9589 mm )
+    @(153.3271 mm, 89.1286 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.4658 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(153.3271 mm, 89.1286 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.4658 mm )
+    @(157.3911 mm, 93.8276 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 6.7310 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(153.3271 mm, 89.1286 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.4658 mm )
+    @(151.5491 mm, 89.6140 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 1.6284 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1646 mm)
+    Local override; error
+    @(158.7881 mm, 102.4862 mm): ビア [EC_R_B] (F.Cu - B.Cu 上)
+    @(157.3911 mm, 100.5586 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 1.7961 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(158.7881 mm, 102.4862 mm): ビア [EC_R_B] (F.Cu - B.Cu 上)
+    @(158.6611 mm, 101.8286 mm): 配線 [EC_R_A] ( F.Cu 上、長さ: 1.0160 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(153.3271 mm, 89.1286 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.4658 mm )
+    @(158.3055 mm, 93.4720 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 7.2201 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(158.3055 mm, 93.4720 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 7.2201 mm )
+    @(157.8991 mm, 93.7006 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.3500 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(158.3055 mm, 93.4720 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 7.2201 mm )
+    @(151.3225 mm, 89.1286 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 2.0046 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(139.7381 mm, 101.8286 mm): 配線 [EC_L_A] ( F.Cu 上、長さ: 2.1553 mm )
+    @(141.7701 mm, 100.4316 mm): 配線 [EC_L_B] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(137.3251 mm, 101.8286 mm): 配線 [EC_L_A] ( F.Cu 上、長さ: 2.4130 mm )
+    @(141.7701 mm, 100.4316 mm): 配線 [EC_L_B] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.7701 mm, 100.4316 mm): 配線 [EC_L_B] ( F.Cu 上、長さ: 3.2329 mm )
+    @(141.2621 mm, 97.7748 mm): 配線 [EC_L_A] ( F.Cu 上、長さ: 2.5298 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.0109 mm, 102.0854 mm): ビア [MOTOR_L_DIR] (F.Cu - B.Cu 上)
+    @(141.7701 mm, 100.4316 mm): 配線 [EC_L_B] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1863 mm)
+    Local override; error
+    @(149.2631 mm, 78.9766 mm): 配線 [N$30] ( F.Cu 上、長さ: 0.7659 mm )
+    @(150.2111 mm, 78.2656 mm): 配線 [LED_1] ( F.Cu 上、長さ: 1.5149 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(150.2111 mm, 78.2656 mm): 配線 [LED_1] ( F.Cu 上、長さ: 1.5149 mm )
+    @(149.8047 mm, 78.4350 mm): 配線 [N$30] ( F.Cu 上、長さ: 3.1738 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(150.9141 mm, 83.6676 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 2.9210 mm )
+    @(150.4061 mm, 84.3026 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1703 mm)
+    Local override; error
+    @(155.1559 mm, 84.2377 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.0141 mm )
+    @(155.6131 mm, 84.8614 mm): パッド 1 [IR_R] - UR0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1672 mm)
+    Local override; error
+    @(152.0571 mm, 90.2716 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(151.8338 mm, 91.4457 mm): 配線 [SWO] ( F.Cu 上、長さ: 1.1217 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1916 mm)
+    Local override; error
+    @(152.8191 mm, 101.9556 mm): ビア [FRAM_CS] (F.Cu - B.Cu 上)
+    @(153.4541 mm, 101.3206 mm): ビア [USART1_TX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(152.8191 mm, 101.9556 mm): ビア [FRAM_CS] (F.Cu - B.Cu 上)
+    @(152.1841 mm, 101.1936 mm): 配線 [SPI2_MOSI] ( B.Cu 上、長さ: 1.9050 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(156.2481 mm, 105.7656 mm): 配線 [FRAM_CS] ( B.Cu 上、長さ: 4.8493 mm )
+    @(154.1321 mm, 104.5796 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.1045 mm, 86.9768 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.4675 mm )
+    @(146.3675 mm, 87.1390 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.4675 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(155.9917 mm, 100.5586 mm): ビア [SWCLK] (F.Cu - B.Cu 上)
+    @(156.6291 mm, 97.7646 mm): 配線 [SWO] ( F.Cu 上、長さ: 3.6830 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(157.8991 mm, 84.0486 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 2.5541 mm )
+    @(155.6131 mm, 84.8614 mm): パッド 1 [IR_R] - UR0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(156.6291 mm, 101.4476 mm): ビア [SWO] (F.Cu - B.Cu 上)
+    @(155.9917 mm, 100.5586 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 1.2676 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.3450 mm, 84.0486 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.2674 mm )
+    @(155.6131 mm, 84.8614 mm): パッド 1 [IR_R] - UR0 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1730 mm)
+    Local override; error
+    @(145.9761 mm, 100.8126 mm): パッド 1 [+3V3] - C_MCU-M0 ( F.Cu 上)
+    @(145.1991 mm, 100.6856 mm): 配線 [GND] ( F.Cu 上、長さ: 0.1796 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(156.5021 mm, 109.9566 mm): 配線 [NRST] ( B.Cu 上、長さ: 8.2550 mm )
+    @(163.4847 mm, 125.8292 mm): 配線 [+3V3] ( B.Cu 上、長さ: 10.7729 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1703 mm)
+    Local override; error
+    @(155.6131 mm, 84.8614 mm): パッド 1 [IR_R] - UR0 ( F.Cu 上)
+    @(155.1559 mm, 84.2518 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.0718 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.8201 mm, 103.4620 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 5.3164 mm )
+    @(160.0926 mm, 100.6298 mm): 配線 [GND] ( F.Cu 上、長さ: 0.4541 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(156.6291 mm, 101.4476 mm): 配線 [SWO] ( B.Cu 上、長さ: 0.3810 mm )
+    @(155.9917 mm, 101.8262 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 4.3139 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(162.4711 mm, 119.6086 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 2.3349 mm )
+    @(162.8521 mm, 118.5926 mm): 配線 [SWCLK] ( F.Cu 上、長さ: 1.8280 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1808 mm)
+    Local override; error
+    @(139.1031 mm, 122.1140 mm): 配線 [+5V] ( F.Cu 上、長さ: 0.0924 mm )
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(152.9461 mm, 95.6056 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 3.4125 mm )
+    @(153.8351 mm, 94.7166 mm): 配線 [SWCLK] ( F.Cu 上、長さ: 1.1430 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(149.9009 mm, 101.5774 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(150.1521 mm, 100.4316 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 1.1674 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(155.3591 mm, 98.0186 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 3.4290 mm )
+    @(154.7217 mm, 100.0506 mm): ビア [LED_2] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(162.8521 mm, 118.5926 mm): 配線 [SWCLK] ( F.Cu 上、長さ: 1.8280 mm )
+    @(164.1221 mm, 117.9576 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 1.1430 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1844 mm)
+    Local override; error
+    @(149.9009 mm, 101.5774 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(148.8741 mm, 100.8126 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 0.6286 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(148.3741 mm, 97.8912 mm): 配線 [+3V3] ( F.Cu 上、長さ: 1.1284 mm )
+    @(149.0091 mm, 98.6536 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.4281 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.7961 mm )
+    @(147.1045 mm, 84.5562 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 2.4206 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(149.6611 mm, 105.7536 mm): 配線 [+3V3] ( F.Cu 上、長さ: 2.0460 mm )
+    @(149.6611 mm, 105.2536 mm): パッド 9 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(149.0011 mm, 101.5826 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 2.5110 mm )
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1735 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+    @(148.2868 mm, 105.3292 mm): 配線 [GND] ( F.Cu 上、長さ: 0.0050 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(142.7861 mm, 112.6236 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7184 mm )
+    @(142.2781 mm, 112.4966 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 0.3233 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1969 mm)
+    Local override; error
+    @(163.2331 mm, 136.3726 mm): 配線 [NRST] ( F.Cu 上、長さ: 0.5388 mm )
+    @(162.7251 mm, 135.6226 mm): パッド A [N$36] - LED2 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.3675 mm, 87.1390 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.4675 mm )
+    @(146.7739 mm, 88.1564 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.8490 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1774 mm)
+    Local override; error
+    @(149.9009 mm, 101.5774 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(149.3186 mm, 101.2571 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 0.0080 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1808 mm)
+    Local override; error
+    @(139.1213 mm, 122.1322 mm): 配線 [+5V] ( F.Cu 上、長さ: 0.0257 mm )
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1877 mm)
+    Local override; error
+    @(142.8345 mm, 89.2072 mm): パッド 1 [+3V3] - C_MCU0 ( F.Cu 上)
+    @(143.9402 mm, 89.1331 mm): 配線 [NRST] ( F.Cu 上、長さ: 0.2606 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(142.7861 mm, 112.6236 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7184 mm )
+    @(142.2781 mm, 98.1730 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 14.3235 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1774 mm)
+    Local override; error
+    @(149.9009 mm, 101.5774 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(149.3266 mm, 101.2571 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 0.4603 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(154.7241 mm, 100.0530 mm): 配線 [LED_2] ( B.Cu 上、長さ: 1.8359 mm )
+    @(155.3591 mm, 101.4476 mm): ビア [SWDIO] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(150.6601 mm, 98.4066 mm): 配線 [SPI2_SCK] ( F.Cu 上、長さ: 2.4117 mm )
+    @(151.2951 mm, 100.6856 mm): ビア [SPI2_MISO] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1910 mm)
+    Local override; error
+    @(141.0025 mm, 113.1316 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7071 mm )
+    @(140.7795 mm, 112.7252 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 1.4728 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.3675 mm, 88.4571 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.3181 mm )
+    @(147.2348 mm, 88.6173 mm): 配線 [IR_FR] ( F.Cu 上、長さ: 0.6518 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(139.1213 mm, 122.4208 mm): 配線 [+5V] ( F.Cu 上、長さ: 0.2886 mm )
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(142.7861 mm, 112.6236 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7184 mm )
+    @(142.0495 mm, 112.7252 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 1.2700 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1743 mm)
+    Local override; error
+    @(143.7537 mm, 88.2880 mm): パッド 2 [GND] - C_MCU0 ( F.Cu 上)
+    @(144.2129 mm, 89.1310 mm): 配線 [NRST] ( F.Cu 上、長さ: 0.2707 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.2941 mm, 90.5256 mm): 配線 [+3V3] ( F.Cu 上、長さ: 0.6500 mm )
+    @(141.5415 mm, 90.9320 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 2.3511 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.2917 mm, 86.6401 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.6612 mm )
+    @(145.4281 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.7961 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.4281 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 1.7961 mm )
+    @(146.2917 mm, 84.9789 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.4594 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.3675 mm, 87.1390 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.4675 mm )
+    @(145.9611 mm, 86.9707 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 0.4675 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.6497 mm, 83.9470 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.4009 mm )
+    @(143.1671 mm, 83.5406 mm): 配線 [IR_L] ( F.Cu 上、長さ: 2.2610 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.3675 mm, 87.1390 mm): 配線 [IR_L] ( F.Cu 上、長さ: 0.4675 mm )
+    @(145.9611 mm, 88.7578 mm): 配線 [IR_FL] ( F.Cu 上、長さ: 1.7871 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.1351 mm, 125.1966 mm): 配線 [MOTOR_L_DIR] ( F.Cu 上、長さ: 1.2700 mm )
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.3930 mm, 124.9387 mm): 配線 [MOTOR_L_DIR] ( F.Cu 上、長さ: 0.3648 mm )
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1826 mm)
+    Local override; error
+    @(138.8491 mm, 124.0536 mm): ビア [MOTOR_L_DIR] (F.Cu - B.Cu 上)
+    @(139.7381 mm, 124.0536 mm): ビア [MOTOR_STBY] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1544 mm)
+    Local override; error
+    @(141.0109 mm, 102.0854 mm): ビア [MOTOR_L_DIR] (F.Cu - B.Cu 上)
+    @(141.6455 mm, 101.4508 mm): 配線 [MOTOR_L_PWM] ( F.Cu 上、長さ: 10.4084 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1910 mm)
+    Local override; error
+    @(141.6455 mm, 101.4508 mm): ビア [MOTOR_L_PWM] (F.Cu - B.Cu 上)
+    @(141.0109 mm, 102.0854 mm): ビア [MOTOR_L_DIR] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(140.6295 mm, 97.7003 mm): 配線 [MOTOR_L_PWM] ( F.Cu 上、長さ: 2.2233 mm )
+    @(139.9921 mm, 99.1616 mm): ビア [MOTOR_L_DIR] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1572 mm)
+    Local override; error
+    @(139.9921 mm, 99.1616 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 1.5240 mm )
+    @(140.6295 mm, 99.9236 mm): ビア [MOTOR_L_PWM] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.5001 mm, 113.2586 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 1.9757 mm )
+    @(140.5001 mm, 113.8936 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 1.2572 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(139.6111 mm, 115.6716 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 1.2572 mm )
+    @(139.7381 mm, 116.4336 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 0.8980 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(139.1031 mm, 122.0216 mm): ビア [+5V] (F.Cu - B.Cu 上)
+    @(139.7381 mm, 122.4026 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 5.9690 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.0025 mm, 113.1316 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7071 mm )
+    @(141.1351 mm, 113.8936 mm): ビア [MOTOR_STBY] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.2603 mm, 113.8794 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 1.2842 mm )
+    @(140.7795 mm, 112.7252 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 1.4728 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1910 mm)
+    Local override; error
+    @(140.5025 mm, 113.6316 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.0056 mm )
+    @(140.7795 mm, 112.7252 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 1.4728 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(142.7861 mm, 112.6236 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.7184 mm )
+    @(143.2941 mm, 112.7506 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 2.3349 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.5025 mm, 113.6372 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 0.3425 mm )
+    @(140.7795 mm, 112.7252 mm): 配線 [VOL_CHECK] ( F.Cu 上、長さ: 1.4728 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(155.3591 mm, 101.8286 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 4.4901 mm )
+    @(155.9917 mm, 101.8262 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 4.3139 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7165 mm, 114.6143 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 9.7631 mm )
+    @(144.3101 mm, 114.7826 mm): 配線 [LED_3] ( F.Cu 上、長さ: 10.5434 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.2311 mm, 121.0056 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 0.3233 mm )
+    @(146.5961 mm, 124.1806 mm): 配線 [LED_3] ( F.Cu 上、長さ: 7.1120 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(139.7381 mm, 123.0376 mm): 配線 [+5V] ( F.Cu 上、長さ: 0.8723 mm )
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1785 mm)
+    Local override; error
+    @(139.1031 mm, 122.0216 mm): ビア [+5V] (F.Cu - B.Cu 上)
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.8341 mm, 124.7902 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.8980 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.8021 mm, 123.7996 mm): 配線 [+5V] ( B.Cu 上、長さ: 1.4009 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.4691 mm, 120.7516 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.7184 mm )
+    @(148.0344 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.2257 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.4691 mm, 124.1552 mm): 配線 [+5V] ( B.Cu 上、長さ: 3.4036 mm )
+    @(146.8088 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.5580 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7927 mm, 124.7902 mm): 配線 [+5V] ( B.Cu 上、長さ: 1.0414 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(138.5697 mm, 124.7902 mm): 配線 [+5V] ( B.Cu 上、長さ: 3.4798 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(142.0495 mm, 124.7902 mm): 配線 [+5V] ( B.Cu 上、長さ: 1.4009 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(146.8088 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.5580 mm )
+    @(146.9771 mm, 120.2436 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.5080 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+    @(138.0871 mm, 124.3076 mm): 配線 [+5V] ( B.Cu 上、長さ: 0.6825 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(142.5431 mm, 123.5377 mm): 配線 [MOTOR_L_OUT2] ( F.Cu 上、長さ: 2.1401 mm )
+    @(142.5431 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1436 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.7431 mm, 123.0376 mm): 配線 [+5V] ( F.Cu 上、長さ: 1.0050 mm )
+    @(140.7431 mm, 123.5377 mm): 配線 [MOTOR_L_OUT2] ( F.Cu 上、長さ: 1.8000 mm )
+[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_L_OUT1 と )
+    Local override; error
+    @(140.6931 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
+    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(143.4132 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8072 mm )
+    @(142.5431 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1436 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(142.5431 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 0.8701 mm )
+    @(142.5431 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1436 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.7431 mm, 117.4496 mm): 配線 [+5V] ( F.Cu 上、長さ: 1.0050 mm )
+    @(140.6931 mm, 116.9495 mm): 配線 [MOTOR_R_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(143.4132 mm, 117.9497 mm): 配線 [MOTOR_R_OUT2] ( F.Cu 上、長さ: 1.6276 mm )
+    @(142.5431 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1320 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(140.7431 mm, 117.9497 mm): 配線 [MOTOR_R_OUT2] ( F.Cu 上、長さ: 1.8000 mm )
+    @(142.5431 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1320 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1953 mm)
+    Local override; error
+    @(142.5431 mm, 117.9497 mm): 配線 [MOTOR_R_OUT2] ( F.Cu 上、長さ: 0.8701 mm )
+    @(142.5431 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1320 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.6431 mm, 114.4016 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 1.0609 mm )
+    @(141.3891 mm, 115.2906 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 0.7551 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.4347 mm, 104.1146 mm): ビア [LED_3] (F.Cu - B.Cu 上)
+    @(143.8021 mm, 98.7704 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 14.1072 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(143.2941 mm, 98.5713 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 14.1793 mm )
+    @(143.8021 mm, 112.8776 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 3.4125 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.6455 mm, 101.4508 mm): ビア [MOTOR_L_PWM] (F.Cu - B.Cu 上)
+    @(141.7701 mm, 100.4316 mm): 配線 [EC_L_B] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.6295 mm, 99.9236 mm): ビア [MOTOR_L_PWM] (F.Cu - B.Cu 上)
+    @(141.2621 mm, 97.7748 mm): 配線 [EC_L_A] ( F.Cu 上、長さ: 2.5298 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1685 mm)
+    Local override; error
+    @(151.2951 mm, 100.6856 mm): ビア [SPI2_MISO] (F.Cu - B.Cu 上)
+    @(149.9009 mm, 101.5774 mm): 配線 [SPI2_SCK] ( F.Cu 上、長さ: 1.0736 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+    @(148.5011 mm, 104.0936 mm): 配線 [SPI2_SCK] ( F.Cu 上、長さ: 1.2490 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1916 mm)
+    Local override; error
+    @(148.2471 mm, 102.5906 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(147.6121 mm, 103.2256 mm): ビア [SPI2_MISO] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(148.2471 mm, 102.5906 mm): ビア [SPI2_SCK] (F.Cu - B.Cu 上)
+    @(147.6121 mm, 103.2256 mm): 配線 [SPI2_MISO] ( B.Cu 上、長さ: 1.1430 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(153.9511 mm, 105.3286 mm): 配線 [SPI2_MISO] ( F.Cu 上、長さ: 0.7029 mm )
+    @(154.1321 mm, 104.5796 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1728 mm)
+    Local override; error
+    @(153.4541 mm, 104.8316 mm): 配線 [SPI2_MISO] ( F.Cu 上、長さ: 1.2250 mm )
+    @(154.1321 mm, 104.5796 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(147.3411 mm, 104.7536 mm): パッド 2 [GND] - U4 ( F.Cu 上)
+    @(147.3411 mm, 104.2536 mm): 配線 [SPI2_MISO] ( F.Cu 上、長さ: 0.7570 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.4366 mm, 104.9042 mm): 配線 [SPI2_MOSI] ( F.Cu 上、長さ: 0.4139 mm )
+    @(147.9612 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.4605 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+    @(148.0467 mm, 104.1392 mm): 配線 [SPI2_MOSI] ( F.Cu 上、長さ: 0.3751 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+    @(148.0011 mm, 104.0936 mm): 配線 [SPI2_MOSI] ( F.Cu 上、長さ: 0.0645 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.9612 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.4605 mm )
+    @(148.0467 mm, 104.5143 mm): 配線 [SPI2_MOSI] ( F.Cu 上、長さ: 0.5514 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1816 mm)
+    Local override; error
+    @(149.6611 mm, 105.2536 mm): パッド 9 [<no net>] - U4 ( F.Cu 上)
+    @(148.8505 mm, 104.9042 mm): ビア [SPI2_MOSI] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(152.8191 mm, 98.4443 mm): 配線 [FRAM_CS] ( F.Cu 上、長さ: 3.5113 mm )
+    @(152.1841 mm, 101.1936 mm): ビア [SPI2_MOSI] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(153.4541 mm, 98.3722 mm): 配線 [USART1_TX] ( F.Cu 上、長さ: 2.9484 mm )
+    @(154.0891 mm, 100.6856 mm): ビア [USART1_RX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1916 mm)
+    Local override; error
+    @(153.4541 mm, 101.3206 mm): ビア [USART1_TX] (F.Cu - B.Cu 上)
+    @(154.0891 mm, 100.6856 mm): ビア [USART1_RX] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(153.4541 mm, 101.3206 mm): ビア [USART1_TX] (F.Cu - B.Cu 上)
+    @(154.0891 mm, 100.6856 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 1.2700 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(157.0101 mm, 117.9576 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 5.2085 mm )
+    @(157.5181 mm, 105.3846 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 12.4460 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(154.0891 mm, 101.9556 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 4.8493 mm )
+    @(157.0101 mm, 105.5116 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 12.4460 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(153.4541 mm, 101.9556 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 5.0289 mm )
+    @(154.0891 mm, 100.6856 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 1.2700 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(152.8191 mm, 101.9556 mm): ビア [FRAM_CS] (F.Cu - B.Cu 上)
+    @(153.4541 mm, 101.3206 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 0.6350 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(154.0891 mm, 101.9556 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 4.8493 mm )
+    @(153.4541 mm, 101.9556 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 5.0289 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(160.4391 mm, 119.7356 mm): ビア [LED_2] (F.Cu - B.Cu 上)
+    @(160.0581 mm, 120.3706 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 4.5720 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(157.0101 mm, 117.9576 mm): 配線 [USART1_TX] ( B.Cu 上、長さ: 5.2085 mm )
+    @(157.5181 mm, 117.8306 mm): 配線 [USART1_RX] ( B.Cu 上、長さ: 3.5921 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(162.4711 mm, 119.6086 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 2.3349 mm )
+    @(161.4551 mm, 118.5926 mm): 配線 [SWCLK] ( F.Cu 上、長さ: 1.3970 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(152.9461 mm, 95.6056 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 3.4125 mm )
+    @(153.8351 mm, 95.8596 mm): 配線 [SWCLK] ( F.Cu 上、長さ: 3.0499 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.3591 mm, 98.0186 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 3.4290 mm )
+    @(155.9917 mm, 100.5586 mm): ビア [SWCLK] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(164.5031 mm, 117.3000 mm): ビア [SWCLK] (F.Cu - B.Cu 上)
+    @(164.1221 mm, 117.9576 mm): 配線 [SWDIO] ( F.Cu 上、長さ: 1.1430 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1743 mm)
+    Local override; error
+    @(143.7537 mm, 88.2880 mm): パッド 2 [GND] - C_MCU0 ( F.Cu 上)
+    @(143.9422 mm, 89.1310 mm): 配線 [NRST] ( F.Cu 上、長さ: 0.0029 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1730 mm)
+    Local override; error
+    @(142.8345 mm, 89.2072 mm): パッド 1 [+3V3] - C_MCU0 ( F.Cu 上)
+    @(143.6796 mm, 89.1331 mm): 配線 [NRST] ( F.Cu 上、長さ: 1.7339 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.9827 mm, 88.3510 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 3.2108 mm )
+    @(141.7701 mm, 88.4936 mm): ビア [NRST] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.3891 mm, 90.1446 mm): 配線 [NRST] ( B.Cu 上、長さ: 5.3882 mm )
+    @(144.7927 mm, 103.0732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 8.8900 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(158.5341 mm, 117.4496 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 2.3349 mm )
+    @(159.0421 mm, 104.8766 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 12.4460 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(158.5341 mm, 105.0036 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 12.4460 mm )
+    @(155.9917 mm, 101.8262 mm): 配線 [SWCLK] ( B.Cu 上、長さ: 4.3139 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(143.6751 mm, 89.8906 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(144.1933 mm, 90.5256 mm): 配線 [+3V3] ( F.Cu 上、長さ: 0.8992 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.4531 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(146.0857 mm, 103.7915 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.9717 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.3347 mm, 97.5106 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(159.6771 mm, 99.0346 mm): 配線 [+3V3] ( F.Cu 上、長さ: 2.8312 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1654 mm)
+    Local override; error
+    @(150.7506 mm, 87.5792 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 2.2368 mm )
+    @(153.2001 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1968 mm)
+    Local override; error
+    @(151.0411 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(152.0361 mm, 105.3286 mm): パッド 7 [<no net>] - U6 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1958 mm)
+    Local override; error
+    @(155.1261 mm, 104.6786 mm): パッド 3 [N$4] - U6 ( F.Cu 上)
+    @(154.1321 mm, 104.5796 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(153.2001 mm, 88.3666 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 0.6350 mm )
+    @(160.4725 mm, 95.0642 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 10.5854 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(160.2895 mm, 106.6320 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.2950 mm )
+    @(159.0421 mm, 106.0196 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 1.7961 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.8041 mm, 103.6066 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 1.0776 mm )
+    @(160.0765 mm, 104.2056 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.2967 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(158.3055 mm, 93.4720 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 7.2201 mm )
+    @(160.4725 mm, 95.0642 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 10.5854 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(157.8991 mm, 93.7006 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.3500 mm )
+    @(158.3055 mm, 99.4410 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 0.6825 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(157.8991 mm, 93.7006 mm): 配線 [EC_R_B] ( F.Cu 上、長さ: 6.3500 mm )
+    @(158.3055 mm, 99.4410 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 5.9690 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.3101 mm, 114.7826 mm): 配線 [LED_3] ( F.Cu 上、長さ: 10.5434 mm )
+    @(147.0025 mm, 116.9003 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 3.2329 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(147.0025 mm, 120.7770 mm): 配線 [PUSH_IN_1] ( F.Cu 上、長さ: 3.8767 mm )
+    @(146.5961 mm, 124.1806 mm): 配線 [LED_3] ( F.Cu 上、長さ: 7.1120 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(147.2311 mm, 121.0056 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+    @(146.5961 mm, 124.1806 mm): 配線 [LED_3] ( F.Cu 上、長さ: 7.1120 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.4371 mm, 86.0806 mm): ビア [PUSH_IN_1] (F.Cu - B.Cu 上)
+    @(144.1751 mm, 85.4480 mm): 配線 [LED_3] ( B.Cu 上、長さ: 0.3199 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.9827 mm, 90.3732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 2.0222 mm )
+    @(140.5763 mm, 90.6018 mm): 配線 [LED_3] ( B.Cu 上、長さ: 5.2804 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.3261 mm, 103.6066 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 0.7543 mm )
+    @(145.1991 mm, 93.9546 mm): 配線 [NRST] ( B.Cu 上、長さ: 8.9503 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.2531 mm, 86.0806 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 1.1840 mm )
+    @(143.0848 mm, 85.6742 mm): 配線 [LED_3] ( B.Cu 上、長さ: 3.5475 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7927 mm, 103.0732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 8.8900 mm )
+    @(145.1991 mm, 93.9546 mm): 配線 [NRST] ( B.Cu 上、長さ: 8.9503 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(134.5057 mm, 125.6030 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 13.8430 mm )
+    @(147.7391 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 1.2572 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(148.6281 mm, 124.3076 mm): ビア [N$11] (F.Cu - B.Cu 上)
+    @(149.2631 mm, 124.6886 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 0.7620 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.0848 mm, 85.6742 mm): 配線 [LED_3] ( B.Cu 上、長さ: 3.5475 mm )
+    @(140.9827 mm, 88.3510 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 3.2108 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(145.3261 mm, 104.2416 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 0.6350 mm )
+    @(145.1991 mm, 102.9049 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.2538 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7927 mm, 94.1832 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 5.3882 mm )
+    @(145.1991 mm, 93.9546 mm): 配線 [NRST] ( B.Cu 上、長さ: 8.9503 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+    @(133.6421 mm, 126.4666 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 1.2213 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1863 mm)
+    Local override; error
+    @(151.8031 mm, 79.8576 mm): 配線 [LED_1] ( F.Cu 上、長さ: 2.2515 mm )
+    @(149.2631 mm, 78.9766 mm): 配線 [N$30] ( F.Cu 上、長さ: 0.7659 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(150.2111 mm, 76.7506 mm): 配線 [LED_1] ( F.Cu 上、長さ: 1.1739 mm )
+    @(149.8047 mm, 78.4350 mm): 配線 [N$30] ( F.Cu 上、長さ: 3.1738 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(155.1051 mm, 87.2236 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(154.4475 mm, 86.9512 mm): 配線 [LED_1] ( F.Cu 上、長さ: 0.0320 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(155.1051 mm, 87.2236 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(154.4475 mm, 87.4960 mm): 配線 [LED_1] ( F.Cu 上、長さ: 0.5448 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(155.1051 mm, 87.2236 mm): ビア [IR_R] (F.Cu - B.Cu 上)
+    @(154.4701 mm, 86.9286 mm): 配線 [LED_1] ( F.Cu 上、長さ: 1.8640 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(143.2941 mm, 112.7506 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 2.3349 mm )
+    @(142.2781 mm, 113.1316 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 1.2756 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1548 mm)
+    Local override; error
+    @(155.8671 mm, 116.9416 mm): ビア [+3V3] (F.Cu - B.Cu 上)
+    @(156.5021 mm, 109.9566 mm): 配線 [NRST] ( B.Cu 上、長さ: 8.2550 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(143.2941 mm, 112.7506 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 2.3349 mm )
+    @(142.7861 mm, 98.3722 mm): 配線 [MOTOR_R_DIR] ( F.Cu 上、長さ: 14.2514 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1525 mm)
+    Local override; error
+    @(140.2603 mm, 115.1636 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+    @(141.6431 mm, 114.4016 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 1.0609 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1690 mm)
+    Local override; error
+    @(140.2603 mm, 115.1636 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+    @(139.6111 mm, 114.7826 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 0.8890 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1854 mm)
+    Local override; error
+    @(140.5001 mm, 119.8626 mm): ビア [MOTOR_STBY] (F.Cu - B.Cu 上)
+    @(141.3919 mm, 119.8654 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.2603 mm, 115.1636 mm): 配線 [MOTOR_R_DIR] ( B.Cu 上、長さ: 0.5222 mm )
+    @(139.6111 mm, 115.6716 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 1.2572 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(139.6111 mm, 115.6716 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 1.2572 mm )
+    @(140.2603 mm, 115.6858 mm): 配線 [MOTOR_R_DIR] ( B.Cu 上、長さ: 1.6003 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(143.2941 mm, 112.7506 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 2.3349 mm )
+    @(143.8021 mm, 112.8776 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 3.4125 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.6431 mm, 114.4016 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 1.0609 mm )
+    @(143.8021 mm, 112.8776 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 3.4125 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.2603 mm, 115.1636 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+    @(140.8929 mm, 115.1518 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 0.8978 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.6431 mm, 114.4016 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 0.7184 mm )
+    @(143.8021 mm, 112.8776 mm): 配線 [MOTOR_R_PWM] ( F.Cu 上、長さ: 3.4125 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1566 mm)
+    Local override; error
+    @(140.8929 mm, 118.8496 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 0.6202 mm )
+    @(141.3919 mm, 119.8654 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1566 mm)
+    Local override; error
+    @(140.8929 mm, 119.4698 mm): 配線 [MOTOR_STBY] ( F.Cu 上、長さ: 0.5555 mm )
+    @(141.3919 mm, 119.8654 mm): ビア [MOTOR_R_DIR] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1936 mm)
+    Local override; error
+    @(139.7381 mm, 124.0536 mm): ビア [MOTOR_STBY] (F.Cu - B.Cu 上)
+    @(140.7431 mm, 123.5377 mm): パッド 3 [MOTOR_L_OUT2] - U3 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(139.6111 mm, 115.6716 mm): 配線 [MOTOR_STBY] ( B.Cu 上、長さ: 1.2572 mm )
+    @(139.7381 mm, 122.4026 mm): 配線 [MOTOR_L_DIR] ( B.Cu 上、長さ: 5.9690 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.4064 mm, 91.4457 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 0.7266 mm )
+    @(144.1933 mm, 90.5256 mm): 配線 [+3V3] ( F.Cu 上、長さ: 0.8992 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.5919 mm, 91.3384 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 2.2790 mm )
+    @(140.6271 mm, 90.0176 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 1.2932 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.5919 mm, 91.3384 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 2.2790 mm )
+    @(141.5415 mm, 90.9320 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 2.3511 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(157.3911 mm, 77.8256 mm): ビア [SENSOR_FR] (F.Cu - B.Cu 上)
+    @(158.1531 mm, 77.9936 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 0.8401 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.7277 mm, 81.3403 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 13.0886 mm )
+    @(133.1341 mm, 81.5086 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 6.4770 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(157.3911 mm, 77.8256 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 7.5434 mm )
+    @(152.2254 mm, 72.0852 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 7.0405 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.7277 mm, 89.2302 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 7.8899 mm )
+    @(133.1341 mm, 87.9856 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 1.2572 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(152.2254 mm, 72.0852 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 7.0405 mm )
+    @(152.0571 mm, 72.4916 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 9.9060 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.9828 mm, 72.0852 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 10.2427 mm )
+    @(142.1511 mm, 72.4916 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 12.7520 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.5919 mm, 91.3384 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 2.2790 mm )
+    @(143.2912 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 3.7191 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1687 mm)
+    Local override; error
+    @(142.6595 mm, 92.1766 mm): 配線 [SENSOR_L] ( F.Cu 上、長さ: 2.9214 mm )
+    @(139.5721 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 6.2177 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(143.5919 mm, 91.3384 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 2.2790 mm )
+    @(143.6993 mm, 92.1529 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 0.5771 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(135.6487 mm, 83.3882 mm): 配線 [SENSOR_FL] ( B.Cu 上、長さ: 12.2800 mm )
+    @(136.4361 mm, 95.7326 mm): 配線 [SENSOR_L] ( B.Cu 上、長さ: 0.5388 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(135.2931 mm, 83.0326 mm): 配線 [SENSOR_FL] ( B.Cu 上、長さ: 0.5029 mm )
+    @(136.0551 mm, 95.3516 mm): 配線 [SENSOR_L] ( B.Cu 上、長さ: 12.7000 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(143.6993 mm, 93.2163 mm): 配線 [SENSOR_L] ( F.Cu 上、長さ: 1.4704 mm )
+    @(143.2912 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 3.7191 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(143.2912 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 3.7191 mm )
+    @(142.6595 mm, 92.1766 mm): 配線 [SENSOR_L] ( F.Cu 上、長さ: 2.9214 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1778 mm)
+    Local override; error
+    @(143.2912 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 3.7191 mm )
+    @(139.7381 mm, 92.1766 mm): 配線 [SENSOR_L] ( F.Cu 上、長さ: 4.6697 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1687 mm)
+    Local override; error
+    @(139.5721 mm, 91.7448 mm): 配線 [SENSOR_FL] ( F.Cu 上、長さ: 6.2177 mm )
+    @(136.4361 mm, 95.4786 mm): 配線 [SENSOR_L] ( F.Cu 上、長さ: 1.5240 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1980 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): 配線 [+3V3] ( F.Cu 上、長さ: 1.8840 mm )
+    @(148.5011 mm, 105.9136 mm): パッド 6 [GND] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1930 mm)
+    Local override; error
+    @(149.7711 mm, 109.2096 mm): パッド 2 [GND] - C2 ( F.Cu 上)
+    @(149.0011 mm, 116.3066 mm): 配線 [+3V3] ( F.Cu 上、長さ: 8.3890 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.4485 mm, 105.7910 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 1.1894 mm )
+    @(159.0421 mm, 104.3686 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 1.6510 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.5415 mm, 90.9320 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 2.3511 mm )
+    @(144.1933 mm, 90.5256 mm): 配線 [+3V3] ( F.Cu 上、長さ: 0.8992 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(164.6301 mm, 125.8292 mm): ビア [+3V3] (F.Cu - B.Cu 上)
+    @(163.4871 mm, 125.1966 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.3970 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(163.4871 mm, 125.1966 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.3970 mm )
+    @(163.4847 mm, 125.8292 mm): 配線 [+3V3] ( B.Cu 上、長さ: 10.7729 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(140.9827 mm, 90.3732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 2.0222 mm )
+    @(141.7701 mm, 88.4936 mm): 配線 [NRST] ( B.Cu 上、長さ: 0.5388 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(156.5021 mm, 118.2116 mm): 配線 [NRST] ( B.Cu 上、長さ: 9.8783 mm )
+    @(163.4847 mm, 125.8292 mm): 配線 [+3V3] ( B.Cu 上、長さ: 10.7729 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.3891 mm, 88.8746 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.2700 mm )
+    @(144.7927 mm, 94.1832 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 5.3882 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.7927 mm, 103.0732 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 8.8900 mm )
+    @(145.1991 mm, 102.9049 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.2538 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1920 mm)
+    Local override; error
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+    @(164.8841 mm, 125.1966 mm): 配線 [NRST] ( B.Cu 上、長さ: 1.4368 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1580 mm)
+    Local override; error
+    @(129.4511 mm, 118.8466 mm): 配線 [N$11] ( F.Cu 上、長さ: 1.3970 mm )
+    @(130.0861 mm, 117.9496 mm): パッド 2 [N$7] - R12 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(134.5057 mm, 125.6030 mm): 配線 [PUSH_IN_1] ( B.Cu 上、長さ: 13.8430 mm )
+    @(132.6261 mm, 125.1966 mm): 配線 [N$11] ( B.Cu 上、長さ: 15.1130 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1920 mm)
+    Local override; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(166.7891 mm, 120.7516 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 1.2572 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.7798 mm, 104.2056 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.4686 mm )
+    @(159.0421 mm, 104.3686 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 1.6510 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.2895 mm, 106.6320 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.2950 mm )
+    @(160.3121 mm, 107.2896 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.5845 mm, 106.6320 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.5448 mm )
+    @(160.3121 mm, 107.2896 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1830 mm)
+    Local override; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(166.7891 mm, 118.4656 mm): 配線 [SWDIO] ( B.Cu 上、長さ: 2.2860 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(135.6487 mm, 83.3882 mm): 配線 [SENSOR_FL] ( B.Cu 上、長さ: 12.2800 mm )
+    @(136.0551 mm, 95.3516 mm): 配線 [SENSOR_L] ( B.Cu 上、長さ: 12.7000 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(144.0528 mm, 91.7993 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 0.6518 mm )
+    @(141.5415 mm, 90.9320 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 2.3511 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(141.3129 mm, 91.3384 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 1.1495 mm )
+    @(140.6271 mm, 90.0176 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 1.2932 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(140.6271 mm, 90.0176 mm): 配線 [SENSOR_FR] ( F.Cu 上、長さ: 1.2932 mm )
+    @(140.5001 mm, 90.5256 mm): 配線 [SENSOR_R] ( F.Cu 上、長さ: 6.4770 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.7277 mm, 81.3403 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 13.0886 mm )
+    @(152.0571 mm, 72.4916 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 9.9060 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(132.7277 mm, 89.2302 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 7.8899 mm )
+    @(142.1511 mm, 72.4916 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 12.7520 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.9828 mm, 72.0852 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 10.2427 mm )
+    @(157.3911 mm, 77.8256 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 7.5434 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(157.3911 mm, 77.8256 mm): 配線 [SENSOR_FR] ( B.Cu 上、長さ: 7.5434 mm )
+    @(157.2038 mm, 77.0636 mm): 配線 [SENSOR_R] ( B.Cu 上、長さ: 0.5683 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1654 mm)
+    Local override; error
+    @(160.4725 mm, 95.0642 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 10.5854 mm )
+    @(153.2001 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1528 mm)
+    Local override; error
+    @(159.4485 mm, 105.7910 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 1.1894 mm )
+    @(160.3121 mm, 107.2896 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1950 mm)
+    Local override; error
+    @(159.0421 mm, 106.0196 mm): 配線 [BOOT0] ( F.Cu 上、長さ: 1.7961 mm )
+    @(159.4485 mm, 104.5369 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 1.2541 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(160.4137 mm, 100.3087 mm): 配線 [GND] ( F.Cu 上、長さ: 2.7191 mm )
+    @(160.8201 mm, 103.4620 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 5.3164 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.8041 mm, 103.5480 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+    @(160.0765 mm, 104.2056 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 0.2967 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(159.8041 mm, 103.5480 mm): ビア [BOOT0] (F.Cu - B.Cu 上)
+    @(160.0765 mm, 104.2056 mm): 配線 [BUZZER_PWM] ( F.Cu 上、長さ: 1.0516 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1524 mm)
+    Local override; error
+    @(141.8932 mm, 125.1673 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.0056 mm )
+    @(132.3467 mm, 125.6030 mm): 配線 [LED_3] ( F.Cu 上、長さ: 12.8270 mm )
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+    Local override; error
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1800 mm)
+    Local override; error
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+    @(148.0011 mm, 104.0936 mm): パッド 14 [SPI2_MOSI] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+    @(147.3411 mm, 104.7536 mm): パッド 2 [GND] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(147.3411 mm, 105.2536 mm): パッド 3 [GND] - U4 ( F.Cu 上)
+    @(147.3411 mm, 105.7536 mm): パッド 4 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1800 mm)
+    Local override; error
+    @(147.3411 mm, 105.7536 mm): パッド 4 [<no net>] - U4 ( F.Cu 上)
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+    @(148.5011 mm, 105.9136 mm): パッド 6 [GND] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1800 mm)
+    Local override; error
+    @(149.0011 mm, 105.9136 mm): パッド 7 [GND] - U4 ( F.Cu 上)
+    @(149.6611 mm, 105.7536 mm): パッド 8 [+3V3] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(149.6611 mm, 105.7536 mm): パッド 8 [+3V3] - U4 ( F.Cu 上)
+    @(149.6611 mm, 105.2536 mm): パッド 9 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(149.6611 mm, 105.2536 mm): パッド 9 [<no net>] - U4 ( F.Cu 上)
+    @(149.6611 mm, 104.7536 mm): パッド 10 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(149.6611 mm, 104.7536 mm): パッド 10 [<no net>] - U4 ( F.Cu 上)
+    @(149.6611 mm, 104.2536 mm): パッド 11 [<no net>] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1800 mm)
+    Local override; error
+    @(149.6611 mm, 104.2536 mm): パッド 11 [<no net>] - U4 ( F.Cu 上)
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1500 mm)
+    Local override; error
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+    @(148.0011 mm, 104.0936 mm): パッド 14 [SPI2_MOSI] - U4 ( F.Cu 上)
+[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_L_OUT1 と )
+    Local override; error
+    @(140.6931 mm, 122.5375 mm): パッド 1 [MOTOR_L_OUT1] - U3 ( F.Cu 上)
+    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
+[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_R_OUT1 と )
+    Local override; error
+    @(140.6931 mm, 116.9495 mm): パッド 1 [MOTOR_R_OUT1] - U2 ( F.Cu 上)
+    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
+    @(140.6931 mm, 116.9495 mm): パッド 1 [MOTOR_R_OUT1] - U2 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
+    @(140.6931 mm, 122.5375 mm): パッド 1 [MOTOR_L_OUT1] - U3 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.5884 mm, 88.2638 mm): パッド 1 [+3V3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.2348 mm, 88.6173 mm): パッド 2 [IR_FR] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.8812 mm, 88.9709 mm): パッド 3 [IR_L] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.5277 mm, 89.3244 mm): パッド 4 [IR_FL] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.1741 mm, 89.6780 mm): パッド 5 [PUSH_IN_1] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(145.8206 mm, 90.0315 mm): パッド 6 [LED_3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(145.4670 mm, 90.3851 mm): パッド 7 [NRST] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.7599 mm, 91.0922 mm): パッド 9 [+3V3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.4064 mm, 91.4457 mm): パッド 10 [SENSOR_FR] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.0528 mm, 91.7993 mm): パッド 11 [SENSOR_R] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(143.6993 mm, 92.1529 mm): パッド 12 [SENSOR_FL] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(143.6993 mm, 93.2163 mm): パッド 13 [SENSOR_L] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.0528 mm, 93.5699 mm): パッド 14 [MOTOR_L_DIR] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.4064 mm, 93.9234 mm): パッド 15 [MOTOR_L_PWM] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(144.7599 mm, 94.2770 mm): パッド 16 [EC_L_A] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(145.1135 mm, 94.6306 mm): パッド 17 [EC_L_B] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(145.4670 mm, 94.9841 mm): パッド 18 [VOL_CHECK] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(145.8206 mm, 95.3377 mm): パッド 19 [MOTOR_R_DIR] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.1741 mm, 95.6912 mm): パッド 20 [MOTOR_STBY] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.5277 mm, 96.0448 mm): パッド 21 [MOTOR_R_PWM] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.8812 mm, 96.3983 mm): パッド 22 [N$5] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.5884 mm, 97.1054 mm): パッド 24 [+3V3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.6518 mm, 97.1054 mm): パッド 25 [IMU_CS] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.0054 mm, 96.7519 mm): パッド 26 [SPI2_SCK] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3589 mm, 96.3983 mm): パッド 27 [SPI2_MISO] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.7125 mm, 96.0448 mm): パッド 28 [SPI2_MOSI] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.0661 mm, 95.6912 mm): パッド 29 [FRAM_CS] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.4196 mm, 95.3377 mm): パッド 30 [USART1_TX] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.7732 mm, 94.9841 mm): パッド 31 [USART1_RX] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.1267 mm, 94.6306 mm): パッド 32 [LED_2] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.4803 mm, 94.2770 mm): パッド 33 [<no net>] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.8338 mm, 93.9234 mm): パッド 34 [SWDIO] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(152.5409 mm, 93.2163 mm): パッド 36 [+3V3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(152.5409 mm, 92.1529 mm): パッド 37 [SWCLK] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(152.1874 mm, 91.7993 mm): パッド 38 [LED_1] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.8338 mm, 91.4457 mm): パッド 39 [SWO] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.4803 mm, 91.0922 mm): パッド 40 [<no net>] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(151.1267 mm, 90.7386 mm): パッド 41 [IR_R] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.7732 mm, 90.3851 mm): パッド 42 [EC_R_A] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.4196 mm, 90.0315 mm): パッド 43 [EC_R_B] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(150.0661 mm, 89.6780 mm): パッド 44 [BOOT0] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.7125 mm, 89.3244 mm): パッド 45 [FAN_PWM] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3589 mm, 88.9709 mm): パッド 46 [BUZZER_PWM] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.6518 mm, 88.2638 mm): パッド 48 [+3V3] - U5 ( F.Cu 上)
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): 配線 [SPI2_MISO] ( F.Cu 上、長さ: 0.7570 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 105.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 105.2536 mm): パッド 3 [GND] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 105.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.7536 mm): パッド 2 [GND] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 105.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 105.2536 mm): パッド 3 [GND] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 105.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 105.0036 mm): 配線 [GND] ( F.Cu 上、長さ: 0.2500 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): 配線 [+3V3] ( F.Cu 上、長さ: 1.8840 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3061 mm, 105.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(149.6611 mm, 105.7536 mm): パッド 8 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3061 mm, 105.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(149.6611 mm, 105.7536 mm): パッド 8 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3061 mm, 105.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(149.6611 mm, 105.7536 mm): 配線 [+3V3] ( F.Cu 上、長さ: 2.0460 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(149.3061 mm, 105.4786 mm): ポリゴン of U4 、F.Mask 上
+    @(149.6611 mm, 105.7536 mm): パッド 8 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 104.0936 mm): パッド 14 [SPI2_MOSI] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(149.0011 mm, 101.5826 mm): 配線 [IMU_CS] ( F.Cu 上、長さ: 2.5110 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.5011 mm, 104.0936 mm): 配線 [SPI2_SCK] ( F.Cu 上、長さ: 1.2490 mm )
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(149.0011 mm, 104.0936 mm): パッド 12 [IMU_CS] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(147.7761 mm, 104.4486 mm): ポリゴン of U4 、F.Mask 上
+    @(148.5011 mm, 104.0936 mm): パッド 13 [SPI2_SCK] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(141.3058 mm, 116.9942 mm): ポリゴン of U2 、F.Mask 上
+    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
+    @(147.3411 mm, 104.2536 mm): パッド 1 [SPI2_MISO] - U4 ( F.Cu 上)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; error
+    @(148.2761 mm, 106.2686 mm): ポリゴン of U4 、F.Mask 上
+    @(148.0011 mm, 105.9136 mm): パッド 5 [+3V3] - U4 ( F.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(152.5651 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(154.8511 mm, 83.5406 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(143.6751 mm, 89.8906 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.4531 mm, 109.1946 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.4531 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(144.9451 mm, 82.6516 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(147.2311 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(155.7401 mm, 95.6056 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(156.6291 mm, 96.6216 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(150.2791 mm, 92.8116 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(134.1501 mm, 87.0966 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(147.9931 mm, 95.6056 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(154.9781 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(153.2001 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.4531 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(151.0411 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(156.2481 mm, 89.2556 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(150.4061 mm, 84.3026 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(149.2631 mm, 90.9066 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(149.1361 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(149.0091 mm, 98.6536 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(137.3251 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(147.7391 mm, 82.9056 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(150.9141 mm, 108.9406 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(154.1321 mm, 104.5796 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(161.4551 mm, 85.4456 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(148.7551 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(153.0731 mm, 106.6546 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.9761 mm, 98.5266 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(146.9771 mm, 91.0336 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(149.8981 mm, 103.3526 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(146.8501 mm, 93.1926 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(150.9141 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(157.3911 mm, 87.2236 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.9611 mm, 101.8286 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(162.7251 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(134.2771 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(159.6771 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(157.3911 mm, 82.7786 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(143.0401 mm, 82.3976 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(156.3751 mm, 93.9546 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(140.1191 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(149.1361 mm, 94.7166 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(139.8651 mm, 85.5726 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(139.8651 mm, 87.0966 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(162.7251 mm, 87.0966 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(142.2781 mm, 83.2866 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(156.1211 mm, 87.6046 mm): ビア [GND] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(147.6121 mm, 98.3996 mm): ビア [GND] (F.Cu - B.Cu 上)
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(146.8501 mm, 94.4626 mm): 配線 [+3V3] ( B.Cu 上、長さ: 0.1270 mm )
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.7071 mm, 112.7506 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(133.2611 mm, 120.2436 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(139.2301 mm, 112.4966 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(132.3721 mm, 123.6726 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(131.4831 mm, 115.1636 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(143.4211 mm, 124.4346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(130.5941 mm, 119.9896 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(137.0711 mm, 124.3076 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(135.8011 mm, 118.2116 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(136.8171 mm, 114.0206 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(137.8331 mm, 111.7346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.7071 mm, 118.0846 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(138.9761 mm, 120.4976 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(133.0071 mm, 117.3226 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(138.4681 mm, 117.3226 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(129.8321 mm, 111.8616 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(134.9121 mm, 115.4176 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(132.3721 mm, 113.0046 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(143.1671 mm, 119.9896 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(145.7071 mm, 114.4016 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(130.0941 mm, 118.5950 mm): 配線 [GND2] ( B.Cu 上、長さ: 0.5241 mm )
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.5011 mm, 99.0036 mm): セグメント (Edge.Cuts 上)
+    @(159.3771 mm, 100.5395 mm): EC_R2のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(160.5011 mm, 105.0036 mm): 円 (Edge.Cuts 上)
+    @(158.9151 mm, 103.4796 mm): R7のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.5011 mm, 99.0036 mm): セグメント (Edge.Cuts 上)
+    @(159.3771 mm, 102.3175 mm): EC_R3のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.0112 mm, 135.2036 mm): 円弧 (Edge.Cuts 上)
+    @(134.9121 mm, 135.2296 mm): LED3のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.1734 mm, 135.4082 mm): セグメント (Edge.Cuts 上)
+    @(162.5981 mm, 134.2136 mm): R27のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.5011 mm, 99.0036 mm): セグメント (Edge.Cuts 上)
+    @(159.3771 mm, 99.6505 mm): EC_R1のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.5037 mm, 116.0036 mm): 円 (Edge.Cuts 上)
+    @(135.0404 mm, 115.4163 mm): Q2のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.5011 mm, 99.0036 mm): セグメント (Edge.Cuts 上)
+    @(159.3771 mm, 101.4285 mm): EC_R4のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.5011 mm, 111.0036 mm): セグメント (Edge.Cuts 上)
+    @(134.5917 mm, 96.5969 mm): PT_FL0のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.5037 mm, 116.0036 mm): 円 (Edge.Cuts 上)
+    @(135.5471 mm, 112.4966 mm): C15のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(161.1009 mm, 137.5036 mm): 円弧 (Edge.Cuts 上)
+    @(163.3601 mm, 135.1026 mm): LED2のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(133.4925 mm, 138.1727 mm): セグメント (Edge.Cuts 上)
+    @(133.1341 mm, 134.3406 mm): R28のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(168.0011 mm, 99.0036 mm): セグメント (Edge.Cuts 上)
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(152.9694 mm, 112.2925 mm): UBUZ0 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(155.4090 mm, 85.6763 mm): UR0 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0598 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(155.6811 mm, 107.0036 mm): U6のリファレンスフィールド
+[text_height]: 文字の高さが許容範囲外 (基板の設定のシルク印刷のテキスト高の制約 最小高さ 0.8000 mm; 現状 0.7530 mm)
+    Rule: 基板の設定のシルク印刷のテキスト高の制約; warning
+    @(155.6811 mm, 107.0036 mm): U6のリファレンスフィールド
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(140.4230 mm, 85.6763 mm): UL0 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(145.3542 mm, 90.8167 mm): U5 のフットプリント テキスト ( U5 )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(146.1444 mm, 87.3683 mm): U5 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(139.1285 mm, 117.5766 mm): U2 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(137.7560 mm, 85.6763 mm): UFL0 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0737 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(151.7958 mm, 115.0074 mm): D3のリファレンスフィールド
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(157.9490 mm, 85.6763 mm): UFR0 のフットプリント テキスト ( * )
+[text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)
+    Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
+    @(139.1285 mm, 123.1646 mm): U3 のフットプリント テキスト ( * )
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.7391 mm, 99.0346 mm): C_MCU1のリファレンスフィールド
+    @(147.7391 mm, 100.1776 mm): R6のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(153.9621 mm, 109.9566 mm): R8のリファレンスフィールド
+    @(151.1405 mm, 110.4630 mm): UBUZ0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.3581 mm, 107.9246 mm): C3のリファレンスフィールド
+    @(145.9611 mm, 110.9726 mm): R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.7391 mm, 99.0346 mm): C_MCU1のリファレンスフィールド
+    @(144.6911 mm, 99.0346 mm): C_MCU-C0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.8661 mm, 116.6876 mm): R25のリファレンスフィールド
+    @(150.5731 mm, 118.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.4221 mm, 109.5756 mm): C5のリファレンスフィールド
+    @(150.4061 mm, 107.9246 mm): C2のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 99.6505 mm): EC_R1のリファレンスフィールド
+    @(159.3771 mm, 100.5395 mm): EC_R2のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 100.5395 mm): EC_R2のリファレンスフィールド
+    @(159.3771 mm, 101.4285 mm): EC_R4のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 102.3175 mm): EC_R3のリファレンスフィールド
+    @(159.3771 mm, 101.4285 mm): EC_R4のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 100.5395 mm): EC_R2のリファレンスフィールド
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 99.6505 mm): EC_R1のリファレンスフィールド
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 99.6505 mm): EC_R1のリファレンスフィールド
+    @(164.6301 mm, 96.4946 mm): 円弧 of IR_LED_FR0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.3771 mm, 99.6505 mm): EC_R1のリファレンスフィールド
+    @(164.6300 mm, 96.4946 mm): 円弧 of IR_LED_FR0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(164.6301 mm, 96.4946 mm): 円弧 of IR_LED_FR0 、F.Silkscreen 上
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(164.6301 mm, 96.4946 mm): 円弧 of IR_LED_FR0 、F.Silkscreen 上
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.1405 mm, 110.4630 mm): UBUZ0のリファレンスフィールド
+    @(150.4061 mm, 107.9246 mm): C2のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.0251 mm, 102.3175 mm): EC_L3のリファレンスフィールド
+    @(137.0251 mm, 101.4285 mm): EC_L4のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.0251 mm, 100.5395 mm): EC_L2のリファレンスフィールド
+    @(137.0251 mm, 101.4285 mm): EC_L4のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.0251 mm, 102.3175 mm): EC_L3のリファレンスフィールド
+    @(145.9611 mm, 101.4476 mm): C_MCU-M0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.0251 mm, 100.5395 mm): EC_L2のリファレンスフィールド
+    @(137.0251 mm, 99.6505 mm): EC_L1のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(134.5917 mm, 96.5969 mm): PT_FL0のリファレンスフィールド
+    @(136.4361 mm, 95.9866 mm): 円弧 of PT_FL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(134.5917 mm, 96.5969 mm): PT_FL0のリファレンスフィールド
+    @(136.4361 mm, 95.9866 mm): 円弧 of PT_FL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(132.3721 mm, 96.4946 mm): 円弧 of IR_LED_FL0 、F.Silkscreen 上
+    @(134.2165 mm, 95.8843 mm): IR_LED_FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(134.2165 mm, 95.8843 mm): IR_LED_FL0のリファレンスフィールド
+    @(132.3721 mm, 96.4946 mm): 円弧 of IR_LED_FL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.6911 mm, 99.0346 mm): C_MCU-C0のリファレンスフィールド
+    @(147.7391 mm, 100.1776 mm): R6のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.6911 mm, 99.0346 mm): C_MCU-C0のリファレンスフィールド
+    @(147.7788 mm, 97.5519 mm): セグメント of U5 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.7391 mm, 99.0346 mm): C_MCU1のリファレンスフィールド
+    @(147.7788 mm, 97.5519 mm): セグメント of U5 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(147.7391 mm, 99.0346 mm): C_MCU1のリファレンスフィールド
+    @(148.1201 mm, 97.8931 mm): セグメント of U5 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(153.5795 mm, 87.5052 mm): UR0のリファレンスフィールド
+    @(156.7561 mm, 86.9696 mm): R4R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.0411 mm, 84.9376 mm): R2のリファレンスフィールド
+    @(153.5795 mm, 87.5052 mm): UR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(153.5795 mm, 87.5052 mm): UR0のリファレンスフィールド
+    @(148.1201 mm, 84.9376 mm): C_MCU3のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.0411 mm, 84.9376 mm): R2のリファレンスフィールド
+    @(148.1201 mm, 84.9376 mm): C_MCU3のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(155.4090 mm, 85.6763 mm): UR0 のフットプリント テキスト ( * )
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(142.3961 mm, 88.7476 mm): C_MCU0のリファレンスフィールド
+    @(144.3011 mm, 86.8426 mm): R3のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(142.0151 mm, 87.3506 mm): C21のリファレンスフィールド
+    @(144.3011 mm, 86.8426 mm): R3のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(142.3961 mm, 88.7476 mm): C_MCU0のリファレンスフィールド
+    @(142.0151 mm, 87.3506 mm): C21のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(141.7701 mm, 86.9696 mm): R4L0のリファレンスフィールド
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(139.1031 mm, 86.9696 mm): R4FL0のリファレンスフィールド
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(140.4230 mm, 85.6763 mm): UL0 のフットプリント テキスト ( * )
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(141.7701 mm, 86.9696 mm): R4L0のリファレンスフィールド
+    @(139.1031 mm, 86.9696 mm): R4FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.7560 mm, 85.6763 mm): UFL0 のフットプリント テキスト ( * )
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(137.7560 mm, 85.6763 mm): UFL0 のフットプリント テキスト ( * )
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(139.3063 mm, 84.0486 mm): セグメント of UFL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(139.3063 mm, 83.6168 mm): セグメント of UFL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.6741 mm, 84.6836 mm): R2L0のリファレンスフィールド
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.6741 mm, 84.6836 mm): R2L0のリファレンスフィールド
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+    @(134.2771 mm, 84.6836 mm): R2FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(139.1031 mm, 86.9696 mm): R4FL0のリファレンスフィールド
+    @(134.2165 mm, 95.8843 mm): IR_LED_FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(134.2165 mm, 95.8843 mm): IR_LED_FL0のリファレンスフィールド
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(139.1031 mm, 86.9696 mm): R4FL0のリファレンスフィールド
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(137.6299 mm, 83.6168 mm): セグメント of UFL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(137.9855 mm, 83.6168 mm): セグメント of UFL0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.5731 mm, 118.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+    @(147.2311 mm, 118.3386 mm): P-LED0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+    @(147.2311 mm, 118.3386 mm): P-LED0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.5731 mm, 119.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+    @(152.4231 mm, 119.5186 mm): 円弧 of SPK1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+    @(152.3731 mm, 119.1686 mm): セグメント of SPK1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(153.7731 mm, 119.4686 mm): 円弧 of SPK1 、F.Silkscreen 上
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(130.2131 mm, 114.0206 mm): C14のリファレンスフィールド
+    @(130.7211 mm, 116.8146 mm): R12のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(130.0071 mm, 118.5215 mm): P1のリファレンスフィールド
+    @(130.2131 mm, 114.0206 mm): C14のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(130.0071 mm, 118.5215 mm): P1のリファレンスフィールド
+    @(130.7211 mm, 116.8146 mm): R12のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(130.6571 mm, 119.8216 mm): セグメント of P1 、F.Silkscreen 上
+    @(130.7211 mm, 116.8146 mm): R12のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.3571 mm, 122.3216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.3571 mm, 122.3216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(135.9571 mm, 122.3216 mm): セグメント of P1 、F.Silkscreen 上
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.9571 mm, 121.4216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.3571 mm, 121.4216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.3571 mm, 119.8216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(136.3091 mm, 122.6566 mm): C7のリファレンスフィールド
+    @(135.9571 mm, 119.2216 mm): セグメント of P1 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(152.9461 mm, 79.6036 mm): 円弧 of PT_R0 、F.Silkscreen 上
+    @(151.5413 mm, 78.2617 mm): PT_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.5413 mm, 78.2617 mm): PT_R0のリファレンスフィールド
+    @(152.9461 mm, 79.6036 mm): 円弧 of PT_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(151.5413 mm, 78.2617 mm): PT_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.5413 mm, 78.2617 mm): PT_R0のリファレンスフィールド
+    @(152.9461 mm, 79.6036 mm): 円弧 of PT_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(152.9461 mm, 79.6036 mm): 円弧 of PT_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.5331 mm, 76.3016 mm): 円弧 of IR_LED_R0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.5331 mm, 76.3016 mm): 円弧 of IR_LED_R0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+    @(150.5331 mm, 76.3016 mm): 円弧 of IR_LED_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.5331 mm, 76.3016 mm): 円弧 of IR_LED_R0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(150.5331 mm, 76.3016 mm): 円弧 of IR_LED_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(149.8981 mm, 78.8416 mm): R1R0のリファレンスフィールド
+    @(152.9461 mm, 79.6036 mm): 円弧 of PT_R0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+    @(149.1361 mm, 73.2536 mm): R26のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(162.0901 mm, 86.9696 mm): R1FR0のリファレンスフィールド
+    @(159.2961 mm, 86.9696 mm): R4FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.2961 mm, 86.9696 mm): R4FR0のリファレンスフィールド
+    @(156.7561 mm, 86.9696 mm): R4R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(160.1851 mm, 84.6836 mm): R2R0のリファレンスフィールド
+    @(159.4993 mm, 83.6168 mm): セグメント of UFR0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(159.4993 mm, 84.0486 mm): セグメント of UFR0 、F.Silkscreen 上
+    @(160.1851 mm, 84.6836 mm): R2R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(159.2961 mm, 86.9696 mm): R4FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(156.7561 mm, 86.9696 mm): R4R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(160.5661 mm, 95.9866 mm): 円弧 of PT_FR0 、F.Silkscreen 上
+    @(162.5033 mm, 95.8408 mm): PT_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(160.5661 mm, 95.9866 mm): 円弧 of PT_FR0 、F.Silkscreen 上
+    @(162.5033 mm, 95.8408 mm): PT_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(160.5662 mm, 95.9866 mm): 円弧 of PT_FR0 、F.Silkscreen 上
+    @(162.5033 mm, 95.8408 mm): PT_FR0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(148.1201 mm, 84.9376 mm): C_MCU3のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(149.1361 mm, 73.2536 mm): R26のリファレンスフィールド
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(149.1361 mm, 73.2536 mm): R26のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(144.0561 mm, 79.6036 mm): 円弧 of PT_L0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(144.0561 mm, 79.6036 mm): 円弧 of PT_L0 、F.Silkscreen 上
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(144.0561 mm, 79.6035 mm): 円弧 of PT_L0 、F.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.4691 mm, 76.3016 mm): 円弧 of IR_LED_L0 、F.Silkscreen 上
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.7391 mm, 100.1776 mm): R6のリファレンスフィールド
+    @(149.0241 mm, 99.6696 mm): パッド 2 [GND] - C_MCU1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.7391 mm, 100.1776 mm): R6のリファレンスフィールド
+    @(147.7241 mm, 99.6696 mm): パッド 1 [+3V3] - C_MCU1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.4221 mm, 109.5756 mm): C5のリファレンスフィールド
+    @(149.7711 mm, 107.9096 mm): パッド 1 [+3V3] - C2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.8661 mm, 116.6876 mm): R25のリファレンスフィールド
+    @(150.3731 mm, 115.3686 mm): パッド - [N$23] - SPK1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.3581 mm, 109.1946 mm): C1のリファレンスフィールド
+    @(146.7231 mm, 107.9096 mm): パッド 1 [+3V3] - C3 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.3581 mm, 109.1946 mm): C1のリファレンスフィールド
+    @(146.7231 mm, 109.2096 mm): パッド 2 [GND] - C3 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.3581 mm, 107.9246 mm): C3のリファレンスフィールド
+    @(147.9931 mm, 109.2096 mm): パッド 1 [GND] - C1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.3581 mm, 107.9246 mm): C3のリファレンスフィールド
+    @(147.9931 mm, 107.9096 mm): パッド 2 [+3V3] - C1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.4221 mm, 109.5756 mm): C5のリファレンスフィールド
+    @(149.7711 mm, 109.2096 mm): パッド 2 [GND] - C2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3771 mm, 100.5395 mm): EC_R2のリファレンスフィールド
+    @(159.6771 mm, 100.0506 mm): パッド TP [+3V3] - EC_R1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3771 mm, 102.3175 mm): EC_R3のリファレンスフィールド
+    @(159.6771 mm, 101.8286 mm): パッド TP [EC_R_A] - EC_R4 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3771 mm, 102.3175 mm): EC_R3のリファレンスフィールド
+    @(159.6771 mm, 100.9396 mm): パッド TP [GND] - EC_R2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3771 mm, 101.4285 mm): EC_R4のリファレンスフィールド
+    @(159.6771 mm, 100.9396 mm): パッド TP [GND] - EC_R2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(159.3771 mm, 101.4285 mm): EC_R4のリファレンスフィールド
+    @(159.6771 mm, 100.0506 mm): パッド TP [+3V3] - EC_R1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(157.6451 mm, 103.4796 mm): R1のリファレンスフィールド
+    @(158.2801 mm, 104.6146 mm): パッド 2 [FRAM_CS] - R7 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(162.6928 mm, 96.6408 mm): IR_LED_FR0のリファレンスフィールド
+    @(163.3696 mm, 96.3398 mm): PTHパッド K [N$18] (IR_LED_FR0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.1405 mm, 110.4630 mm): UBUZ0のリファレンスフィールド
+    @(154.0971 mm, 110.5916 mm): パッド 1 [BUZZER_PWM] - R8 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.1405 mm, 110.4630 mm): UBUZ0のリファレンスフィールド
+    @(152.0571 mm, 109.5906 mm): パッド 1 [GND] - C5 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(150.4061 mm, 107.9246 mm): C2のリファレンスフィールド
+    @(152.0571 mm, 109.5906 mm): パッド 1 [GND] - C5 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.1405 mm, 110.4630 mm): UBUZ0のリファレンスフィールド
+    @(152.0571 mm, 108.2906 mm): パッド 2 [+3V3] - C5 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(150.4061 mm, 107.9246 mm): C2のリファレンスフィールド
+    @(152.0571 mm, 108.2906 mm): パッド 2 [+3V3] - C5 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(145.9611 mm, 101.4476 mm): C_MCU-M0のリファレンスフィールド
+    @(137.3251 mm, 102.7176 mm): パッド TP [EC_L_B] - EC_L3 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(145.9611 mm, 101.4476 mm): C_MCU-M0のリファレンスフィールド
+    @(137.3251 mm, 101.8286 mm): パッド TP [EC_L_A] - EC_L4 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.0251 mm, 101.4285 mm): EC_L4のリファレンスフィールド
+    @(137.3251 mm, 100.9396 mm): パッド TP [GND] - EC_L2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.0251 mm, 101.4285 mm): EC_L4のリファレンスフィールド
+    @(137.3251 mm, 100.0506 mm): パッド TP [+3V3] - EC_L1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.0251 mm, 102.3175 mm): EC_L3のリファレンスフィールド
+    @(137.3251 mm, 101.8286 mm): パッド TP [EC_L_A] - EC_L4 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.0251 mm, 102.3175 mm): EC_L3のリファレンスフィールド
+    @(137.3251 mm, 100.9396 mm): パッド TP [GND] - EC_L2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.0251 mm, 100.5395 mm): EC_L2のリファレンスフィールド
+    @(137.3251 mm, 100.0506 mm): パッド TP [+3V3] - EC_L1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(153.5795 mm, 87.5052 mm): UR0のリファレンスフィールド
+    @(151.1761 mm, 85.5726 mm): パッド 1 [BOOT0] - R2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(153.5795 mm, 87.5052 mm): UR0のリファレンスフィールド
+    @(152.1761 mm, 85.5726 mm): パッド 2 [GND] - R2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(145.3542 mm, 90.8167 mm): U5 のフットプリント テキスト ( U5 )
+    @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(137.9681 mm, 86.3346 mm): パッド 2 [IR_FL] - R4FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(140.4230 mm, 85.6763 mm): UL0 のフットプリント テキスト ( * )
+    @(138.9761 mm, 84.8614 mm): パッド 2 [GND] - UFL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(137.9601 mm, 84.8614 mm): パッド 1 [IR_FL] - UFL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+    @(136.3091 mm, 84.5486 mm): パッド 1 [GND] - R2L0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+    @(137.9601 mm, 84.8614 mm): パッド 1 [IR_FL] - UFL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(142.0151 mm, 87.3506 mm): C21のリファレンスフィールド
+    @(141.6351 mm, 86.3346 mm): パッド 1 [GND] - R4L0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(142.3961 mm, 88.7476 mm): C_MCU0のリファレンスフィールド
+    @(142.4535 mm, 87.8102 mm): パッド 1 [NRST] - C21 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.6741 mm, 84.6836 mm): R2L0のリファレンスフィールド
+    @(134.9121 mm, 84.5486 mm): パッド 1 [GND] - R2FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.6741 mm, 84.6836 mm): R2L0のリファレンスフィールド
+    @(134.9121 mm, 83.5486 mm): パッド 2 [SENSOR_FL] - R2FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.2165 mm, 95.8843 mm): IR_LED_FL0のリファレンスフィールド
+    @(135.0471 mm, 86.3346 mm): パッド 1 [N$8] - R1FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.7560 mm, 85.6763 mm): UFL0 のフットプリント テキスト ( * )
+    @(136.3091 mm, 84.5486 mm): パッド 1 [GND] - R2L0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(138.4681 mm, 83.2358 mm): パッド 3 [N$2] - UFL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(138.5935 mm, 87.5052 mm): UL0のリファレンスフィールド
+    @(136.3091 mm, 83.5486 mm): パッド 2 [SENSOR_L] - R2L0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+    @(134.9121 mm, 84.5486 mm): パッド 1 [GND] - R2FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.9121 mm, 85.6996 mm): R1FL0のリファレンスフィールド
+    @(134.9121 mm, 84.5486 mm): パッド 1 [GND] - R2FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+    @(136.0471 mm, 86.3346 mm): パッド 2 [+3V3] - R1FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.9265 mm, 87.5052 mm): UFL0のリファレンスフィールド
+    @(134.9121 mm, 83.5486 mm): パッド 2 [SENSOR_FL] - R2FL0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(150.5731 mm, 118.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+    @(150.3731 mm, 115.3686 mm): パッド - [N$23] - SPK1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(144.0561 mm, 122.5296 mm): TP2のリファレンスフィールド
+    @(144.6911 mm, 121.2596 mm): パッド TP [MOTOR_L_OUT1] - TP1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(143.9291 mm, 118.0846 mm): TP4のリファレンスフィールド
+    @(144.6911 mm, 116.9416 mm): パッド TP [MOTOR_R_OUT1] - TP3 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(144.0561 mm, 120.2436 mm): TP1のリファレンスフィールド
+    @(144.5641 mm, 119.1006 mm): パッド TP [MOTOR_R_OUT2] - TP4 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+    @(147.7511 mm, 118.9736 mm): パッド A [N$21] - P-LED0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(144.0561 mm, 122.5296 mm): TP2のリファレンスフィールド
+    @(147.5181 mm, 121.9876 mm): パッド S1 [<no net>] - POWER0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.5791 mm, 122.6566 mm): C6のリファレンスフィールド
+    @(136.9441 mm, 122.6716 mm): パッド 1 [GND2] - C7 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.5791 mm, 122.6566 mm): C6のリファレンスフィールド
+    @(136.9441 mm, 121.3716 mm): パッド 2 [+5V] - C7 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(147.2311 mm, 118.3386 mm): P-LED0のリファレンスフィールド
+    @(148.0011 mm, 117.3226 mm): パッド 1 [N$21] - R25 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(146.7681 mm, 119.5416 mm): POWER0のリファレンスフィールド
+    @(149.2511 mm, 118.9736 mm): パッド C [GND] - P-LED0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.5791 mm, 118.2116 mm): C9のリファレンスフィールド
+    @(138.2141 mm, 118.1966 mm): パッド 1 [GND2] - C8 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(137.5791 mm, 118.2116 mm): C9のリファレンスフィールド
+    @(138.2141 mm, 119.4966 mm): パッド 2 [+5V] - C8 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(139.3571 mm, 117.0686 mm): R4のリファレンスフィールド
+    @(138.2141 mm, 118.1966 mm): パッド 1 [GND2] - C8 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(139.3571 mm, 117.0686 mm): R4のリファレンスフィールド
+    @(136.9441 mm, 118.1966 mm): パッド 1 [GND2] - C9 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(139.1285 mm, 117.5766 mm): U2 のフットプリント テキスト ( * )
+    @(139.2221 mm, 116.4336 mm): パッド 1 [VOL_CHECK] - R4 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(163.5651 mm, 124.8156 mm): セグメント of K1 、F.Silkscreen 上
+    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(163.5651 mm, 124.8156 mm): セグメント of K1 、F.Silkscreen 上
+    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(166.9651 mm, 118.4656 mm): セグメント of K1 、F.Silkscreen 上
+    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(166.9651 mm, 118.4656 mm): セグメント of K1 、F.Silkscreen 上
+    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(162.2881 mm, 137.1506 mm): 円 of RESET0 、F.Silkscreen 上
+    @(162.7251 mm, 137.1226 mm): パッド C [GND2] - LED2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.2964 mm, 115.0328 mm): U1のリファレンスフィールド
+    @(131.8281 mm, 116.3726 mm): パッド 1 [N$11] - Q2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.2131 mm, 114.0206 mm): C14のリファレンスフィールド
+    @(131.8281 mm, 116.3726 mm): パッド 1 [N$11] - Q2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.5451 mm, 114.1316 mm): 円 of U1 、F.Silkscreen 上
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.5451 mm, 114.1316 mm): 円 of U1 、F.Silkscreen 上
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.5451 mm, 114.1316 mm): 円 of U1 、F.Silkscreen 上
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.6451 mm, 114.1316 mm): 円 of U1 、F.Silkscreen 上
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(135.0404 mm, 115.4163 mm): Q2のリファレンスフィールド
+    @(134.4401 mm, 117.3226 mm): パッド 3 [+5V] - Q2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.2131 mm, 114.0206 mm): C14のリファレンスフィールド
+    @(130.0861 mm, 116.9496 mm): パッド 1 [N$11] - R12 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.0071 mm, 118.5215 mm): P1のリファレンスフィールド
+    @(130.0861 mm, 116.9496 mm): パッド 1 [N$11] - R12 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.0071 mm, 118.5215 mm): P1のリファレンスフィールド
+    @(130.0861 mm, 117.9496 mm): パッド 2 [N$7] - R12 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.0071 mm, 118.5215 mm): P1のリファレンスフィールド
+    @(131.8281 mm, 118.2726 mm): パッド 2 [N$7] - Q2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(130.7211 mm, 116.8146 mm): R12のリファレンスフィールド
+    @(131.8281 mm, 118.2726 mm): パッド 2 [N$7] - Q2 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.9121 mm, 135.2296 mm): LED3のリファレンスフィールド
+    @(136.1641 mm, 138.9506 mm): パッド 4 [GND2] - MODE0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(134.9121 mm, 135.2296 mm): LED3のリファレンスフィールド
+    @(136.1641 mm, 137.3506 mm): パッド 2 [PUSH_IN_1] - MODE0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(153.0231 mm, 119.5686 mm): 円弧 of SPK1 、F.Silkscreen 上
+    @(153.4181 mm, 121.2876 mm): パッド 3 [<no net>] - POWER0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(155.5731 mm, 114.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+    @(155.7731 mm, 115.3686 mm): パッド + [+5V] - SPK1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(155.5731 mm, 114.5686 mm): セグメント of SPK1 、F.Silkscreen 上
+    @(155.7731 mm, 118.7686 mm): パッド M [<no net>] - SPK1 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.5413 mm, 78.2617 mm): PT_R0のリファレンスフィールド
+    @(152.2177 mm, 78.5633 mm): PTHパッド K [SENSOR_R] (PT_R0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+    @(151.2615 mm, 77.3419 mm): PTHパッド K [N$29] (IR_LED_R0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.3741 mm, 78.8416 mm): R1L0のリファレンスフィールド
+    @(149.2631 mm, 78.9766 mm): パッド 1 [N$30] - R1R0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(148.3741 mm, 78.8416 mm): R1L0のリファレンスフィールド
+    @(149.2631 mm, 79.9766 mm): パッド 2 [+3V3] - R1R0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(151.9379 mm, 77.6435 mm): IR_LED_R0のリファレンスフィールド
+    @(147.1975 mm, 75.2613 mm): PTHパッド A [N$16] (IR_LED_L0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+    @(147.1975 mm, 75.2613 mm): PTHパッド A [N$16] (IR_LED_L0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(160.1851 mm, 84.6836 mm): R2R0のリファレンスフィールド
+    @(158.6611 mm, 83.2358 mm): パッド 3 [N$18] - UFR0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(161.5821 mm, 84.6836 mm): R2FR0のリファレンスフィールド
+    @(160.8201 mm, 83.5486 mm): パッド 2 [SENSOR_R] - R2R0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(160.1851 mm, 84.6836 mm): R2R0のリファレンスフィールド
+    @(159.1691 mm, 84.8614 mm): パッド 2 [GND] - UFR0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(161.5821 mm, 84.6836 mm): R2FR0のリファレンスフィールド
+    @(160.8201 mm, 84.5486 mm): パッド 1 [GND] - R2R0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(155.6211 mm, 86.3346 mm): パッド 2 [IR_R] - R4R0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(162.5033 mm, 95.8408 mm): PT_FR0のリファレンスフィールド
+    @(161.8266 mm, 96.1414 mm): PTHパッド K [SENSOR_FR] (PT_FR0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(153.6745 mm, 80.6439 mm): PTHパッド A [+3V3] (PT_R0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(155.6131 mm, 84.8614 mm): パッド 1 [IR_R] - UR0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(156.1195 mm, 87.5052 mm): UFR0のリファレンスフィールド
+    @(156.1211 mm, 83.2358 mm): パッド 3 [N$29] - UR0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(157.9490 mm, 85.6763 mm): UFR0 のフットプリント テキスト ( * )
+    @(156.6291 mm, 84.8614 mm): パッド 2 [GND] - UR0 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(144.8368 mm, 77.8246 mm): PT_L0のリファレンスフィールド
+    @(145.7407 mm, 77.3419 mm): PTHパッド K [N$10] (IR_LED_L0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(149.7711 mm, 71.8566 mm): LED1のリファレンスフィールド
+    @(148.0011 mm, 72.6186 mm): パッド 2 [LED_1] - R26 ( F.Cu 上)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(144.7845 mm, 78.5633 mm): PTHパッド K [SENSOR_L] (PT_L0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(145.6885 mm, 78.0805 mm): IR_LED_L0のリファレンスフィールド
+    @(143.3277 mm, 80.6439 mm): PTHパッド A [+3V3] (PT_L0)
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(149.7711 mm, 71.8566 mm): LED1のリファレンスフィールド
+    @(149.0011 mm, 72.6186 mm): パッド 1 [N$27] - R26 ( F.Cu 上)
+
+** Found 84 unconnected pads **
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(134.2771 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(134.9121 mm, 84.5486 mm): パッド 1 [GND] - R2FL0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(134.9121 mm, 84.5486 mm): パッド 1 [GND] - R2FL0 ( F.Cu 上)
+    @(134.6581 mm, 85.4456 mm): 配線 [GND] ( F.Cu 上、長さ: 2.0320 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(136.3091 mm, 84.5486 mm): パッド 1 [GND] - R2L0 ( F.Cu 上)
+    @(136.6901 mm, 85.4456 mm): 配線 [GND] ( F.Cu 上、長さ: 0.5388 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.9681 mm, 86.3346 mm): パッド 1 [GND] - R4FL0 ( F.Cu 上)
+    @(139.8651 mm, 85.5726 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.9761 mm, 84.8614 mm): パッド 2 [GND] - UFL0 ( F.Cu 上)
+    @(139.8651 mm, 85.5726 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(139.8651 mm, 87.0966 mm): 配線 [GND] ( F.Cu 上、長さ: 0.8890 mm )
+    @(138.9681 mm, 86.3346 mm): パッド 1 [GND] - R4FL0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(140.1191 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(142.2781 mm, 83.2866 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(141.6431 mm, 84.8614 mm): パッド 2 [GND] - UL0 ( F.Cu 上)
+    @(141.6351 mm, 86.3346 mm): パッド 1 [GND] - R4L0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(141.6431 mm, 84.8614 mm): パッド 2 [GND] - UL0 ( F.Cu 上)
+    @(142.2781 mm, 83.2866 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(141.6431 mm, 84.8614 mm): パッド 2 [GND] - UL0 ( F.Cu 上)
+    @(139.8651 mm, 85.5726 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(142.2781 mm, 83.2866 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(143.0401 mm, 82.3976 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(143.3727 mm, 86.8910 mm): パッド 2 [GND] - C21 ( F.Cu 上)
+    @(141.6351 mm, 86.3346 mm): パッド 1 [GND] - R4L0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(143.7537 mm, 88.2880 mm): パッド 2 [GND] - C_MCU0 ( F.Cu 上)
+    @(143.3727 mm, 86.8910 mm): パッド 2 [GND] - C21 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(143.7537 mm, 88.2880 mm): パッド 2 [GND] - C_MCU0 ( F.Cu 上)
+    @(144.2654 mm, 89.8906 mm): 配線 [GND] ( F.Cu 上、長さ: 0.5903 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(144.9451 mm, 82.6516 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(143.0401 mm, 82.3976 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(144.9451 mm, 82.6516 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(146.7911 mm, 76.6236 mm): 配線 [GND] ( F.Cu 上、長さ: 5.3340 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(145.1991 mm, 100.6856 mm): 配線 [GND] ( F.Cu 上、長さ: 0.1796 mm )
+    @(145.9611 mm, 101.8286 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(145.4531 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(145.4531 mm, 105.2576 mm): 配線 [GND] ( B.Cu 上、長さ: 2.2860 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(145.9761 mm, 99.6696 mm): 配線 [GND] ( F.Cu 上、長さ: 1.1430 mm )
+    @(147.6121 mm, 98.3996 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(146.7231 mm, 109.2096 mm): 配線 [GND] ( F.Cu 上、長さ: 0.8740 mm )
+    @(147.2311 mm, 109.1946 mm): 配線 [GND] ( B.Cu 上、長さ: 1.4368 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(147.2311 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(148.7551 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(147.2311 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(145.4531 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(147.2348 mm, 96.7519 mm): パッド 23 [GND] - U5 ( F.Cu 上)
+    @(147.9931 mm, 95.6056 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(147.3411 mm, 104.7536 mm): パッド 2 [GND] - U4 ( F.Cu 上)
+    @(145.9611 mm, 101.8286 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(147.6121 mm, 98.3996 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(149.0091 mm, 98.6536 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.0011 mm, 105.9136 mm): パッド 7 [GND] - U4 ( F.Cu 上)
+    @(150.9141 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.1361 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(149.4051 mm, 85.5726 mm): パッド 2 [GND] - C_MCU3 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.1361 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(149.0054 mm, 88.6173 mm): パッド 47 [GND] - U5 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.2631 mm, 90.9066 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(149.0054 mm, 88.6173 mm): パッド 47 [GND] - U5 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.4051 mm, 85.5726 mm): パッド 2 [GND] - C_MCU3 ( F.Cu 上)
+    @(150.4061 mm, 84.3026 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(149.8981 mm, 103.3526 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(151.0411 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(150.4061 mm, 84.3026 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(152.1761 mm, 85.5726 mm): パッド 2 [GND] - R2 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(150.9141 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(153.0731 mm, 106.6546 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(150.9141 mm, 108.9406 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(149.7711 mm, 109.2096 mm): 配線 [GND] ( F.Cu 上、長さ: 2.1440 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(150.9141 mm, 108.9406 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(152.0571 mm, 109.5906 mm): 配線 [GND] ( F.Cu 上、長さ: 3.0330 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(150.9141 mm, 108.9406 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(150.9141 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(151.0411 mm, 105.2576 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(150.9141 mm, 106.7816 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(152.1874 mm, 93.5699 mm): パッド 35 [GND] - U5 ( F.Cu 上)
+    @(155.2321 mm, 94.6046 mm): 配線 [GND] ( F.Cu 上、長さ: 0.7184 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(152.5651 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(154.8511 mm, 83.5406 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(152.5651 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(150.4061 mm, 84.3026 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(153.2001 mm, 86.9696 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(152.1761 mm, 85.5726 mm): パッド 2 [GND] - R2 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(154.6831 mm, 104.0286 mm): 配線 [GND] ( F.Cu 上、長さ: 0.7792 mm )
+    @(153.0731 mm, 106.6546 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(154.8511 mm, 83.5406 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(156.6291 mm, 84.8614 mm): パッド 2 [GND] - UR0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(154.9781 mm, 106.9086 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(153.0731 mm, 106.6546 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.2481 mm, 89.2556 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(156.1211 mm, 87.6046 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.3751 mm, 93.9546 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(155.2321 mm, 94.6046 mm): 配線 [GND] ( F.Cu 上、長さ: 0.7184 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.6211 mm, 86.3346 mm): パッド 1 [GND] - R4R0 ( F.Cu 上)
+    @(157.3911 mm, 87.2236 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.6291 mm, 84.8614 mm): パッド 2 [GND] - UR0 ( F.Cu 上)
+    @(156.6211 mm, 86.3346 mm): パッド 1 [GND] - R4R0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.6291 mm, 84.8614 mm): パッド 2 [GND] - UR0 ( F.Cu 上)
+    @(157.3911 mm, 82.7786 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(156.6291 mm, 96.6216 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(155.7401 mm, 95.6056 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(157.3911 mm, 87.2236 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(156.1211 mm, 87.6046 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(157.3911 mm, 87.2236 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(159.1611 mm, 86.3346 mm): パッド 1 [GND] - R4FR0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(159.1611 mm, 86.3346 mm): パッド 1 [GND] - R4FR0 ( F.Cu 上)
+    @(159.1691 mm, 84.8614 mm): パッド 2 [GND] - UFR0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(159.1691 mm, 84.8614 mm): パッド 2 [GND] - UFR0 ( F.Cu 上)
+    @(160.8201 mm, 84.5486 mm): パッド 1 [GND] - R2R0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(159.6771 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(157.3911 mm, 82.7786 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(161.4551 mm, 85.4456 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(160.8201 mm, 84.5486 mm): パッド 1 [GND] - R2R0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(161.4551 mm, 85.4456 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(162.2171 mm, 84.5486 mm): パッド 1 [GND] - R2FR0 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(161.4551 mm, 85.4456 mm): ビア [GND] (F.Cu - B.Cu 上)
+    @(162.7251 mm, 87.0966 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(162.2171 mm, 84.5486 mm): パッド 1 [GND] - R2FR0 ( F.Cu 上)
+    @(162.7251 mm, 82.5246 mm): ビア [GND] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(129.5781 mm, 115.3056 mm): パッド 2 [GND2] - C14 ( F.Cu 上)
+    @(131.4831 mm, 115.1636 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(132.3721 mm, 113.0046 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(133.5451 mm, 114.0816 mm): パッド 1 [GND2] - U1 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(132.3721 mm, 113.0046 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(129.8321 mm, 111.8616 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(133.0071 mm, 117.3226 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(131.4831 mm, 115.1636 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(133.2611 mm, 120.2436 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(134.0071 mm, 123.0536 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.0320 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(133.5451 mm, 114.0816 mm): パッド 1 [GND2] - U1 ( F.Cu 上)
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(133.5451 mm, 114.0816 mm): パッド 1 [GND2] - U1 ( F.Cu 上)
+    @(131.4831 mm, 115.1636 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(131.4831 mm, 125.5776 mm): 配線 [GND2] ( F.Cu 上、長さ: 3.5695 mm )
+    @(132.3721 mm, 123.6726 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+    @(136.8171 mm, 114.0206 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(134.9121 mm, 115.4176 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(134.9121 mm, 113.7816 mm): パッド 2 [GND2] - C15 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(136.8171 mm, 114.0206 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(137.8331 mm, 111.7346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(136.9441 mm, 122.6716 mm): パッド 1 [GND2] - C7 ( F.Cu 上)
+    @(137.0711 mm, 124.3076 mm): 配線 [GND2] ( B.Cu 上、長さ: 4.3585 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(137.8331 mm, 111.7346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(139.2301 mm, 112.4966 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.2141 mm, 118.1966 mm): パッド 1 [GND2] - C8 ( F.Cu 上)
+    @(138.9761 mm, 120.4976 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+    @(136.9441 mm, 122.6716 mm): パッド 1 [GND2] - C7 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.2141 mm, 122.6716 mm): パッド 1 [GND2] - C6 ( F.Cu 上)
+    @(138.9761 mm, 120.4976 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.2221 mm, 115.1636 mm): パッド 1 [GND2] - R5 ( F.Cu 上)
+    @(136.8171 mm, 114.0206 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(138.2141 mm, 117.5766 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.3592 mm )
+    @(138.2221 mm, 115.1636 mm): パッド 1 [GND2] - R5 ( F.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(141.8932 mm, 119.3507 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.9036 mm )
+    @(138.9761 mm, 120.4976 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(142.5431 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 1.1320 mm )
+    @(141.8932 mm, 118.8496 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.5011 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(143.6867 mm, 123.0376 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.8980 mm )
+    @(143.4211 mm, 124.4346 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(145.7071 mm, 114.4016 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(145.7071 mm, 112.7506 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(145.7071 mm, 114.4016 mm): ビア [GND2] (F.Cu - B.Cu 上)
+    @(143.6751 mm, 117.4496 mm): 配線 [GND2] ( F.Cu 上、長さ: 0.8980 mm )
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(146.0961 mm, 111.6076 mm): パッド 1 [GND2] - R0 ( F.Cu 上)
+    @(145.7071 mm, 112.7506 mm): ビア [GND2] (F.Cu - B.Cu 上)
+[unconnected_items]: Missing connection between items
+    Local override; error
+    @(146.8088 mm, 119.8372 mm): 配線 [GND2] ( B.Cu 上、長さ: 1.5580 mm )
+    @(145.7071 mm, 118.0846 mm): ビア [GND2] (F.Cu - B.Cu 上)
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **

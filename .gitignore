@@ -53,8 +53,10 @@ compile_commands.json
 *.kicad_prl
 *.kicad_sch-bak
 *.kicad_pcb-bak
+*.lck
 *-backups/
 fp-info-cache
+**/.history/
 
 .ai/worktrees/*
 !.ai/worktrees/.gitkeep

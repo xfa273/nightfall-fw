@@ -1,0 +1,426 @@
+ERC report (2026-06-06T14:10:01, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(91.44 mm, 137.16 mm): 水平ワイヤー, 長さ 5.08 mm
+    @(86.36 mm, 137.16 mm): 垂直ワイヤー, 長さ 2.54 mm
+[pin_not_connected]: Pin not connected
+    ; error
+    @(91.44 mm, 193.04 mm): Symbol U5 ピン 33 [PA12, 双方向, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(91.44 mm, 215.90 mm): Symbol U5 ピン 40 [PB4, 双方向, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(91.44 mm, 299.72 mm): Symbol U3 ピン 11 [CM1, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(91.44 mm, 302.26 mm): Symbol U3 ピン 7 [CM2, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(91.44 mm, 307.34 mm): Symbol U3 ピン 12 [NFAULT, 出力, ライン]
+[pin_to_pin]: ピンのタイプ 出力 と 出力 が接続されています
+    ; error
+    @(91.44 mm, 312.42 mm): Symbol U3 ピン 1 [OUT1_2, 出力, ライン]
+    @(91.44 mm, 314.96 mm): Symbol U3 ピン 10 [OUT1, 出力, ライン]
+[pin_to_pin]: ピンのタイプ 出力 と 出力 が接続されています
+    ; error
+    @(91.44 mm, 317.50 mm): Symbol U3 ピン 3 [OUT2_2, 出力, ライン]
+    @(91.44 mm, 320.04 mm): Symbol U3 ピン 8 [OUT2, 出力, ライン]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(93.98 mm, 373.38 mm): シンボル TP1 [TPB1,27]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(93.98 mm, 378.46 mm): シンボル TP3 [TPB1,27]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(96.52 mm, 381.00 mm): シンボル TP4 [TPB1,27]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(109.22 mm, 43.18 mm): Symbol U6 ピン 7 [DNU, パッシブ, ライン]
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(114.30 mm, 50.80 mm): 水平ワイヤー, 長さ 35.56 mm
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(137.16 mm, 370.84 mm): シンボル EC_L1 [PTR1TP06SQ]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(142.24 mm, 370.84 mm): シンボル EC_L2 [PTR1TP06SQ]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(147.32 mm, 370.84 mm): シンボル EC_L3 [PTR1TP06SQ]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(137.16 mm, 373.38 mm): Symbol EC_L1 ピン TP [TP, 入力, ライン]
+[unresolved_variable]: Unresolved text variable
+    ; error
+    @(152.40 mm, 370.84 mm): シンボル EC_L4 [PTR1TP06SQ]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(142.24 mm, 373.38 mm): Symbol EC_L2 ピン TP [TP, 入力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(154.94 mm, 63.50 mm): Symbol U4 ピン 11 [SDO_AUX, 双方向, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(154.94 mm, 66.04 mm): Symbol U4 ピン 10 [OCS_AUX, 双方向, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(190.50 mm, 45.72 mm): Symbol U4 ピン 4 [INT1, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(190.50 mm, 48.26 mm): Symbol U4 ピン 9 [INT2, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(190.50 mm, 299.72 mm): Symbol U2 ピン 11 [CM1, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(190.50 mm, 302.26 mm): Symbol U2 ピン 7 [CM2, 出力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(190.50 mm, 307.34 mm): Symbol U2 ピン 12 [NFAULT, 出力, ライン]
+[pin_to_pin]: ピンのタイプ 出力 と 出力 が接続されています
+    ; error
+    @(190.50 mm, 312.42 mm): Symbol U2 ピン 1 [OUT1_2, 出力, ライン]
+    @(190.50 mm, 314.96 mm): Symbol U2 ピン 10 [OUT1, 出力, ライン]
+[pin_to_pin]: ピンのタイプ 出力 と 出力 が接続されています
+    ; error
+    @(190.50 mm, 317.50 mm): Symbol U2 ピン 3 [OUT2_2, 出力, ライン]
+    @(190.50 mm, 320.04 mm): Symbol U2 ピン 8 [OUT2, 出力, ライン]
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(256.54 mm, 220.98 mm): 垂直ワイヤー, 長さ 15.24 mm
+    @(256.54 mm, 205.74 mm): 水平ワイヤー, 長さ 7.62 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(264.16 mm, 226.06 mm): 水平ワイヤー, 長さ 10.16 mm
+    @(264.16 mm, 220.98 mm): 垂直ワイヤー, 長さ 5.08 mm
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(266.70 mm, 50.80 mm): Symbol U1 ピン 3 [VIN, 入力, ライン]
+[pin_not_connected]: Pin not connected
+    ; error
+    @(284.48 mm, 208.28 mm): Symbol POWER0 ピン 3 [3, パッシブ, ライン]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(292.10 mm, 53.34 mm): Symbol U1 ピン 1 [GND, 電源入力, ライン]
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(345.44 mm, 185.42 mm): 水平ワイヤー, 長さ 2.54 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(386.08 mm, 218.44 mm): 水平ワイヤー, 長さ 2.54 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(386.08 mm, 228.60 mm): 水平ワイヤー, 長さ 2.54 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(396.24 mm, 299.72 mm): 垂直ワイヤー, 長さ 10.16 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(396.24 mm, 314.96 mm): 水平ワイヤー, 長さ 5.08 mm
+    @(396.24 mm, 307.34 mm): 垂直ワイヤー, 長さ 7.62 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(396.24 mm, 355.60 mm): 垂直ワイヤー, 長さ 10.16 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(396.24 mm, 363.22 mm): 垂直ワイヤー, 長さ 7.62 mm
+    @(396.24 mm, 370.84 mm): 水平ワイヤー, 長さ 5.08 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(401.32 mm, 152.40 mm): 垂直ワイヤー, 長さ 5.08 mm
+    @(401.32 mm, 152.40 mm): 水平ワイヤー, 長さ 15.24 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(434.34 mm, 218.44 mm): 水平ワイヤー, 長さ 2.54 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(462.28 mm, 299.72 mm): 垂直ワイヤー, 長さ 10.16 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(462.28 mm, 307.34 mm): 垂直ワイヤー, 長さ 7.62 mm
+    @(462.28 mm, 314.96 mm): 水平ワイヤー, 長さ 5.08 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(462.28 mm, 355.60 mm): 垂直ワイヤー, 長さ 10.16 mm
+[wire_dangling]: Wires not connected to anything
+    ; error
+    @(462.28 mm, 363.22 mm): 垂直ワイヤー, 長さ 7.62 mm
+    @(462.28 mm, 370.84 mm): 水平ワイヤー, 長さ 5.08 mm
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(30.48 mm, 332.74 mm): シンボル C9 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(40.64 mm, 332.74 mm): シンボル C8 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(50.80 mm, 302.26 mm): シンボル U3 [MP6551GQB-P]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(73.66 mm, 40.64 mm): シンボル R7 [R-EU_R0402]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(73.66 mm, 226.06 mm): ラベル 'FAN_PWM'
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(86.36 mm, 142.24 mm): シンボル C_MCU-C0 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(91.44 mm, 116.84 mm): シンボル U5 [STM32F413CHU6TRUFQFPN-48_7X7X0P55M...]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(91.44 mm, 162.56 mm): シンボル U5 [STM32F413CHU6TRUFQFPN-48_7X7X0P55M...]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(93.98 mm, 50.80 mm): シンボル U6 [CY15B108QI-20LPXC]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(93.98 mm, 373.38 mm): シンボル TP1 [TPB1,27]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(93.98 mm, 378.46 mm): シンボル TP3 [TPB1,27]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(96.52 mm, 375.92 mm): シンボル TP2 [TPB1,27]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(96.52 mm, 381.00 mm): シンボル TP4 [TPB1,27]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(114.30 mm, 45.72 mm): シンボル R1 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(119.38 mm, 53.34 mm): シンボル C5 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(129.54 mm, 332.74 mm): シンボル C7 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(137.16 mm, 370.84 mm): シンボル EC_L1 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(139.70 mm, 332.74 mm): シンボル C6 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(142.24 mm, 370.84 mm): シンボル EC_L2 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(147.32 mm, 370.84 mm): シンボル EC_L3 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(149.86 mm, 38.10 mm): シンボル R6 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(149.86 mm, 302.26 mm): シンボル U2 [MP6551GQB-P]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(152.40 mm, 370.84 mm): シンボル EC_L4 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(162.56 mm, 193.04 mm): シンボル C21 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(172.72 mm, 53.34 mm): シンボル U4 [ISM330DHCXTR]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(172.72 mm, 195.58 mm): シンボル R2 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(175.26 mm, 134.62 mm): シンボル C_MCU0 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(182.88 mm, 134.62 mm): シンボル C_MCU1 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(190.50 mm, 134.62 mm): シンボル C_MCU2 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(195.58 mm, 370.84 mm): シンボル EC_R1 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(198.12 mm, 53.34 mm): シンボル C1 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(198.12 mm, 134.62 mm): シンボル C_MCU3 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(200.66 mm, 370.84 mm): シンボル EC_R2 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(203.20 mm, 50.80 mm): シンボル C2 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(205.74 mm, 370.84 mm): シンボル EC_R3 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(210.82 mm, 114.30 mm): シンボル C_MCU-M0 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(210.82 mm, 370.84 mm): シンボル EC_R4 [PTR1TP06SQ]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(213.36 mm, 50.80 mm): シンボル C3 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(248.92 mm, 292.10 mm): シンボル PT_FL0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(248.92 mm, 317.50 mm): シンボル R2FL0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(248.92 mm, 363.22 mm): シンボル PT_L0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(248.92 mm, 388.62 mm): シンボル R2L0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(254.00 mm, 226.06 mm): シンボル Q2 [IRLML6402TRPBF]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(259.08 mm, 175.26 mm): シンボル R4 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(264.16 mm, 58.42 mm): シンボル C14 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(264.16 mm, 215.90 mm): シンボル R12 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(271.78 mm, 147.32 mm): シンボル K1 [62201021121]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(274.32 mm, 175.26 mm): シンボル R5 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(276.86 mm, 205.74 mm): シンボル POWER0 [EG1215AA]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(279.40 mm, 50.80 mm): シンボル U1 [AP2210N-3.3TRG1]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(281.94 mm, 228.60 mm): シンボル P1 [JST-PH2]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(292.10 mm, 292.10 mm): シンボル PT_FR0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(292.10 mm, 317.50 mm): シンボル R2FR0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(292.10 mm, 363.22 mm): シンボル PT_R0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(292.10 mm, 388.62 mm): シンボル R2R0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(297.18 mm, 53.34 mm): シンボル C15 [C-EUC0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(325.12 mm, 147.32 mm): シンボル R3 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(337.82 mm, 124.46 mm): シンボル RESET0 [TL6330AF200Q]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(337.82 mm, 185.42 mm): シンボル R25 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(340.36 mm, 53.34 mm): シンボル R0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(345.44 mm, 147.32 mm): シンボル MODE0 [TL6330AF200Q]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(345.44 mm, 320.04 mm): シンボル R4FL0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(345.44 mm, 375.92 mm): シンボル R4L0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(347.98 mm, 185.42 mm): シンボル P-LED0 [LEDCHIPLED_0603]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(373.38 mm, 314.96 mm): シンボル UFL0 [2N7002TQ-7-F]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(373.38 mm, 370.84 mm): シンボル UL0 [2N7002TQ-7-F]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(381.00 mm, 175.26 mm): シンボル R8 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(381.00 mm, 218.44 mm): シンボル R26 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(381.00 mm, 228.60 mm): シンボル R28 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(391.16 mm, 218.44 mm): シンボル LED1 [LEDCHIPLED_0603]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(391.16 mm, 228.60 mm): シンボル LED3 [LEDCHIPLED_0603]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(396.24 mm, 284.48 mm): シンボル R1FL0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(396.24 mm, 302.26 mm): シンボル IR_LED_FL0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(396.24 mm, 340.36 mm): シンボル R1L0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(396.24 mm, 358.14 mm): シンボル IR_LED_L0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(401.32 mm, 144.78 mm): シンボル D3 [BAS16WT1GW]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(406.40 mm, 170.18 mm): シンボル UBUZ0 [2N7002TQ-7-F]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(411.48 mm, 320.04 mm): シンボル R4FR0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(411.48 mm, 375.92 mm): シンボル R4R0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(416.56 mm, 144.78 mm): シンボル SPK1 [SMT-0540-S-R]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(426.72 mm, 218.44 mm): シンボル R27 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(436.88 mm, 218.44 mm): シンボル LED2 [LEDCHIPLED_0603]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(439.42 mm, 314.96 mm): シンボル UFR0 [2N7002TQ-7-F]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(439.42 mm, 370.84 mm): シンボル UR0 [2N7002TQ-7-F]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(462.28 mm, 284.48 mm): シンボル R1FR0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(462.28 mm, 302.26 mm): シンボル IR_LED_FR0 [LED3MM]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(462.28 mm, 340.36 mm): シンボル R1R0 [R-EU_R0402]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません
+    ; warning
+    @(462.28 mm, 358.14 mm): シンボル IR_LED_R0 [LED3MM]
+
+ ** ERC messages: 134  Errors 46  Warnings 88
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters
