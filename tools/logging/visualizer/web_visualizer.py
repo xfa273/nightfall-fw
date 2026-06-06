@@ -254,6 +254,8 @@ def _build_nightfall_plot(df):
         ("Distance", "mm", ["target_distance_mm", "distance_mm", "distance_error_mm"]),
         ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
         ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
+        ("Wall Sensor", "ADC", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
+        ("Battery", "ADC", ["adc_vbat"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg"]),
         ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "omega_error_dps"]),
         ("Flags", "0/1", ["flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_angle_target"]),
