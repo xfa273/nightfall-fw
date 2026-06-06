@@ -1,40 +1,8 @@
 ** Drc report for HM_Nightfall-mini-2e_Encoder-PCB-L_v1.kicad_pcb **
-** Created on 2026-06-06T14:49:12 **
+** Created on 2026-06-06T15:20:52 **
 ** Report includes: Errors, Warnings, Exclusions **
 
-** Found 32 DRC violations **
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1342 mm)
-    Local override; error
-    @(147.8801 mm, 104.4956 mm): パッド 2 [GND] - C1 ( B.Cu 上)
-    @(147.4125 mm, 103.8352 mm): 配線 [+3V3] ( B.Cu 上、長さ: 0.1205 mm )
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1713 mm)
-    Local override; error
-    @(149.0301 mm, 102.2096 mm): 配線 [+3V3] ( B.Cu 上、長さ: 1.3586 mm )
-    @(148.0301 mm, 102.2096 mm): パッド 1 [N$1] - R1 ( B.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1342 mm)
-    Local override; error
-    @(147.8801 mm, 104.4956 mm): パッド 2 [GND] - C1 ( B.Cu 上)
-    @(148.0694 mm, 103.2988 mm): 配線 [+3V3] ( B.Cu 上、長さ: 0.7586 mm )
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1968 mm)
-    Local override; error
-    @(147.2601 mm, 103.3018 mm): ビア [N$1] (F.Cu - B.Cu 上)
-    @(147.3561 mm, 104.2018 mm): パッド 1 [GND] - IC1 ( F.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1753 mm)
-    Local override; error
-    @(147.0823 mm, 104.1654 mm): 配線 [+3V3] ( B.Cu 上、長さ: 0.4670 mm )
-    @(147.2601 mm, 103.3018 mm): ビア [N$1] (F.Cu - B.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1907 mm)
-    Local override; error
-    @(147.2601 mm, 103.3018 mm): 配線 [N$1] ( B.Cu 上、長さ: 1.0889 mm )
-    @(148.0694 mm, 103.2988 mm): ビア [+3V3] (F.Cu - B.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1557 mm)
-    Local override; error
-    @(147.0823 mm, 104.1654 mm): 配線 [+3V3] ( B.Cu 上、長さ: 0.4670 mm )
-    @(147.8801 mm, 104.4956 mm): パッド 2 [GND] - C1 ( B.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1866 mm)
-    Local override; error
-    @(149.1801 mm, 104.4956 mm): パッド 1 [+3V3] - C1 ( B.Cu 上)
-    @(149.1905 mm, 105.4354 mm): ビア [EC_L_B] (F.Cu - B.Cu 上)
+** Found 10 DRC violations **
 [copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.2000 mm; 現状 0.1808 mm)
     Rule: 基板の設定の基板端の制約; error
     @(146.7761 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
@@ -70,62 +38,6 @@
 [drill_out_of_range]: 穴サイズが許容範囲外 (基板の設定の制約 最小のホール 0.3000 mm; 現状 0.2000 mm)
     Rule: ネットクラス 'Default'; error
     @(149.1905 mm, 105.4354 mm): ビア [EC_L_B] (F.Cu - B.Cu 上)
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(146.7761 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
-    @(150.2271 mm, 107.8039 mm): EC_L4のリファレンスフィールド
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(146.7761 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
-    @(149.2873 mm, 107.8039 mm): EC_L3のリファレンスフィールド
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(146.7761 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
-    @(148.3221 mm, 107.8039 mm): EC_L2のリファレンスフィールド
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(146.7761 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
-    @(147.3823 mm, 107.8039 mm): EC_L1のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0872 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(150.2271 mm, 107.8039 mm): EC_L4のリファレンスフィールド
-    @(149.2873 mm, 107.8039 mm): EC_L3のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0747 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(150.2271 mm, 107.8039 mm): EC_L4のリファレンスフィールド
-    @(148.3221 mm, 107.8039 mm): EC_L2のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0618 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(148.3221 mm, 107.8039 mm): EC_L2のリファレンスフィールド
-    @(149.2873 mm, 107.8039 mm): EC_L3のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(150.2271 mm, 107.8039 mm): EC_L4のリファレンスフィールド
-    @(147.3823 mm, 107.8039 mm): EC_L1のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0957 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(148.3221 mm, 107.8039 mm): EC_L2のリファレンスフィールド
-    @(147.3823 mm, 107.8039 mm): EC_L1のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0747 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(149.2873 mm, 107.8039 mm): EC_L3のリファレンスフィールド
-    @(147.3823 mm, 107.8039 mm): EC_L1のリファレンスフィールド
-[silk_overlap]: シルクスクリーンのクリアランス (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0481 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(147.8951 mm, 102.8446 mm): R1のリファレンスフィールド
-    @(149.1651 mm, 103.8606 mm): C1のリファレンスフィールド
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(147.8951 mm, 102.8446 mm): R1のリファレンスフィールド
-    @(149.1801 mm, 104.4956 mm): パッド 1 [+3V3] - C1 ( B.Cu 上)
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(147.8951 mm, 102.8446 mm): R1のリファレンスフィールド
-    @(147.8801 mm, 104.4956 mm): パッド 2 [GND] - C1 ( B.Cu 上)
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(149.1651 mm, 103.8606 mm): C1のリファレンスフィールド
-    @(148.0301 mm, 102.2096 mm): パッド 1 [N$1] - R1 ( B.Cu 上)
 
 ** Found 0 unconnected pads **
 
@@ -136,6 +48,9 @@
     - Track endpoint not centered on via
     - Tuning profile track geometries
     - Footprint doesn't match symbol's footprint filters
+    - Silkscreen clearance
+    - Silkscreen clipped by solder mask
+    - Silkscreen clipped by board edge
     - Footprint component type doesn't match footprint pads
 
 ** End of Report **

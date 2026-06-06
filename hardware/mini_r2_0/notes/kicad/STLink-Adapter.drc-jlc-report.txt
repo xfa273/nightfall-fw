@@ -1,192 +1,164 @@
 ** Drc report for STLink-Adapter.kicad_pcb **
-** Created on 2026-06-06T14:49:15 **
+** Created on 2026-06-06T15:20:55 **
 ** Report includes: Errors, Warnings, Exclusions **
 
-** Found 46 DRC violations **
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1806 mm)
-    Local override; error
-    @(142.4051 mm, 108.6866 mm): 配線 [SWO] ( F.Cu 上、長さ: 18.6690 mm )
-    @(144.4371 mm, 109.4486 mm): ビア [USART1_RX] (F.Cu - B.Cu 上)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+** Found 39 DRC violations **
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
     @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
     @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
     @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
     @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
     @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
     @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
     @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
     @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
     @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
     @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
     @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
     @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1120 mm)
+[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
     Local override; error
     @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
     @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
     @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
     @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
-    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
-    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
-    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
     @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
-    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
-[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; error
-    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
-    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(134.5011 mm, 111.2536 mm): セグメント (Edge.Cuts 上)
-    @(154.5220 mm, 113.2980 mm): K1のリファレンスフィールド
-[silk_edge_clearance]: 基板端でシルクスクリーンが切り取られている (基板の設定のシルクスクリーンの制約 クリアランス 0.1000 mm; 現状 0.0000 mm)
-    Rule: 基板の設定のシルクスクリーンの制約; warning
-    @(133.5011 mm, 99.7536 mm): セグメント (Edge.Cuts 上)
-    @(133.9441 mm, 100.5036 mm): TP2のリファレンスフィールド
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(159.3233 mm, 108.1786 mm): セグメント of K1 、F.Silkscreen 上
-    @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(159.3233 mm, 108.1786 mm): セグメント of K1 、F.Silkscreen 上
-    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(162.7233 mm, 101.8286 mm): セグメント of K1 、F.Silkscreen 上
-    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(162.7233 mm, 101.8286 mm): セグメント of K1 、F.Silkscreen 上
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
+    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 107.5436 mm): PTHパッド 1 [+5V] (K1)
+    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
+    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 102.4636 mm): PTHパッド 6 [+3V3] (K1)
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 106.2736 mm): PTHパッド 2 [GND] (K1)
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 103.7336 mm): PTHパッド 7 [BOOT0] (K1)
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(160.3883 mm, 105.0036 mm): PTHパッド 3 [SWDIO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 105.0036 mm): PTHパッド 8 [USART1_TX] (K1)
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(160.3883 mm, 103.7336 mm): PTHパッド 4 [SWCLK] (K1)
+    @(160.3883 mm, 102.4636 mm): PTHパッド 5 [NRST] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
+[solder_mask_bridge]: 異なるネットのアイテムが裏面ハンダマスクのアパーチャで接続されている
+    Rule: 基板セットアップのハンダマスクの最小幅; warning
+    @(161.6583 mm, 106.2736 mm): PTHパッド 9 [USART1_RX] (K1)
+    @(161.6583 mm, 107.5436 mm): PTHパッド 10 [SWO] (K1)
 
 ** Found 0 unconnected pads **
 
@@ -197,6 +169,9 @@
     - Track endpoint not centered on via
     - Tuning profile track geometries
     - Footprint doesn't match symbol's footprint filters
+    - Silkscreen clearance
+    - Silkscreen clipped by solder mask
+    - Silkscreen clipped by board edge
     - Footprint component type doesn't match footprint pads
 
 ** End of Report **
