@@ -34,6 +34,7 @@
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_trace_log.h"
+#include "f413_trace_diag.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
 #include "shortest_run_params.h"
@@ -292,9 +293,6 @@ typedef struct
   bool initialized;
 } nightfall_wall_end_state_t;
 
-static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq);
-static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* lhs,
-                                                 const nvm_trace_log_record_t* rhs);
 static void nightfall_run_search_safe_trace_session_once(void);
 static void nightfall_run_shortest_safe_trace_session_once(void);
 static void nightfall_run_search_trace_entry_once(void);
@@ -327,6 +325,8 @@ static void nightfall_trace_log_auto_tick_sample(void);
 static void nightfall_trace_log_update_observe_cache(void);
 static void nightfall_trace_log_set_mode_flags(uint16_t flags);
 static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
+static void nightfall_trace_diag_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id);
+static void nightfall_trace_diag_emit_extra_csv_meta(void);
 static int32_t nightfall_trace_log_scale_float(float value, float scale);
 static const char* nightfall_op_mode_name(uint8_t mode);
 static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case);
@@ -1700,84 +1700,68 @@ static void nightfall_trace_log_update_observe_cache(void)
   }
 }
 
-static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
+static void nightfall_run_trace_log_dump_csv_once(void)
 {
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-  uint32_t available;
-  uint32_t dump_count;
-  uint32_t i;
-  uint8_t meta_mode;
-  uint8_t meta_case;
-  uint8_t meta_sub;
-  uint8_t meta_test_id;
+  f413_trace_diag_run_dump_csv_once();
+}
 
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] csv: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
-    return;
-  }
+static void nightfall_run_trace_log_dump_csv_all_once(void)
+{
+  f413_trace_diag_run_dump_csv_all_once();
+}
 
-  available = header.total_records;
-  if (available > header.record_capacity)
-  {
-    available = header.record_capacity;
-  }
-  if (available == 0U)
-  {
-    trace_printf("[TRACE-LOG] csv: no records\r\n");
-    return;
-  }
+static void nightfall_run_trace_log_dump_bin_once(void)
+{
+  f413_trace_diag_run_dump_bin_once();
+}
 
-  dump_count = available;
-  if ((max_records > 0U) && (dump_count > max_records))
-  {
-    dump_count = max_records;
-  }
+static void nightfall_run_trace_log_dump_bin_all_once(void)
+{
+  f413_trace_diag_run_dump_bin_all_once();
+}
 
-  meta_mode = g_trace_log_context_mode;
-  meta_case = g_trace_log_context_case;
-  meta_sub = g_trace_log_context_sub;
-  meta_test_id = g_trace_log_context_test_id;
-  for (i = 0U; i < dump_count; i++)
-  {
-    nvm_trace_log_record_t meta_rec;
-    st = nvm_trace_log_read_latest(i, &meta_rec);
-    if ((st == NVM_STATUS_OK) && (meta_rec.op_mode != 0xFFU))
-    {
-      meta_mode = meta_rec.op_mode;
-      meta_case = meta_rec.op_case;
-      meta_sub = meta_rec.op_sub;
-      meta_test_id = meta_rec.test_id;
-      break;
-    }
-  }
+static void nightfall_run_trace_log_selftest_once(void)
+{
+  f413_trace_diag_run_selftest_once();
+}
 
-  trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
-               (unsigned long)dump_count,
-               (unsigned long)available);
-  trace_printf("#log_format=nightfall_trace_csv_v3\r\n");
-  trace_printf("#fw_target=%s\r\n", FW_TARGET);
-  trace_printf("#fw_version=%s\r\n", FW_VERSION);
-  trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
-  trace_printf("#fw_git_sha=%s\r\n", FW_GIT_SHA);
-  trace_printf("#fw_git_dirty=%d\r\n", FW_GIT_DIRTY);
-  trace_printf("#fw_log_schema=0x%08lX\r\n", (unsigned long)NVM_TRACE_LOG_SCHEMA_VERSION);
-  trace_printf("#op_mode=%u\r\n", (unsigned int)meta_mode);
-  trace_printf("#op_mode_name=%s\r\n", nightfall_op_mode_name(meta_mode));
-  trace_printf("#op_case=%u\r\n", (unsigned int)meta_case);
-  trace_printf("#op_case_name=%s\r\n", nightfall_op_case_name(meta_mode, meta_case));
-  trace_printf("#op_sub=%u\r\n", (unsigned int)meta_sub);
-  trace_printf("#op_sub_name=%s\r\n", nightfall_op_sub_name(meta_mode, meta_sub));
-  trace_printf("#op_test_id=%u\r\n", (unsigned int)meta_test_id);
-  trace_printf("#op_label=mode%u %s / case%u %s / sub%u %s\r\n",
-               (unsigned int)meta_mode,
-               nightfall_op_mode_name(meta_mode),
-               (unsigned int)meta_case,
-               nightfall_op_case_name(meta_mode, meta_case),
-               (unsigned int)meta_sub,
-               nightfall_op_sub_name(meta_mode, meta_sub));
+static void nightfall_print_nvm_cli_help(void)
+{
+  trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
+  trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
+  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
+  trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
+  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
+  trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
+  trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
+  trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin)\r\n");
+  trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
+}
+
+static void nightfall_trace_diag_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id)
+{
+  if (mode != NULL)
+  {
+    *mode = g_trace_log_context_mode;
+  }
+  if (op_case != NULL)
+  {
+    *op_case = g_trace_log_context_case;
+  }
+  if (sub != NULL)
+  {
+    *sub = g_trace_log_context_sub;
+  }
+  if (test_id != NULL)
+  {
+    *test_id = g_trace_log_context_test_id;
+  }
+}
+
+static void nightfall_trace_diag_emit_extra_csv_meta(void)
+{
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)NIGHTFALL_F413_WALL_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
@@ -1812,331 +1796,11 @@ static void nightfall_run_trace_log_dump_csv_impl(uint32_t max_records)
     trace_printf("#last_test_dist_mm=%.0f\r\n", (double)g_last_test_distance_mm);
     trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
   }
-  trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,");
-  trace_printf("target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
-  trace_printf("target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,");
-  trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
-  trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
-
-  for (i = dump_count; i > 0U; i--)
-  {
-    nvm_trace_log_record_t rec;
-
-    st = nvm_trace_log_read_latest(i - 1U, &rec);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG] csv: FAIL(read idx=%lu NVM=%d)\r\n",
-                   (unsigned long)(i - 1U),
-                   (int)st);
-      return;
-    }
-
-    trace_printf("%lu,%lu,%u,%u,%u,%u,%.3f,%ld,%ld,%ld,%ld,",
-                 (unsigned long)rec.timestamp_ms,
-                 (unsigned long)rec.seq,
-                 (unsigned int)rec.op_mode,
-                 (unsigned int)rec.op_case,
-                 (unsigned int)rec.op_sub,
-                 (unsigned int)rec.test_id,
-                 (double)rec.target_distance_x1000 / 1000.0,
-                 (long)rec.distance_mm,
-                 (long)rec.angle_mdeg,
-                 (long)rec.target_velocity_mm_s,
-                 (long)rec.real_velocity_mm_s);
-    trace_printf("%ld,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%u,",
-                 (long)rec.accel_velocity_mm_s,
-                 (long)rec.target_omega_mdps,
-                 (long)rec.real_omega_mdps,
-                 (long)rec.target_angle_mdeg,
-                 (long)rec.accel_forward_mm_s2,
-                 (int)rec.encoder_l,
-                 (int)rec.encoder_r,
-                 (int)rec.motor_out_l,
-                 (int)rec.motor_out_r,
-                 (unsigned int)rec.adc_fr);
-    trace_printf("%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
-                 (unsigned int)rec.adc_r,
-                 (unsigned int)rec.adc_fl,
-                 (unsigned int)rec.adc_l,
-                 (unsigned int)rec.adc_vbat,
-                 (unsigned int)rec.flags,
-                 (long)rec.reserved_i32_0,
-                 (long)rec.reserved_i32_1,
-                 (long)rec.reserved_i32_2,
-                 (long)rec.reserved_i32_3,
-                 (unsigned int)rec.reserved_u16_0,
-                 (unsigned int)rec.reserved_u16_1);
-  }
-
-  trace_printf("[TRACE-LOG] csv: done\r\n");
-}
-
-static void nightfall_run_trace_log_dump_csv_once(void)
-{
-  nightfall_run_trace_log_dump_csv_impl(NIGHTFALL_F413_TRACE_CSV_MAX_RECORDS);
-}
-
-static void nightfall_run_trace_log_dump_csv_all_once(void)
-{
-  nightfall_run_trace_log_dump_csv_impl(0U);
-}
-
-#define NIGHTFALL_TRACE_BIN_MAGIC (0x4254464EUL)
-#define NIGHTFALL_TRACE_BIN_VERSION (1UL)
-
-typedef struct __attribute__((packed)) {
-  uint32_t magic;
-  uint32_t version;
-  uint32_t schema;
-  uint32_t header_size;
-  uint32_t record_size;
-  uint32_t record_count;
-  uint32_t available_count;
-  uint32_t payload_checksum;
-} nightfall_trace_bin_frame_t;
-
-static uint32_t nightfall_trace_bin_checksum_update(uint32_t sum, const void* data, uint32_t len)
-{
-  const uint8_t* p = (const uint8_t*)data;
-  uint32_t i;
-
-  if (p == NULL)
-  {
-    return sum;
-  }
-
-  for (i = 0U; i < len; i++)
-  {
-    sum += p[i];
-  }
-  return sum;
-}
-
-static void nightfall_run_trace_log_dump_bin_impl(uint32_t max_records)
-{
-  nvm_trace_log_header_t header;
-  nightfall_trace_bin_frame_t frame;
-  nvm_status_t st;
-  uint32_t available;
-  uint32_t dump_count;
-  uint32_t checksum;
-  uint32_t i;
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] bin: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
-    return;
-  }
-
-  available = header.total_records;
-  if (available > header.record_capacity)
-  {
-    available = header.record_capacity;
-  }
-  if (available == 0U)
-  {
-    trace_printf("[TRACE-LOG] bin: no records\r\n");
-    return;
-  }
-
-  dump_count = available;
-  if ((max_records > 0U) && (dump_count > max_records))
-  {
-    dump_count = max_records;
-  }
-
-  checksum = nightfall_trace_bin_checksum_update(0U, &header, (uint32_t)sizeof(header));
-  for (i = dump_count; i > 0U; i--)
-  {
-    nvm_trace_log_record_t rec;
-    st = nvm_trace_log_read_latest(i - 1U, &rec);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG] bin: FAIL(read idx=%lu NVM=%d)\r\n",
-                   (unsigned long)(i - 1U),
-                   (int)st);
-      return;
-    }
-    checksum = nightfall_trace_bin_checksum_update(checksum, &rec, (uint32_t)sizeof(rec));
-  }
-
-  frame.magic = NIGHTFALL_TRACE_BIN_MAGIC;
-  frame.version = NIGHTFALL_TRACE_BIN_VERSION;
-  frame.schema = NVM_TRACE_LOG_SCHEMA_VERSION;
-  frame.header_size = (uint32_t)sizeof(nvm_trace_log_header_t);
-  frame.record_size = (uint32_t)sizeof(nvm_trace_log_record_t);
-  frame.record_count = dump_count;
-  frame.available_count = available;
-  frame.payload_checksum = checksum;
-
-  trace_printf("[TRACE-LOG] bin latest %lu/%lu bytes=%lu\r\n",
-               (unsigned long)dump_count,
-               (unsigned long)available,
-               (unsigned long)(sizeof(frame) + sizeof(header) + (dump_count * sizeof(nvm_trace_log_record_t))));
-  trace_write((const char*)&frame, sizeof(frame));
-  trace_write((const char*)&header, sizeof(header));
-  for (i = dump_count; i > 0U; i--)
-  {
-    nvm_trace_log_record_t rec;
-    st = nvm_trace_log_read_latest(i - 1U, &rec);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG] bin: FAIL(read2 idx=%lu NVM=%d)\r\n",
-                   (unsigned long)(i - 1U),
-                   (int)st);
-      return;
-    }
-    trace_write((const char*)&rec, sizeof(rec));
-  }
-  trace_printf("\r\n[TRACE-LOG] bin: done\r\n");
-}
-
-static void nightfall_run_trace_log_dump_bin_once(void)
-{
-  nightfall_run_trace_log_dump_bin_impl(NIGHTFALL_F413_TRACE_CSV_MAX_RECORDS);
-}
-
-static void nightfall_run_trace_log_dump_bin_all_once(void)
-{
-  nightfall_run_trace_log_dump_bin_impl(0U);
-}
-
-static void nightfall_run_trace_log_selftest_once(void)
-{
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-  uint32_t i;
-
-  f413_trace_log_auto_abort();
-
-  st = nvm_trace_log_format();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG][SELFTEST] FAIL(format NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  for (i = 0U; i < NIGHTFALL_F413_TRACE_SELFTEST_RECORDS; i++)
-  {
-    nvm_trace_log_record_t rec;
-    nightfall_fill_trace_log_selftest_record(&rec, i);
-
-    st = nvm_trace_log_append(&rec);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG][SELFTEST] FAIL(append i=%lu NVM=%d)\r\n",
-                   (unsigned long)i,
-                   (int)st);
-      return;
-    }
-  }
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG][SELFTEST] FAIL(read header NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  if (header.total_records < NIGHTFALL_F413_TRACE_SELFTEST_RECORDS)
-  {
-    trace_printf("[TRACE-LOG][SELFTEST] FAIL(total=%lu)\r\n", (unsigned long)header.total_records);
-    return;
-  }
-
-  for (i = 0U; i < NIGHTFALL_F413_TRACE_SELFTEST_RECORDS; i++)
-  {
-    nvm_trace_log_record_t got;
-    nvm_trace_log_record_t expected;
-    uint32_t expected_seq = NIGHTFALL_F413_TRACE_SELFTEST_RECORDS - 1U - i;
-
-    st = nvm_trace_log_read_latest(i, &got);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG][SELFTEST] FAIL(read latest i=%lu NVM=%d)\r\n",
-                   (unsigned long)i,
-                   (int)st);
-      return;
-    }
-
-    nightfall_fill_trace_log_selftest_record(&expected, expected_seq);
-    if (nightfall_trace_log_record_equals(&got, &expected) == 0U)
-    {
-      trace_printf("[TRACE-LOG][SELFTEST] FAIL(mismatch i=%lu got_seq=%lu exp_seq=%lu)\r\n",
-                   (unsigned long)i,
-                   (unsigned long)got.seq,
-                   (unsigned long)expected.seq);
-      return;
-    }
-  }
-
-  trace_printf("[TRACE-LOG][SELFTEST] PASS records=%lu\r\n",
-               (unsigned long)NIGHTFALL_F413_TRACE_SELFTEST_RECORDS);
-}
-
-static void nightfall_print_nvm_cli_help(void)
-{
-  trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
-  trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
-  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
-  trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
-  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
-  trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
-  trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
-  trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin)\r\n");
-  trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
-}
-
-static void nightfall_print_trace_log_header(const nvm_trace_log_header_t* header)
-{
-  uint32_t stored;
-
-  if (header == NULL)
-  {
-    return;
-  }
-
-  stored = header->total_records;
-  if (stored > header->record_capacity)
-  {
-    stored = header->record_capacity;
-  }
-
-  trace_printf("[TRACE-LOG] header ver=0x%08lX rec_size=%lu cap=%lu write=%lu total=%lu stored=%lu\r\n",
-               (unsigned long)header->version,
-               (unsigned long)header->record_size,
-               (unsigned long)header->record_capacity,
-               (unsigned long)header->write_index,
-               (unsigned long)header->total_records,
-               (unsigned long)stored);
 }
 
 static void nightfall_run_trace_log_format_once(void)
 {
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-
-  f413_trace_log_auto_abort();
-
-  st = nvm_trace_log_format();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] format: FAIL (NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] format: FAIL(read header NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  trace_printf("[TRACE-LOG] format: PASS\r\n");
-  nightfall_print_trace_log_header(&header);
+  f413_trace_diag_run_format_once();
 }
 
 static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_t seq)
@@ -2297,91 +1961,9 @@ static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
   out->test_id = g_trace_log_context_test_id;
 }
 
-static void nightfall_fill_trace_log_selftest_record(nvm_trace_log_record_t* out, uint32_t seq)
-{
-  if (out == NULL)
-  {
-    return;
-  }
-
-  memset(out, 0, sizeof(*out));
-  out->seq = seq;
-  out->timestamp_ms = 1000U + seq * 10U;
-  out->target_distance_x1000 = (int32_t)(5000 + (int32_t)seq);
-  out->distance_mm = (int32_t)(10 + (int32_t)seq);
-  out->angle_mdeg = (int32_t)(-1000 - (int32_t)seq);
-  out->target_velocity_mm_s = (int32_t)(200 + (int32_t)seq);
-  out->real_velocity_mm_s = (int32_t)(190 + (int32_t)seq);
-  out->accel_velocity_mm_s = (int32_t)(185 + (int32_t)seq);
-  out->target_omega_mdps = (int32_t)(3000 + (int32_t)seq);
-  out->real_omega_mdps = (int32_t)(2900 + (int32_t)seq);
-  out->target_angle_mdeg = (int32_t)(90000 + (int32_t)seq);
-  out->accel_forward_mm_s2 = (int32_t)(50 + (int32_t)seq);
-  out->reserved_i32_0 = (int32_t)(1000 + (int32_t)seq);
-  out->reserved_i32_1 = (int32_t)(2000 + (int32_t)seq);
-  out->reserved_i32_2 = (int32_t)(3000 + (int32_t)seq);
-  out->reserved_i32_3 = (int32_t)(4000 + (int32_t)seq);
-  out->encoder_l = (int16_t)(100 + (int32_t)seq);
-  out->encoder_r = (int16_t)(-100 - (int32_t)seq);
-  out->motor_out_l = (int16_t)(200 + (int32_t)(seq * 2U));
-  out->motor_out_r = (int16_t)(-200 - (int32_t)(seq * 2U));
-  out->adc_fr = (uint16_t)(1000U + seq);
-  out->adc_r = (uint16_t)(1100U + seq);
-  out->adc_fl = (uint16_t)(1200U + seq);
-  out->adc_l = (uint16_t)(1300U + seq);
-  out->adc_vbat = (uint16_t)(1400U + seq);
-  out->flags = (uint16_t)(0xA500U | (seq & 0x00FFU));
-  out->op_mode = 9U;
-  out->op_case = 5U;
-  out->op_sub = (uint8_t)(seq & 0xFFU);
-  out->test_id = (uint8_t)'T';
-  out->reserved_u16_0 = (uint16_t)(0x5500U | (seq & 0x00FFU));
-  out->reserved_u16_1 = (uint16_t)(0x6600U | (seq & 0x00FFU));
-}
-
-static uint8_t nightfall_trace_log_record_equals(const nvm_trace_log_record_t* lhs,
-                                                 const nvm_trace_log_record_t* rhs)
-{
-  if ((lhs == NULL) || (rhs == NULL))
-  {
-    return 0U;
-  }
-
-  return (memcmp(lhs, rhs, sizeof(*lhs)) == 0) ? 1U : 0U;
-}
-
 static void nightfall_run_trace_log_append_sample_once(void)
 {
-  nvm_trace_log_header_t header;
-  nvm_trace_log_record_t rec;
-  nvm_status_t st;
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] append: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
-    return;
-  }
-
-  nightfall_fill_trace_log_sample(&rec, header.total_records);
-
-  st = nvm_trace_log_append(&rec);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] append: FAIL(write NVM=%d)\r\n", (int)st);
-    return;
-  }
-
-  trace_printf("[TRACE-LOG] append: PASS seq=%lu ts=%lu dist=%ld angle=%ld enc=(%d,%d) motor=(%d,%d) flags=0x%04X\r\n",
-               (unsigned long)rec.seq,
-               (unsigned long)rec.timestamp_ms,
-               (long)rec.distance_mm,
-               (long)rec.angle_mdeg,
-               (int)rec.encoder_l,
-               (int)rec.encoder_r,
-               (int)rec.motor_out_l,
-               (int)rec.motor_out_r,
-               (unsigned int)rec.flags);
+  f413_trace_diag_run_append_sample_once();
 }
 
 static void nightfall_trace_log_set_mode_flags(uint16_t mode_flags)
@@ -2413,75 +1995,7 @@ static void nightfall_trace_log_on_run_stop(void)
 
 static void nightfall_run_trace_log_dump_latest_once(void)
 {
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-  uint32_t available;
-  uint32_t dump_count;
-  uint32_t i;
-
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] dump: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
-    return;
-  }
-
-  nightfall_print_trace_log_header(&header);
-
-  available = header.total_records;
-  if (available > header.record_capacity)
-  {
-    available = header.record_capacity;
-  }
-  if (available == 0U)
-  {
-    trace_printf("[TRACE-LOG] dump: no records\r\n");
-    return;
-  }
-
-  dump_count = available;
-  if (dump_count > NIGHTFALL_F413_TRACE_DUMP_MAX_RECORDS)
-  {
-    dump_count = NIGHTFALL_F413_TRACE_DUMP_MAX_RECORDS;
-  }
-
-  trace_printf("[TRACE-LOG] dump latest %lu/%lu\r\n",
-               (unsigned long)dump_count,
-               (unsigned long)available);
-
-  for (i = 0U; i < dump_count; i++)
-  {
-    nvm_trace_log_record_t rec;
-
-    st = nvm_trace_log_read_latest(i, &rec);
-    if (st != NVM_STATUS_OK)
-    {
-      trace_printf("[TRACE-LOG] dump: FAIL(read idx=%lu NVM=%d)\r\n",
-                   (unsigned long)i,
-                   (int)st);
-      return;
-    }
-
-    trace_printf("[TRACE-LOG] rec[%lu] seq=%lu ts=%lu mode=%u case=%u sub=%u test=%u dist=%ld angle=%ld v=(%ld/%ld) omega=(%ld/%ld) enc=(%d,%d) motor=(%d,%d) flags=0x%04X\r\n",
-                 (unsigned long)i,
-                 (unsigned long)rec.seq,
-                 (unsigned long)rec.timestamp_ms,
-                 (unsigned int)rec.op_mode,
-                 (unsigned int)rec.op_case,
-                 (unsigned int)rec.op_sub,
-                 (unsigned int)rec.test_id,
-                 (long)rec.distance_mm,
-                 (long)rec.angle_mdeg,
-                 (long)rec.target_velocity_mm_s,
-                 (long)rec.real_velocity_mm_s,
-                 (long)rec.target_omega_mdps,
-                 (long)rec.real_omega_mdps,
-                 (int)rec.encoder_l,
-                 (int)rec.encoder_r,
-                 (int)rec.motor_out_l,
-                 (int)rec.motor_out_r,
-                 (unsigned int)rec.flags);
-  }
+  f413_trace_diag_run_dump_latest_once();
 }
 
 static void nightfall_set_all_leds(GPIO_PinState state)
@@ -5512,6 +5026,17 @@ int main(void)
   f413_trace_log_config(nightfall_fill_trace_log_control_sample,
                         nightfall_trace_log_update_observe_cache,
                         nightfall_wall_end_clear);
+  {
+    const f413_trace_diag_config_t trace_diag_config = {
+      nightfall_fill_trace_log_sample,
+      nightfall_trace_diag_get_context,
+      nightfall_op_mode_name,
+      nightfall_op_case_name,
+      nightfall_op_sub_name,
+      nightfall_trace_diag_emit_extra_csv_meta
+    };
+    f413_trace_diag_config(&trace_diag_config);
+  }
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
