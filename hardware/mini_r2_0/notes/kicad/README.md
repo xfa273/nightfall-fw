@@ -14,7 +14,7 @@
 
 - ERC: 46 errors / 88 warnings
 - DRC: 544 errors / 306 warnings
-- JLCPCB 向けルール適用後 DRC: 21 errors / 117 warnings
+- JLCPCB 向けルール適用後 DRC: 4 errors / 112 warnings
 - 本体基板は Eagle 原本の `GND` / `GND2` ポリゴンを KiCad ゾーンとして復元済みです。
 
 ## レビュー方針
@@ -52,10 +52,10 @@
 
 - ERC: 3 errors / 5 warnings
 - DRC: 40 errors / 6 warnings
-- JLCPCB 向けルール適用後 DRC: 13 errors / 26 warnings
+- JLCPCB 向けルール適用後 DRC: 0 errors / 26 warnings
 
 ### UART 変換基板 初回チェック結果
 
 - ERC: 4 errors / 8 warnings
 - DRC: 39 errors / 35 warnings
-- JLCPCB 向けルール適用後 DRC: 13 errors / 26 warnings
+- JLCPCB 向けルール適用後 DRC: 0 errors / 26 warnings

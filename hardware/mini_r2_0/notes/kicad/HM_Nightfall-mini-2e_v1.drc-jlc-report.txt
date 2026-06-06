@@ -1,76 +1,8 @@
 ** Drc report for HM_Nightfall-mini-2e_v1.kicad_pcb **
-** Created on 2026-06-06T15:20:50 **
+** Created on 2026-06-06T15:33:56 **
 ** Report includes: Errors, Warnings, Exclusions **
 
-** Found 138 DRC violations **
-[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_R_OUT1 と )
-    Local override; error
-    @(140.6931 mm, 116.9495 mm): 配線 [MOTOR_R_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
-    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
-[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_L_OUT1 と )
-    Local override; error
-    @(140.6931 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
-    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
-    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
-    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
-    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 120.3706 mm): PTHパッド 2 [GND] (K1)
-    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
-    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 121.6406 mm): PTHパッド 3 [SWDIO] (K1)
-    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
-    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 122.9106 mm): PTHパッド 4 [SWCLK] (K1)
-    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(165.9001 mm, 124.1806 mm): PTHパッド 5 [NRST] (K1)
-    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(164.6301 mm, 124.1806 mm): PTHパッド 6 [+3V3] (K1)
-    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(164.6301 mm, 122.9106 mm): PTHパッド 7 [BOOT0] (K1)
-    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(164.6301 mm, 121.6406 mm): PTHパッド 8 [USART1_TX] (K1)
-    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
-[clearance]: クリアランス違反 ( クリアランス 0.1270 mm; 現状 0.1120 mm)
-    Local override; error
-    @(164.6301 mm, 120.3706 mm): PTHパッド 9 [USART1_RX] (K1)
-    @(164.6301 mm, 119.1006 mm): PTHパッド 10 [SWO] (K1)
-[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_R_OUT1 と )
-    Local override; error
-    @(140.6931 mm, 116.9495 mm): パッド 1 [MOTOR_R_OUT1] - U2 ( F.Cu 上)
-    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
-[shorting_items]: ２つのネットを短絡するアイテム (ネット MOTOR_L_OUT1 と )
-    Local override; error
-    @(140.6931 mm, 122.5375 mm): パッド 1 [MOTOR_L_OUT1] - U3 ( F.Cu 上)
-    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
+** Found 116 DRC violations **
 [copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.2000 mm; 現状 0.1270 mm)
     Rule: 基板の設定の基板端の制約; error
     @(129.0011 mm, 111.0036 mm): セグメント (Edge.Cuts 上)
@@ -126,10 +58,6 @@
 [text_thickness]: 文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)
     Rule: 基板の設定のシルク印刷のテキストの太さの制約; warning
     @(139.1285 mm, 123.1646 mm): U3 のフットプリント テキスト ( * )
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; warning
-    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
-    @(140.6931 mm, 116.9495 mm): パッド 1 [MOTOR_R_OUT1] - U2 ( F.Cu 上)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
     Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(165.9001 mm, 119.1006 mm): PTHパッド 1 [+5V] (K1)
@@ -238,10 +166,6 @@
     Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(147.5884 mm, 88.2638 mm): パッド 1 [+3V3] - U5 ( F.Cu 上)
     @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; warning
-    @(141.3058 mm, 122.5822 mm): ポリゴン [<no net>] of U3 、F.Cu 上
-    @(140.6931 mm, 122.5375 mm): パッド 1 [MOTOR_L_OUT1] - U3 ( F.Cu 上)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
     Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(147.2348 mm, 88.6173 mm): パッド 2 [IR_FR] - U5 ( F.Cu 上)
@@ -414,18 +338,6 @@
     Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(148.6518 mm, 88.2638 mm): パッド 48 [+3V3] - U5 ( F.Cu 上)
     @(148.1201 mm, 92.6846 mm): パッド 49 [GND] - U5 ( F.Cu 上)
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; warning
-    @(141.3058 mm, 116.9942 mm): ポリゴン of U2 、F.Mask 上
-    @(141.3058 mm, 116.9942 mm): ポリゴン [<no net>] of U2 、F.Cu 上
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; warning
-    @(141.3058 mm, 122.5822 mm): ポリゴン of U3 、F.Mask 上
-    @(140.6931 mm, 122.5375 mm): 配線 [MOTOR_L_OUT1] ( F.Cu 上、長さ: 1.8500 mm )
-[solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
-    Rule: 基板セットアップのハンダマスクの最小幅; warning
-    @(141.3058 mm, 122.5822 mm): ポリゴン of U3 、F.Mask 上
-    @(140.6931 mm, 122.5375 mm): パッド 1 [MOTOR_L_OUT1] - U3 ( F.Cu 上)
 [solder_mask_bridge]: 異なるネットのアイテムが表面ハンダマスクのアパーチャで接続されている
     Rule: 基板セットアップのハンダマスクの最小幅; warning
     @(146.9861 mm, 104.9786 mm): ポリゴン of U4 、F.Mask 上
