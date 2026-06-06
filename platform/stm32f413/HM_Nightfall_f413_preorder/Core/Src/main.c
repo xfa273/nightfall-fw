@@ -30,6 +30,7 @@
 #include "nvm_params.h"
 #include "nvm_trace_log.h"
 #include "f413_control.h"
+#include "f413_hw.h"
 #include "f413_trace_log.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
@@ -202,11 +203,8 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_TEST_TIMEOUT_MS    (5000U)   /* タイムアウト [ms] */
 #define NIGHTFALL_F413_TEST_ARMED_NONE    (0U)
 #define NIGHTFALL_F413_TEST_BUTTON_WAIT_MS (3000U)  /* ボタン待ち上限 [ms] */
-#define NIGHTFALL_F413_ENCODER_WRAP_COUNT (60000L)
-#define NIGHTFALL_F413_ENCODER_WRAP_HALF  (NIGHTFALL_F413_ENCODER_WRAP_COUNT / 2L)
 #define NIGHTFALL_F413_ENCODER_SIGN_L     (1L)
 #define NIGHTFALL_F413_ENCODER_SIGN_R     (-1L)
-#define NIGHTFALL_F413_MOTOR_PWM_MAX      (1000U)
 #define NIGHTFALL_F413_OP_MODE_MAX        (9U)
 #define NIGHTFALL_F413_OP_SELECT_MAX      (9U)
 #define NIGHTFALL_F413_OP_LEVEL_TOP      (0U)
@@ -2224,7 +2222,7 @@ static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_
                                      (uint16_t)f413_ctrl_tune_get_pattern());
     out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();
   }
-  out->flags = (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET)
+  out->flags = f413_hw_stop_switch_pressed()
                    ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
                    : 0U;
   if (f413_ctrl_angle_target_enabled())
@@ -2302,7 +2300,7 @@ static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
                                      (uint16_t)f413_ctrl_tune_get_pattern());
     out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();
   }
-  out->flags = (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET)
+  out->flags = f413_hw_stop_switch_pressed()
                    ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
                    : 0U;
   if (f413_ctrl_angle_target_enabled())
@@ -2504,30 +2502,17 @@ static void nightfall_run_trace_log_dump_latest_once(void)
 
 static void nightfall_set_all_leds(GPIO_PinState state)
 {
-  HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, state);
-  HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, state);
-  HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, state);
+  f413_hw_set_all_leds(state);
 }
 
 static void nightfall_op_led_show_mode(uint8_t mode)
 {
-  HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, (mode & 0x01U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, (mode & 0x02U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, (mode & 0x04U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  f413_hw_show_mode_leds(mode);
 }
 
 static void nightfall_buzzer_beep_ms(uint16_t period, uint16_t ms)
 {
-  if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
-  {
-    return;
-  }
-
-  __HAL_TIM_SET_AUTORELOAD(&htim11, period);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, (period * 6U) / 10U);
-  HAL_Delay(ms);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
-  (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+  f413_hw_buzzer_beep_ms(period, ms);
 }
 
 static void nightfall_op_beep_mode(uint8_t mode)
@@ -2538,33 +2523,12 @@ static void nightfall_op_beep_mode(uint8_t mode)
 
 static void nightfall_op_beep_enter(void)
 {
-  if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
-  {
-    return;
-  }
-
-  __HAL_TIM_SET_AUTORELOAD(&htim11, 900U);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 630U);
-  HAL_Delay(100U);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
-  HAL_Delay(50U);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 630U);
-  HAL_Delay(100U);
-  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
-  (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+  f413_hw_op_beep_enter();
 }
 
 static void nightfall_boot_buzzer_pattern(void)
 {
-  nightfall_buzzer_beep_ms(1800U, 70U);
-  HAL_Delay(35U);
-  nightfall_buzzer_beep_ms(1300U, 70U);
-  HAL_Delay(35U);
-  nightfall_buzzer_beep_ms(850U, 90U);
-  HAL_Delay(120U);
-  nightfall_buzzer_beep_ms(1450U, 70U);
-  HAL_Delay(35U);
-  nightfall_buzzer_beep_ms(1050U, 110U);
+  f413_hw_boot_buzzer_pattern();
 }
 
 static void nightfall_run_led_test_once(void)
@@ -3483,7 +3447,7 @@ static void nightfall_run_wall_end_monitor_once(void)
 
 static void nightfall_run_switch_test_once(void)
 {
-  GPIO_PinState raw = HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin);
+  GPIO_PinState raw = f413_hw_stop_switch_raw();
   trace_printf("[HW-TEST][Switch] raw=%u (%s)\r\n",
                (unsigned int)raw,
                (raw == GPIO_PIN_RESET) ? "pressed or low" : "released or high");
@@ -4638,79 +4602,7 @@ static void nightfall_motor_set(bool enable,
                                 uint16_t left_duty,
                                 uint16_t right_duty)
 {
-  uint16_t l_duty = (left_duty > NIGHTFALL_F413_MOTOR_PWM_MAX) ? NIGHTFALL_F413_MOTOR_PWM_MAX : left_duty;
-  uint16_t r_duty = (right_duty > NIGHTFALL_F413_MOTOR_PWM_MAX) ? NIGHTFALL_F413_MOTOR_PWM_MAX : right_duty;
-  uint16_t l_compare = 0U;
-  uint16_t r_compare = 0U;
-  GPIO_PinState l_in2 = GPIO_PIN_RESET;
-  GPIO_PinState r_in2 = GPIO_PIN_RESET;
-
-  if (!enable)
-  {
-    HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
-    HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0U);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0U);
-    (void)HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
-    (void)HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
-    return;
-  }
-
-  if (l_duty != 0U)
-  {
-    if (left_forward)
-    {
-      l_compare = l_duty;
-      l_in2 = GPIO_PIN_RESET;
-    }
-    else
-    {
-      l_compare = (uint16_t)(NIGHTFALL_F413_MOTOR_PWM_MAX - l_duty);
-      l_in2 = GPIO_PIN_SET;
-    }
-  }
-
-  if (r_duty != 0U)
-  {
-    if (right_forward)
-    {
-      r_compare = (uint16_t)(NIGHTFALL_F413_MOTOR_PWM_MAX - r_duty);
-      r_in2 = GPIO_PIN_SET;
-    }
-    else
-    {
-      r_compare = r_duty;
-      r_in2 = GPIO_PIN_RESET;
-    }
-  }
-
-  (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-  (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
-
-  if (l_in2 == GPIO_PIN_SET)
-  {
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, l_compare);
-    HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_SET);
-  }
-  else
-  {
-    HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, l_compare);
-  }
-
-  if (r_in2 == GPIO_PIN_SET)
-  {
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, r_compare);
-    HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_SET);
-  }
-  else
-  {
-    HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, r_compare);
-  }
-
-  HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_SET);
+  f413_hw_motor_set(enable, left_forward, right_forward, left_duty, right_duty);
 }
 
 static void nightfall_run_fan_pwm_test_once(void)
@@ -4842,7 +4734,7 @@ static void nightfall_trace_log_wait_with_auto_step(uint32_t duration_ms)
 
 static bool nightfall_run_stop_switch_pressed(void)
 {
-  return (HAL_GPIO_ReadPin(PUSH_IN_1_GPIO_Port, PUSH_IN_1_Pin) == GPIO_PIN_RESET);
+  return f413_hw_stop_switch_pressed();
 }
 
 static int32_t nightfall_abs_i32(int32_t v)
@@ -4852,16 +4744,7 @@ static int32_t nightfall_abs_i32(int32_t v)
 
 static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev)
 {
-  int32_t delta = (int32_t)now - (int32_t)prev;
-  if (delta > NIGHTFALL_F413_ENCODER_WRAP_HALF)
-  {
-    delta -= NIGHTFALL_F413_ENCODER_WRAP_COUNT;
-  }
-  else if (delta < -NIGHTFALL_F413_ENCODER_WRAP_HALF)
-  {
-    delta += NIGHTFALL_F413_ENCODER_WRAP_COUNT;
-  }
-  return delta;
+  return f413_hw_encoder_delta_signed(now, prev);
 }
 
 static uint16_t nightfall_run_abort_reason_to_trace_flag(nightfall_run_abort_reason_t reason)
