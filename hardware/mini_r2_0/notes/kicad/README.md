@@ -17,6 +17,12 @@
 - JLCPCB 向けルール適用後 DRC: 4 errors / 112 warnings
 - 本体基板は Eagle 原本の `GND` / `GND2` ポリゴンを KiCad ゾーンとして復元済みです。
 
+## JLCPCB 発注データ
+
+- 旧 Eagle 発注済み Gerber: `cad/export/reference/eagle_ordered_2026-03-22/HM_Nightfall-mini-2e_v1_eagle_ordered_2026-03-22.zip`
+- KiCad 正式候補 Gerber: `cad/export/jlcpcb/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606.zip`
+- KiCad 正式候補は JLCPCB Gerber Viewer で旧 Eagle 発注データと比較し、外形・穴・主要配線・旧 `GTO` 相当のトップシルクが概ね一致することを確認済みです。
+
 ## レビュー方針
 
 - 初回インポート直後の ERC/DRC 違反は変換レビュー対象として残します。
