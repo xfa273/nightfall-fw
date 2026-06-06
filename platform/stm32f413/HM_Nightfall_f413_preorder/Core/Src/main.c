@@ -1520,6 +1520,22 @@ static uint16_t nightfall_wall_sensor_subtract_u16(uint16_t on, uint16_t off, ui
   return (uint16_t)value;
 }
 
+static bool nightfall_sensor_params_is_nvm_test_blob(const nvm_sensor_params_t* params)
+{
+  if (params == NULL)
+  {
+    return false;
+  }
+
+  return (params->base_l == 1111U) &&
+         (params->base_r == 1222U) &&
+         (params->base_f == 1333U) &&
+         (params->wall_offset_r == 200U) &&
+         (params->wall_offset_l == 210U) &&
+         (params->wall_offset_fr == 220U) &&
+         (params->wall_offset_fl == 230U);
+}
+
 static HAL_StatusTypeDef nightfall_wall_sensor_adc_dma_start(volatile uint16_t* dst)
 {
   if (dst == NULL)
@@ -1535,7 +1551,8 @@ static void nightfall_wall_sensor_load_params(void)
 {
   nvm_sensor_params_t params;
 
-  if (!nvm_params_sensor_load(&params))
+  if (!nvm_params_sensor_load(&params) ||
+      nightfall_sensor_params_is_nvm_test_blob(&params))
   {
     nvm_params_sensor_defaults(&params);
   }
@@ -3075,6 +3092,14 @@ static void nightfall_run_wall_sensor_test_once(void)
                (long)wall.l_delta,
                (long)wall.fr_delta,
                (long)wall.fl_delta);
+  trace_printf("[HW-TEST][Wall] offset: R=%u L=%u FR=%u FL=%u ready=0x%02X phase=%u inflight=%u\r\n",
+               (unsigned int)g_wall_offset_r,
+               (unsigned int)g_wall_offset_l,
+               (unsigned int)g_wall_offset_fr,
+               (unsigned int)g_wall_offset_fl,
+               (unsigned int)g_wall_sensor_ready_mask,
+               (unsigned int)g_wall_sensor_adc_phase,
+               (unsigned int)g_wall_sensor_adc_inflight);
   trace_printf("[HW-TEST][Wall] detect: front=%u right=%u left=%u sat=%u thr FR=%u FL=%u R=%u L=%u\r\n",
                (unsigned int)wall.front_wall,
                (unsigned int)wall.right_wall,
@@ -6593,7 +6618,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 9;
   hadc1.Init.DMAContinuousRequests = DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
     Error_Handler();
@@ -6603,7 +6628,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+  sConfig.SamplingTime = ADC_SAMPLETIME_15CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
