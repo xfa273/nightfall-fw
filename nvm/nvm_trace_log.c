@@ -142,13 +142,54 @@ nvm_status_t nvm_trace_log_get_header(nvm_trace_log_header_t* out) {
 }
 
 nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record) {
-    nvm_area_info_t area;
     nvm_trace_log_header_t header;
+    nvm_status_t st;
+
+    if (record == NULL) {
+        return NVM_STATUS_INVALID_ARG;
+    }
+
+    st = nvm_trace_log_get_header(&header);
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+
+    return nvm_trace_log_append_cached(&header, record, 1U);
+}
+
+nvm_status_t nvm_trace_log_commit_header(const nvm_trace_log_header_t* header) {
+    nvm_area_info_t area;
+    nvm_trace_log_header_t next;
+    nvm_status_t st;
+
+    if (header == NULL) {
+        return NVM_STATUS_INVALID_ARG;
+    }
+
+    st = nvm_trace_log_get_area(&area);
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+    st = nvm_trace_log_validate_header(header, &area, NULL);
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+
+    next = *header;
+    nvm_trace_log_finalize_header(&next);
+    return nvm_write(NVM_AREA_TRACE_LOG, 0U, &next, sizeof(next));
+}
+
+nvm_status_t nvm_trace_log_append_cached(nvm_trace_log_header_t* header,
+                                         const nvm_trace_log_record_t* record,
+                                         uint8_t commit_header) {
+    nvm_area_info_t area;
+    nvm_trace_log_header_t next;
     uint32_t write_pos;
     uint32_t record_offset;
     nvm_status_t st;
 
-    if (record == NULL) {
+    if ((header == NULL) || (record == NULL)) {
         return NVM_STATUS_INVALID_ARG;
     }
 
@@ -157,17 +198,12 @@ nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record) {
         return st;
     }
 
-    st = nvm_read(NVM_AREA_TRACE_LOG, 0U, &header, sizeof(header));
+    st = nvm_trace_log_validate_header(header, &area, NULL);
     if (st != NVM_STATUS_OK) {
         return st;
     }
 
-    st = nvm_trace_log_validate_header(&header, &area, NULL);
-    if (st != NVM_STATUS_OK) {
-        return st;
-    }
-
-    write_pos = header.write_index;
+    write_pos = header->write_index;
     record_offset = (uint32_t)sizeof(nvm_trace_log_header_t) + write_pos * (uint32_t)sizeof(nvm_trace_log_record_t);
 
     st = nvm_write(NVM_AREA_TRACE_LOG, record_offset, record, sizeof(*record));
@@ -175,11 +211,20 @@ nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record) {
         return st;
     }
 
-    header.write_index = (write_pos + 1U) % header.record_capacity;
-    header.total_records += 1U;
-    nvm_trace_log_finalize_header(&header);
+    next = *header;
+    next.write_index = (write_pos + 1U) % next.record_capacity;
+    next.total_records += 1U;
+    nvm_trace_log_finalize_header(&next);
 
-    return nvm_write(NVM_AREA_TRACE_LOG, 0U, &header, sizeof(header));
+    if (commit_header != 0U) {
+        st = nvm_write(NVM_AREA_TRACE_LOG, 0U, &next, sizeof(next));
+        if (st != NVM_STATUS_OK) {
+            return st;
+        }
+    }
+
+    *header = next;
+    return NVM_STATUS_OK;
 }
 
 nvm_status_t nvm_trace_log_read_latest(uint32_t newest_index_from_tail,

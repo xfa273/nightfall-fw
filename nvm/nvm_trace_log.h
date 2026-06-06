@@ -61,6 +61,10 @@ typedef struct __attribute__((packed)) {
 nvm_status_t nvm_trace_log_format(void);
 nvm_status_t nvm_trace_log_get_header(nvm_trace_log_header_t* out);
 nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record);
+nvm_status_t nvm_trace_log_append_cached(nvm_trace_log_header_t* header,
+                                         const nvm_trace_log_record_t* record,
+                                         uint8_t commit_header);
+nvm_status_t nvm_trace_log_commit_header(const nvm_trace_log_header_t* header);
 nvm_status_t nvm_trace_log_read_latest(uint32_t newest_index_from_tail,
                                        nvm_trace_log_record_t* out);
 
