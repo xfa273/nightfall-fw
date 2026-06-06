@@ -1,0 +1,86 @@
+** Drc report for HM_Nightfall-mini-2e_Encoder-PCB-R_v1.kicad_pcb **
+** Created on 2026-06-06T14:32:09 **
+** Report includes: Errors, Warnings, Exclusions **
+
+** Found 17 DRC violations **
+[clearance]: クリアランス違反 ( クリアランス 0.2000 mm; 現状 0.1947 mm)
+    Local override; error
+    @(147.8801 mm, 104.4956 mm): パッド 2 [GND] - C2 ( F.Cu 上)
+    @(147.2592 mm, 102.9805 mm): 配線 [N$2] ( F.Cu 上、長さ: 2.3778 mm )
+[copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.0005 mm; 現状 0.0000 mm)
+    Rule: 基板の設定の基板端の制約; error
+    @(146.7761 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(148.0221 mm, 108.2040 mm): パッド TP [GND] - EC_R2 ( F.Cu 上)
+[copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.0005 mm; 現状 0.0000 mm)
+    Rule: 基板の設定の基板端の制約; error
+    @(146.7761 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(149.9271 mm, 108.2040 mm): パッド TP [EC_R_A] - EC_R4 ( F.Cu 上)
+[copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.0005 mm; 現状 0.0000 mm)
+    Rule: 基板の設定の基板端の制約; error
+    @(146.7761 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(147.0823 mm, 108.2040 mm): パッド TP [+3V3] - EC_R1 ( F.Cu 上)
+[copper_edge_clearance]: 基板端クリアランス違反 (基板の設定の基板端の制約 クリアランス 0.0005 mm; 現状 0.0000 mm)
+    Rule: 基板の設定の基板端の制約; error
+    @(146.7761 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(148.9619 mm, 108.2040 mm): パッド TP [EC_R_B] - EC_R3 ( F.Cu 上)
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(147.7221 mm, 107.8039 mm): EC_R2のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(149.6271 mm, 107.8039 mm): EC_R4のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(146.7823 mm, 107.8039 mm): EC_R1のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 108.5036 mm): セグメント (Edge.Cuts 上)
+    @(148.6619 mm, 107.8039 mm): EC_R3のリファレンスフィールド
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
+    @(147.3561 mm, 101.5018 mm): セグメント of IC2 、B.Silkscreen 上
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
+    @(147.3561 mm, 101.4518 mm): 円弧 of IC2 、B.Silkscreen 上
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(150.2261 mm, 101.5036 mm): セグメント (Edge.Cuts 上)
+    @(147.3561 mm, 101.4518 mm): 円弧 of IC2 、B.Silkscreen 上
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(148.6619 mm, 107.8039 mm): EC_R3のリファレンスフィールド
+    @(147.7221 mm, 107.8039 mm): EC_R2のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(146.7823 mm, 107.8039 mm): EC_R1のリファレンスフィールド
+    @(147.7221 mm, 107.8039 mm): EC_R2のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(149.6271 mm, 107.8039 mm): EC_R4のリファレンスフィールド
+    @(146.7823 mm, 107.8039 mm): EC_R1のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(148.6619 mm, 107.8039 mm): EC_R3のリファレンスフィールド
+    @(149.6271 mm, 107.8039 mm): EC_R4のリファレンスフィールド
+[silk_overlap]: Silkscreen clearance
+    Rule: 基板の設定のシルクスクリーンの制約; warning
+    @(148.6619 mm, 107.8039 mm): EC_R3のリファレンスフィールド
+    @(146.7823 mm, 107.8039 mm): EC_R1のリファレンスフィールド
+
+** Found 0 unconnected pads **
+
+** Found 0 Footprint errors **
+
+** Ignored checks **
+    - Footprint has no courtyard defined
+    - Track endpoint not centered on via
+    - Tuning profile track geometries
+    - Footprint doesn't match symbol's footprint filters
+    - Footprint component type doesn't match footprint pads
+
+** End of Report **

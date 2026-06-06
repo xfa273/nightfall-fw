@@ -1,0 +1,4 @@
+(sym_lib_table
+	(version 7)
+	(lib (name "UART-Adapter-eagle-import") (type "KiCad") (uri "${KIPRJMOD}/UART-Adapter-eagle-import.kicad_sym") (options "") (descr ""))
+)
