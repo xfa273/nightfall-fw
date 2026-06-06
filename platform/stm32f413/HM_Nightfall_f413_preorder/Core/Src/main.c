@@ -73,15 +73,13 @@ UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 
 #define NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS (2048U)
-#define NIGHTFALL_F413_TRACE_AUTO_FLUSH_RECORDS_PER_STEP (2U)
+#define NIGHTFALL_F413_TRACE_AUTO_FLUSH_RECORDS_PER_STEP (8U)
 #define NIGHTFALL_F413_TRACE_AUTO_HEADER_COMMIT_RECORDS (8U)
-#define NIGHTFALL_F413_TRACE_AUTO_OBSERVE_PERIOD_MS (50U)
 
 static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
 static nvm_identity_block_t g_boot_identity;
 static volatile uint8_t g_trace_log_auto_enabled = 0U;
 static uint32_t g_trace_log_auto_period_ms = 1U;
-static volatile uint32_t g_trace_log_auto_next_observe_ms = 0U;
 static volatile uint32_t g_trace_log_auto_seq = 0U;
 static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
 static nvm_trace_log_record_t g_trace_log_auto_buffer[NIGHTFALL_F413_TRACE_AUTO_BUFFER_RECORDS];
@@ -2554,7 +2552,6 @@ static void nightfall_trace_log_auto_start(void)
   g_trace_log_auto_flushed_records = 0U;
   g_trace_log_auto_nvm_error = 0U;
   g_trace_log_auto_nvm_status = NVM_STATUS_OK;
-  g_trace_log_auto_next_observe_ms = HAL_GetTick() + NIGHTFALL_F413_TRACE_AUTO_OBSERVE_PERIOD_MS;
   nightfall_wall_end_clear();
   nightfall_trace_log_update_observe_cache();
   g_trace_log_auto_enabled = 1U;
@@ -2619,13 +2616,14 @@ static void nightfall_trace_log_set_mode_flags(uint16_t mode_flags)
 
 static void nightfall_trace_log_auto_step(void)
 {
-  uint32_t now;
   uint32_t i;
 
   if (g_trace_log_auto_enabled == 0U)
   {
     return;
   }
+
+  nightfall_trace_log_update_observe_cache();
 
   if (g_trace_log_auto_nvm_error == 0U)
   {
@@ -2640,13 +2638,6 @@ static void nightfall_trace_log_auto_step(void)
         break;
       }
     }
-  }
-
-  now = HAL_GetTick();
-  if ((int32_t)(now - g_trace_log_auto_next_observe_ms) >= 0)
-  {
-    nightfall_trace_log_update_observe_cache();
-    g_trace_log_auto_next_observe_ms = now + NIGHTFALL_F413_TRACE_AUTO_OBSERVE_PERIOD_MS;
   }
 }
 
