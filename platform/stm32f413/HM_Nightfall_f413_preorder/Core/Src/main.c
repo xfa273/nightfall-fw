@@ -3758,22 +3758,8 @@ static nightfall_run_abort_reason_t nightfall_trace_log_wait_with_auto_step_guar
 
 static void nightfall_run_idle_trace_session_once(void)
 {
-  if (f413_trace_log_auto_is_enabled())
-  {
-    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
-    return;
-  }
-
-  trace_printf("[RUN-TEST] idle trace session start %lu ms\r\n",
-               (unsigned long)NIGHTFALL_F413_RUN_SESSION_IDLE_MS);
-
-  nightfall_trace_log_on_run_start();
-  nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_IDLE_FLAG);
-  nightfall_trace_log_wait_with_auto_step(NIGHTFALL_F413_RUN_SESSION_IDLE_MS);
-  nightfall_trace_log_set_mode_flags(0U);
-  nightfall_trace_log_on_run_stop();
-
-  trace_printf("[RUN-TEST] idle trace session end\r\n");
+  f413_run_session_run_idle_trace_once(NIGHTFALL_F413_RUN_SESSION_IDLE_MS,
+                                       NIGHTFALL_F413_TRACE_MODE_IDLE_FLAG);
 }
 
 static void nightfall_run_motor_trace_session_once(void)
@@ -4524,7 +4510,11 @@ int main(void)
       nightfall_run_session_encoder_r_count,
       nightfall_run_session_wall_sensor_ok,
       nightfall_run_session_imu_ok,
-      nightfall_trace_log_auto_step
+      nightfall_trace_log_auto_step,
+      f413_trace_log_auto_is_enabled,
+      nightfall_trace_log_on_run_start,
+      nightfall_trace_log_on_run_stop,
+      nightfall_trace_log_set_mode_flags
     };
     f413_run_session_config(&run_session_config);
   }

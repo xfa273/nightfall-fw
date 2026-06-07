@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "stm32f4xx_hal.h"
+#include "trace.h"
 
 #define F413_RUN_SESSION_GUARD_WALL_CHECK_MS (20U)
 #define F413_RUN_SESSION_GUARD_IMU_CHECK_MS (100U)
@@ -58,6 +59,35 @@ static void f413_run_session_trace_auto_step(void)
   if (s_config.trace_auto_step != NULL)
   {
     s_config.trace_auto_step();
+  }
+}
+
+static bool f413_run_session_trace_auto_is_enabled(void)
+{
+  return (s_config.trace_auto_is_enabled != NULL) && s_config.trace_auto_is_enabled();
+}
+
+static void f413_run_session_trace_on_run_start(void)
+{
+  if (s_config.trace_on_run_start != NULL)
+  {
+    s_config.trace_on_run_start();
+  }
+}
+
+static void f413_run_session_trace_on_run_stop(void)
+{
+  if (s_config.trace_on_run_stop != NULL)
+  {
+    s_config.trace_on_run_stop();
+  }
+}
+
+static void f413_run_session_trace_set_mode_flags(uint16_t mode_flags)
+{
+  if (s_config.trace_set_mode_flags != NULL)
+  {
+    s_config.trace_set_mode_flags(mode_flags);
   }
 }
 
@@ -174,6 +204,26 @@ void f413_run_session_wait_with_auto_step(uint32_t duration_ms)
     HAL_Delay(1U);
   }
   f413_run_session_trace_auto_step();
+}
+
+void f413_run_session_run_idle_trace_once(uint32_t duration_ms, uint16_t idle_mode_flag)
+{
+  if (f413_run_session_trace_auto_is_enabled())
+  {
+    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
+    return;
+  }
+
+  trace_printf("[RUN-TEST] idle trace session start %lu ms\r\n",
+               (unsigned long)duration_ms);
+
+  f413_run_session_trace_on_run_start();
+  f413_run_session_trace_set_mode_flags(idle_mode_flag);
+  f413_run_session_wait_with_auto_step(duration_ms);
+  f413_run_session_trace_set_mode_flags(0U);
+  f413_run_session_trace_on_run_stop();
+
+  trace_printf("[RUN-TEST] idle trace session end\r\n");
 }
 
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason)
