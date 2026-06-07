@@ -39,6 +39,7 @@
 #include "f413_trace_log.h"
 #include "f413_trace_diag.h"
 #include "f413_trace_sample.h"
+#include "f413_uart_cli.h"
 #include "f413_wall_runtime.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
@@ -166,21 +167,11 @@ static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub);
 static bool nightfall_wall_sensor_start_async(void);
 static void nightfall_wall_sensor_tim6_tick(void);
 static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out);
-static void nightfall_run_search_decision_preview_once(void);
-static void nightfall_search_step_session_reset(void);
-static void nightfall_run_search_step_once(void);
-static void nightfall_run_search_map_probe_once(void);
-static void nightfall_run_search_status_once(void);
-static void nightfall_run_search_map_clear_once(void);
-static void nightfall_run_search_map_dump_once(void);
-static void nightfall_run_wall_end_monitor_once(void);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
 static void nightfall_op_run_tune_sub_after_delay(uint8_t sub);
 static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub);
 static void nightfall_op_ui_step(void);
-static void nightfall_run_imu_manual_turn_test_once(void);
-static void nightfall_run_imu_accel_test_once(void);
 static void nightfall_run_fan_pwm_test_once(void);
 static void nightfall_run_encoder_test_once(void);
 
@@ -247,56 +238,6 @@ static void nightfall_wall_sensor_tim6_tick(void)
   f413_wall_sensor_tim6_tick();
 }
 
-static void nightfall_run_trace_log_dump_csv_once(void)
-{
-  f413_trace_diag_run_dump_csv_once();
-}
-
-static void nightfall_run_trace_log_dump_csv_all_once(void)
-{
-  f413_trace_diag_run_dump_csv_all_once();
-}
-
-static void nightfall_run_trace_log_dump_bin_once(void)
-{
-  f413_trace_diag_run_dump_bin_once();
-}
-
-static void nightfall_run_trace_log_dump_bin_all_once(void)
-{
-  f413_trace_diag_run_dump_bin_all_once();
-}
-
-static void nightfall_run_trace_log_selftest_once(void)
-{
-  f413_trace_diag_run_selftest_once();
-}
-
-static void nightfall_print_nvm_cli_help(void)
-{
-  trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
-  trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
-  trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
-  trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
-  trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
-  trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
-  trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
-  trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin)\r\n");
-  trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
-}
-
-static void nightfall_run_trace_log_format_once(void)
-{
-  f413_trace_diag_run_format_once();
-}
-
-static void nightfall_run_trace_log_append_sample_once(void)
-{
-  f413_trace_diag_run_append_sample_once();
-}
-
 static void nightfall_trace_log_set_mode_flags(uint16_t mode_flags)
 {
   f413_trace_log_set_mode_flags(mode_flags);
@@ -324,11 +265,6 @@ static void nightfall_trace_log_on_run_stop(void)
   f413_trace_log_auto_stop();
 }
 
-static void nightfall_run_trace_log_dump_latest_once(void)
-{
-  f413_trace_diag_run_dump_latest_once();
-}
-
 static void nightfall_op_led_show_mode(uint8_t mode)
 {
   f413_hw_show_mode_leds(mode);
@@ -337,11 +273,6 @@ static void nightfall_op_led_show_mode(uint8_t mode)
 static void nightfall_boot_buzzer_pattern(void)
 {
   f413_hw_boot_buzzer_pattern();
-}
-
-static void nightfall_run_led_test_once(void)
-{
-  f413_hw_diag_run_led_test_once();
 }
 
 static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out)
@@ -422,61 +353,6 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
 }
-static void nightfall_run_search_decision_preview_once(void)
-{
-  f413_search_step_run_decision_preview_once();
-}
-
-static void nightfall_search_step_session_reset(void)
-{
-  f413_search_step_session_reset();
-}
-
-static void nightfall_run_search_step_once(void)
-{
-  f413_search_step_run_once();
-}
-
-static void nightfall_run_search_map_probe_once(void)
-{
-  f413_search_step_run_map_probe_once();
-}
-
-static void nightfall_run_search_status_once(void)
-{
-  f413_search_step_run_status_once();
-}
-
-static void nightfall_run_search_map_clear_once(void)
-{
-  f413_search_step_run_map_clear_once();
-}
-
-static void nightfall_run_search_map_dump_once(void)
-{
-  f413_search_step_run_map_dump_once();
-}
-
-static void nightfall_run_wall_end_monitor_once(void)
-{
-  f413_wall_runtime_run_end_monitor_once();
-}
-
-static void nightfall_run_switch_test_once(void)
-{
-  f413_hw_diag_run_switch_test_once();
-}
-
-static void nightfall_run_imu_accel_test_once(void)
-{
-  f413_imu_diag_run_accel_test_once();
-}
-
-static void nightfall_run_imu_manual_turn_test_once(void)
-{
-  f413_imu_diag_run_manual_turn_test_once();
-}
-
 static void nightfall_run_imu_test_once(void)
 {
   f413_imu_diag_run_whoami_test_once();
@@ -726,7 +602,7 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       nightfall_run_fan_pwm_test_once();
       break;
     case F413_OP_UI_ACTION_TRACE_DUMP_BIN_ALL:
-      nightfall_run_trace_log_dump_bin_all_once();
+      f413_trace_diag_run_dump_bin_all_once();
       break;
     case F413_OP_UI_ACTION_NVM_STATUS:
       f413_nvm_diag_run_nvm_status_once();
@@ -754,16 +630,6 @@ static void nightfall_op_ui_step(void)
   f413_op_ui_step(HAL_GetTick());
 }
 
-static void nightfall_op_uart_push_once(void)
-{
-  f413_op_ui_uart_push_once();
-}
-
-static void nightfall_op_uart_enter_once(void)
-{
-  f413_op_ui_uart_enter_once();
-}
-
 static void nightfall_motor_set(bool enable,
                                 bool left_forward,
                                 bool right_forward,
@@ -778,11 +644,6 @@ static void nightfall_run_fan_pwm_test_once(void)
   f413_hw_diag_run_fan_pwm_test_once();
 }
 
-static void nightfall_run_motor_driver_test_once(void)
-{
-  f413_hw_diag_run_motor_driver_test_once();
-}
-
 static void nightfall_run_encoder_test_once(void)
 {
   f413_hw_diag_run_encoder_test_once();
@@ -791,7 +652,7 @@ static void nightfall_run_encoder_test_once(void)
 static void nightfall_run_hardware_smoke_tests(void)
 {
   trace_printf("[HW-TEST] smoke start\r\n");
-  nightfall_run_switch_test_once();
+  f413_hw_diag_run_switch_test_once();
   nightfall_trace_log_auto_step();
   nightfall_run_wall_sensor_test_once();
   nightfall_trace_log_auto_step();
@@ -923,294 +784,6 @@ static void nightfall_run_shortest_safe_trace_session_once(void)
                                                 NIGHTFALL_F413_RUN_SESSION_SAFE_FORWARD_MS,
                                                 NIGHTFALL_F413_RUN_SESSION_SAFE_TURN_MS,
                                                 NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS);
-}
-
-static void nightfall_handle_uart_command(uint8_t cmd)
-{
-  switch (cmd)
-  {
-    case 'h':
-    case 'H':
-    case '?':
-      nightfall_print_nvm_cli_help();
-      break;
-
-    case 'a':
-      trace_printf("[NVM-TEST] run all\r\n");
-      f413_nvm_diag_run_all_tests();
-      break;
-
-    case 'A':
-      trace_printf("[NVM-TEST] verify all (load_only)\r\n");
-      f413_nvm_diag_verify_all_load_only();
-      break;
-
-    case 'd':
-      trace_printf("[NVM-TEST] run distance\r\n");
-      (void)f413_nvm_diag_run_distance_test();
-      break;
-
-    case 'D':
-      trace_printf("[NVM-TEST] verify distance (load_only)\r\n");
-      (void)f413_nvm_diag_verify_distance_load_only();
-      break;
-
-    case 's':
-      trace_printf("[NVM-TEST] run sensor\r\n");
-      (void)f413_nvm_diag_run_sensor_test();
-      break;
-
-    case 'S':
-      trace_printf("[NVM-TEST] verify sensor (load_only)\r\n");
-      (void)f413_nvm_diag_verify_sensor_load_only();
-      break;
-
-    case 'm':
-      trace_printf("[NVM-TEST] run maze\r\n");
-      (void)f413_nvm_diag_run_maze_test();
-      break;
-
-    case 't':
-      trace_printf("[NVM-TEST] run trace\r\n");
-      (void)f413_nvm_diag_run_trace_log_test();
-      break;
-
-    case 'M':
-      trace_printf("[NVM-TEST] verify maze (load_only)\r\n");
-      (void)f413_nvm_diag_verify_maze_load_only();
-      break;
-
-    case 'T':
-      trace_printf("[NVM-TEST] verify trace (load_only)\r\n");
-      (void)f413_nvm_diag_verify_trace_log_load_only();
-      break;
-
-    case 'w':
-      nightfall_run_wall_sensor_test_once();
-      break;
-
-    case 'W':
-      nightfall_run_wall_end_monitor_once();
-      break;
-
-    case 'p':
-      nightfall_run_switch_test_once();
-      break;
-
-    case 'P':
-      nightfall_op_uart_push_once();
-      break;
-
-    case 'i':
-      nightfall_run_imu_test_once();
-      break;
-
-    case 'I':
-      nightfall_run_imu_manual_turn_test_once();
-      break;
-
-    case 'c':
-    case 'C':
-      nightfall_run_imu_accel_test_once();
-      break;
-
-    case 'b':
-      nightfall_run_buzzer_test_once();
-      break;
-
-    case 'o':
-    case '0':
-      nightfall_run_motor_driver_test_once();
-      break;
-
-    case 'e':
-      nightfall_run_encoder_test_once();
-      break;
-
-    case 'E':
-      nightfall_op_uart_enter_once();
-      break;
-
-
-    case '!':
-      nightfall_op_run_tune_sub_after_delay(0U);
-      break;
-
-    case '"':
-      nightfall_op_run_tune_sub_after_delay(1U);
-      break;
-
-    case '#':
-      nightfall_op_run_tune_sub_after_delay(2U);
-      break;
-
-    case '$':
-      nightfall_op_run_tune_sub_after_delay(3U);
-      break;
-
-    case '%':
-      nightfall_op_run_tune_sub_after_delay(4U);
-      break;
-
-    case '^':
-      nightfall_op_run_tune_sub_after_delay(5U);
-      break;
-
-    case '&':
-      nightfall_op_run_tune_sub_after_delay(6U);
-      break;
-
-    case '*':
-      nightfall_op_run_tune_sub_after_delay(7U);
-      break;
-
-    case '(':
-      nightfall_op_run_tune_sub_after_delay(8U);
-      break;
-
-    case ')':
-      nightfall_op_run_tune_sub_after_delay(9U);
-      break;
-
-
-    case 'G':
-      nightfall_run_search_decision_preview_once();
-      break;
-
-    case 'B':
-      nightfall_search_step_session_reset();
-      trace_printf("[SEARCH-STEP] session reset\r\n");
-      break;
-
-    case 'N':
-      nightfall_run_search_step_once();
-      break;
-
-    case '[':
-      nightfall_run_search_status_once();
-      break;
-
-    case ']':
-      nightfall_run_search_map_clear_once();
-      break;
-
-    case '@':
-      nightfall_run_search_map_dump_once();
-      break;
-
-    case 'O':
-      nightfall_run_search_map_probe_once();
-      break;
-
-    case 'q':
-    case 'Q':
-      nightfall_run_trace_log_format_once();
-      break;
-
-    case 'r':
-      nightfall_run_trace_log_append_sample_once();
-      break;
-
-    case 'R':
-      nightfall_run_trace_log_dump_latest_once();
-      break;
-
-    case 'v':
-      nightfall_run_trace_log_dump_csv_once();
-      break;
-
-    case 'V':
-      nightfall_run_trace_log_dump_csv_all_once();
-      break;
-
-    case '<':
-      nightfall_run_trace_log_dump_bin_once();
-      break;
-
-    case '>':
-      nightfall_run_trace_log_dump_bin_all_once();
-      break;
-
-    case 'k':
-    case 'K':
-      nightfall_run_trace_log_selftest_once();
-      break;
-
-    case 'u':
-      nightfall_trace_log_on_run_start();
-      break;
-
-    case 'U':
-      nightfall_trace_log_on_run_stop();
-      break;
-
-    case 'l':
-    case 'L':
-      nightfall_run_led_test_once();
-      break;
-
-    case 'g':
-      nightfall_run_hardware_smoke_tests_with_trace_session();
-      break;
-
-    case 'x':
-    case 'X':
-      f413_trace_sample_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'x');
-      nightfall_run_idle_trace_session_once();
-      break;
-
-    case 'y':
-    case 'Y':
-      f413_trace_sample_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'y');
-      nightfall_run_motor_trace_session_once();
-      break;
-
-    case 'z':
-    case 'Z':
-      f413_trace_sample_set_context(1U, 4U, 0xFFU, (uint8_t)'z');
-      nightfall_run_search_trace_entry_once();
-      break;
-
-    case 'j':
-    case 'J':
-      f413_trace_sample_set_context(2U, 1U, 0xFFU, (uint8_t)'j');
-      nightfall_run_shortest_trace_entry_once();
-      break;
-
-    case '6':
-    case '7':
-    case '8':
-    case '9':
-      f413_trace_sample_set_context(8U, 0xFFU, 0xFFU, cmd);
-      f413_test_run_run_now(cmd);
-      break;
-
-    case '1':
-    case '2':
-    case '3':
-    case '4':
-    case '5':
-      f413_test_run_arm_for_button(cmd);
-      break;
-
-    case 'f':
-    case 'F':
-      /* 直前に '1'-'5' を送っていなければデフォルト '1' をアーム */
-      {
-        uint8_t arm_id = f413_test_run_is_armed() ? f413_test_run_armed_id() : (uint8_t)'1';
-        f413_test_run_arm_for_button(arm_id);
-      }
-      break;
-
-    case '\r':
-    case '\n':
-      break;
-
-    default:
-      trace_printf("[NVM-TEST] unknown command '%c' (0x%02X)\r\n", (char)cmd, (unsigned int)cmd);
-      nightfall_print_nvm_cli_help();
-      break;
-  }
 }
 
 /* USER CODE END 0 */
@@ -1402,6 +975,20 @@ int main(void)
     };
     f413_test_run_config(&test_run_config);
   }
+  {
+    const f413_uart_cli_config_t uart_cli_config = {
+      nightfall_run_wall_sensor_test_once,
+      nightfall_op_run_tune_sub_after_delay,
+      nightfall_trace_log_on_run_start,
+      nightfall_trace_log_on_run_stop,
+      nightfall_run_hardware_smoke_tests_with_trace_session,
+      nightfall_run_idle_trace_session_once,
+      nightfall_run_motor_trace_session_once,
+      nightfall_run_search_trace_entry_once,
+      nightfall_run_shortest_trace_entry_once
+    };
+    f413_uart_cli_config(&uart_cli_config);
+  }
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
@@ -1443,7 +1030,7 @@ int main(void)
   }
 
   trace_printf("[NVM-TEST] UART command mode ready\r\n");
-  nightfall_print_nvm_cli_help();
+  f413_uart_cli_print_help();
 
   if (nightfall_wall_sensor_start_async())
   {
@@ -1479,7 +1066,7 @@ int main(void)
 
     if (HAL_UART_Receive(&huart1, &cmd, 1U, 1U) == HAL_OK)
     {
-      nightfall_handle_uart_command(cmd);
+      f413_uart_cli_handle_command(cmd);
     }
   }
   /* USER CODE END 3 */
