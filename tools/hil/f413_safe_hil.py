@@ -119,11 +119,21 @@ def cmd_reset_capture(args: argparse.Namespace) -> int:
     cap = subprocess.Popen(capture_cmd, cwd=str(root), stdout=log_file, stderr=subprocess.STDOUT)
     try:
         time.sleep(args.pre_reset_delay)
+        cap_rc = cap.poll()
+        if cap_rc is not None:
+            print(f"ERROR: capture exited before reset rc={cap_rc}", flush=True)
+            return cap_rc if cap_rc != 0 else 1
+
         rc = run(stlink_args(args, "--reset-only"), root, check=False)
         time.sleep(args.duration)
+        cap_rc = cap.poll()
+        if cap_rc is not None and cap_rc != 0:
+            print(f"ERROR: capture exited during reset window rc={cap_rc}", flush=True)
+            return cap_rc
         return rc
     finally:
-        terminate_process(cap)
+        if cap.poll() is None:
+            terminate_process(cap)
         log_file.close()
         print(f"boot log: {log_path}", flush=True)
 
