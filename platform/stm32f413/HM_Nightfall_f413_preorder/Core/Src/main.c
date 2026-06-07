@@ -27,13 +27,12 @@
 #include "build_info.h"
 #include "nvm.h"
 #include "nvm_identity.h"
-#include "nvm_params.h"
 #include "nvm_trace_log.h"
 #include "f413_control.h"
-#include "f413_diag.h"
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_imu_diag.h"
+#include "f413_nvm_diag.h"
 #include "f413_op_ui.h"
 #include "f413_run_session.h"
 #include "f413_search_step.h"
@@ -151,8 +150,6 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_TURN_MS (120U)
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS (80U)
 #define NIGHTFALL_F413_RUN_SESSION_SAFE_EXPLORE_STEPS (4U)
-#define NIGHTFALL_F413_MAZE_SIZE (32U)
-#define NIGHTFALL_F413_MAZE_CELL_COUNT (NIGHTFALL_F413_MAZE_SIZE * NIGHTFALL_F413_MAZE_SIZE)
 #define NIGHTFALL_F413_REAL_GOAL_X (15U)
 #define NIGHTFALL_F413_REAL_GOAL_Y (15U)
 
@@ -187,13 +184,6 @@ static void MX_USART1_UART_Init(void);
 #ifndef NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE
 #define NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE (0U)
 #endif
-#define NIGHTFALL_F413_MAZE_WALL_W (0x01U)
-#define NIGHTFALL_F413_MAZE_WALL_S (0x02U)
-#define NIGHTFALL_F413_MAZE_WALL_E (0x04U)
-#define NIGHTFALL_F413_MAZE_WALL_N (0x08U)
-#define NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK (0x0FU)
-#define NIGHTFALL_F413_MAZE_START_FORCED_WALLS (0x07U)
-#define NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
@@ -271,7 +261,6 @@ static void nightfall_run_search_map_probe_once(void);
 static void nightfall_run_search_status_once(void);
 static void nightfall_run_search_map_clear_once(void);
 static void nightfall_run_search_map_dump_once(void);
-static void nightfall_verify_all_nvm_load_only(void);
 static void nightfall_run_wall_end_monitor_once(void);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
@@ -292,19 +281,6 @@ static bool g_last_tune_valid = false;
 static uint8_t g_last_tune_axis = 0U;
 static uint8_t g_last_tune_set = 0U;
 static uint8_t g_last_tune_pattern = 0U;
-
-static const char* nightfall_identity_family_name(uint32_t family)
-{
-  switch (family)
-  {
-    case NVM_FAMILY_MINI:
-      return "mini";
-    case NVM_FAMILY_CLASSIC:
-      return "classic";
-    default:
-      return "unknown";
-  }
-}
 
 static void nightfall_run_search_trace_entry_once(void)
 {
@@ -969,35 +945,6 @@ static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t p
                (double)g_last_test_distance_mm,
                (double)g_last_test_angle_deg);
 }
-static void nightfall_trace_log_emit_identity_meta(const nvm_identity_block_t* id)
-{
-  const char* family_name;
-
-  if (id == NULL)
-  {
-    return;
-  }
-
-  family_name = nightfall_identity_family_name(id->family);
-  trace_printf("#fw_family=%lu\r\n", (unsigned long)id->family);
-  trace_printf("#fw_family_name=%s\r\n", family_name);
-  trace_printf("#fw_machine_name=%s_r%u_%u\r\n",
-               family_name,
-               (unsigned int)id->hw_rev_major,
-               (unsigned int)id->hw_rev_minor);
-  trace_printf("#fw_machine_unit=%s_r%u_%u_unit%03lu\r\n",
-               family_name,
-               (unsigned int)id->hw_rev_major,
-               (unsigned int)id->hw_rev_minor,
-               (unsigned long)id->unit_serial);
-  trace_printf("#fw_board_id=%lu\r\n", (unsigned long)id->board_id);
-  trace_printf("#fw_board_id_hex=0x%08lX\r\n", (unsigned long)id->board_id);
-  trace_printf("#fw_hw_rev=%u.%u\r\n",
-               (unsigned int)id->hw_rev_major,
-               (unsigned int)id->hw_rev_minor);
-  trace_printf("#fw_unit_serial=%lu\r\n", (unsigned long)id->unit_serial);
-}
-
 static void nightfall_identity_enter_safe_mode(void)
 {
   while (1)
@@ -1166,7 +1113,7 @@ static void nightfall_trace_diag_emit_extra_csv_meta(void)
   }
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
-    nightfall_trace_log_emit_identity_meta(&g_boot_identity);
+    f413_nvm_diag_emit_identity_meta(&g_boot_identity);
   }
   else
   {
@@ -1567,106 +1514,6 @@ static const char* nightfall_tune_pattern_name(uint8_t pattern)
     default: return "unknown";
   }
 }
-static void nightfall_run_identity_status_once(void)
-{
-  if (g_boot_identity_status == NVM_STATUS_OK)
-  {
-    const char* family_name = nightfall_identity_family_name(g_boot_identity.family);
-    trace_printf("[IDENTITY] status=OK family=%s(%lu) board=0x%08lX rev=%u.%u unit=%lu cap=0x%08lX\r\n",
-                 family_name,
-                 (unsigned long)g_boot_identity.family,
-                 (unsigned long)g_boot_identity.board_id,
-                 (unsigned int)g_boot_identity.hw_rev_major,
-                 (unsigned int)g_boot_identity.hw_rev_minor,
-                 (unsigned long)g_boot_identity.unit_serial,
-                 (unsigned long)g_boot_identity.capability_flags);
-    trace_printf("[IDENTITY] uid=%08lX-%08lX-%08lX\r\n",
-                 (unsigned long)HAL_GetUIDw0(),
-                 (unsigned long)HAL_GetUIDw1(),
-                 (unsigned long)HAL_GetUIDw2());
-  }
-  else
-  {
-    trace_printf("[IDENTITY] status=%d uid=%08lX-%08lX-%08lX\r\n",
-                 (int)g_boot_identity_status,
-                 (unsigned long)HAL_GetUIDw0(),
-                 (unsigned long)HAL_GetUIDw1(),
-                 (unsigned long)HAL_GetUIDw2());
-  }
-}
-
-static void nightfall_run_sensor_params_status_once(void)
-{
-  nvm_sensor_params_t params;
-  bool loaded;
-
-  memset(&params, 0, sizeof(params));
-  loaded = nvm_params_sensor_load(&params);
-  if (!loaded)
-  {
-    nvm_params_sensor_defaults(&params);
-  }
-
-  trace_printf("[SENSOR-PARAM] source=%s base_l=%u base_r=%u base_f=%u off_r=%u off_l=%u off_fr=%u off_fl=%u imu_z=%.3f\r\n",
-               loaded ? "NVM" : "default",
-               (unsigned int)params.base_l,
-               (unsigned int)params.base_r,
-               (unsigned int)params.base_f,
-               (unsigned int)params.wall_offset_r,
-               (unsigned int)params.wall_offset_l,
-               (unsigned int)params.wall_offset_fr,
-               (unsigned int)params.wall_offset_fl,
-               (double)params.imu_offset_z);
-  trace_printf("[SENSOR-PARAM] save is intentionally not performed by OP mode9 case9\r\n");
-}
-
-
-static void nightfall_run_nvm_status_once(void)
-{
-  static uint16_t cells[NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT];
-  nvm_trace_log_header_t header;
-  uint32_t known_count = 0U;
-  uint32_t i;
-  bool distance_ok;
-  bool sensor_ok;
-  bool maze_ok;
-  nvm_status_t trace_st;
-  nvm_sensor_params_t sensor_params;
-
-  distance_ok = nvm_params_distance_load_and_apply();
-  sensor_ok = nvm_params_sensor_load(&sensor_params);
-  maze_ok = nvm_maze_load_map(cells, NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT);
-  trace_st = nvm_trace_log_get_header(&header);
-
-  if (maze_ok)
-  {
-    for (i = 0U; i < NIGHTFALL_F413_SEARCH_MAP_CELL_COUNT; i++)
-    {
-      if ((cells[i] & NIGHTFALL_F413_MAZE_WALL_KNOWN_MASK) != 0U)
-      {
-        known_count++;
-      }
-    }
-  }
-
-  trace_printf("[NVM-STATUS] distance=%s sensor=%s maze=%s maze_known=%lu trace=%s(%d)\r\n",
-               distance_ok ? "OK" : "MISS",
-               sensor_ok ? "OK" : "MISS",
-               maze_ok ? "OK" : "MISS",
-               (unsigned long)known_count,
-               (trace_st == NVM_STATUS_OK) ? "OK" : "MISS",
-               (int)trace_st);
-  if (trace_st == NVM_STATUS_OK)
-  {
-    trace_printf("[NVM-STATUS] trace ver=0x%08lX rec_size=%lu cap=%lu write=%lu total=%lu\r\n",
-                 (unsigned long)header.version,
-                 (unsigned long)header.record_size,
-                 (unsigned long)header.record_capacity,
-                 (unsigned long)header.write_index,
-                 (unsigned long)header.total_records);
-  }
-}
-
 static uint8_t nightfall_op_selected_value(void)
 {
   return f413_op_ui_selected_value();
@@ -1889,13 +1736,13 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       nightfall_run_trace_log_dump_bin_all_once();
       break;
     case F413_OP_UI_ACTION_NVM_STATUS:
-      nightfall_run_nvm_status_once();
+      f413_nvm_diag_run_nvm_status_once();
       break;
     case F413_OP_UI_ACTION_IDENTITY_STATUS:
-      nightfall_run_identity_status_once();
+      f413_nvm_diag_run_identity_status_once(g_boot_identity_status, &g_boot_identity);
       break;
     case F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS:
-      nightfall_run_sensor_params_status_once();
+      f413_nvm_diag_run_sensor_params_status_once();
       break;
     case F413_OP_UI_ACTION_CONTROL_TUNE_SUB:
       nightfall_op_run_tune_sub_after_delay(sub);
@@ -2122,56 +1969,6 @@ static void nightfall_run_shortest_safe_trace_session_once(void)
                                                 NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS);
 }
 
-static bool nightfall_run_distance_nvm_test(void)
-{
-  return f413_diag_run_distance_nvm_test();
-}
-
-static bool nightfall_run_sensor_nvm_test(void)
-{
-  return f413_diag_run_sensor_nvm_test();
-}
-
-static bool nightfall_run_maze_nvm_test(void)
-{
-  return f413_diag_run_maze_nvm_test();
-}
-
-static bool nightfall_verify_distance_nvm_load_only(void)
-{
-  return f413_diag_verify_distance_nvm_load_only();
-}
-
-static bool nightfall_verify_sensor_nvm_load_only(void)
-{
-  return f413_diag_verify_sensor_nvm_load_only();
-}
-
-static bool nightfall_verify_maze_nvm_load_only(void)
-{
-  return f413_diag_verify_maze_nvm_load_only();
-}
-
-static bool nightfall_run_trace_log_nvm_test(void)
-{
-  return f413_diag_run_trace_log_nvm_test();
-}
-
-static bool nightfall_verify_trace_log_nvm_load_only(void)
-{
-  return f413_diag_verify_trace_log_nvm_load_only();
-}
-
-static void nightfall_run_all_nvm_tests(void)
-{
-  f413_diag_run_all_nvm_tests();
-}
-
-static void nightfall_verify_all_nvm_load_only(void)
-{
-  f413_diag_verify_all_nvm_load_only();
-}
-
 static void nightfall_handle_uart_command(uint8_t cmd)
 {
   switch (cmd)
@@ -2184,52 +1981,52 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'a':
       trace_printf("[NVM-TEST] run all\r\n");
-      nightfall_run_all_nvm_tests();
+      f413_nvm_diag_run_all_tests();
       break;
 
     case 'A':
       trace_printf("[NVM-TEST] verify all (load_only)\r\n");
-      nightfall_verify_all_nvm_load_only();
+      f413_nvm_diag_verify_all_load_only();
       break;
 
     case 'd':
       trace_printf("[NVM-TEST] run distance\r\n");
-      (void)nightfall_run_distance_nvm_test();
+      (void)f413_nvm_diag_run_distance_test();
       break;
 
     case 'D':
       trace_printf("[NVM-TEST] verify distance (load_only)\r\n");
-      (void)nightfall_verify_distance_nvm_load_only();
+      (void)f413_nvm_diag_verify_distance_load_only();
       break;
 
     case 's':
       trace_printf("[NVM-TEST] run sensor\r\n");
-      (void)nightfall_run_sensor_nvm_test();
+      (void)f413_nvm_diag_run_sensor_test();
       break;
 
     case 'S':
       trace_printf("[NVM-TEST] verify sensor (load_only)\r\n");
-      (void)nightfall_verify_sensor_nvm_load_only();
+      (void)f413_nvm_diag_verify_sensor_load_only();
       break;
 
     case 'm':
       trace_printf("[NVM-TEST] run maze\r\n");
-      (void)nightfall_run_maze_nvm_test();
+      (void)f413_nvm_diag_run_maze_test();
       break;
 
     case 't':
       trace_printf("[NVM-TEST] run trace\r\n");
-      (void)nightfall_run_trace_log_nvm_test();
+      (void)f413_nvm_diag_run_trace_log_test();
       break;
 
     case 'M':
       trace_printf("[NVM-TEST] verify maze (load_only)\r\n");
-      (void)nightfall_verify_maze_nvm_load_only();
+      (void)f413_nvm_diag_verify_maze_load_only();
       break;
 
     case 'T':
       trace_printf("[NVM-TEST] verify trace (load_only)\r\n");
-      (void)nightfall_verify_trace_log_nvm_load_only();
+      (void)f413_nvm_diag_verify_trace_log_load_only();
       break;
 
     case 'w':
@@ -2629,7 +2426,7 @@ int main(void)
 
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
-    const char* family_name = nightfall_identity_family_name(g_boot_identity.family);
+    const char* family_name = f413_nvm_diag_identity_family_name(g_boot_identity.family);
     trace_printf("ID family=%s(%lu) board=0x%08lX rev=%u.%u unit=%lu cap=0x%08lX\r\n",
                  family_name,
                  (unsigned long)g_boot_identity.family,
