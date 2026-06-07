@@ -62,7 +62,11 @@ def timed_capture(cmd: list[str], cwd: Path, seconds: float) -> int:
         proc.wait(timeout=seconds)
     except subprocess.TimeoutExpired:
         terminate_process(proc)
-    return proc.returncode if proc.returncode is not None else 0
+        return 0
+
+    rc = proc.returncode if proc.returncode is not None else 1
+    print(f"ERROR: capture exited before duration rc={rc}", flush=True)
+    return rc if rc != 0 else 1
 
 
 def serial_capture_args(args: argparse.Namespace, send: str | None) -> list[str]:
