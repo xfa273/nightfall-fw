@@ -20,8 +20,8 @@ from pathlib import Path
 DEFAULT_BAUD = 921600
 DEFAULT_LOG_DIR = Path("tools/logging/logs")
 DEFAULT_CAPTURE_SECONDS = 8.0
-NONMOTOR_SMOKE_SEND = "i,w,V"
-TRACE_DUMP_SEND = "V"
+NONMOTOR_SMOKE_SEND = "i,w,v"
+TRACE_DUMP_SEND = "v"
 
 
 def repo_root() -> Path:
@@ -57,7 +57,7 @@ def terminate_process(proc: subprocess.Popen[bytes]) -> None:
 
 def timed_capture(cmd: list[str], cwd: Path, seconds: float) -> int:
     print("$ " + " ".join(cmd), flush=True)
-    proc = subprocess.Popen(cmd, cwd=str(cwd))
+    proc = subprocess.Popen(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL)
     try:
         proc.wait(timeout=seconds)
     except subprocess.TimeoutExpired:
@@ -120,7 +120,13 @@ def cmd_reset_capture(args: argparse.Namespace) -> int:
     capture_cmd = serial_capture_args(args, None)
     print("$ " + " ".join(capture_cmd) + f" > {log_path}", flush=True)
     log_file = log_path.open("wb")
-    cap = subprocess.Popen(capture_cmd, cwd=str(root), stdout=log_file, stderr=subprocess.STDOUT)
+    cap = subprocess.Popen(
+        capture_cmd,
+        cwd=str(root),
+        stdin=subprocess.DEVNULL,
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+    )
     try:
         time.sleep(args.pre_reset_delay)
         cap_rc = cap.poll()
@@ -131,9 +137,9 @@ def cmd_reset_capture(args: argparse.Namespace) -> int:
         rc = run(stlink_args(args, "--reset-only"), root, check=False)
         time.sleep(args.duration)
         cap_rc = cap.poll()
-        if cap_rc is not None and cap_rc != 0:
+        if cap_rc is not None:
             print(f"ERROR: capture exited during reset window rc={cap_rc}", flush=True)
-            return cap_rc
+            return cap_rc if cap_rc != 0 else 1
         return rc
     finally:
         if cap.poll() is None:
@@ -190,11 +196,11 @@ def main() -> int:
     p_reset.add_argument("--pre-reset-delay", type=float, default=0.5)
     p_reset.set_defaults(func=cmd_reset_capture, needs_port=True)
 
-    p_smoke = sub.add_parser("nonmotor-smoke", help="send safe non-motor UART checks: i,w,V")
+    p_smoke = sub.add_parser("nonmotor-smoke", help="send safe non-motor UART checks: i,w,v")
     add_common(p_smoke)
     p_smoke.set_defaults(func=cmd_nonmotor_smoke, needs_port=True)
 
-    p_dump = sub.add_parser("dump-trace", help="send V and capture the latest trace CSV")
+    p_dump = sub.add_parser("dump-trace", help="send v and capture the latest bounded trace CSV")
     add_common(p_dump)
     p_dump.set_defaults(func=cmd_dump_trace, needs_port=True)
 

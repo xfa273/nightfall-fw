@@ -43,7 +43,8 @@ UART commands that are normally non-motor:
 - `c`: IMU acceleration observation
 - `[`: search state / FRAM map consistency display
 - `@`: FRAM search map dump
-- `V`: trace CSV dump
+- `v`: bounded trace CSV dump
+- `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status
 - OP UI `mode9 case8`: identity display
 - OP UI `mode9 case9`: sensor params display only
@@ -135,7 +136,7 @@ For a firmware change that should not move the robot:
 3. Capture non-motor status:
 
    ```sh
-   python3 tools/logging/serial_capture_csv.py --show-noncsv --send i,w,V --send-interval-ms 1500 tools/logging/logs /dev/cu.usbmodemXXXX 921600
+   python3 tools/logging/serial_capture_csv.py --show-noncsv --send i,w,v --send-interval-ms 1500 tools/logging/logs /dev/cu.usbmodemXXXX 921600
    ```
 
 4. Check logs/analyzers only if CSV was produced.

@@ -19,7 +19,9 @@ python3 tools/hil/f413_safe_hil.py reset-capture --port /dev/cu.usbmodem112202
 ```
 
 `reset-capture` uses the non-interactive CSV capture backend and writes the
-combined UART output to `tools/logging/logs/f413_boot_*.log`.
+combined UART output to `tools/logging/logs/f413_boot_*.log`. The capture
+subprocess runs with stdin detached so terminal input cannot be forwarded to
+the robot as UART commands.
 
 Run a non-motor smoke sequence:
 
@@ -27,7 +29,7 @@ Run a non-motor smoke sequence:
 python3 tools/hil/f413_safe_hil.py nonmotor-smoke --port /dev/cu.usbmodem112202
 ```
 
-Dump the latest trace CSV:
+Dump the latest bounded trace CSV:
 
 ```sh
 python3 tools/hil/f413_safe_hil.py dump-trace --port /dev/cu.usbmodem112202
@@ -40,6 +42,10 @@ python3 tools/hil/f413_safe_hil.py flash-nonmotor-smoke --port /dev/cu.usbmodem1
 ```
 
 The default UART baud is `921600`, matching `Debug-stm32f413`.
+
+The safe helper uses lowercase `v` for bounded trace dumps. Use uppercase `V`
+only when an explicit task needs a full FRAM trace dump and the capture window
+is sized to wait for the firmware dump-completion marker.
 
 ## Motor checks
 
