@@ -102,6 +102,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_imu_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_nvm_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_path_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_search_step.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_test_run.c
