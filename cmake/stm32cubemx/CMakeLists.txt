@@ -95,6 +95,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c

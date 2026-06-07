@@ -29,6 +29,7 @@
 #include "nvm_identity.h"
 #include "nvm_trace_log.h"
 #include "f413_control.h"
+#include "f413_control_tune_run.h"
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_imu_diag.h"
@@ -248,8 +249,6 @@ static const char* nightfall_op_mode_name(uint8_t mode);
 static const char* nightfall_op_level_name(uint8_t level);
 static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case);
 static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub);
-static const char* nightfall_tune_axis_name(uint8_t axis);
-static const char* nightfall_tune_pattern_name(uint8_t pattern);
 static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
 static bool nightfall_wall_sensor_start_async(void);
 static void nightfall_wall_sensor_tim6_tick(void);
@@ -264,7 +263,6 @@ static void nightfall_run_search_map_dump_once(void);
 static void nightfall_run_wall_end_monitor_once(void);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
-static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t pattern);
 static void nightfall_op_run_tune_sub_after_delay(uint8_t sub);
 static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub);
 static void nightfall_op_ui_step(void);
@@ -277,10 +275,6 @@ static uint8_t g_last_test_id = 0U;
 static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABORT_NONE;
 static float g_last_test_distance_mm = 0.0f;
 static float g_last_test_angle_deg = 0.0f;
-static bool g_last_tune_valid = false;
-static uint8_t g_last_tune_axis = 0U;
-static uint8_t g_last_tune_set = 0U;
-static uint8_t g_last_tune_pattern = 0U;
 
 static void nightfall_run_search_trace_entry_once(void)
 {
@@ -849,102 +843,6 @@ static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mod
 }
 #endif
 
-/* ========================================================== */
-/* 調整用テストモード                                          */
-/* test_id: '1'=S6直進, '2'=S12直進, '3'=右90°, '4'=左90°,    */
-/*          '5'=S6+R90+S6                                      */
-/* ========================================================== */
-
-static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t pattern)
-{
-  nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
-  nightfall_run_guard_t guard = {0};
-  uint32_t deadline;
-  uint16_t flags = NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG;
-
-  if (f413_trace_log_auto_is_enabled())
-  {
-    trace_printf("[TUNE] busy(auto already running)\r\n");
-    return;
-  }
-  if (nightfall_run_stop_switch_pressed())
-  {
-    trace_printf("[TUNE] canceled(start switch pressed)\r\n");
-    return;
-  }
-  if (!nightfall_run_guard_prepare(&guard))
-  {
-    trace_printf("[TUNE] canceled(guard init fail)\r\n");
-    return;
-  }
-
-  if ((axis == F413_CTRL_TUNE_AXIS_VELOCITY) ||
-      (axis == F413_CTRL_TUNE_AXIS_DISTANCE))
-  {
-    flags |= NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG;
-  }
-  else
-  {
-    flags |= NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG;
-  }
-
-  g_last_tune_valid = true;
-  g_last_tune_axis = axis;
-  g_last_tune_set = set;
-  g_last_tune_pattern = pattern;
-
-  trace_printf("[TUNE] start axis=%s set=%u pattern=%s\r\n",
-               nightfall_tune_axis_name(axis),
-               (unsigned int)set,
-               nightfall_tune_pattern_name(pattern));
-
-  nightfall_trace_log_on_run_start();
-  f413_ctrl_start();
-  f413_ctrl_tune_clear_done();
-  f413_ctrl_tune_start(axis, set, pattern);
-
-  deadline = HAL_GetTick() + NIGHTFALL_F413_TUNE_TIMEOUT_MS;
-  while (!f413_ctrl_tune_is_done())
-  {
-    if (HAL_GetTick() >= deadline)
-    {
-      abort_reason = NIGHTFALL_RUN_ABORT_IMU_FAULT;
-      break;
-    }
-    nightfall_trace_log_set_mode_flags(flags);
-    abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(10U, &guard);
-    if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-    {
-      break;
-    }
-  }
-
-  f413_ctrl_tune_stop();
-  f413_ctrl_stop();
-  if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-  {
-    nightfall_trace_log_set_mode_flags((uint16_t)(flags |
-        nightfall_run_abort_reason_to_trace_flag(abort_reason)));
-    nightfall_trace_log_auto_step();
-  }
-  nightfall_trace_log_set_mode_flags(0U);
-  nightfall_trace_log_on_run_stop();
-  nightfall_run_guard_cleanup(&guard);
-
-  g_last_test_id = (uint8_t)'0';
-  g_last_test_abort_reason = abort_reason;
-  g_last_test_distance_mm = f413_ctrl_get_distance();
-  g_last_test_angle_deg = f413_ctrl_get_angle();
-
-  trace_printf("[TUNE] %s axis=%s set=%u pattern=%s dist=%.0fmm angle=%.0fdeg\r\n",
-               (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" :
-               nightfall_run_abort_reason_to_text(abort_reason),
-               nightfall_tune_axis_name(axis),
-               (unsigned int)set,
-               nightfall_tune_pattern_name(pattern),
-               (double)g_last_test_distance_mm,
-               (double)g_last_test_angle_deg);
-}
 static void nightfall_identity_enter_safe_mode(void)
 {
   while (1)
@@ -1102,15 +1000,7 @@ static void nightfall_trace_diag_emit_extra_csv_meta(void)
 #else
   trace_printf("#wall_trace_observe=disabled\r\n");
 #endif
-  if (g_last_tune_valid)
-  {
-    trace_printf("#tune_axis=%s\r\n", nightfall_tune_axis_name(g_last_tune_axis));
-    trace_printf("#tune_set=%u\r\n", (unsigned int)g_last_tune_set);
-    trace_printf("#tune_pattern=%s\r\n", nightfall_tune_pattern_name(g_last_tune_pattern));
-    trace_printf("#tune_reserved_i32=primary_ref_x1000,axis,target_distance_x1000,target_angle_x1000\r\n");
-    trace_printf("#tune_reserved_u16_0=axis_pattern\r\n");
-    trace_printf("#tune_reserved_u16_1=set\r\n");
-  }
+  f413_control_tune_emit_extra_csv_meta();
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
     f413_nvm_diag_emit_identity_meta(&g_boot_identity);
@@ -1492,28 +1382,6 @@ static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub)
   return f413_op_ui_sub_name(mode, sub);
 }
 
-static const char* nightfall_tune_axis_name(uint8_t axis)
-{
-  switch (axis)
-  {
-    case F413_CTRL_TUNE_AXIS_VELOCITY: return "velocity";
-    case F413_CTRL_TUNE_AXIS_OMEGA: return "omega";
-    case F413_CTRL_TUNE_AXIS_DISTANCE: return "distance";
-    case F413_CTRL_TUNE_AXIS_ANGLE: return "angle";
-    default: return "unknown";
-  }
-}
-
-static const char* nightfall_tune_pattern_name(uint8_t pattern)
-{
-  switch (pattern)
-  {
-    case F413_CTRL_TUNE_PATTERN_STEP: return "step";
-    case F413_CTRL_TUNE_PATTERN_TRIANGLE: return "triangle";
-    case F413_CTRL_TUNE_PATTERN_TRAPEZOID: return "trapezoid";
-    default: return "unknown";
-  }
-}
 static uint8_t nightfall_op_selected_value(void)
 {
   return f413_op_ui_selected_value();
@@ -1596,7 +1464,7 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
 
   nightfall_trace_log_set_context(9U, 0U, sub, (uint8_t)'0');
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-  nightfall_run_control_tune_once(axis, set, pattern);
+  f413_control_tune_run_once(axis, set, pattern);
 }
 static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 {
@@ -2367,6 +2235,23 @@ int main(void)
       nightfall_motor_set
     };
     f413_run_session_config(&run_session_config);
+  }
+  {
+    const f413_control_tune_run_config_t control_tune_config = {
+      nightfall_run_stop_switch_pressed,
+      HAL_GetTick,
+      f413_trace_log_auto_is_enabled,
+      nightfall_trace_log_on_run_start,
+      nightfall_trace_log_on_run_stop,
+      nightfall_trace_log_set_mode_flags,
+      nightfall_trace_log_auto_step,
+      nightfall_test_run_record_result,
+      NIGHTFALL_F413_TUNE_TIMEOUT_MS,
+      NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG,
+      NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
+      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG
+    };
+    f413_control_tune_run_config(&control_tune_config);
   }
   {
     const f413_search_step_config_t search_step_config = {
