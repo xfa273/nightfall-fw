@@ -292,6 +292,12 @@ static bool nightfall_f413_path_turn_from_code(uint16_t code,
 static bool nightfall_run_stop_switch_pressed(void);
 static int16_t nightfall_run_session_encoder_l_count(void);
 static int16_t nightfall_run_session_encoder_r_count(void);
+static void nightfall_run_session_encoder_stop_all(void);
+static void nightfall_run_session_encoder_reset_all(void);
+static bool nightfall_run_session_encoder_start_l(void);
+static bool nightfall_run_session_encoder_start_r(void);
+static void nightfall_run_session_encoder_stop_l(void);
+static void nightfall_run_session_encoder_stop_r(void);
 static bool nightfall_run_session_wall_sensor_ok(void);
 static bool nightfall_run_session_imu_ok(void);
 static bool nightfall_run_guard_prepare(nightfall_run_guard_t* guard);
@@ -3686,11 +3692,6 @@ static void nightfall_run_hardware_smoke_tests_with_trace_session(void)
   nightfall_trace_log_on_run_stop();
 }
 
-static void nightfall_trace_log_wait_with_auto_step(uint32_t duration_ms)
-{
-  f413_run_session_wait_with_auto_step(duration_ms);
-}
-
 static bool nightfall_run_stop_switch_pressed(void)
 {
   return f413_hw_stop_switch_pressed();
@@ -3704,6 +3705,38 @@ static int16_t nightfall_run_session_encoder_l_count(void)
 static int16_t nightfall_run_session_encoder_r_count(void)
 {
   return (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
+}
+
+static void nightfall_run_session_encoder_stop_all(void)
+{
+  (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
+  (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
+}
+
+static void nightfall_run_session_encoder_reset_all(void)
+{
+  __HAL_TIM_SET_COUNTER(&htim3, 0U);
+  __HAL_TIM_SET_COUNTER(&htim4, 0U);
+}
+
+static bool nightfall_run_session_encoder_start_l(void)
+{
+  return HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) == HAL_OK;
+}
+
+static bool nightfall_run_session_encoder_start_r(void)
+{
+  return HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL) == HAL_OK;
+}
+
+static void nightfall_run_session_encoder_stop_l(void)
+{
+  (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
+}
+
+static void nightfall_run_session_encoder_stop_r(void)
+{
+  (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
 }
 
 static bool nightfall_run_session_wall_sensor_ok(void)
@@ -3764,69 +3797,12 @@ static void nightfall_run_idle_trace_session_once(void)
 
 static void nightfall_run_motor_trace_session_once(void)
 {
-  bool enc_started_l = false;
-  bool enc_started_r = false;
-
-  if (f413_trace_log_auto_is_enabled())
-  {
-    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
-    return;
-  }
-
-  trace_printf("[RUN-TEST] motor trace session start (lift robot before test)\r\n");
-
-  (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-  (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-  __HAL_TIM_SET_COUNTER(&htim3, 0U);
-  __HAL_TIM_SET_COUNTER(&htim4, 0U);
-
-  if (HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) == HAL_OK)
-  {
-    enc_started_l = true;
-  }
-  if (HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL) == HAL_OK)
-  {
-    enc_started_r = true;
-  }
-
-  nightfall_trace_log_on_run_start();
-  nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG);
-  nightfall_motor_set(true,
-                     true,
-                     true,
-                     NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY,
-                     NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY);
-  nightfall_trace_log_wait_with_auto_step(NIGHTFALL_F413_RUN_SESSION_MOTOR_PULSE_MS);
-
-  nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
-  nightfall_motor_set(false, true, true, 0U, 0U);
-  nightfall_trace_log_wait_with_auto_step(NIGHTFALL_F413_RUN_SESSION_MOTOR_COAST_MS);
-
-  nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
-  nightfall_motor_set(true,
-                     false,
-                     false,
-                     NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY,
-                     NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY);
-  nightfall_trace_log_wait_with_auto_step(NIGHTFALL_F413_RUN_SESSION_MOTOR_PULSE_MS);
-
-  nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
-  nightfall_motor_set(false, false, false, 0U, 0U);
-  nightfall_trace_log_wait_with_auto_step(NIGHTFALL_F413_RUN_SESSION_MOTOR_COAST_MS);
-
-  nightfall_trace_log_set_mode_flags(0U);
-  nightfall_trace_log_on_run_stop();
-
-  if (enc_started_l)
-  {
-    (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-  }
-  if (enc_started_r)
-  {
-    (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-  }
-
-  trace_printf("[RUN-TEST] motor trace session end\r\n");
+  f413_run_session_run_motor_trace_once(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
+                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG,
+                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG,
+                                        NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY,
+                                        NIGHTFALL_F413_RUN_SESSION_MOTOR_PULSE_MS,
+                                        NIGHTFALL_F413_RUN_SESSION_MOTOR_COAST_MS);
 }
 
 static void nightfall_run_search_safe_trace_session_once(void)
@@ -4514,7 +4490,14 @@ int main(void)
       f413_trace_log_auto_is_enabled,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
-      nightfall_trace_log_set_mode_flags
+      nightfall_trace_log_set_mode_flags,
+      nightfall_run_session_encoder_stop_all,
+      nightfall_run_session_encoder_reset_all,
+      nightfall_run_session_encoder_start_l,
+      nightfall_run_session_encoder_start_r,
+      nightfall_run_session_encoder_stop_l,
+      nightfall_run_session_encoder_stop_r,
+      nightfall_motor_set
     };
     f413_run_session_config(&run_session_config);
   }

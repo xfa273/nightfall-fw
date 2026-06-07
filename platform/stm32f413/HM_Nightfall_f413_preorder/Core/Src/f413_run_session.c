@@ -91,6 +91,60 @@ static void f413_run_session_trace_set_mode_flags(uint16_t mode_flags)
   }
 }
 
+static void f413_run_session_encoder_stop_all(void)
+{
+  if (s_config.encoder_stop_all != NULL)
+  {
+    s_config.encoder_stop_all();
+  }
+}
+
+static void f413_run_session_encoder_reset_all(void)
+{
+  if (s_config.encoder_reset_all != NULL)
+  {
+    s_config.encoder_reset_all();
+  }
+}
+
+static bool f413_run_session_encoder_start_l(void)
+{
+  return (s_config.encoder_start_l != NULL) && s_config.encoder_start_l();
+}
+
+static bool f413_run_session_encoder_start_r(void)
+{
+  return (s_config.encoder_start_r != NULL) && s_config.encoder_start_r();
+}
+
+static void f413_run_session_encoder_stop_l(void)
+{
+  if (s_config.encoder_stop_l != NULL)
+  {
+    s_config.encoder_stop_l();
+  }
+}
+
+static void f413_run_session_encoder_stop_r(void)
+{
+  if (s_config.encoder_stop_r != NULL)
+  {
+    s_config.encoder_stop_r();
+  }
+}
+
+static void f413_run_session_motor_set(bool enable,
+                                       bool left_forward,
+                                       bool right_forward,
+                                       uint16_t left_duty,
+                                       uint16_t right_duty)
+{
+  if (s_config.motor_set != NULL)
+  {
+    s_config.motor_set(enable, left_forward, right_forward, left_duty, right_duty);
+  }
+}
+
 void f413_run_session_config(const f413_run_session_config_t* config)
 {
   if (config == NULL)
@@ -224,6 +278,68 @@ void f413_run_session_run_idle_trace_once(uint32_t duration_ms, uint16_t idle_mo
   f413_run_session_trace_on_run_stop();
 
   trace_printf("[RUN-TEST] idle trace session end\r\n");
+}
+
+void f413_run_session_run_motor_trace_once(uint16_t motor_fwd_flag,
+                                           uint16_t motor_coast_flag,
+                                           uint16_t motor_rev_flag,
+                                           uint16_t motor_duty,
+                                           uint32_t pulse_ms,
+                                           uint32_t coast_ms)
+{
+  bool enc_started_l = false;
+  bool enc_started_r = false;
+
+  if (f413_run_session_trace_auto_is_enabled())
+  {
+    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
+    return;
+  }
+
+  trace_printf("[RUN-TEST] motor trace session start (lift robot before test)\r\n");
+
+  f413_run_session_encoder_stop_all();
+  f413_run_session_encoder_reset_all();
+
+  if (f413_run_session_encoder_start_l())
+  {
+    enc_started_l = true;
+  }
+  if (f413_run_session_encoder_start_r())
+  {
+    enc_started_r = true;
+  }
+
+  f413_run_session_trace_on_run_start();
+  f413_run_session_trace_set_mode_flags(motor_fwd_flag);
+  f413_run_session_motor_set(true, true, true, motor_duty, motor_duty);
+  f413_run_session_wait_with_auto_step(pulse_ms);
+
+  f413_run_session_trace_set_mode_flags(motor_coast_flag);
+  f413_run_session_motor_set(false, true, true, 0U, 0U);
+  f413_run_session_wait_with_auto_step(coast_ms);
+
+  f413_run_session_trace_set_mode_flags(motor_rev_flag);
+  f413_run_session_motor_set(true, false, false, motor_duty, motor_duty);
+  f413_run_session_wait_with_auto_step(pulse_ms);
+
+  f413_run_session_trace_set_mode_flags(motor_coast_flag);
+  f413_run_session_motor_set(false, false, false, 0U, 0U);
+  f413_run_session_wait_with_auto_step(coast_ms);
+
+  f413_run_session_trace_set_mode_flags(0U);
+  f413_run_session_trace_on_run_stop();
+
+  if (enc_started_l)
+  {
+    f413_run_session_encoder_stop_l();
+  }
+  if (enc_started_r)
+  {
+    f413_run_session_encoder_stop_r();
+  }
+
+  trace_printf("[RUN-TEST] motor trace session end\r\n");
 }
 
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason)

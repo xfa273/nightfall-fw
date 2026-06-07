@@ -23,6 +23,11 @@ typedef bool (*f413_run_session_bool_fn)(void);
 typedef int16_t (*f413_run_session_encoder_count_fn)(void);
 typedef void (*f413_run_session_void_fn)(void);
 typedef void (*f413_run_session_set_mode_flags_fn)(uint16_t mode_flags);
+typedef void (*f413_run_session_motor_set_fn)(bool enable,
+                                              bool left_forward,
+                                              bool right_forward,
+                                              uint16_t left_duty,
+                                              uint16_t right_duty);
 
 typedef struct {
   f413_run_session_bool_fn stop_switch_pressed;
@@ -35,6 +40,13 @@ typedef struct {
   f413_run_session_void_fn trace_on_run_start;
   f413_run_session_void_fn trace_on_run_stop;
   f413_run_session_set_mode_flags_fn trace_set_mode_flags;
+  f413_run_session_void_fn encoder_stop_all;
+  f413_run_session_void_fn encoder_reset_all;
+  f413_run_session_bool_fn encoder_start_l;
+  f413_run_session_bool_fn encoder_start_r;
+  f413_run_session_void_fn encoder_stop_l;
+  f413_run_session_void_fn encoder_stop_r;
+  f413_run_session_motor_set_fn motor_set;
 } f413_run_session_config_t;
 
 void f413_run_session_config(const f413_run_session_config_t* config);
@@ -45,6 +57,12 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
                                                                              f413_run_session_guard_t* guard);
 void f413_run_session_wait_with_auto_step(uint32_t duration_ms);
 void f413_run_session_run_idle_trace_once(uint32_t duration_ms, uint16_t idle_mode_flag);
+void f413_run_session_run_motor_trace_once(uint16_t motor_fwd_flag,
+                                           uint16_t motor_coast_flag,
+                                           uint16_t motor_rev_flag,
+                                           uint16_t motor_duty,
+                                           uint32_t pulse_ms,
+                                           uint32_t coast_ms);
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason);
 const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_t reason);
 
