@@ -22,12 +22,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <math.h>
-#include <string.h>
 
 #include "build_info.h"
 #include "nvm.h"
 #include "nvm_identity.h"
-#include "nvm_trace_log.h"
 #include "f413_control.h"
 #include "f413_control_tune_run.h"
 #include "f413_hw.h"
@@ -38,8 +36,10 @@
 #include "f413_run_session.h"
 #include "f413_search_step.h"
 #include "f413_test_run.h"
+#include "f413_trace_flags.h"
 #include "f413_trace_log.h"
 #include "f413_trace_diag.h"
+#include "f413_trace_sample.h"
 #include "f413_wall_runtime.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
@@ -86,21 +86,6 @@ UART_HandleTypeDef huart1;
 
 static nvm_status_t g_boot_identity_status = NVM_STATUS_UNSUPPORTED;
 static nvm_identity_block_t g_boot_identity;
-static volatile uint8_t g_trace_log_context_mode = 0xFFU;
-static volatile uint8_t g_trace_log_context_case = 0xFFU;
-static volatile uint8_t g_trace_log_context_sub = 0xFFU;
-static volatile uint8_t g_trace_log_context_test_id = 0U;
-static volatile uint16_t g_trace_log_adc_fr = 0U;
-static volatile uint16_t g_trace_log_adc_r = 0U;
-static volatile uint16_t g_trace_log_adc_fl = 0U;
-static volatile uint16_t g_trace_log_adc_l = 0U;
-static volatile uint16_t g_trace_log_adc_vbat = 0U;
-static volatile int32_t g_trace_log_reserved_i32_0 = 0;
-static volatile int32_t g_trace_log_reserved_i32_1 = 0;
-static volatile int32_t g_trace_log_reserved_i32_2 = 0;
-static volatile int32_t g_trace_log_reserved_i32_3 = 0;
-static volatile uint16_t g_trace_log_reserved_u16_0 = 0U;
-static volatile uint16_t g_trace_log_reserved_u16_1 = 0U;
 
 /* USER CODE END PV */
 
@@ -128,20 +113,6 @@ static void MX_USART1_UART_Init(void);
 
 #define NIGHTFALL_F413_ENCODER_WINDOW_MS (3000U)
 #define NIGHTFALL_F413_LED_ON_WINDOW_MS (30000U)
-#define NIGHTFALL_F413_TRACE_DUMP_MAX_RECORDS (8U)
-#define NIGHTFALL_F413_TRACE_CSV_MAX_RECORDS (256U)
-#define NIGHTFALL_F413_TRACE_SELFTEST_RECORDS (16U)
-#define NIGHTFALL_F413_TRACE_SWITCH_FLAG (0x0001U)
-#define NIGHTFALL_F413_TRACE_MODE_IDLE_FLAG (0x0002U)
-#define NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG (0x0004U)
-#define NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG (0x0008U)
-#define NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG (0x0010U)
-#define NIGHTFALL_F413_TRACE_MODE_SMOKE_FLAG (0x0020U)
-#define NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG (0x0040U)
-#define NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG (0x0080U)
-#define NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG (0x1000U)
-#define NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG (0x2000U)
-#define NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG (0x4000U)
 #define NIGHTFALL_F413_RUN_SESSION_IDLE_MS (1000U)
 #define NIGHTFALL_F413_RUN_SESSION_MOTOR_DUTY (120U)
 #define NIGHTFALL_F413_RUN_SESSION_MOTOR_PULSE_MS (300U)
@@ -182,9 +153,6 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_OP_TEST_VEL_CAP    (450.0f)
 #define NIGHTFALL_F413_OP_TEST_DIAG_SCALE (0.75f)
-#ifndef NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE
-#define NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE (0U)
-#endif
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
@@ -239,17 +207,11 @@ static void nightfall_trace_log_on_run_start(void);
 static void nightfall_trace_log_on_run_stop(void);
 static void nightfall_trace_log_auto_step(void);
 static void nightfall_trace_log_auto_tick_sample(void);
-static void nightfall_trace_log_update_observe_cache(void);
 static void nightfall_trace_log_set_mode_flags(uint16_t flags);
-static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
-static void nightfall_trace_diag_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id);
-static void nightfall_trace_diag_emit_extra_csv_meta(void);
-static int32_t nightfall_trace_log_scale_float(float value, float scale);
 static const char* nightfall_op_mode_name(uint8_t mode);
 static const char* nightfall_op_level_name(uint8_t level);
 static const char* nightfall_op_case_name(uint8_t mode, uint8_t op_case);
 static const char* nightfall_op_sub_name(uint8_t mode, uint8_t sub);
-static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
 static bool nightfall_wall_sensor_start_async(void);
 static void nightfall_wall_sensor_tim6_tick(void);
 static bool nightfall_wall_sensor_read_snapshot(nightfall_wall_sensor_snapshot_t* out);
@@ -270,11 +232,6 @@ static void nightfall_run_imu_manual_turn_test_once(void);
 static void nightfall_run_imu_accel_test_once(void);
 static void nightfall_run_fan_pwm_test_once(void);
 static void nightfall_run_encoder_test_once(void);
-
-static uint8_t g_last_test_id = 0U;
-static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABORT_NONE;
-static float g_last_test_distance_mm = 0.0f;
-static float g_last_test_angle_deg = 0.0f;
 
 static void nightfall_run_search_trace_entry_once(void)
 {
@@ -829,17 +786,18 @@ static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mod
   nightfall_trace_log_set_mode_flags(0U);
   nightfall_trace_log_on_run_stop();
   nightfall_run_guard_cleanup(&guard);
-  g_last_test_id = (uint8_t)'P';
-  g_last_test_abort_reason = abort_reason;
-  g_last_test_distance_mm = f413_ctrl_get_distance();
-  g_last_test_angle_deg = f413_ctrl_get_angle();
-  trace_printf("[OP-UI][PATH-TEST] %s %s at code[%u]=%u dist=%.0fmm angle=%.0fdeg\r\n",
-               label,
-               (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" : nightfall_run_abort_reason_to_text(abort_reason),
-               (unsigned int)i,
-               (unsigned int)code,
-               (double)g_last_test_distance_mm,
-               (double)g_last_test_angle_deg);
+  {
+    const float distance_mm = f413_ctrl_get_distance();
+    const float angle_deg = f413_ctrl_get_angle();
+    f413_trace_sample_record_result((uint8_t)'P', abort_reason, distance_mm, angle_deg);
+    trace_printf("[OP-UI][PATH-TEST] %s %s at code[%u]=%u dist=%.0fmm angle=%.0fdeg\r\n",
+                 label,
+                 (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" : nightfall_run_abort_reason_to_text(abort_reason),
+                 (unsigned int)i,
+                 (unsigned int)code,
+                 (double)distance_mm,
+                 (double)angle_deg);
+  }
 }
 #endif
 
@@ -854,29 +812,6 @@ static void nightfall_identity_enter_safe_mode(void)
   }
 }
 
-static void nightfall_trace_log_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id)
-{
-  g_trace_log_context_mode = mode;
-  g_trace_log_context_case = op_case;
-  g_trace_log_context_sub = sub;
-  g_trace_log_context_test_id = test_id;
-}
-
-static int32_t nightfall_trace_log_scale_float(float value, float scale)
-{
-  float scaled = value * scale;
-
-  if (scaled > 2147483000.0f)
-  {
-    return 2147483000L;
-  }
-  if (scaled < -2147483000.0f)
-  {
-    return -2147483000L;
-  }
-  return (int32_t)lrintf(scaled);
-}
-
 static bool nightfall_wall_sensor_start_async(void)
 {
   return f413_wall_sensor_start_async();
@@ -885,49 +820,6 @@ static bool nightfall_wall_sensor_start_async(void)
 static void nightfall_wall_sensor_tim6_tick(void)
 {
   f413_wall_sensor_tim6_tick();
-}
-
-static bool nightfall_trace_log_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat)
-{
-  return f413_wall_sensor_read_adc_raw(fr, r, fl, l, vbat);
-}
-
-static void nightfall_trace_log_update_observe_cache(void)
-{
-  nvm_trace_log_record_t rec;
-  uint16_t adc_fr = 0U;
-  uint16_t adc_r = 0U;
-  uint16_t adc_fl = 0U;
-  uint16_t adc_l = 0U;
-  uint16_t adc_vbat = 0U;
-
-#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
-  memset(&rec, 0, sizeof(rec));
-  if (f413_wall_runtime_fill_observe(&rec, f413_trace_log_get_mode_flags()))
-  {
-    g_trace_log_adc_fr = rec.adc_fr;
-    g_trace_log_adc_r = rec.adc_r;
-    g_trace_log_adc_fl = rec.adc_fl;
-    g_trace_log_adc_l = rec.adc_l;
-    g_trace_log_adc_vbat = rec.adc_vbat;
-    g_trace_log_reserved_i32_0 = rec.reserved_i32_0;
-    g_trace_log_reserved_i32_1 = rec.reserved_i32_1;
-    g_trace_log_reserved_i32_2 = rec.reserved_i32_2;
-    g_trace_log_reserved_i32_3 = rec.reserved_i32_3;
-    g_trace_log_reserved_u16_0 = rec.reserved_u16_0;
-    g_trace_log_reserved_u16_1 = rec.reserved_u16_1;
-    return;
-  }
-#endif
-
-  if (nightfall_trace_log_read_adc_raw(&adc_fr, &adc_r, &adc_fl, &adc_l, &adc_vbat))
-  {
-    g_trace_log_adc_fr = adc_fr;
-    g_trace_log_adc_r = adc_r;
-    g_trace_log_adc_fl = adc_fl;
-    g_trace_log_adc_l = adc_l;
-    g_trace_log_adc_vbat = adc_vbat;
-  }
 }
 
 static void nightfall_run_trace_log_dump_csv_once(void)
@@ -970,201 +862,9 @@ static void nightfall_print_nvm_cli_help(void)
   trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
 }
 
-static void nightfall_trace_diag_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id)
-{
-  if (mode != NULL)
-  {
-    *mode = g_trace_log_context_mode;
-  }
-  if (op_case != NULL)
-  {
-    *op_case = g_trace_log_context_case;
-  }
-  if (sub != NULL)
-  {
-    *sub = g_trace_log_context_sub;
-  }
-  if (test_id != NULL)
-  {
-    *test_id = g_trace_log_context_test_id;
-  }
-}
-
-static void nightfall_trace_diag_emit_extra_csv_meta(void)
-{
-#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
-  trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
-  trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
-  trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
-  trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
-#else
-  trace_printf("#wall_trace_observe=disabled\r\n");
-#endif
-  f413_control_tune_emit_extra_csv_meta();
-  if (g_boot_identity_status == NVM_STATUS_OK)
-  {
-    f413_nvm_diag_emit_identity_meta(&g_boot_identity);
-  }
-  else
-  {
-    trace_printf("#fw_identity_status=%d\r\n", (int)g_boot_identity_status);
-  }
-  if (g_last_test_id != 0U)
-  {
-    trace_printf("#last_test_id=%c\r\n", (char)g_last_test_id);
-    trace_printf("#last_test_status=%s\r\n",
-                 (g_last_test_abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" :
-                 nightfall_run_abort_reason_to_text(g_last_test_abort_reason));
-    trace_printf("#last_test_dist_mm=%.0f\r\n", (double)g_last_test_distance_mm);
-    trace_printf("#last_test_angle_deg=%.0f\r\n", (double)g_last_test_angle_deg);
-  }
-}
-
 static void nightfall_run_trace_log_format_once(void)
 {
   f413_trace_diag_run_format_once();
-}
-
-static void nightfall_fill_trace_log_sample(nvm_trace_log_record_t* out, uint32_t seq)
-{
-  uint16_t adc_fr = 0U;
-  uint16_t adc_r = 0U;
-  uint16_t adc_fl = 0U;
-  uint16_t adc_l = 0U;
-  uint16_t adc_vbat = 0U;
-
-  if (out == NULL)
-  {
-    return;
-  }
-
-  memset(out, 0, sizeof(*out));
-  out->seq = seq;
-  out->timestamp_ms = HAL_GetTick();
-  out->target_distance_x1000 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
-  out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
-  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_log_angle(), 1000.0f);
-  out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
-  out->real_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_real_velocity(), 1.0f);
-  out->accel_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
-  out->target_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
-  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
-  out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
-  out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
-  if (f413_ctrl_is_running())
-  {
-    out->encoder_l = f413_ctrl_get_log_encoder_delta_l();
-    out->encoder_r = f413_ctrl_get_log_encoder_delta_r();
-  }
-  else
-  {
-    out->encoder_l = (int16_t)__HAL_TIM_GET_COUNTER(&htim3);
-    out->encoder_r = (int16_t)__HAL_TIM_GET_COUNTER(&htim4);
-  }
-  out->motor_out_l = f413_ctrl_get_motor_out_l();
-  out->motor_out_r = f413_ctrl_get_motor_out_r();
-#if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
-  if (f413_wall_runtime_fill_observe(out, f413_trace_log_get_mode_flags()))
-  {
-    adc_fr = out->adc_fr;
-    adc_r = out->adc_r;
-    adc_fl = out->adc_fl;
-    adc_l = out->adc_l;
-    adc_vbat = out->adc_vbat;
-  }
-  else
-#endif
-  if (nightfall_trace_log_read_adc_raw(&adc_fr, &adc_r, &adc_fl, &adc_l, &adc_vbat))
-  {
-    out->adc_fr = adc_fr;
-    out->adc_r = adc_r;
-    out->adc_fl = adc_fl;
-    out->adc_l = adc_l;
-    out->adc_vbat = adc_vbat;
-  }
-  if ((f413_trace_log_get_mode_flags() & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
-  {
-    out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
-    out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
-    out->reserved_i32_2 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
-    out->reserved_i32_3 = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
-    out->reserved_u16_0 = (uint16_t)(((uint16_t)f413_ctrl_tune_get_axis() << 8U) |
-                                     (uint16_t)f413_ctrl_tune_get_pattern());
-    out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();
-  }
-  out->flags = f413_hw_stop_switch_pressed()
-                   ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
-                   : 0U;
-  if (f413_ctrl_angle_target_enabled())
-  {
-    out->flags |= NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG;
-  }
-  out->op_mode = g_trace_log_context_mode;
-  out->op_case = g_trace_log_context_case;
-  out->op_sub = g_trace_log_context_sub;
-  out->test_id = g_trace_log_context_test_id;
-}
-
-static void nightfall_fill_trace_log_control_sample(nvm_trace_log_record_t* out,
-                                                    uint32_t seq,
-                                                    uint32_t timestamp_ms,
-                                                    uint16_t mode_flags)
-{
-  if (out == NULL)
-  {
-    return;
-  }
-
-  memset(out, 0, sizeof(*out));
-  out->seq = seq;
-  out->timestamp_ms = timestamp_ms;
-  out->target_distance_x1000 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
-  out->distance_mm = nightfall_trace_log_scale_float(f413_ctrl_get_distance(), 1.0f);
-  out->angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_log_angle(), 1000.0f);
-  out->target_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_target_velocity(), 1.0f);
-  out->real_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_real_velocity(), 1.0f);
-  out->accel_velocity_mm_s = nightfall_trace_log_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
-  out->target_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
-  out->real_omega_mdps = nightfall_trace_log_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
-  out->target_angle_mdeg = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
-  out->accel_forward_mm_s2 = nightfall_trace_log_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
-  out->encoder_l = f413_ctrl_get_log_encoder_delta_l();
-  out->encoder_r = f413_ctrl_get_log_encoder_delta_r();
-  out->motor_out_l = f413_ctrl_get_motor_out_l();
-  out->motor_out_r = f413_ctrl_get_motor_out_r();
-  out->adc_fr = g_trace_log_adc_fr;
-  out->adc_r = g_trace_log_adc_r;
-  out->adc_fl = g_trace_log_adc_fl;
-  out->adc_l = g_trace_log_adc_l;
-  out->adc_vbat = g_trace_log_adc_vbat;
-  out->reserved_i32_0 = g_trace_log_reserved_i32_0;
-  out->reserved_i32_1 = g_trace_log_reserved_i32_1;
-  out->reserved_i32_2 = g_trace_log_reserved_i32_2;
-  out->reserved_i32_3 = g_trace_log_reserved_i32_3;
-  out->reserved_u16_0 = g_trace_log_reserved_u16_0;
-  out->reserved_u16_1 = g_trace_log_reserved_u16_1;
-  (void)f413_wall_runtime_fill_snapshot_fields(out, mode_flags);
-  if ((mode_flags & NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG) != 0U)
-  {
-    out->reserved_i32_0 = nightfall_trace_log_scale_float(f413_ctrl_tune_get_reference(), 1000.0f);
-    out->reserved_i32_1 = (int32_t)f413_ctrl_tune_get_axis();
-    out->reserved_i32_2 = nightfall_trace_log_scale_float(f413_ctrl_get_target_distance(), 1000.0f);
-    out->reserved_i32_3 = nightfall_trace_log_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
-    out->reserved_u16_0 = (uint16_t)(((uint16_t)f413_ctrl_tune_get_axis() << 8U) |
-                                     (uint16_t)f413_ctrl_tune_get_pattern());
-    out->reserved_u16_1 = (uint16_t)f413_ctrl_tune_get_set();
-  }
-  out->flags = f413_hw_stop_switch_pressed()
-                   ? NIGHTFALL_F413_TRACE_SWITCH_FLAG
-                   : 0U;
-  if (f413_ctrl_angle_target_enabled())
-  {
-    out->flags |= NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG;
-  }
-  out->op_mode = g_trace_log_context_mode;
-  out->op_case = g_trace_log_context_case;
-  out->op_sub = g_trace_log_context_sub;
-  out->test_id = g_trace_log_context_test_id;
 }
 
 static void nightfall_run_trace_log_append_sample_once(void)
@@ -1403,7 +1103,7 @@ static bool nightfall_op_can_accept_input(void)
 static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
   f413_test_run_clear_arm();
-  nightfall_trace_log_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
+  f413_trace_sample_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_test_run_run_now(test_id);
 }
@@ -1462,7 +1162,7 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
       break;
   }
 
-  nightfall_trace_log_set_context(9U, 0U, sub, (uint8_t)'0');
+  f413_trace_sample_set_context(9U, 0U, sub, (uint8_t)'0');
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_control_tune_run_once(axis, set, pattern);
 }
@@ -1553,7 +1253,7 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
       break;
   }
 
-  nightfall_trace_log_set_context(mode, 0U, sub, (uint8_t)'P');
+  f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
   nightfall_run_path_code_sequence_once(label, mode, case_index, codes, code_count,
                                         straight_velocity, diagonal_velocity);
@@ -1567,12 +1267,12 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
   switch (action)
   {
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
-      nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
+      f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_search_trace_entry_once();
       break;
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
-      nightfall_trace_log_set_context(mode, op_case, 0xFFU, 0U);
+      f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_shortest_trace_entry_once();
       break;
@@ -1743,17 +1443,6 @@ static void nightfall_run_session_encoder_stop_r(void)
 static void nightfall_wall_control_apply_straight(void)
 {
   f413_wall_runtime_control_apply(true);
-}
-
-static void nightfall_test_run_record_result(uint8_t test_id,
-                                             f413_run_session_abort_reason_t abort_reason,
-                                             float distance_mm,
-                                             float angle_deg)
-{
-  g_last_test_id = test_id;
-  g_last_test_abort_reason = abort_reason;
-  g_last_test_distance_mm = distance_mm;
-  g_last_test_angle_deg = angle_deg;
 }
 
 static bool nightfall_run_session_wall_sensor_ok(void)
@@ -2067,25 +1756,25 @@ static void nightfall_handle_uart_command(uint8_t cmd)
 
     case 'x':
     case 'X':
-      nightfall_trace_log_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'x');
+      f413_trace_sample_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'x');
       nightfall_run_idle_trace_session_once();
       break;
 
     case 'y':
     case 'Y':
-      nightfall_trace_log_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'y');
+      f413_trace_sample_set_context(0U, 0xFFU, 0xFFU, (uint8_t)'y');
       nightfall_run_motor_trace_session_once();
       break;
 
     case 'z':
     case 'Z':
-      nightfall_trace_log_set_context(1U, 4U, 0xFFU, (uint8_t)'z');
+      f413_trace_sample_set_context(1U, 4U, 0xFFU, (uint8_t)'z');
       nightfall_run_search_trace_entry_once();
       break;
 
     case 'j':
     case 'J':
-      nightfall_trace_log_set_context(2U, 1U, 0xFFU, (uint8_t)'j');
+      f413_trace_sample_set_context(2U, 1U, 0xFFU, (uint8_t)'j');
       nightfall_run_shortest_trace_entry_once();
       break;
 
@@ -2093,7 +1782,7 @@ static void nightfall_handle_uart_command(uint8_t cmd)
     case '7':
     case '8':
     case '9':
-      nightfall_trace_log_set_context(8U, 0xFFU, 0xFFU, cmd);
+      f413_trace_sample_set_context(8U, 0xFFU, 0xFFU, cmd);
       f413_test_run_run_now(cmd);
       break;
 
@@ -2180,8 +1869,18 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   trace_init();
-  f413_trace_log_config(nightfall_fill_trace_log_control_sample,
-                        nightfall_trace_log_update_observe_cache,
+  {
+    const f413_trace_sample_config_t trace_sample_config = {
+      HAL_GetTick,
+      nightfall_run_session_encoder_l_count,
+      nightfall_run_session_encoder_r_count,
+      f413_wall_sensor_read_adc_raw
+    };
+    f413_trace_sample_config(&trace_sample_config);
+  }
+  f413_trace_sample_set_identity(g_boot_identity_status, &g_boot_identity);
+  f413_trace_log_config(f413_trace_sample_fill_control,
+                        f413_trace_sample_update_observe_cache,
                         f413_wall_runtime_end_clear);
   {
     const f413_wall_runtime_config_t wall_runtime_config = {
@@ -2196,12 +1895,12 @@ int main(void)
   }
   {
     const f413_trace_diag_config_t trace_diag_config = {
-      nightfall_fill_trace_log_sample,
-      nightfall_trace_diag_get_context,
+      f413_trace_sample_fill,
+      f413_trace_sample_get_context,
       nightfall_op_mode_name,
       nightfall_op_case_name,
       nightfall_op_sub_name,
-      nightfall_trace_diag_emit_extra_csv_meta
+      f413_trace_sample_emit_extra_csv_meta
     };
     f413_trace_diag_config(&trace_diag_config);
   }
@@ -2245,7 +1944,7 @@ int main(void)
       nightfall_trace_log_on_run_stop,
       nightfall_trace_log_set_mode_flags,
       nightfall_trace_log_auto_step,
-      nightfall_test_run_record_result,
+      f413_trace_sample_record_result,
       NIGHTFALL_F413_TUNE_TIMEOUT_MS,
       NIGHTFALL_F413_TRACE_MODE_TUNE_FLAG,
       NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
@@ -2259,7 +1958,7 @@ int main(void)
       HAL_GetTick,
       nightfall_wall_sensor_read_snapshot,
       f413_trace_log_auto_is_enabled,
-      nightfall_trace_log_set_context,
+      f413_trace_sample_set_context,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
       nightfall_trace_log_set_mode_flags,
@@ -2282,13 +1981,13 @@ int main(void)
       nightfall_run_stop_switch_pressed,
       HAL_Delay,
       HAL_GetTick,
-      nightfall_trace_log_set_context,
+      f413_trace_sample_set_context,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
       nightfall_trace_log_set_mode_flags,
       nightfall_trace_log_auto_step,
       nightfall_wall_control_apply_straight,
-      nightfall_test_run_record_result,
+      f413_trace_sample_record_result,
       nightfall_run_session_encoder_stop_all,
       nightfall_run_session_encoder_reset_all,
       nightfall_test_run_encoder_center_all,
