@@ -35,6 +35,7 @@
 #include "f413_hw_diag.h"
 #include "f413_op_ui.h"
 #include "f413_run_session.h"
+#include "f413_test_run.h"
 #include "f413_trace_log.h"
 #include "f413_trace_diag.h"
 #include "f413_wall_sensor.h"
@@ -190,15 +191,6 @@ static void MX_USART1_UART_Init(void);
 #endif
 
 /* ---------- 調整用テストモード定数 ---------- */
-#define NIGHTFALL_F413_TEST_VEL           (200.0f)  /* テスト直進速度 [mm/s] */
-#define NIGHTFALL_F413_TEST_OMEGA         (200.0f)  /* テスト旋回角速度 [deg/s] */
-#define NIGHTFALL_F413_TEST_HALF_CELL_MM  (45.0f)   /* 半区画 [mm] */
-#define NIGHTFALL_F413_TEST_COAST_MS      (200U)    /* 区間間停止 [ms] */
-#define NIGHTFALL_F413_TEST_TIMEOUT_MS    (5000U)   /* タイムアウト [ms] */
-#define NIGHTFALL_F413_TEST_ARMED_NONE    (0U)
-#define NIGHTFALL_F413_TEST_BUTTON_WAIT_MS (3000U)  /* ボタン待ち上限 [ms] */
-#define NIGHTFALL_F413_ENCODER_SIGN_L     (1L)
-#define NIGHTFALL_F413_ENCODER_SIGN_R     (-1L)
 #define NIGHTFALL_F413_OP_MODE_MAX        (9U)
 #define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (150)
 #define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
@@ -352,19 +344,15 @@ static void nightfall_wall_end_update(const nightfall_wall_sensor_snapshot_t* wa
 static void nightfall_run_wall_end_monitor_once(void);
 static void nightfall_motor_set(bool enable, bool left_forward, bool right_forward,
                                 uint16_t left_duty, uint16_t right_duty);
-static void nightfall_test_run(uint8_t test_id);
-static void nightfall_test_arm_for_button(uint8_t test_id);
 static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t pattern);
 static void nightfall_op_run_tune_sub_after_delay(uint8_t sub);
 static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub);
 static void nightfall_op_ui_step(void);
-static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev);
 static void nightfall_run_imu_manual_turn_test_once(void);
 static void nightfall_run_imu_accel_test_once(void);
 static void nightfall_run_fan_pwm_test_once(void);
 static void nightfall_run_encoder_test_once(void);
 
-static volatile uint8_t g_test_armed_id = 0U; /* 0=none, '1'-'5'=armed test */
 static uint8_t g_last_test_id = 0U;
 static nightfall_run_abort_reason_t g_last_test_abort_reason = NIGHTFALL_RUN_ABORT_NONE;
 static float g_last_test_distance_mm = 0.0f;
@@ -965,47 +953,6 @@ static void nightfall_run_path_code_sequence_once(const char* label, uint8_t mod
 /*          '5'=S6+R90+S6                                      */
 /* ========================================================== */
 
-static nightfall_run_abort_reason_t nightfall_test_wait_target(
-    float target_abs, bool is_angle, nightfall_run_guard_t* guard, uint16_t flags)
-{
-  nightfall_run_abort_reason_t reason = NIGHTFALL_RUN_ABORT_NONE;
-  uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_TEST_TIMEOUT_MS;
-  while (1)
-  {
-    float cur = is_angle ? fabsf(f413_ctrl_get_angle())
-                         : fabsf(f413_ctrl_get_distance());
-    if (cur >= target_abs) break;
-    if (HAL_GetTick() >= deadline) break;
-    nightfall_trace_log_set_mode_flags(flags);
-    reason = nightfall_trace_log_wait_with_auto_step_guarded(10U, guard);
-    nightfall_wall_control_apply(!is_angle &&
-        ((flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U));
-    if (reason != NIGHTFALL_RUN_ABORT_NONE) return reason;
-  }
-  return NIGHTFALL_RUN_ABORT_NONE;
-}
-
-static nightfall_run_abort_reason_t nightfall_test_wait_angle_signed(
-    float target_deg, nightfall_run_guard_t* guard, uint16_t flags)
-{
-  nightfall_run_abort_reason_t reason = NIGHTFALL_RUN_ABORT_NONE;
-  uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_TEST_TIMEOUT_MS;
-  while (1)
-  {
-    float cur = f413_ctrl_get_angle();
-    if (((target_deg >= 0.0f) && (cur >= target_deg)) ||
-        ((target_deg < 0.0f) && (cur <= target_deg)))
-    {
-      break;
-    }
-    if (HAL_GetTick() >= deadline) break;
-    nightfall_trace_log_set_mode_flags(flags);
-    reason = nightfall_trace_log_wait_with_auto_step_guarded(10U, guard);
-    if (reason != NIGHTFALL_RUN_ABORT_NONE) return reason;
-  }
-  return NIGHTFALL_RUN_ABORT_NONE;
-}
-
 static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t pattern)
 {
   nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
@@ -1096,264 +1043,6 @@ static void nightfall_run_control_tune_once(uint8_t axis, uint8_t set, uint8_t p
                (double)g_last_test_distance_mm,
                (double)g_last_test_angle_deg);
 }
-static void nightfall_test_run(uint8_t test_id)
-{
-  nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
-  nightfall_run_guard_t guard = {0};
-  const uint16_t tf = NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG; /* reuse for test */
-
-  const char* test_name = "?";
-  switch (test_id)
-  {
-    case '1': test_name = "straight 3 cells heading hold (270mm)"; break;
-    case '2': test_name = "straight 6 cells heading hold (540mm)"; break;
-    case '3': test_name = "right 90 deg turn"; break;
-    case '4': test_name = "left 90 deg turn"; break;
-    case '5': test_name = "S3 + R90 + S3 heading hold"; break;
-    case '6': test_name = "HW: L-motor fwd only"; break;
-    case '7': test_name = "HW: R-motor fwd only"; break;
-    case '8': test_name = "HW: L-motor rev only"; break;
-    case '9': test_name = "HW: R-motor rev only"; break;
-    default:
-      trace_printf("[TEST] unknown test_id '%c'\r\n", (char)test_id);
-      return;
-  }
-
-  trace_printf("[TEST] === %s === start\r\n", test_name);
-
-  if (test_id >= '6' && test_id <= '9')
-  {
-    bool use_left  = (test_id == '6' || test_id == '8');
-    bool forward   = (test_id == '6' || test_id == '7');
-    uint16_t duty  = 120U;
-    uint32_t run_ms = 500U;
-    uint32_t coast_ms = 300U;
-
-    (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-    (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-    __HAL_TIM_SET_COUNTER(&htim3, 0U);
-    __HAL_TIM_SET_COUNTER(&htim4, 0U);
-    (void)HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
-    (void)HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-
-    trace_printf("[TEST] motor=%s dir=%s duty=%u ms=%lu\r\n",
-                 use_left ? "LEFT" : "RIGHT",
-                 forward ? "FWD" : "REV",
-                 (unsigned int)duty, (unsigned long)run_ms);
-    trace_printf("[TEST] PWM: CH1(TIM2)=%s, CH3(TIM2)=%s\r\n",
-                 use_left ? (forward ? "duty" : "inv-duty") : "0",
-                 use_left ? "0" : (forward ? "inv-duty" : "duty"));
-    trace_printf("[TEST] IN2: L=%s, R=%s\r\n",
-                 (use_left && forward) ? "RESET" :
-                 (use_left && !forward) ? "SET" : "RESET",
-                 (!use_left && forward) ? "SET" :
-                 (!use_left && !forward) ? "RESET" : "RESET");
-
-    if (use_left)
-    {
-      nightfall_motor_set(true, forward, true, duty, 0U);
-    }
-    else
-    {
-      nightfall_motor_set(true, true, forward, 0U, duty);
-    }
-
-    HAL_Delay(run_ms);
-    nightfall_motor_set(false, true, true, 0U, 0U);
-    HAL_Delay(coast_ms);
-
-    uint32_t final_enc_l_raw = __HAL_TIM_GET_COUNTER(&htim3);
-    uint32_t final_enc_r_raw = __HAL_TIM_GET_COUNTER(&htim4);
-    int32_t final_enc_l = NIGHTFALL_F413_ENCODER_SIGN_L *
-        nightfall_encoder_delta_signed(final_enc_l_raw, 0U);
-    int32_t final_enc_r = NIGHTFALL_F413_ENCODER_SIGN_R *
-        nightfall_encoder_delta_signed(final_enc_r_raw, 0U);
-
-    (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-    (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-    __HAL_TIM_SET_COUNTER(&htim3, 30000U);
-    __HAL_TIM_SET_COUNTER(&htim4, 30000U);
-    (void)HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
-    (void)HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL);
-
-    trace_printf("[TEST] === %s === OK enc_l=%ld enc_r=%ld\r\n",
-                 test_name,
-                 (long)final_enc_l, (long)final_enc_r);
-    return;
-  }
-
-  if (!nightfall_run_guard_prepare(&guard))
-  {
-    trace_printf("[TEST] guard init fail\r\n");
-    return;
-  }
-
-  nightfall_trace_log_on_run_start();
-
-  /* テスト6-9はオープンループ（制御ループ不使用） */
-  if (test_id >= '1' && test_id <= '5')
-  {
-    f413_ctrl_start();
-  }
-
-  switch (test_id)
-  {
-    case '1': /* straight 6 half-cells = 270mm */
-    {
-      f413_ctrl_reset_distance();
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(0.0f);
-      abort_reason = nightfall_test_wait_target(
-          6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
-      break;
-    }
-    case '2': /* straight 12 half-cells = 540mm */
-    {
-      f413_ctrl_reset_distance();
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(0.0f);
-      abort_reason = nightfall_test_wait_target(
-          12.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
-      break;
-    }
-    case '3': /* right 90 */
-    {
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(0.0f);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(-90.0f);
-      abort_reason = nightfall_test_wait_angle_signed(
-          -90.0f, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
-      break;
-    }
-    case '4': /* left 90 */
-    {
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(0.0f);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(90.0f);
-      abort_reason = nightfall_test_wait_angle_signed(
-          90.0f, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
-      break;
-    }
-    case '5': /* S6 + R90 + S6 */
-    {
-      /* segment 1: straight 6 half-cells */
-      f413_ctrl_reset_distance();
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(0.0f);
-      abort_reason = nightfall_test_wait_target(
-          6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
-      if (abort_reason != NIGHTFALL_RUN_ABORT_NONE) break;
-
-      /* coast */
-      f413_ctrl_clear_angle_target();
-      f413_ctrl_set_velocity(0.0f);
-      f413_ctrl_set_omega(0.0f);
-      nightfall_trace_log_set_mode_flags((uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
-      abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(
-          NIGHTFALL_F413_TEST_COAST_MS, &guard);
-      if (abort_reason != NIGHTFALL_RUN_ABORT_NONE) break;
-
-      /* segment 2: right 90 */
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(0.0f);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(-90.0f);
-      abort_reason = nightfall_test_wait_angle_signed(
-          -90.0f, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
-      if (abort_reason != NIGHTFALL_RUN_ABORT_NONE) break;
-
-      /* coast */
-      f413_ctrl_clear_angle_target();
-      f413_ctrl_set_velocity(0.0f);
-      f413_ctrl_set_omega(0.0f);
-      nightfall_trace_log_set_mode_flags((uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
-      abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(
-          NIGHTFALL_F413_TEST_COAST_MS, &guard);
-      if (abort_reason != NIGHTFALL_RUN_ABORT_NONE) break;
-
-      /* segment 3: straight 6 half-cells */
-      f413_ctrl_reset_distance();
-      f413_ctrl_reset_angle();
-      f413_ctrl_set_velocity(NIGHTFALL_F413_TEST_VEL);
-      f413_ctrl_set_omega(0.0f);
-      f413_ctrl_set_angle_target(0.0f);
-      abort_reason = nightfall_test_wait_target(
-          6.0f * NIGHTFALL_F413_TEST_HALF_CELL_MM, false, &guard,
-          (uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
-      break;
-    }
-    default:
-      break;
-  }
-
-  /* 停止 (テスト1-5用) */
-  f413_ctrl_clear_angle_target();
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
-
-  /* 減速待ち */
-  nightfall_trace_log_set_mode_flags((uint16_t)(tf | NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
-  (void)nightfall_trace_log_wait_with_auto_step_guarded(NIGHTFALL_F413_TEST_COAST_MS, &guard);
-
-  f413_ctrl_stop();
-
-  if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-  {
-    nightfall_trace_log_set_mode_flags((uint16_t)(tf |
-        nightfall_run_abort_reason_to_trace_flag(abort_reason)));
-    nightfall_trace_log_auto_step();
-  }
-  nightfall_trace_log_set_mode_flags(0U);
-  nightfall_trace_log_on_run_stop();
-  nightfall_run_guard_cleanup(&guard);
-
-  g_last_test_id = test_id;
-  g_last_test_abort_reason = abort_reason;
-  g_last_test_distance_mm = f413_ctrl_get_distance();
-  g_last_test_angle_deg = f413_ctrl_get_angle();
-
-  trace_printf("[TEST] === %s === %s dist=%.0fmm angle=%.0fdeg\r\n",
-               test_name,
-               (abort_reason == NIGHTFALL_RUN_ABORT_NONE) ? "OK" :
-               nightfall_run_abort_reason_to_text(abort_reason),
-               (double)g_last_test_distance_mm,
-               (double)g_last_test_angle_deg);
-}
-
-static void nightfall_test_arm_for_button(uint8_t test_id)
-{
-  g_test_armed_id = test_id;
-  nightfall_trace_log_set_context(8U, 0xFFU, 0xFFU, test_id);
-
-  const char* test_name = "?";
-  switch (test_id)
-  {
-    case '1': test_name = "straight 3 cells heading hold"; break;
-    case '2': test_name = "straight 6 cells heading hold"; break;
-    case '3': test_name = "right 90 deg"; break;
-    case '4': test_name = "left 90 deg"; break;
-    case '5': test_name = "S3+R90+S3 heading hold"; break;
-    default: test_name = "unknown"; break;
-  }
-
-  trace_printf("[TEST] armed for button: '%c' (%s)\r\n", (char)test_id, test_name);
-  trace_printf("[TEST] disconnect UART, press PUSH button to start, reconnect and 'V' to get CSV\r\n");
-}
-
 static void nightfall_trace_log_emit_identity_meta(const nvm_identity_block_t* id)
 {
   const char* family_name;
@@ -3398,7 +3087,7 @@ static bool nightfall_op_can_accept_input(void)
   {
     return false;
   }
-  if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
+  if (f413_test_run_is_armed())
   {
     return false;
   }
@@ -3407,10 +3096,10 @@ static bool nightfall_op_can_accept_input(void)
 
 static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
-  g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
+  f413_test_run_clear_arm();
   nightfall_trace_log_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-  nightfall_test_run(test_id);
+  f413_test_run_run_now(test_id);
 }
 
 static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
@@ -3719,6 +3408,12 @@ static void nightfall_run_session_encoder_reset_all(void)
   __HAL_TIM_SET_COUNTER(&htim4, 0U);
 }
 
+static void nightfall_test_run_encoder_center_all(void)
+{
+  __HAL_TIM_SET_COUNTER(&htim3, 30000U);
+  __HAL_TIM_SET_COUNTER(&htim4, 30000U);
+}
+
 static bool nightfall_run_session_encoder_start_l(void)
 {
   return HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) == HAL_OK;
@@ -3739,6 +3434,22 @@ static void nightfall_run_session_encoder_stop_r(void)
   (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
 }
 
+static void nightfall_test_run_wall_control_apply_straight(void)
+{
+  nightfall_wall_control_apply(true);
+}
+
+static void nightfall_test_run_record_result(uint8_t test_id,
+                                             f413_run_session_abort_reason_t abort_reason,
+                                             float distance_mm,
+                                             float angle_deg)
+{
+  g_last_test_id = test_id;
+  g_last_test_abort_reason = abort_reason;
+  g_last_test_distance_mm = distance_mm;
+  g_last_test_angle_deg = angle_deg;
+}
+
 static bool nightfall_run_session_wall_sensor_ok(void)
 {
   nightfall_wall_sensor_snapshot_t wall;
@@ -3756,11 +3467,6 @@ static bool nightfall_run_session_imu_ok(void)
 
   return nightfall_imu_read_reg(NIGHTFALL_F413_IMU_WHO_AM_I_REG, &who) &&
          (who == NIGHTFALL_F413_IMU_WHO_AM_I_EXPECTED);
-}
-
-static int32_t nightfall_encoder_delta_signed(uint32_t now, uint32_t prev)
-{
-  return f413_hw_encoder_delta_signed(now, prev);
 }
 
 static uint16_t nightfall_run_abort_reason_to_trace_flag(nightfall_run_abort_reason_t reason)
@@ -4134,9 +3840,8 @@ static void nightfall_handle_uart_command(uint8_t cmd)
     case '7':
     case '8':
     case '9':
-      g_test_armed_id = cmd;
       nightfall_trace_log_set_context(8U, 0xFFU, 0xFFU, cmd);
-      nightfall_test_run(cmd);
+      f413_test_run_run_now(cmd);
       break;
 
     case '1':
@@ -4144,16 +3849,15 @@ static void nightfall_handle_uart_command(uint8_t cmd)
     case '3':
     case '4':
     case '5':
-      nightfall_test_arm_for_button(cmd);
+      f413_test_run_arm_for_button(cmd);
       break;
 
     case 'f':
     case 'F':
       /* 直前に '1'-'5' を送っていなければデフォルト '1' をアーム */
       {
-        uint8_t arm_id = (g_test_armed_id >= '1' && g_test_armed_id <= '5')
-                         ? g_test_armed_id : '1';
-        nightfall_test_arm_for_button(arm_id);
+        uint8_t arm_id = f413_test_run_is_armed() ? f413_test_run_armed_id() : (uint8_t)'1';
+        f413_test_run_arm_for_button(arm_id);
       }
       break;
 
@@ -4268,6 +3972,33 @@ int main(void)
     };
     f413_run_session_config(&run_session_config);
   }
+  {
+    const f413_test_run_config_t test_run_config = {
+      nightfall_run_stop_switch_pressed,
+      HAL_Delay,
+      HAL_GetTick,
+      nightfall_trace_log_set_context,
+      nightfall_trace_log_on_run_start,
+      nightfall_trace_log_on_run_stop,
+      nightfall_trace_log_set_mode_flags,
+      nightfall_trace_log_auto_step,
+      nightfall_test_run_wall_control_apply_straight,
+      nightfall_test_run_record_result,
+      nightfall_run_session_encoder_stop_all,
+      nightfall_run_session_encoder_reset_all,
+      nightfall_test_run_encoder_center_all,
+      nightfall_run_session_encoder_start_l,
+      nightfall_run_session_encoder_start_r,
+      nightfall_run_session_encoder_l_count,
+      nightfall_run_session_encoder_r_count,
+      nightfall_motor_set,
+      NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG,
+      NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
+      NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG,
+      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG
+    };
+    f413_test_run_config(&test_run_config);
+  }
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
@@ -4341,24 +4072,7 @@ int main(void)
     nightfall_trace_log_auto_step();
     nightfall_op_ui_step();
 
-    /* ボタンアーム実行: ボタン押下でアーム済みテストを開始 */
-    if ((g_test_armed_id >= '1') && (g_test_armed_id <= '5'))
-    {
-      if (nightfall_run_stop_switch_pressed())
-      {
-        /* チャタリング待ち + リリース待ち */
-        HAL_Delay(50U);
-        while (nightfall_run_stop_switch_pressed()) { HAL_Delay(10U); }
-        HAL_Delay(50U);
-
-        /* 2秒待ってから実行（手を離してIMUオフセットを安定させる猶予） */
-        HAL_Delay(2000U);
-
-        uint8_t tid = g_test_armed_id;
-        g_test_armed_id = NIGHTFALL_F413_TEST_ARMED_NONE;
-        nightfall_test_run(tid);
-      }
-    }
+    f413_test_run_step_button_armed();
 
     if (HAL_UART_Receive(&huart1, &cmd, 1U, 1U) == HAL_OK)
     {
