@@ -63,4 +63,5 @@ fp-info-cache
 
 docs/ai/archive/delegation-legacy/HANDOFFS/*
 !docs/ai/archive/delegation-legacy/HANDOFFS/README.md
+docs/ai/archive/codex-migration-backup-*/
 tools/logging/logs/

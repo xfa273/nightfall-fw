@@ -9,4 +9,4 @@ description: はてなブログ記事をdocs/blogへ1本移行する
 5. `docs/blog/README.md` の記事一覧にリンクを追加する。
 6. 体裁チェック（見出し、画像リンク、誤記）を行う。
 7. `docs/blog_admin/MIGRATION_TRACKER.md` を `review` か `done` に更新する。
-8. 必要なら重い改稿作業も Cascade が直接実施し、必要に応じて `docs/ai/WORKLOG.md` に記録する。
+8. 必要なら重い改稿作業も Codex が直接実施し、必要に応じて `docs/ai/WORKLOG.md` に記録する。

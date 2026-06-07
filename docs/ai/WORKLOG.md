@@ -4,6 +4,8 @@ AI運用上の重要イベントを時系列で記録します。
 
 | UTC Timestamp | Task ID | Title | Codex Exit | Applied | Notes |
 | --- | --- | --- | --- | --- | --- |
+| 20260607-045854 | 20260607-045854-codex-git-github-policy | Codex移行資料のGit/GitHub管理方針を整理 | n/a | yes | added `docs/ai/GIT_GITHUB_POLICY.md`; updated `AGENTS.md`, Codex onboarding, and AI README to make branch/commit/PR/backup policy explicit; one-off migration backups are kept Git-ignored while canonical docs/tools are committed and published through a draft PR |
+| 20260607-044540 | 20260607-044540-codex-primary-migration | Codex主担当移行の入口資料を整備 | n/a | yes | backed up Windsurf/Cascade-era docs to `docs/ai/archive/codex-migration-backup-20260607/`; added root `AGENTS.md`, `docs/ai/CODEX_ONBOARDING.md`, `docs/ai/F413_PORTING_STATE.md`, `docs/ai/HIL_SAFETY.md`, and safe non-motor HIL wrapper `tools/hil/f413_safe_hil.py`; updated AI state/readme/policy docs for Codex primary operation |
 | 20260405-022753 | 20260405-022753-codex-delegation-smoke-test | codex delegation smoke test | 0 | no | handoff: /Users/xfa273/workspace/micromouse/nightfall-fw/docs/ai/archive/delegation-legacy/HANDOFFS/20260405-022753-codex-delegation-smoke-test-result.md |
 | 20260405-022914 | 20260405-022914-codex-delegation-smoke-test-v2 | codex delegation smoke test v2 | 0 | no | handoff: /Users/xfa273/workspace/micromouse/nightfall-fw/docs/ai/archive/delegation-legacy/HANDOFFS/20260405-022914-codex-delegation-smoke-test-v2-result.md |
 | 20260405-030155 | 20260405-030155-add-delegation-ops-section-to-dev-plan | add delegation ops section to dev plan | 0 | no | handoff: /Users/xfa273/workspace/micromouse/nightfall-fw/docs/ai/archive/delegation-legacy/HANDOFFS/20260405-030155-add-delegation-ops-section-to-dev-plan-result.md |

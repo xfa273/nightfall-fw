@@ -16,6 +16,7 @@ tools/logging/logs/
 # Legacy AI delegation artifacts
 .ai/
 docs/ai/archive/delegation-legacy/
+docs/ai/archive/codex-migration-backup-*/
 
 # Large non-firmware documents
 docs/blog/

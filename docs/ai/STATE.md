@@ -1,6 +1,6 @@
 # AI Coordination State
 
-このファイルは、Cascade の現在の運用状態を記録する正本です。
+このファイルは、Codex の現在の運用状態を記録する正本です。
 
 ## 目的
 
@@ -9,21 +9,26 @@
 
 ## 現在の構成
 
-- 実行者: Cascade（Windsurf）
-- 実行方式: Cascade が本作業ツリーで直接実行
-- 委譲状態: Codex CLI への委譲は当面停止
+- 実行者: Codex
+- 実行方式: Codex が本作業ツリーで直接実行
+- 主作業: STM32F405既存機体からSTM32F413 `mini_r2_0` 新機体への移植、実機HIL確認、ログ/ツール整備
+- 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
-## 委譲停止ポリシー
+## Codex 実行ポリシー
 
-- 多ファイル変更、長時間調査、反復ビルド/テストを含む作業も Cascade が直接対応する
-- 委譲関連の互換資産は `docs/ai/archive/delegation-legacy/` にアーカイブとして保持し、ユーザーから明示的な復活指示があるまで参照・実行しない
+- 多ファイル変更、長時間調査、反復ビルド/テストを含む作業も Codex が直接対応する
+- ビルド・ホストテストは必要に応じて自律実行する
+- ST-LINK/UART実機操作は `docs/ai/HIL_SAFETY.md` に従う
+- モータ・ファン・走行・探索・最短・NVM破壊的操作は、安全条件と作業意図が明確な場合だけ実行する
+- 旧委譲関連の互換資産は `docs/ai/archive/delegation-legacy/` にアーカイブとして保持する
 
 ## 標準フロー
 
-1. Cascadeがタスクを整理
-2. Cascadeが実装・調査・検証を直接実行
+1. Codex がタスクを整理
+2. Codex が関連ドキュメントとコード境界を確認
+3. Codex が実装・調査・検証を直接実行
 3. 必要に応じて `docs/ai/WORKLOG.md` に重要イベントを記録
-4. Cascadeが最終報告
+4. Codex が最終報告
 
 ## 更新ルール
 

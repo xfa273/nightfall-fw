@@ -31,7 +31,9 @@
 
 ## ST-LINK V3 MINIE VCPでのUART通信
 
-F413の現行ファームは `USART1` を `115200 8N1` で使います。ST-LINK V3 MINIEの `TX/RX/GND` を機体側UARTへ接続している場合、次でシリアル端末を開けます。
+F413の現行 `Debug-stm32f413` は `USART1` を `921600 8N1` で使います。ST-LINK V3 MINIEの `TX/RX/GND` を機体側UARTへ接続している場合、次でシリアル端末を開けます。
+
+`NIGHTFALL_F413_UART_BAUD_RATE` をCMake cacheで変更した場合は、その値に合わせてください。
 
 ```bash
 python3 tools/logging/serial_terminal.py
@@ -162,7 +164,7 @@ tools/logging/run_plotjuggler.sh --layout path/to/custom.xml tools/logging/logs/
 - 下位4bitを `W/S/E/N = 1/2/4/8` として解釈します。
 - 通常チェックでは、F405互換の開始セル強制東壁だけは片側表現として許容します。
 - 例:
-  - `python3 tools/logging/serial_capture_csv.py --show-noncsv --send @ tools/logging/logs /dev/cu.usbmodem112202 115200 > /tmp/search_dump.log`
+  - `python3 tools/logging/serial_capture_csv.py --show-noncsv --send @ tools/logging/logs /dev/cu.usbmodem112202 921600 > /tmp/search_dump.log`
   - `python3 tools/logging/render_search_dump.py /tmp/search_dump.log`
   - `python3 tools/logging/render_search_dump.py --summary-only /tmp/search_dump.log`
   - `python3 tools/logging/render_search_dump.py --summary-only --strict-consistency /tmp/search_dump.log`
