@@ -113,7 +113,10 @@ def cmd_reset_capture(args: argparse.Namespace) -> int:
     stamp = time.strftime("%Y%m%d_%H%M%S")
     log_path = args.log_dir / f"f413_boot_{stamp}.log"
 
-    cap = subprocess.Popen(serial_terminal_args(args, log_path), cwd=str(root))
+    capture_cmd = serial_capture_args(args, None)
+    print("$ " + " ".join(capture_cmd) + f" > {log_path}", flush=True)
+    log_file = log_path.open("wb")
+    cap = subprocess.Popen(capture_cmd, cwd=str(root), stdout=log_file, stderr=subprocess.STDOUT)
     try:
         time.sleep(args.pre_reset_delay)
         rc = run(stlink_args(args, "--reset-only"), root, check=False)
@@ -121,6 +124,7 @@ def cmd_reset_capture(args: argparse.Namespace) -> int:
         return rc
     finally:
         terminate_process(cap)
+        log_file.close()
         print(f"boot log: {log_path}", flush=True)
 
 

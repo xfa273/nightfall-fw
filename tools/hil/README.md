@@ -18,6 +18,9 @@ Capture a boot log around ST-LINK software reset:
 python3 tools/hil/f413_safe_hil.py reset-capture --port /dev/cu.usbmodem112202
 ```
 
+`reset-capture` uses the non-interactive CSV capture backend and writes the
+combined UART output to `tools/logging/logs/f413_boot_*.log`.
+
 Run a non-motor smoke sequence:
 
 ```sh
@@ -37,3 +40,9 @@ python3 tools/hil/f413_safe_hil.py flash-nonmotor-smoke --port /dev/cu.usbmodem1
 ```
 
 The default UART baud is `921600`, matching `Debug-stm32f413`.
+
+## Motor checks
+
+This safe helper intentionally does not automate motor commands. When the
+machine is lifted and secured, use the UART commands from `docs/ai/HIL_SAFETY.md`
+directly and record the command sequence plus result in `docs/ai/WORKLOG.md`.
