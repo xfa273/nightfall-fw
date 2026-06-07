@@ -11,7 +11,9 @@
 `flash_uart --erase app` の保護セクタ:
 
 - STM32F405: sector 8/9/10/11（identity/distance/flash_params/maze）
-- STM32F413: sector 12/13/14/15（maze/distance/flash_params/identity, 暫定内蔵Flash運用）
+- STM32F413: sector 12/13/14/15（旧FRAM無し暫定運用のmaze/distance/flash_paramsとidentity領域を保護）
+
+現行F413ファームでは、identityは内蔵Flash sector 15、distance/sensor/maze/traceは外付けFRAM backendで運用します。保護セクタ設定は、identity保護と旧暫定運用データの誤消去防止のため維持しています。
 
 ## ST-LINK V3 MINIE 経由のF413書き込み
 

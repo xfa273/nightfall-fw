@@ -8,4 +8,4 @@ description: 新規マイクロマウス記事をMarkdownで作成する
 4. 関連するコードや資料へのリンクを追加する。
 5. `docs/blog/README.md` の記事一覧へリンクを追加する。
 6. 公開前チェック（誤記、画像リンク、見出し階層）を行う。
-7. 記事執筆が重い場合も Cascade が直接対応し、必要に応じて `docs/ai/WORKLOG.md` に記録する。
+7. 記事執筆が重い場合も Codex が直接対応し、必要に応じて `docs/ai/WORKLOG.md` に記録する。
