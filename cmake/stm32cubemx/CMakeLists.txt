@@ -95,13 +95,22 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_imu_diag.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_nvm_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_path_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_search_step.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_test_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_log.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_sample.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_uart_cli.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_runtime.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_sensor.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/stm32f4xx_it.c
