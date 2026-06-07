@@ -93,3 +93,11 @@ High-risk areas:
 - linker scripts and CubeMX generated files
 
 When changing CubeMX-controlled code, keep edits inside USER CODE blocks or move logic to separate modules where possible. Do not casually edit generated init code or `.ioc` without documenting the regeneration intent.
+
+## Review guidelines
+
+- Treat unintended F405 behavior changes as P1 unless the PR explicitly states and verifies the migration impact.
+- Treat F413 motor, fan, search, shortest-run, Flash/NVM, identity, calibration, maze, or trace-format risk as P1 when the PR lacks a matching HIL or safety note.
+- For F413 control-loop changes, check that the PR describes whether tests were fixed-machine, straight-only, turn-capable, or floor/maze runs.
+- For logging/tooling changes, check that CSV/binary trace metadata, row splitting, and `fw_git_sha`/dirty reporting remain usable for later HIL analysis.
+- For CubeMX-generated files, check whether edits are inside USER CODE blocks or are explicitly documented as regeneration-intended.

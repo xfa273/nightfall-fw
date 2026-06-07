@@ -28,6 +28,8 @@
 - PR本文には、変更理由、主な変更点、検証、実機操作の有無、残リスクを書く。
 - ドキュメント移行PRでは、旧資料の扱い、正本化した入口、Git管理外にしたバックアップを明記する。
 - firmware/HIL PR では、モータ駆動を行ったか、機体を固定/浮かせたか、取得したログと解析結果を明記する。
+- Codex code review を使う場合は、PRコメントで `@codex review` を依頼する。全PRへの自動レビューはリポジトリ内ファイルではなく Codex settings の Code review / Automatic reviews で有効化する。
+- Codex review に見せたい恒久的な観点は、トップレベル `AGENTS.md` の `Review guidelines` に置く。
 
 ## 5. バックアップとアーカイブ
 
