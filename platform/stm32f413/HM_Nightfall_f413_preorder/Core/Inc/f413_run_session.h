@@ -63,6 +63,13 @@ void f413_run_session_run_motor_trace_once(uint16_t motor_fwd_flag,
                                            uint16_t motor_duty,
                                            uint32_t pulse_ms,
                                            uint32_t coast_ms);
+void f413_run_session_run_search_safe_trace_once(uint16_t search_safe_flag,
+                                                 uint16_t motor_fwd_flag,
+                                                 uint16_t motor_coast_flag,
+                                                 uint16_t safe_duty,
+                                                 uint32_t forward_ms,
+                                                 uint32_t coast_ms,
+                                                 uint32_t explore_steps);
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason);
 const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_t reason);
 

@@ -342,6 +342,117 @@ void f413_run_session_run_motor_trace_once(uint16_t motor_fwd_flag,
   trace_printf("[RUN-TEST] motor trace session end\r\n");
 }
 
+void f413_run_session_run_search_safe_trace_once(uint16_t search_safe_flag,
+                                                 uint16_t motor_fwd_flag,
+                                                 uint16_t motor_coast_flag,
+                                                 uint16_t safe_duty,
+                                                 uint32_t forward_ms,
+                                                 uint32_t coast_ms,
+                                                 uint32_t explore_steps)
+{
+  bool enc_started_l = false;
+  bool enc_started_r = false;
+  f413_run_session_abort_reason_t abort_reason = F413_RUN_SESSION_ABORT_NONE;
+  f413_run_session_guard_t guard = {0};
+  uint32_t step;
+
+  if (f413_run_session_trace_auto_is_enabled())
+  {
+    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
+    return;
+  }
+
+  if (f413_run_session_stop_switch_pressed())
+  {
+    trace_printf("[RUN-TEST] search-safe canceled(start switch pressed)\r\n");
+    return;
+  }
+
+  trace_printf("[RUN-TEST] search-safe start (low speed, press switch to abort)\r\n");
+
+  f413_run_session_encoder_stop_all();
+  f413_run_session_encoder_reset_all();
+
+  if (f413_run_session_encoder_start_l())
+  {
+    enc_started_l = true;
+  }
+  if (f413_run_session_encoder_start_r())
+  {
+    enc_started_r = true;
+  }
+
+  if (!f413_run_session_guard_prepare(&guard))
+  {
+    if (enc_started_l)
+    {
+      f413_run_session_encoder_stop_l();
+    }
+    if (enc_started_r)
+    {
+      f413_run_session_encoder_stop_r();
+    }
+    trace_printf("[RUN-TEST] search-safe canceled(guard init fail)\r\n");
+    return;
+  }
+
+  f413_run_session_trace_on_run_start();
+
+  for (step = 0U; step < explore_steps; step++)
+  {
+    f413_run_session_trace_set_mode_flags((uint16_t)(search_safe_flag | motor_fwd_flag));
+    f413_run_session_motor_set(true, true, true, safe_duty, safe_duty);
+    abort_reason = f413_run_session_wait_with_auto_step_guarded(forward_ms, &guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+
+    f413_run_session_trace_set_mode_flags((uint16_t)(search_safe_flag | motor_coast_flag));
+    f413_run_session_motor_set(false, true, true, 0U, 0U);
+    abort_reason = f413_run_session_wait_with_auto_step_guarded(coast_ms, &guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+
+  f413_run_session_motor_set(false, true, true, 0U, 0U);
+  if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_run_session_trace_set_mode_flags((uint16_t)(search_safe_flag |
+        f413_run_session_abort_reason_to_trace_flag(abort_reason)));
+    f413_run_session_trace_auto_step();
+  }
+  f413_run_session_trace_set_mode_flags(0U);
+  f413_run_session_trace_on_run_stop();
+
+  if (enc_started_l)
+  {
+    f413_run_session_encoder_stop_l();
+  }
+  if (enc_started_r)
+  {
+    f413_run_session_encoder_stop_r();
+  }
+
+  f413_run_session_guard_cleanup(&guard);
+
+  if (abort_reason == F413_RUN_SESSION_ABORT_SWITCH)
+  {
+    trace_printf("[RUN-TEST] search-safe aborted by switch\r\n");
+  }
+  else if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    trace_printf("[RUN-TEST] search-safe aborted(%s)\r\n",
+                 f413_run_session_abort_reason_to_text(abort_reason));
+  }
+  else
+  {
+    trace_printf("[RUN-TEST] search-safe end\r\n");
+  }
+}
+
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t reason)
 {
   switch (reason)

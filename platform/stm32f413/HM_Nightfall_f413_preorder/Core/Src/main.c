@@ -3807,117 +3807,13 @@ static void nightfall_run_motor_trace_session_once(void)
 
 static void nightfall_run_search_safe_trace_session_once(void)
 {
-  bool enc_started_l = false;
-  bool enc_started_r = false;
-  nightfall_run_abort_reason_t abort_reason = NIGHTFALL_RUN_ABORT_NONE;
-  nightfall_run_guard_t guard = {0};
-  uint32_t step;
-
-  if (f413_trace_log_auto_is_enabled())
-  {
-    trace_printf("[RUN-TEST] busy(auto already running)\r\n");
-    return;
-  }
-
-  if (nightfall_run_stop_switch_pressed())
-  {
-    trace_printf("[RUN-TEST] search-safe canceled(start switch pressed)\r\n");
-    return;
-  }
-
-  trace_printf("[RUN-TEST] search-safe start (low speed, press switch to abort)\r\n");
-
-  (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-  (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-  __HAL_TIM_SET_COUNTER(&htim3, 0U);
-  __HAL_TIM_SET_COUNTER(&htim4, 0U);
-
-  if (HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) == HAL_OK)
-  {
-    enc_started_l = true;
-  }
-  if (HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL) == HAL_OK)
-  {
-    enc_started_r = true;
-  }
-
-  if (!nightfall_run_guard_prepare(&guard))
-  {
-    if (enc_started_l)
-    {
-      (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-    }
-    if (enc_started_r)
-    {
-      (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-    }
-    trace_printf("[RUN-TEST] search-safe canceled(guard init fail)\r\n");
-    return;
-  }
-
-  nightfall_trace_log_on_run_start();
-
-  for (step = 0U; step < NIGHTFALL_F413_RUN_SESSION_SAFE_EXPLORE_STEPS; step++)
-  {
-    nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
-                                       NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG);
-    nightfall_motor_set(true,
-                       true,
-                       true,
-                       NIGHTFALL_F413_RUN_SESSION_SAFE_DUTY,
-                       NIGHTFALL_F413_RUN_SESSION_SAFE_DUTY);
-    abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(NIGHTFALL_F413_RUN_SESSION_SAFE_FORWARD_MS,
-                                                                   &guard);
-    if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-    {
-      break;
-    }
-
-    nightfall_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
-                                       NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
-    nightfall_motor_set(false, true, true, 0U, 0U);
-    abort_reason = nightfall_trace_log_wait_with_auto_step_guarded(NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS,
-                                                                   &guard);
-    if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-    {
-      break;
-    }
-  }
-
-  nightfall_motor_set(false, true, true, 0U, 0U);
-  if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-  {
-    nightfall_trace_log_set_mode_flags((uint16_t)(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG |
-                                                  nightfall_run_abort_reason_to_trace_flag(abort_reason)));
-    nightfall_trace_log_auto_step();
-  }
-  nightfall_trace_log_set_mode_flags(0U);
-  nightfall_trace_log_on_run_stop();
-
-  if (enc_started_l)
-  {
-    (void)HAL_TIM_Encoder_Stop(&htim3, TIM_CHANNEL_ALL);
-  }
-  if (enc_started_r)
-  {
-    (void)HAL_TIM_Encoder_Stop(&htim4, TIM_CHANNEL_ALL);
-  }
-
-  nightfall_run_guard_cleanup(&guard);
-
-  if (abort_reason == NIGHTFALL_RUN_ABORT_SWITCH)
-  {
-    trace_printf("[RUN-TEST] search-safe aborted by switch\r\n");
-  }
-  else if (abort_reason != NIGHTFALL_RUN_ABORT_NONE)
-  {
-    trace_printf("[RUN-TEST] search-safe aborted(%s)\r\n",
-                 nightfall_run_abort_reason_to_text(abort_reason));
-  }
-  else
-  {
-    trace_printf("[RUN-TEST] search-safe end\r\n");
-  }
+  f413_run_session_run_search_safe_trace_once(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG,
+                                              NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
+                                              NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG,
+                                              NIGHTFALL_F413_RUN_SESSION_SAFE_DUTY,
+                                              NIGHTFALL_F413_RUN_SESSION_SAFE_FORWARD_MS,
+                                              NIGHTFALL_F413_RUN_SESSION_SAFE_COAST_MS,
+                                              NIGHTFALL_F413_RUN_SESSION_SAFE_EXPLORE_STEPS);
 }
 
 static void nightfall_run_shortest_safe_trace_session_once(void)
