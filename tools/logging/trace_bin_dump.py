@@ -90,13 +90,50 @@ RECORD_COLUMNS_V4 = [
     "reserved_u16_0",
     "reserved_u16_1",
 ]
+RECORD_COLUMNS_V5 = [
+    "timestamp_ms",
+    "seq",
+    "op_mode",
+    "op_case",
+    "op_sub",
+    "test_id",
+    "target_distance_mm",
+    "distance_mm",
+    "angle_mdeg",
+    "target_velocity_mm_s",
+    "real_velocity_mm_s",
+    "accel_velocity_mm_s",
+    "target_omega_mdps",
+    "real_omega_mdps",
+    "gyro_z_raw_mdps",
+    "target_angle_mdeg",
+    "accel_forward_mm_s2",
+    "encoder_l",
+    "encoder_r",
+    "motor_out_l",
+    "motor_out_r",
+    "adc_fr",
+    "adc_r",
+    "adc_fl",
+    "adc_l",
+    "adc_vbat",
+    "flags",
+    "reserved_i32_0",
+    "reserved_i32_1",
+    "reserved_i32_2",
+    "reserved_i32_3",
+    "reserved_u16_0",
+    "reserved_u16_1",
+]
 RECORD_STRUCT_V3 = struct.Struct("<II14i4h6H4B2H")
 RECORD_STRUCT_V4 = struct.Struct("<II19i4h6H4B2H")
-RECORD_STRUCT = RECORD_STRUCT_V4
-RECORD_COLUMNS = RECORD_COLUMNS_V4
+RECORD_STRUCT_V5 = struct.Struct("<II15i4h6H4B2H")
+RECORD_STRUCT = RECORD_STRUCT_V5
+RECORD_COLUMNS = RECORD_COLUMNS_V5
 RECORD_LAYOUTS = {
     RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
     RECORD_STRUCT_V4.size: (RECORD_STRUCT_V4, RECORD_COLUMNS_V4),
+    RECORD_STRUCT_V5.size: (RECORD_STRUCT_V5, RECORD_COLUMNS_V5),
 }
 
 
@@ -274,11 +311,59 @@ def _record_to_row_v4(values: tuple[int, ...]) -> list[str]:
     ]
 
 
+def _record_to_row_v5(values: tuple[int, ...]) -> list[str]:
+    seq = values[0]
+    timestamp_ms = values[1]
+    i32 = values[2:17]
+    h = values[17:21]
+    u16 = values[21:27]
+    op_mode, op_case, op_sub, test_id = values[27:31]
+    ru16_0, ru16_1 = values[31:33]
+    target_distance = i32[0] / 1000.0
+    return [
+        str(timestamp_ms),
+        str(seq),
+        str(op_mode),
+        str(op_case),
+        str(op_sub),
+        str(test_id),
+        f"{target_distance:.3f}",
+        str(i32[1]),
+        str(i32[2]),
+        str(i32[3]),
+        str(i32[4]),
+        str(i32[5]),
+        str(i32[6]),
+        str(i32[7]),
+        str(i32[8]),
+        str(i32[9]),
+        str(i32[10]),
+        str(h[0]),
+        str(h[1]),
+        str(h[2]),
+        str(h[3]),
+        str(u16[0]),
+        str(u16[1]),
+        str(u16[2]),
+        str(u16[3]),
+        str(u16[4]),
+        str(u16[5]),
+        str(i32[11]),
+        str(i32[12]),
+        str(i32[13]),
+        str(i32[14]),
+        str(ru16_0),
+        str(ru16_1),
+    ]
+
+
 def _record_to_row(values: tuple[int, ...], record_size: int) -> list[str]:
     if record_size == RECORD_STRUCT_V3.size:
         return _record_to_row_v3(values)
     if record_size == RECORD_STRUCT_V4.size:
         return _record_to_row_v4(values)
+    if record_size == RECORD_STRUCT_V5.size:
+        return _record_to_row_v5(values)
     raise ValueError(f"unsupported record size: {record_size}")
 
 

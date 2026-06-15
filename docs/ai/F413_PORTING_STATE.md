@@ -22,7 +22,7 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Identity read/write foundation exists. F413 identity lives in internal Flash sector 15 at `0x08160000`.
 - F413 data NVM is currently FRAM-backed for distance params, sensor params, maze map, and trace log.
 - F413 FRAM SPI2 access is protected against TIM5 1kHz IMU SPI2 conflict by masking TIM5 around FRAM transactions.
-- Trace log schema is v4: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00040000`.
+- Trace log schema is v5: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00050000`.
 - F413 reuses F405 solver/path/maze logic through `f413_solver_bridge.c`.
 - `tools/solver_host` can run solver and exploration simulation on the host.
 - F413 OP UI has F405-style mode/case/sub selection and UART `P`/`E` wrappers.

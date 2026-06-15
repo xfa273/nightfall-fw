@@ -22,8 +22,25 @@
 #define DIST_FIRST_SEC    13
 #define DIST_SET_POSITION 13
 
-#ifndef VELOCITY_LPF_TAU
-#define VELOCITY_LPF_TAU 0.003F
+/*------------------------------------------------------------
+    フィルタ設定
+
+    *_TAU は一次LPFの時定数 [s]。0以下にすると入力をそのまま使う。
+------------------------------------------------------------*/
+#ifndef F413_VELOCITY_LPF_TAU
+#define F413_VELOCITY_LPF_TAU 0.003F
+#endif
+
+#ifndef F413_IMU_GYRO_Z_LPF_TAU
+#define F413_IMU_GYRO_Z_LPF_TAU 0.0F
+#endif
+
+#ifndef F413_IMU_ACCEL_FORWARD_LPF_TAU
+#define F413_IMU_ACCEL_FORWARD_LPF_TAU 0.010F
+#endif
+
+#ifndef F413_WALL_CTRL_LPF_ALPHA
+#define F413_WALL_CTRL_LPF_ALPHA 0.1F
 #endif
 
 #ifndef VELOCITY_ACCEL_COMP_WINDOW_MS
@@ -36,10 +53,6 @@
 
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_CONTROL
 #define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
-#endif
-
-#ifndef OMEGA_LPF_TAU
-#define OMEGA_LPF_TAU 0.002F
 #endif
 
 #ifndef SEARCH_STEP_MM
@@ -83,10 +96,10 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 1.2F
+#define KP_VELOCITY_FAN_OFF 1.3F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.0F
+#define KI_VELOCITY_FAN_OFF 0.012F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
@@ -165,13 +178,13 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 1.0F
+#define KP_OMEGA_FAN_OFF 2.3F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
-#define KI_OMEGA_FAN_OFF 0.03F
+#define KI_OMEGA_FAN_OFF 0.008F
 #endif
 #ifndef KD_OMEGA_FAN_OFF
-#define KD_OMEGA_FAN_OFF 2.0F
+#define KD_OMEGA_FAN_OFF 0.0F
 #endif
 
 #define FF_OMEGA 0.0F
@@ -239,9 +252,6 @@
 #define WALL_CTRL_MAX 100
 #ifndef WALL_CTRL_MIN
 #define WALL_CTRL_MIN 0.2F
-#endif
-#ifndef WALL_LPF_ALPHA
-#define WALL_LPF_ALPHA 0.1F
 #endif
 #ifndef WALL_CTRL_SLEW_MAX
 #define WALL_CTRL_SLEW_MAX 5.0F

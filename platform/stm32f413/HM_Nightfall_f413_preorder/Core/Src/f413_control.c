@@ -88,8 +88,6 @@
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
 #define F413_IMU_ACCEL_SENS_MG    (0.488f)
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
-#define F413_IMU_OMEGA_LPF_TAU    (0.020f)   /* 角速度 LPF 時定数 [s] (振動ノイズ除去) */
-#define F413_IMU_ACCEL_LPF_TAU    (0.010f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
 #define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTY_XL_L)
@@ -175,10 +173,6 @@ static volatile int16_t s_motor_out_r = 0;
 static float s_omega_z_offset  = 0.0f;
 static float s_omega_z_raw = 0.0f;
 static float s_omega_z_filtered = 0.0f;
-static float s_omega_z_lpf_002 = 0.0f;
-static float s_omega_z_lpf_005 = 0.0f;
-static float s_omega_z_lpf_010 = 0.0f;
-static float s_omega_z_lpf_020 = 0.0f;
 static bool  s_omega_z_lpf_inited = false;
 static float s_accel_forward_offset = 0.0f;
 static float s_accel_forward_filtered = 0.0f;
@@ -321,10 +315,6 @@ static void f413_ctrl_reset_pid_state(void)
     s_motor_out_r = 0;
     s_omega_z_raw = 0.0f;
     s_omega_z_filtered = 0.0f;
-    s_omega_z_lpf_002 = 0.0f;
-    s_omega_z_lpf_005 = 0.0f;
-    s_omega_z_lpf_010 = 0.0f;
-    s_omega_z_lpf_020 = 0.0f;
     s_omega_z_lpf_inited = false;
     s_accel_forward_filtered = 0.0f;
     s_accel_forward_lpf_inited = false;
@@ -644,10 +634,6 @@ static void imu_get_motion_offsets(void)
     s_omega_z_offset = gyro_sum / (float)F413_IMU_OFFSET_SAMPLES;
     s_omega_z_raw = 0.0f;
     s_omega_z_filtered = 0.0f;
-    s_omega_z_lpf_002 = 0.0f;
-    s_omega_z_lpf_005 = 0.0f;
-    s_omega_z_lpf_010 = 0.0f;
-    s_omega_z_lpf_020 = 0.0f;
     s_omega_z_lpf_inited = false;
     s_accel_forward_offset = accel_sum / (float)F413_IMU_OFFSET_SAMPLES;
     s_accel_forward_filtered = 0.0f;
@@ -884,10 +870,6 @@ float f413_ctrl_get_target_angle(void)    { return s_target_angle; }
 float f413_ctrl_get_accel_velocity(void)  { return s_accel_velocity; }
 float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
 float f413_ctrl_get_gyro_z_raw(void)      { return s_omega_z_raw; }
-float f413_ctrl_get_gyro_z_lpf_002(void)  { return s_omega_z_lpf_002; }
-float f413_ctrl_get_gyro_z_lpf_005(void)  { return s_omega_z_lpf_005; }
-float f413_ctrl_get_gyro_z_lpf_010(void)  { return s_omega_z_lpf_010; }
-float f413_ctrl_get_gyro_z_lpf_020(void)  { return s_omega_z_lpf_020; }
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void) { return (uint16_t)VELOCITY_ACCEL_COMP_WINDOW_MS; }
 bool f413_ctrl_velocity_accel_comp_control_enabled(void) { return (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U); }
 int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
@@ -963,16 +945,9 @@ void f413_ctrl_tick(void)
     }
     else
     {
-        float alpha_velocity = F413_CTRL_DT / (VELOCITY_LPF_TAU + F413_CTRL_DT);
-        if (alpha_velocity < 0.0f)
-        {
-            alpha_velocity = 0.0f;
-        }
-        else if (alpha_velocity > 1.0f)
-        {
-            alpha_velocity = 1.0f;
-        }
-        s_real_velocity_lpf += alpha_velocity * (real_velocity_raw - s_real_velocity_lpf);
+        s_real_velocity_lpf = f413_ctrl_lpf_update(s_real_velocity_lpf,
+                                                   real_velocity_raw,
+                                                   F413_VELOCITY_LPF_TAU);
     }
     s_real_distance = (s_encoder_distance_l + s_encoder_distance_r) * 0.5f;
 
@@ -988,19 +963,11 @@ void f413_ctrl_tick(void)
         if (!s_omega_z_lpf_inited)
         {
             s_omega_z_filtered = omega_raw;
-            s_omega_z_lpf_002 = omega_raw;
-            s_omega_z_lpf_005 = omega_raw;
-            s_omega_z_lpf_010 = omega_raw;
-            s_omega_z_lpf_020 = omega_raw;
             s_omega_z_lpf_inited = true;
         }
         else
         {
-            s_omega_z_lpf_002 = f413_ctrl_lpf_update(s_omega_z_lpf_002, omega_raw, 0.002f);
-            s_omega_z_lpf_005 = f413_ctrl_lpf_update(s_omega_z_lpf_005, omega_raw, 0.005f);
-            s_omega_z_lpf_010 = f413_ctrl_lpf_update(s_omega_z_lpf_010, omega_raw, 0.010f);
-            s_omega_z_lpf_020 = f413_ctrl_lpf_update(s_omega_z_lpf_020, omega_raw, 0.020f);
-            s_omega_z_filtered = f413_ctrl_lpf_update(s_omega_z_filtered, omega_raw, F413_IMU_OMEGA_LPF_TAU);
+            s_omega_z_filtered = f413_ctrl_lpf_update(s_omega_z_filtered, omega_raw, F413_IMU_GYRO_Z_LPF_TAU);
         }
         omega_raw = s_omega_z_filtered;
 
@@ -1013,8 +980,9 @@ void f413_ctrl_tick(void)
         }
         else
         {
-            float alpha_accel = F413_CTRL_DT / (F413_IMU_ACCEL_LPF_TAU + F413_CTRL_DT);
-            s_accel_forward_filtered += alpha_accel * (accel_raw - s_accel_forward_filtered);
+            s_accel_forward_filtered = f413_ctrl_lpf_update(s_accel_forward_filtered,
+                                                            accel_raw,
+                                                            F413_IMU_ACCEL_FORWARD_LPF_TAU);
         }
         s_spi2_busy = false;
         s_imu_motion_sample_valid = true;
