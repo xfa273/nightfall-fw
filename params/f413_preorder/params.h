@@ -71,7 +71,7 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 2.5F
+#define KP_VELOCITY_FAN_OFF 1.2F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
 #define KI_VELOCITY_FAN_OFF 0.0F

@@ -20,7 +20,7 @@
 /* ---------- ハードウェア定数 ---------- */
 #define F413_CTRL_DT              (0.001f)   /* 制御周期 [s] (1kHz) */
 #define F413_CTRL_ENCODER_CENTER  (30000U)   /* エンコーダカウンタ中央値 */
-#define F413_CTRL_CPR_WHEEL       (400.0f)   /* NJL5820 100PPR × 4逓倍 */
+#define F413_CTRL_CPR_WHEEL       (200.0f)   /* 100pr reflective disk: 50 cycles/rev x4 */
 #define F413_CTRL_D_TIRE          (13.35f)   /* タイヤ直径 [mm] */
 #define F413_CTRL_TREAD           (33.5f)    /* 左右タイヤ中心間距離 [mm] */
 #define F413_CTRL_PWM_MAX         (1000U)    /* TIM2 ARR */
@@ -28,7 +28,7 @@
 #define F413_CTRL_ENCODER_SIGN_R  (-1.0f)
 
 /* ---------- 制御ゲイン ---------- */
-#define F413_CTRL_KP_VEL          (0.5f)     /* [PWM counts / (mm/s)] */
+#define F413_CTRL_KP_VEL          (0.2f)     /* [PWM counts / (mm/s)] */
 #define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
 #define F413_CTRL_KI_ANGLE        (0.0f)
 #define F413_CTRL_KD_ANGLE        (0.0f)
@@ -48,7 +48,7 @@
 #define F413_CTRL_KP_OMEGA        (1.4f)     /* [PWM counts / (deg/s)] */
 #define F413_CTRL_KI_OMEGA        (0.06f)
 #define F413_CTRL_KD_OMEGA        (0.0f)
-#define F413_CTRL_FF_VEL          (0.8f)     /* フィードフォワード速度→PWM (CPR=400用) */
+#define F413_CTRL_FF_VEL          (0.8f)     /* フィードフォワード速度→PWM */
 #define F413_CTRL_FF_OMEGA        (0.45f)    /* フィードフォワード角速度→PWM */
 #define F413_CTRL_OMEGA_I_LIMIT   (6000.0f)
 #define F413_CTRL_ROT_PWM_MIN     (100.0f)
