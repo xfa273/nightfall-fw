@@ -306,7 +306,7 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
   trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
                (unsigned long)dump_count,
                (unsigned long)available);
-  trace_printf("#log_format=nightfall_trace_csv_v3\r\n");
+  trace_printf("#log_format=nightfall_trace_csv_v4\r\n");
   trace_printf("#fw_target=%s\r\n", FW_TARGET);
   trace_printf("#fw_version=%s\r\n", FW_VERSION);
   trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
@@ -335,7 +335,8 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
 
   trace_printf("#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,");
   trace_printf("target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
-  trace_printf("target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,");
+  trace_printf("target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,gyro_z_lpf_002_mdps,gyro_z_lpf_005_mdps,");
+  trace_printf("gyro_z_lpf_010_mdps,gyro_z_lpf_020_mdps,target_angle_mdeg,accel_forward_mm_s2,");
   trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
   trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
 
@@ -364,12 +365,18 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
                  (long)rec.angle_mdeg,
                  (long)rec.target_velocity_mm_s,
                  (long)rec.real_velocity_mm_s);
-    trace_printf("%ld,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%u,",
+    trace_printf("%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,",
                  (long)rec.accel_velocity_mm_s,
                  (long)rec.target_omega_mdps,
                  (long)rec.real_omega_mdps,
+                 (long)rec.gyro_z_raw_mdps,
+                 (long)rec.gyro_z_lpf_002_mdps,
+                 (long)rec.gyro_z_lpf_005_mdps,
+                 (long)rec.gyro_z_lpf_010_mdps,
+                 (long)rec.gyro_z_lpf_020_mdps,
                  (long)rec.target_angle_mdeg,
-                 (long)rec.accel_forward_mm_s2,
+                 (long)rec.accel_forward_mm_s2);
+    trace_printf("%d,%d,%d,%d,%u,",
                  (int)rec.encoder_l,
                  (int)rec.encoder_r,
                  (int)rec.motor_out_l,
@@ -527,6 +534,11 @@ static void f413_trace_diag_fill_selftest_record(nvm_trace_log_record_t* out, ui
   out->accel_velocity_mm_s = (int32_t)(185 + (int32_t)seq);
   out->target_omega_mdps = (int32_t)(3000 + (int32_t)seq);
   out->real_omega_mdps = (int32_t)(2900 + (int32_t)seq);
+  out->gyro_z_raw_mdps = (int32_t)(3100 + (int32_t)seq);
+  out->gyro_z_lpf_002_mdps = (int32_t)(3050 + (int32_t)seq);
+  out->gyro_z_lpf_005_mdps = (int32_t)(3020 + (int32_t)seq);
+  out->gyro_z_lpf_010_mdps = (int32_t)(2990 + (int32_t)seq);
+  out->gyro_z_lpf_020_mdps = (int32_t)(2960 + (int32_t)seq);
   out->target_angle_mdeg = (int32_t)(90000 + (int32_t)seq);
   out->accel_forward_mm_s2 = (int32_t)(50 + (int32_t)seq);
   out->reserved_i32_0 = (int32_t)(1000 + (int32_t)seq);

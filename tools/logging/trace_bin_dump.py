@@ -17,7 +17,7 @@ DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
 IOSSIOSPEED = 0x80045402
 FRAME_STRUCT = struct.Struct("<IIIIIIII")
 HEADER_STRUCT = struct.Struct("<IIIIIIII")
-RECORD_COLUMNS = [
+RECORD_COLUMNS_V3 = [
     "timestamp_ms",
     "seq",
     "op_mode",
@@ -51,7 +51,63 @@ RECORD_COLUMNS = [
     "reserved_u16_0",
     "reserved_u16_1",
 ]
-RECORD_STRUCT = struct.Struct("<II14i4h6H4B2H")
+RECORD_COLUMNS_V4 = [
+    "timestamp_ms",
+    "seq",
+    "op_mode",
+    "op_case",
+    "op_sub",
+    "test_id",
+    "target_distance_mm",
+    "distance_mm",
+    "angle_mdeg",
+    "target_velocity_mm_s",
+    "real_velocity_mm_s",
+    "accel_velocity_mm_s",
+    "target_omega_mdps",
+    "real_omega_mdps",
+    "gyro_z_raw_mdps",
+    "gyro_z_lpf_002_mdps",
+    "gyro_z_lpf_005_mdps",
+    "gyro_z_lpf_010_mdps",
+    "gyro_z_lpf_020_mdps",
+    "target_angle_mdeg",
+    "accel_forward_mm_s2",
+    "encoder_l",
+    "encoder_r",
+    "motor_out_l",
+    "motor_out_r",
+    "adc_fr",
+    "adc_r",
+    "adc_fl",
+    "adc_l",
+    "adc_vbat",
+    "flags",
+    "reserved_i32_0",
+    "reserved_i32_1",
+    "reserved_i32_2",
+    "reserved_i32_3",
+    "reserved_u16_0",
+    "reserved_u16_1",
+]
+RECORD_STRUCT_V3 = struct.Struct("<II14i4h6H4B2H")
+RECORD_STRUCT_V4 = struct.Struct("<II19i4h6H4B2H")
+RECORD_STRUCT = RECORD_STRUCT_V4
+RECORD_COLUMNS = RECORD_COLUMNS_V4
+RECORD_LAYOUTS = {
+    RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
+    RECORD_STRUCT_V4.size: (RECORD_STRUCT_V4, RECORD_COLUMNS_V4),
+}
+
+
+def record_struct_for_size(record_size: int) -> Optional[struct.Struct]:
+    layout = RECORD_LAYOUTS.get(record_size)
+    return layout[0] if layout else None
+
+
+def record_columns_for_size(record_size: int) -> list[str]:
+    layout = RECORD_LAYOUTS.get(record_size)
+    return layout[1] if layout else RECORD_COLUMNS
 
 
 def _detect_port() -> Optional[str]:
@@ -123,7 +179,7 @@ def checksum(data: bytes) -> int:
     return sum(data) & 0xFFFFFFFF
 
 
-def _record_to_row(values: tuple[int, ...]) -> list[str]:
+def _record_to_row_v3(values: tuple[int, ...]) -> list[str]:
     seq = values[0]
     timestamp_ms = values[1]
     i32 = values[2:16]
@@ -168,6 +224,64 @@ def _record_to_row(values: tuple[int, ...]) -> list[str]:
     ]
 
 
+def _record_to_row_v4(values: tuple[int, ...]) -> list[str]:
+    seq = values[0]
+    timestamp_ms = values[1]
+    i32 = values[2:21]
+    h = values[21:25]
+    u16 = values[25:31]
+    op_mode, op_case, op_sub, test_id = values[31:35]
+    ru16_0, ru16_1 = values[35:37]
+    target_distance = i32[0] / 1000.0
+    return [
+        str(timestamp_ms),
+        str(seq),
+        str(op_mode),
+        str(op_case),
+        str(op_sub),
+        str(test_id),
+        f"{target_distance:.3f}",
+        str(i32[1]),
+        str(i32[2]),
+        str(i32[3]),
+        str(i32[4]),
+        str(i32[5]),
+        str(i32[6]),
+        str(i32[7]),
+        str(i32[8]),
+        str(i32[9]),
+        str(i32[10]),
+        str(i32[11]),
+        str(i32[12]),
+        str(i32[13]),
+        str(i32[14]),
+        str(h[0]),
+        str(h[1]),
+        str(h[2]),
+        str(h[3]),
+        str(u16[0]),
+        str(u16[1]),
+        str(u16[2]),
+        str(u16[3]),
+        str(u16[4]),
+        str(u16[5]),
+        str(i32[15]),
+        str(i32[16]),
+        str(i32[17]),
+        str(i32[18]),
+        str(ru16_0),
+        str(ru16_1),
+    ]
+
+
+def _record_to_row(values: tuple[int, ...], record_size: int) -> list[str]:
+    if record_size == RECORD_STRUCT_V3.size:
+        return _record_to_row_v3(values)
+    if record_size == RECORD_STRUCT_V4.size:
+        return _record_to_row_v4(values)
+    raise ValueError(f"unsupported record size: {record_size}")
+
+
 def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list[str]], int]:
     pos = 0
     while True:
@@ -188,7 +302,8 @@ def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list
             "payload_checksum": fields[7],
         }
         total_len = FRAME_STRUCT.size + frame["header_size"] + frame["record_size"] * frame["record_count"]
-        if frame["version"] == 1 and frame["header_size"] == HEADER_STRUCT.size and frame["record_size"] == RECORD_STRUCT.size and idx + total_len <= len(raw):
+        rec_struct = record_struct_for_size(frame["record_size"])
+        if frame["version"] == 1 and frame["header_size"] == HEADER_STRUCT.size and rec_struct is not None and idx + total_len <= len(raw):
             payload = raw[idx + FRAME_STRUCT.size : idx + total_len]
             if checksum(payload) == frame["payload_checksum"]:
                 header_values = HEADER_STRUCT.unpack_from(payload, 0)
@@ -205,8 +320,8 @@ def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list
                 rows: list[list[str]] = []
                 off = frame["header_size"]
                 for _ in range(frame["record_count"]):
-                    rec = RECORD_STRUCT.unpack_from(payload, off)
-                    rows.append(_record_to_row(rec))
+                    rec = rec_struct.unpack_from(payload, off)
+                    rows.append(_record_to_row(rec, frame["record_size"]))
                     off += frame["record_size"]
                 return frame, header, rows, idx
         pos = idx + 1
@@ -219,7 +334,7 @@ def write_csv(path: Path, frame: dict[str, int], header: dict[str, int], rows: l
         f.write(f"#bin_record_count={frame['record_count']}\n")
         f.write(f"#bin_available_count={frame['available_count']}\n")
         f.write(f"#bin_header_total_records={header['total_records']}\n")
-        f.write("#mm_columns=" + ",".join(RECORD_COLUMNS) + "\n")
+        f.write("#mm_columns=" + ",".join(record_columns_for_size(frame["record_size"])) + "\n")
         writer = csv.writer(f)
         for row in rows:
             writer.writerow(row)
