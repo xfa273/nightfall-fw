@@ -260,7 +260,7 @@ def _build_nightfall_plot(df):
         ("Wall Sensor", "ADC", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
         ("Battery", "ADC", ["adc_vbat"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg", "angle_mdeg", "target_angle_mdeg"]),
-        ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "omega_error_dps", "target_omega_mdps", "real_omega_mdps"]),
+        ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "gyro_z_raw_dps", "gyro_z_lpf_002_dps", "gyro_z_lpf_005_dps", "gyro_z_lpf_010_dps", "gyro_z_lpf_020_dps", "omega_error_dps", "target_omega_mdps", "real_omega_mdps", "gyro_z_raw_mdps", "gyro_z_lpf_002_mdps", "gyro_z_lpf_005_mdps", "gyro_z_lpf_010_mdps", "gyro_z_lpf_020_mdps"]),
         ("Flags", "raw / 0-1", ["flags", "flag_idle", "flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_abort_switch", "flag_abort_wall_fault", "flag_abort_encoder_fault", "flag_abort_imu_fault", "flag_angle_target", "flag_auto"]),
         ("Reserved i32", "raw", ["reserved_i32_0", "reserved_i32_1", "reserved_i32_2", "reserved_i32_3"]),
         ("Reserved u16", "raw", ["reserved_u16_0", "reserved_u16_1"]),

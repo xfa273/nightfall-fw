@@ -173,7 +173,12 @@ static volatile int16_t s_motor_out_l = 0;
 static volatile int16_t s_motor_out_r = 0;
 
 static float s_omega_z_offset  = 0.0f;
+static float s_omega_z_raw = 0.0f;
 static float s_omega_z_filtered = 0.0f;
+static float s_omega_z_lpf_002 = 0.0f;
+static float s_omega_z_lpf_005 = 0.0f;
+static float s_omega_z_lpf_010 = 0.0f;
+static float s_omega_z_lpf_020 = 0.0f;
 static bool  s_omega_z_lpf_inited = false;
 static float s_accel_forward_offset = 0.0f;
 static float s_accel_forward_filtered = 0.0f;
@@ -204,6 +209,26 @@ static volatile float s_tune_reference = 0.0f;
 static bool f413_ctrl_use_fan_on_gains(void)
 {
     return false;
+}
+
+static float f413_ctrl_lpf_update(float previous, float input, float tau_s)
+{
+    float alpha;
+
+    if (tau_s <= 0.0f)
+    {
+        return input;
+    }
+    alpha = F413_CTRL_DT / (tau_s + F413_CTRL_DT);
+    if (alpha < 0.0f)
+    {
+        alpha = 0.0f;
+    }
+    else if (alpha > 1.0f)
+    {
+        alpha = 1.0f;
+    }
+    return previous + alpha * (input - previous);
 }
 
 static void f413_ctrl_reset_velocity_accel_comp(void)
@@ -294,7 +319,12 @@ static void f413_ctrl_reset_pid_state(void)
     s_out_rotate = 0.0f;
     s_motor_out_l = 0;
     s_motor_out_r = 0;
+    s_omega_z_raw = 0.0f;
     s_omega_z_filtered = 0.0f;
+    s_omega_z_lpf_002 = 0.0f;
+    s_omega_z_lpf_005 = 0.0f;
+    s_omega_z_lpf_010 = 0.0f;
+    s_omega_z_lpf_020 = 0.0f;
     s_omega_z_lpf_inited = false;
     s_accel_forward_filtered = 0.0f;
     s_accel_forward_lpf_inited = false;
@@ -612,7 +642,12 @@ static void imu_get_motion_offsets(void)
     }
 
     s_omega_z_offset = gyro_sum / (float)F413_IMU_OFFSET_SAMPLES;
+    s_omega_z_raw = 0.0f;
     s_omega_z_filtered = 0.0f;
+    s_omega_z_lpf_002 = 0.0f;
+    s_omega_z_lpf_005 = 0.0f;
+    s_omega_z_lpf_010 = 0.0f;
+    s_omega_z_lpf_020 = 0.0f;
     s_omega_z_lpf_inited = false;
     s_accel_forward_offset = accel_sum / (float)F413_IMU_OFFSET_SAMPLES;
     s_accel_forward_filtered = 0.0f;
@@ -848,6 +883,11 @@ float f413_ctrl_get_target_omega(void)    { return s_omega_interrupt + s_target_
 float f413_ctrl_get_target_angle(void)    { return s_target_angle; }
 float f413_ctrl_get_accel_velocity(void)  { return s_accel_velocity; }
 float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
+float f413_ctrl_get_gyro_z_raw(void)      { return s_omega_z_raw; }
+float f413_ctrl_get_gyro_z_lpf_002(void)  { return s_omega_z_lpf_002; }
+float f413_ctrl_get_gyro_z_lpf_005(void)  { return s_omega_z_lpf_005; }
+float f413_ctrl_get_gyro_z_lpf_010(void)  { return s_omega_z_lpf_010; }
+float f413_ctrl_get_gyro_z_lpf_020(void)  { return s_omega_z_lpf_020; }
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void) { return (uint16_t)VELOCITY_ACCEL_COMP_WINDOW_MS; }
 bool f413_ctrl_velocity_accel_comp_control_enabled(void) { return (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U); }
 int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
@@ -944,15 +984,23 @@ void f413_ctrl_tick(void)
         /* IMU Z軸: CCW(左旋回)=正, CW(右旋回)=負 → 制御系と一致。符号反転不要。
            （2026-05-01: 旋回逆転の原因はPWMチャネル左右逆だった） */
         omega_raw = imu_read_gyro_z_dps() - s_omega_z_offset;
+        s_omega_z_raw = omega_raw;
         if (!s_omega_z_lpf_inited)
         {
             s_omega_z_filtered = omega_raw;
+            s_omega_z_lpf_002 = omega_raw;
+            s_omega_z_lpf_005 = omega_raw;
+            s_omega_z_lpf_010 = omega_raw;
+            s_omega_z_lpf_020 = omega_raw;
             s_omega_z_lpf_inited = true;
         }
         else
         {
-            float alpha = F413_CTRL_DT / (F413_IMU_OMEGA_LPF_TAU + F413_CTRL_DT);
-            s_omega_z_filtered += alpha * (omega_raw - s_omega_z_filtered);
+            s_omega_z_lpf_002 = f413_ctrl_lpf_update(s_omega_z_lpf_002, omega_raw, 0.002f);
+            s_omega_z_lpf_005 = f413_ctrl_lpf_update(s_omega_z_lpf_005, omega_raw, 0.005f);
+            s_omega_z_lpf_010 = f413_ctrl_lpf_update(s_omega_z_lpf_010, omega_raw, 0.010f);
+            s_omega_z_lpf_020 = f413_ctrl_lpf_update(s_omega_z_lpf_020, omega_raw, 0.020f);
+            s_omega_z_filtered = f413_ctrl_lpf_update(s_omega_z_filtered, omega_raw, F413_IMU_OMEGA_LPF_TAU);
         }
         omega_raw = s_omega_z_filtered;
 

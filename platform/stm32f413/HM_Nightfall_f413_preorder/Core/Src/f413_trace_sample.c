@@ -83,6 +83,11 @@ static void f413_trace_sample_fill_common(nvm_trace_log_record_t* out)
   out->accel_velocity_mm_s = f413_trace_sample_scale_float(f413_ctrl_get_accel_velocity(), 1.0f);
   out->target_omega_mdps = f413_trace_sample_scale_float(f413_ctrl_get_target_omega(), 1000.0f);
   out->real_omega_mdps = f413_trace_sample_scale_float(f413_ctrl_get_log_real_omega(), 1000.0f);
+  out->gyro_z_raw_mdps = f413_trace_sample_scale_float(f413_ctrl_get_gyro_z_raw(), 1000.0f);
+  out->gyro_z_lpf_002_mdps = f413_trace_sample_scale_float(f413_ctrl_get_gyro_z_lpf_002(), 1000.0f);
+  out->gyro_z_lpf_005_mdps = f413_trace_sample_scale_float(f413_ctrl_get_gyro_z_lpf_005(), 1000.0f);
+  out->gyro_z_lpf_010_mdps = f413_trace_sample_scale_float(f413_ctrl_get_gyro_z_lpf_010(), 1000.0f);
+  out->gyro_z_lpf_020_mdps = f413_trace_sample_scale_float(f413_ctrl_get_gyro_z_lpf_020(), 1000.0f);
   out->target_angle_mdeg = f413_trace_sample_scale_float(f413_ctrl_get_target_angle(), 1000.0f);
   out->accel_forward_mm_s2 = f413_trace_sample_scale_float(f413_ctrl_get_accel_forward(), 1.0f);
   out->motor_out_l = f413_ctrl_get_motor_out_l();
@@ -211,6 +216,7 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());
   trace_printf("#velocity_accel_comp_control=%u\r\n",
                f413_ctrl_velocity_accel_comp_control_enabled() ? 1U : 0U);
+  trace_printf("#gyro_z_lpf_mdps=raw,2ms,5ms,10ms,20ms\r\n");
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");

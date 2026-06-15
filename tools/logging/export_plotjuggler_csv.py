@@ -175,6 +175,11 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 "target_angle_deg",
                 "target_omega_dps",
                 "real_omega_dps",
+                "gyro_z_raw_dps",
+                "gyro_z_lpf_002_dps",
+                "gyro_z_lpf_005_dps",
+                "gyro_z_lpf_010_dps",
+                "gyro_z_lpf_020_dps",
                 "velocity_error_mm_s",
                 "accel_velocity_error_mm_s",
                 "omega_error_dps",
@@ -217,6 +222,11 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 target_distance = tune_ref
             target_omega_dps = _num(row, "target_omega_mdps") / 1000.0
             real_omega_dps = _num(row, "real_omega_mdps") / 1000.0
+            gyro_z_raw_dps = _num(row, "gyro_z_raw_mdps") / 1000.0
+            gyro_z_lpf_002_dps = _num(row, "gyro_z_lpf_002_mdps") / 1000.0
+            gyro_z_lpf_005_dps = _num(row, "gyro_z_lpf_005_mdps") / 1000.0
+            gyro_z_lpf_010_dps = _num(row, "gyro_z_lpf_010_mdps") / 1000.0
+            gyro_z_lpf_020_dps = _num(row, "gyro_z_lpf_020_mdps") / 1000.0
             motor_l = _num(row, "motor_out_l")
             motor_r = _num(row, "motor_out_r")
             derived_values = [
@@ -226,6 +236,11 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 ("target_angle_deg", _fmt(_num(row, "target_angle_mdeg") / 1000.0)),
                 ("target_omega_dps", _fmt(target_omega_dps)),
                 ("real_omega_dps", _fmt(real_omega_dps)),
+                ("gyro_z_raw_dps", _fmt(gyro_z_raw_dps)),
+                ("gyro_z_lpf_002_dps", _fmt(gyro_z_lpf_002_dps)),
+                ("gyro_z_lpf_005_dps", _fmt(gyro_z_lpf_005_dps)),
+                ("gyro_z_lpf_010_dps", _fmt(gyro_z_lpf_010_dps)),
+                ("gyro_z_lpf_020_dps", _fmt(gyro_z_lpf_020_dps)),
                 ("velocity_error_mm_s", _fmt(_num(row, "target_velocity_mm_s") - _num(row, "real_velocity_mm_s"))),
                 ("accel_velocity_error_mm_s", _fmt(_num(row, "target_velocity_mm_s") - _num(row, "accel_velocity_mm_s"))),
                 ("omega_error_dps", _fmt(target_omega_dps - real_omega_dps)),

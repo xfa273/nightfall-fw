@@ -1,4 +1,4 @@
-# NVM Trace Log Format Spec (v3)
+# NVM Trace Log Format Spec (v4)
 
 この文書は `NVM_AREA_TRACE_LOG` に保存するトレースログの形式を定義します。
 
@@ -8,8 +8,8 @@
 
 - 対象エリア: `NVM_AREA_TRACE_LOG`
 - 主用途: `STM32F413` + FRAM backend での走行後ログ解析
-- schema version: `0x00030000` (`NVM_TRACE_LOG_SCHEMA_VERSION`)
-- CSV format name: `nightfall_trace_csv_v3`
+- schema version: `0x00040000` (`NVM_TRACE_LOG_SCHEMA_VERSION`)
+- CSV format name: `nightfall_trace_csv_v4`
 
 ---
 
@@ -50,7 +50,7 @@ typedef struct __attribute__((packed)) {
 ### 各フィールド
 
 - `magic`: `0x544C4F47` (`"TLOG"`)
-- `version`: `0x00030000`
+- `version`: `0x00040000`
 - `length`: `sizeof(nvm_trace_log_header_t)`
 - `crc`: ヘッダpayloadの加算チェックサム
   - 対象: `record_size` 以降（先頭16byteを除く）
@@ -77,6 +77,11 @@ typedef struct __attribute__((packed)) {
     int32_t accel_velocity_mm_s;
     int32_t target_omega_mdps;
     int32_t real_omega_mdps;
+    int32_t gyro_z_raw_mdps;
+    int32_t gyro_z_lpf_002_mdps;
+    int32_t gyro_z_lpf_005_mdps;
+    int32_t gyro_z_lpf_010_mdps;
+    int32_t gyro_z_lpf_020_mdps;
     int32_t target_angle_mdeg;
     int32_t accel_forward_mm_s2;
     int32_t reserved_i32_0;
@@ -114,6 +119,11 @@ typedef struct __attribute__((packed)) {
 - `accel_velocity_mm_s`: 加速度補助速度推定（mm/s）
 - `target_omega_mdps`: 角速度目標（mdps）
 - `real_omega_mdps`: IMU Z角速度（mdps）
+- `gyro_z_raw_mdps`: IMU Z角速度のオフセット補正後生値（mdps）
+- `gyro_z_lpf_002_mdps`: IMU Z角速度を2ms時定数でLPFした値（mdps）
+- `gyro_z_lpf_005_mdps`: IMU Z角速度を5ms時定数でLPFした値（mdps）
+- `gyro_z_lpf_010_mdps`: IMU Z角速度を10ms時定数でLPFした値（mdps）
+- `gyro_z_lpf_020_mdps`: IMU Z角速度を20ms時定数でLPFした値（mdps）
 - `target_angle_mdeg`: 角度目標（mdeg）
 - `accel_forward_mm_s2`: 前後加速度（mm/s^2）
 - `reserved_i32_0..3`: `#wall_trace_observe=1` の場合は壁センサdelta（FR, R, FL, L）、それ以外は将来拡張用32bit符号付き予備
@@ -153,18 +163,18 @@ typedef struct __attribute__((packed)) {
 `v` / `V` / `mode9 case5` は以下のメタ行を出力する。
 
 ```text
-#log_format=nightfall_trace_csv_v3
+#log_format=nightfall_trace_csv_v4
 #fw_target=...
 #fw_version=...
 #fw_build_type=...
 #fw_git_sha=...
 #fw_git_dirty=...
-#fw_log_schema=0x00030000
+#fw_log_schema=0x00040000
 #wall_trace_observe=1
 #wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l
 #wall_trace_reserved_u16_0=flags
 #wall_trace_reserved_u16_1=dist_q4_lr
-#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
+#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,gyro_z_lpf_002_mdps,gyro_z_lpf_005_mdps,gyro_z_lpf_010_mdps,gyro_z_lpf_020_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
 ```
 
 CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。

@@ -145,7 +145,7 @@ def _binary_frame_total_len(buf: bytes) -> Optional[int]:
     header_size = fields[3]
     record_size = fields[4]
     record_count = fields[5]
-    if version != 1 or header_size != trace_bin_dump.HEADER_STRUCT.size or record_size != trace_bin_dump.RECORD_STRUCT.size:
+    if version != 1 or header_size != trace_bin_dump.HEADER_STRUCT.size or trace_bin_dump.record_struct_for_size(record_size) is None:
         return -1
     total_len = trace_bin_dump.FRAME_STRUCT.size + header_size + record_size * record_count
     if len(buf) < total_len:

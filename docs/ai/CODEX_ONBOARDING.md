@@ -64,7 +64,7 @@ The repository is in a transition state:
 These are known and should be cleaned up opportunistically:
 
 - Some older docs still say `Cascade`; current primary agent is Codex.
-- Some older docs mention trace schema v1/v2; current `nvm_trace_log.h` defines schema `0x00030000` and CSV `nightfall_trace_csv_v3`.
+- Some older docs mention trace schema v1/v2/v3; current `nvm_trace_log.h` defines schema `0x00040000` and CSV `nightfall_trace_csv_v4`.
 - Some names still use `f413_preorder`; official machine naming is `mini_r2_0`.
 - `board/` mostly contains future placeholders. Most board/hardware behavior still lives under `platform/`.
 - F405 is not yet a true single MCU-family runtime-selected binary; `nightfall_stm32f405` is currently an aggregate target for `nightfall_mini_r1_0` and `nightfall_classic_r1_0`.
@@ -83,6 +83,6 @@ The most useful next Codex work is usually one of:
 
 - Continue splitting F413 `main.c` into small modules while preserving behavior.
 - Use and extend safe F413 HIL scripts around reset, capture, non-motor smoke, trace dump, and analysis.
-- Fix docs/tooling inconsistencies around UART baud, trace schema v3, and Codex ownership.
+- Fix docs/tooling inconsistencies around UART baud, current trace schema, and Codex ownership.
 - Improve F413 control tuning workflow using FRAM trace CSV and host analyzers.
 - Move F413 from `f413_preorder` naming toward `mini_r2_0` when ready.
