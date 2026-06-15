@@ -6,7 +6,7 @@
 #include "stm32f4xx_hal.h"
 #include "trace.h"
 
-#define F413_HW_DIAG_ENCODER_WINDOW_MS (3000U)
+#define F413_HW_DIAG_ENCODER_WINDOW_MS (10000U)
 #define F413_HW_DIAG_LED_ON_WINDOW_MS (30000U)
 #define F413_HW_DIAG_ENCODER_SIGN_L (1L)
 #define F413_HW_DIAG_ENCODER_SIGN_R (-1L)
