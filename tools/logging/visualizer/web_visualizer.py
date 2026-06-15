@@ -252,7 +252,7 @@ def _build_nightfall_plot(df):
 
     groups = [
         ("Distance", "mm", ["target_distance_mm", "distance_mm", "distance_error_mm"]),
-        ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "velocity_error_mm_s"]),
+        ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "accel_velocity_mm_s", "velocity_error_mm_s", "accel_velocity_error_mm_s"]),
         ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
         ("Wall Sensor", "ADC", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
         ("Battery", "ADC", ["adc_vbat"]),

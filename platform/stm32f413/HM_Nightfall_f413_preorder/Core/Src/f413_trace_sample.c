@@ -206,6 +206,11 @@ void f413_trace_sample_update_observe_cache(void)
 
 void f413_trace_sample_emit_extra_csv_meta(void)
 {
+  trace_printf("#accel_velocity_mm_s=encoder_avg_plus_accel_half_window\r\n");
+  trace_printf("#velocity_accel_comp_window_ms=%u\r\n",
+               (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());
+  trace_printf("#velocity_accel_comp_control=%u\r\n",
+               f413_ctrl_velocity_accel_comp_control_enabled() ? 1U : 0U);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
