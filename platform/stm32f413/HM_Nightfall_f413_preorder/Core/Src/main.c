@@ -742,6 +742,11 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
     case F413_OP_UI_ACTION_PATH_CASE0_SUB:
       nightfall_op_run_case0_sub_after_delay(mode, sub);
       break;
+    case F413_OP_UI_ACTION_SEARCH_RUN_CASE:
+      f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
+      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_search_step_run_search_case_once(op_case);
+      break;
     case F413_OP_UI_ACTION_NONE:
     default:
       break;

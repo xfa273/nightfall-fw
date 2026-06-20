@@ -86,9 +86,9 @@ static void f413_op_ui_execute_case(uint8_t mode, uint8_t op_case)
   switch (mode)
   {
     case 1U:
-      if (op_case == 4U)
+      if ((op_case >= 1U) && (op_case <= 8U))
       {
-        f413_op_ui_execute_action(F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY, mode, op_case, 0xFFU);
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SEARCH_RUN_CASE, mode, op_case, 0xFFU);
       }
       else
       {

@@ -8,6 +8,7 @@
 #include "nvm_params.h"
 #include "params.h"
 #include "search.h"
+#include "search_run_params.h"
 #include "trace.h"
 
 #define F413_SEARCH_STEP_MAZE_WALL_W (0x01U)
@@ -17,6 +18,21 @@
 #define F413_SEARCH_STEP_MAZE_WALL_KNOWN_MASK (0x0FU)
 #define F413_SEARCH_STEP_MAZE_START_FORCED_WALLS (0x07U)
 #define F413_SEARCH_STEP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
+#ifndef F413_SEARCH_STEP_AUTO_MAX_ACTIONS
+#define F413_SEARCH_STEP_AUTO_MAX_ACTIONS (256U)
+#endif
+
+typedef enum {
+  F413_SEARCH_STEP_TARGET_GOAL = 0,
+  F413_SEARCH_STEP_TARGET_FULL,
+  F413_SEARCH_STEP_TARGET_START
+} f413_search_step_target_t;
+
+typedef struct {
+  uint8_t param_index;
+  uint8_t phase_count;
+  f413_search_step_target_t phases[2];
+} f413_search_step_case_plan_t;
 
 static f413_search_step_config_t g_config;
 static bool g_session_active = false;
@@ -85,7 +101,8 @@ static void f413_search_step_set_context(uint8_t mode, uint8_t op_case, uint8_t 
   }
 }
 
-static void f413_search_step_set_action_context(uint8_t x,
+static void f413_search_step_set_action_context(uint8_t op_case,
+                                                uint8_t x,
                                                 uint8_t y,
                                                 uint8_t dir,
                                                 uint8_t next_rel)
@@ -95,7 +112,112 @@ static void f413_search_step_set_action_context(uint8_t x,
                                     ((next_rel & 0x03U) << 2U) |
                                     (dir & 0x03U));
 
-  f413_search_step_set_context(1U, 4U, packed_xy, packed_action);
+  f413_search_step_set_context(1U, op_case, packed_xy, packed_action);
+}
+
+static bool f413_search_step_is_goal_cell(uint8_t x, uint8_t y)
+{
+  static const uint8_t goals[9][2] = {
+      {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
+      {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
+      {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
+  };
+  uint8_t i;
+
+  for (i = 0U; i < 9U; i++)
+  {
+    uint8_t gx = goals[i][0];
+    uint8_t gy = goals[i][1];
+    if (((gx != 0U) || (gy != 0U)) && (gx == x) && (gy == y))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+static const char* f413_search_step_target_name(f413_search_step_target_t target)
+{
+  switch (target)
+  {
+    case F413_SEARCH_STEP_TARGET_GOAL: return "goal";
+    case F413_SEARCH_STEP_TARGET_FULL: return "full";
+    case F413_SEARCH_STEP_TARGET_START: return "start";
+    default: return "?";
+  }
+}
+
+static bool f413_search_step_target_reached(f413_search_step_target_t target)
+{
+  if (target == F413_SEARCH_STEP_TARGET_GOAL)
+  {
+    return f413_search_step_is_goal_cell((uint8_t)mouse.x, (uint8_t)mouse.y);
+  }
+  if (target == F413_SEARCH_STEP_TARGET_START)
+  {
+    return (mouse.x == START_X) && (mouse.y == START_Y);
+  }
+  return false;
+}
+
+static bool f413_search_step_plan_from_case(uint8_t op_case,
+                                            f413_search_step_case_plan_t* out)
+{
+  if (out == NULL)
+  {
+    return false;
+  }
+  memset(out, 0, sizeof(*out));
+
+  switch (op_case)
+  {
+    case 1U:
+      out->param_index = 0U;
+      out->phase_count = 2U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      out->phases[1] = F413_SEARCH_STEP_TARGET_FULL;
+      return true;
+    case 2U:
+      out->param_index = 0U;
+      out->phase_count = 1U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_FULL;
+      return true;
+    case 3U:
+      out->param_index = 0U;
+      out->phase_count = 2U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      out->phases[1] = F413_SEARCH_STEP_TARGET_START;
+      return true;
+    case 4U:
+      out->param_index = 0U;
+      out->phase_count = 1U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      return true;
+    case 5U:
+      out->param_index = 1U;
+      out->phase_count = 2U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      out->phases[1] = F413_SEARCH_STEP_TARGET_FULL;
+      return true;
+    case 6U:
+      out->param_index = 1U;
+      out->phase_count = 1U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_FULL;
+      return true;
+    case 7U:
+      out->param_index = 1U;
+      out->phase_count = 2U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      out->phases[1] = F413_SEARCH_STEP_TARGET_START;
+      return true;
+    case 8U:
+      out->param_index = 1U;
+      out->phase_count = 1U;
+      out->phases[0] = F413_SEARCH_STEP_TARGET_GOAL;
+      return true;
+    default:
+      return false;
+  }
 }
 
 static void f413_search_step_map_init_empty(void)
@@ -223,7 +345,7 @@ static void f413_search_step_write_map_cell(uint8_t x, uint8_t y, uint8_t dir, u
   }
 }
 
-static int f413_search_step_make_goal_smap(uint8_t x, uint8_t y)
+static int f413_search_step_make_smap(uint8_t x, uint8_t y, f413_search_step_target_t target)
 {
   static uint16_t q[F413_SEARCH_STEP_CELL_COUNT];
   uint16_t head = 0U;
@@ -249,16 +371,46 @@ static int f413_search_step_make_goal_smap(uint8_t x, uint8_t y)
     }
   }
 
-  for (ix = 0U; ix < 9U; ix++)
+  if (target == F413_SEARCH_STEP_TARGET_START)
   {
-    uint8_t gx = goals[ix][0];
-    uint8_t gy = goals[ix][1];
-    if (((gx == 0U) && (gy == 0U)) || (gx >= MAZE_SIZE) || (gy >= MAZE_SIZE))
+    smap[START_Y][START_X] = 0U;
+    q[tail++] = (uint16_t)(START_Y * MAZE_SIZE + START_X);
+  }
+  else if (target == F413_SEARCH_STEP_TARGET_FULL)
+  {
+    bool any_unvisited = false;
+
+    visited[START_Y][START_X] = true;
+    for (iy = 0U; iy < MAZE_SIZE; iy++)
     {
-      continue;
+      for (ix = 0U; ix < MAZE_SIZE; ix++)
+      {
+        if (!visited[iy][ix])
+        {
+          any_unvisited = true;
+          smap[iy][ix] = 0U;
+          q[tail++] = (uint16_t)(iy * MAZE_SIZE + ix);
+        }
+      }
     }
-    smap[gy][gx] = 0U;
-    q[tail++] = (uint16_t)(gy * MAZE_SIZE + gx);
+    if (!any_unvisited)
+    {
+      return -2;
+    }
+  }
+  else
+  {
+    for (ix = 0U; ix < 9U; ix++)
+    {
+      uint8_t gx = goals[ix][0];
+      uint8_t gy = goals[ix][1];
+      if (((gx == 0U) && (gy == 0U)) || (gx >= MAZE_SIZE) || (gy >= MAZE_SIZE))
+      {
+        continue;
+      }
+      smap[gy][gx] = 0U;
+      q[tail++] = (uint16_t)(gy * MAZE_SIZE + gx);
+    }
   }
 
   while ((head < tail) && (smap[y][x] == 0xFFFFU))
@@ -292,6 +444,11 @@ static int f413_search_step_make_goal_smap(uint8_t x, uint8_t y)
   }
 
   return (smap[y][x] == 0xFFFFU) ? -1 : (int)smap[y][x];
+}
+
+static int f413_search_step_make_goal_smap(uint8_t x, uint8_t y)
+{
+  return f413_search_step_make_smap(x, y, F413_SEARCH_STEP_TARGET_GOAL);
 }
 
 static bool f413_search_step_choose_next_relative(uint8_t x, uint8_t y, uint8_t dir, uint8_t* out_rel)
@@ -448,6 +605,48 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
   return F413_RUN_SESSION_ABORT_NONE;
 }
 
+static f413_run_session_abort_reason_t f413_search_step_run_motion(uint8_t next_rel,
+                                                                   float velocity_mm_s,
+                                                                   f413_run_session_guard_t* guard)
+{
+  f413_run_session_abort_reason_t reason;
+  const bool is_turn = (next_rel != 0U);
+  const float turn_target_deg = f413_search_step_turn_target_deg(next_rel);
+
+  f413_ctrl_reset_distance();
+  f413_ctrl_reset_angle();
+
+  if (is_turn)
+  {
+    f413_ctrl_set_velocity(0.0f);
+    f413_ctrl_set_omega(0.0f);
+    f413_ctrl_set_angle_target(turn_target_deg);
+    reason = f413_search_step_wait_ctrl_target(turn_target_deg, true, guard,
+        (uint16_t)(g_config.trace_search_safe_flag |
+                   g_config.trace_motor_rev_flag));
+  }
+  else
+  {
+    f413_ctrl_set_velocity(velocity_mm_s);
+    f413_ctrl_set_omega(0.0f);
+    f413_ctrl_set_angle_target(0.0f);
+    reason = f413_search_step_wait_ctrl_target(g_config.step_target_mm, false, guard,
+        (uint16_t)(g_config.trace_search_safe_flag |
+                   g_config.trace_motor_fwd_flag));
+  }
+
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  if (reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
+                                               g_config.trace_motor_coast_flag));
+    reason = f413_run_session_wait_with_auto_step_guarded(g_config.path_coast_ms, guard);
+  }
+  return reason;
+}
+
 void f413_search_step_config(const f413_search_step_config_t* config)
 {
   if (config != NULL)
@@ -462,6 +661,220 @@ void f413_search_step_session_reset(void)
   mouse.x = START_X;
   mouse.y = START_Y;
   mouse.dir = 0U;
+}
+
+void f413_search_step_run_search_case_once(uint8_t op_case)
+{
+  f413_search_step_case_plan_t plan;
+  f413_wall_sensor_snapshot_t wall;
+  f413_run_session_abort_reason_t abort_reason = F413_RUN_SESSION_ABORT_NONE;
+  f413_run_session_guard_t guard = {0};
+  const SearchRunParams_t* params;
+  uint16_t action_count = 0U;
+  uint8_t phase_index;
+  bool completed = false;
+  bool route_failed = false;
+  HAL_StatusTypeDef save_status = HAL_OK;
+
+  if (!f413_search_step_plan_from_case(op_case, &plan))
+  {
+    trace_printf("[SEARCH-RUN] no-op: unsupported case%u\r\n", (unsigned int)op_case);
+    return;
+  }
+  if (f413_search_step_trace_auto_is_enabled())
+  {
+    trace_printf("[SEARCH-RUN] busy(auto already running)\r\n");
+    return;
+  }
+  if (f413_search_step_stop_switch_pressed())
+  {
+    trace_printf("[SEARCH-RUN] canceled(start switch pressed)\r\n");
+    return;
+  }
+  if (!f413_run_session_guard_prepare(&guard))
+  {
+    trace_printf("[SEARCH-RUN] canceled(guard init fail)\r\n");
+    return;
+  }
+
+  params = &searchRunParams[plan.param_index];
+  f413_search_step_map_init_empty();
+  mouse.x = START_X;
+  mouse.y = START_Y;
+  mouse.dir = 0U;
+  g_session_active = true;
+
+  trace_printf("[SEARCH-RUN] start mode1 case%u param=%u v=%.0f target=%.0fmm phases=",
+               (unsigned int)op_case,
+               (unsigned int)plan.param_index,
+               (double)params->velocity_turn90,
+               (double)g_config.step_target_mm);
+  for (phase_index = 0U; phase_index < plan.phase_count; phase_index++)
+  {
+    trace_printf("%s%s",
+                 f413_search_step_target_name(plan.phases[phase_index]),
+                 ((phase_index + 1U) < plan.phase_count) ? "," : "");
+  }
+  trace_printf("\r\n");
+
+  f413_search_step_set_context(1U, op_case, 0xFFU, (uint8_t)'S');
+  f413_search_step_trace_start();
+  f413_ctrl_start();
+
+  for (phase_index = 0U; phase_index < plan.phase_count; phase_index++)
+  {
+    const f413_search_step_target_t target = plan.phases[phase_index];
+    bool phase_done = false;
+
+    trace_printf("[SEARCH-RUN] phase%u target=%s pos=(%u,%u,%u)\r\n",
+                 (unsigned int)phase_index,
+                 f413_search_step_target_name(target),
+                 (unsigned int)mouse.x,
+                 (unsigned int)mouse.y,
+                 (unsigned int)mouse.dir);
+
+    while (!phase_done)
+    {
+      uint8_t next_rel = 0U;
+      int step;
+
+      if (action_count >= F413_SEARCH_STEP_AUTO_MAX_ACTIONS)
+      {
+        trace_printf("[SEARCH-RUN] stop(max actions=%u)\r\n",
+                     (unsigned int)F413_SEARCH_STEP_AUTO_MAX_ACTIONS);
+        route_failed = true;
+        break;
+      }
+      if (f413_search_step_stop_switch_pressed())
+      {
+        abort_reason = F413_RUN_SESSION_ABORT_SWITCH;
+        break;
+      }
+      if (!f413_search_step_read_wall(&wall))
+      {
+        trace_printf("[SEARCH-RUN] FAIL(read wall snapshot)\r\n");
+        route_failed = true;
+        break;
+      }
+
+      wall_info = f413_search_step_wall_info_from_snapshot(&wall);
+      f413_search_step_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y,
+                                      (uint8_t)mouse.dir, wall_info);
+      visited[mouse.y][mouse.x] = true;
+
+      if (f413_search_step_target_reached(target))
+      {
+        trace_printf("[SEARCH-RUN] phase%u reached target=%s pos=(%u,%u,%u)\r\n",
+                     (unsigned int)phase_index,
+                     f413_search_step_target_name(target),
+                     (unsigned int)mouse.x,
+                     (unsigned int)mouse.y,
+                     (unsigned int)mouse.dir);
+        phase_done = true;
+        break;
+      }
+
+      step = f413_search_step_make_smap((uint8_t)mouse.x, (uint8_t)mouse.y, target);
+      if (step == -2)
+      {
+        trace_printf("[SEARCH-RUN] phase%u full complete pos=(%u,%u,%u)\r\n",
+                     (unsigned int)phase_index,
+                     (unsigned int)mouse.x,
+                     (unsigned int)mouse.y,
+                     (unsigned int)mouse.dir);
+        phase_done = true;
+        break;
+      }
+      if ((step < 0) ||
+          !f413_search_step_choose_next_relative((uint8_t)mouse.x,
+                                                 (uint8_t)mouse.y,
+                                                 (uint8_t)mouse.dir,
+                                                 &next_rel))
+      {
+        trace_printf("[SEARCH-RUN] FAIL(no route) phase=%u target=%s pos=(%u,%u,%u) wall=0x%04X cell=0x%04X step=%d\r\n",
+                     (unsigned int)phase_index,
+                     f413_search_step_target_name(target),
+                     (unsigned int)mouse.x,
+                     (unsigned int)mouse.y,
+                     (unsigned int)mouse.dir,
+                     (unsigned int)wall_info,
+                     (unsigned int)map[mouse.y][mouse.x],
+                     step);
+        route_failed = true;
+        break;
+      }
+
+      f413_search_step_set_action_context(op_case,
+                                          (uint8_t)mouse.x,
+                                          (uint8_t)mouse.y,
+                                          (uint8_t)mouse.dir,
+                                          next_rel);
+      trace_printf("[SEARCH-RUN] action%u phase=%u next=%s(%u) pos=(%u,%u,%u) smap=%d wall=0x%04X cell=0x%04X\r\n",
+                   (unsigned int)action_count,
+                   (unsigned int)phase_index,
+                   f413_search_step_relative_name(next_rel),
+                   (unsigned int)next_rel,
+                   (unsigned int)mouse.x,
+                   (unsigned int)mouse.y,
+                   (unsigned int)mouse.dir,
+                   step,
+                   (unsigned int)wall_info,
+                   (unsigned int)map[mouse.y][mouse.x]);
+
+      abort_reason = f413_search_step_run_motion(next_rel,
+                                                 params->velocity_turn90,
+                                                 &guard);
+      if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+      {
+        break;
+      }
+
+      if (next_rel == 0U)
+      {
+        f413_search_step_advance_position();
+      }
+      else
+      {
+        mouse.dir = (uint8_t)((mouse.dir + next_rel) & 0x03U);
+      }
+      action_count++;
+    }
+
+    if ((abort_reason != F413_RUN_SESSION_ABORT_NONE) || route_failed)
+    {
+      break;
+    }
+  }
+
+  completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE) && !route_failed;
+
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_stop();
+  if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
+        f413_run_session_abort_reason_to_trace_flag(abort_reason)));
+    f413_search_step_trace_auto_step();
+  }
+  f413_search_step_set_mode_flags(0U);
+  f413_search_step_trace_stop();
+  f413_run_session_guard_cleanup(&guard);
+
+  save_status = nvm_maze_save_map(&map[0][0], F413_SEARCH_STEP_CELL_COUNT);
+  trace_printf("[SEARCH-RUN] %s case%u actions=%u pos=(%u,%u,%u) save=%s%s%s\r\n",
+               completed ? "OK" : "STOP",
+               (unsigned int)op_case,
+               (unsigned int)action_count,
+               (unsigned int)mouse.x,
+               (unsigned int)mouse.y,
+               (unsigned int)mouse.dir,
+               (save_status == HAL_OK) ? "OK" : "FAIL",
+               (abort_reason != F413_RUN_SESSION_ABORT_NONE) ? " abort=" : "",
+               (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+                   ? f413_run_session_abort_reason_to_text(abort_reason)
+                   : "");
 }
 
 void f413_search_step_run_decision_preview_once(void)
@@ -587,7 +1000,8 @@ void f413_search_step_run_once(void)
                (unsigned int)wall_info,
                (unsigned int)map[mouse.y][mouse.x]);
 
-  f413_search_step_set_action_context((uint8_t)mouse.x,
+  f413_search_step_set_action_context(4U,
+                                      (uint8_t)mouse.x,
                                       (uint8_t)mouse.y,
                                       (uint8_t)mouse.dir,
                                       next_rel);

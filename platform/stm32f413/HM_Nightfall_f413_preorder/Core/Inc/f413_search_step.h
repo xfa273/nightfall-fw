@@ -40,6 +40,7 @@ typedef struct {
 
 void f413_search_step_config(const f413_search_step_config_t* config);
 void f413_search_step_session_reset(void);
+void f413_search_step_run_search_case_once(uint8_t op_case);
 void f413_search_step_run_decision_preview_once(void);
 void f413_search_step_run_once(void);
 void f413_search_step_run_map_probe_once(void);
