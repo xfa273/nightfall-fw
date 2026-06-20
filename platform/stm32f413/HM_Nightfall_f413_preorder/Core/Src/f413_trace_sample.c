@@ -231,6 +231,7 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (double)FF_TRANSLATION_VELOCITY_PWM_FAN_OFF);
   trace_printf("#translation_ff_accel_pwm_fan_off=%.9f\r\n",
                (double)FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
+  trace_printf("#search_step_context=op_mode1_case4:op_sub=(y<<4)|x,test_id=0x80|(next_rel<<2)|dir\r\n");
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");

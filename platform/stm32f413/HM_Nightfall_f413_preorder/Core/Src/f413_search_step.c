@@ -85,6 +85,19 @@ static void f413_search_step_set_context(uint8_t mode, uint8_t op_case, uint8_t 
   }
 }
 
+static void f413_search_step_set_action_context(uint8_t x,
+                                                uint8_t y,
+                                                uint8_t dir,
+                                                uint8_t next_rel)
+{
+  uint8_t packed_xy = (uint8_t)(((y & 0x0FU) << 4U) | (x & 0x0FU));
+  uint8_t packed_action = (uint8_t)(0x80U |
+                                    ((next_rel & 0x03U) << 2U) |
+                                    (dir & 0x03U));
+
+  f413_search_step_set_context(1U, 4U, packed_xy, packed_action);
+}
+
 static void f413_search_step_map_init_empty(void)
 {
   uint8_t x;
@@ -574,7 +587,10 @@ void f413_search_step_run_once(void)
                (unsigned int)wall_info,
                (unsigned int)map[mouse.y][mouse.x]);
 
-  f413_search_step_set_context(1U, 4U, 0xFEU, (uint8_t)'N');
+  f413_search_step_set_action_context((uint8_t)mouse.x,
+                                      (uint8_t)mouse.y,
+                                      (uint8_t)mouse.dir,
+                                      next_rel);
   f413_search_step_trace_start();
   f413_ctrl_start();
   f413_ctrl_reset_distance();
