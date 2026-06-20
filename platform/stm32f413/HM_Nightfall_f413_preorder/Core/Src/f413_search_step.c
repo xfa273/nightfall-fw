@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "f413_control.h"
+#include "f413_path_run.h"
 #include "f413_run_session.h"
 #include "nvm_params.h"
 #include "params.h"
@@ -33,6 +34,13 @@ typedef struct {
   uint8_t phase_count;
   f413_search_step_target_t phases[2];
 } f413_search_step_case_plan_t;
+
+typedef struct {
+  float omega_peak_deg_s;
+  float t_acc_s;
+  float t_cruise_s;
+  float t_total_s;
+} f413_search_step_smooth_turn_t;
 
 static f413_search_step_config_t g_config;
 static bool g_session_active = false;
@@ -556,6 +564,76 @@ static float f413_search_step_turn_target_deg(uint8_t rel)
   }
 }
 
+static float f413_search_step_accel_positive(const SearchRunParams_t* params)
+{
+  if ((params != NULL) && (params->acceleration_straight > 0.0f))
+  {
+    return params->acceleration_straight;
+  }
+  return 1000.0f;
+}
+
+static float f413_search_step_speed_after_accel(float speed_mm_s,
+                                                float accel_mm_s2,
+                                                float distance_mm)
+{
+  if ((accel_mm_s2 <= 0.0f) || (distance_mm <= 0.0f))
+  {
+    return speed_mm_s;
+  }
+  return sqrtf(fmaxf(0.0f,
+                     (speed_mm_s * speed_mm_s) +
+                         (2.0f * accel_mm_s2 * distance_mm)));
+}
+
+static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn(float angle_deg,
+                                                                         float alpha_deg_s2)
+{
+  f413_search_step_smooth_turn_t profile = {0.0f, 0.0f, 0.0f, 0.0f};
+  const float angle_abs = fabsf(angle_deg);
+  float rounding_scale = TURN_OMEGA_PROFILE_ROUNDING_SCALE;
+
+  if ((angle_abs <= 0.0f) || (alpha_deg_s2 <= 0.0f))
+  {
+    return profile;
+  }
+  if (rounding_scale < 0.1f)
+  {
+    rounding_scale = 0.1f;
+  }
+
+  profile.omega_peak_deg_s = sqrtf((2.0f * alpha_deg_s2 * angle_abs) / 3.0f);
+  if ((NIGHTFALL_F413_PATH_OMEGA_CAP > 0.0f) &&
+      (profile.omega_peak_deg_s > NIGHTFALL_F413_PATH_OMEGA_CAP))
+  {
+    profile.omega_peak_deg_s = NIGHTFALL_F413_PATH_OMEGA_CAP;
+  }
+  if (profile.omega_peak_deg_s <= 0.0f)
+  {
+    return profile;
+  }
+
+  profile.t_acc_s = (profile.omega_peak_deg_s / alpha_deg_s2) * rounding_scale;
+  profile.t_cruise_s = (angle_abs / profile.omega_peak_deg_s) - profile.t_acc_s;
+  if (profile.t_cruise_s < 0.0f)
+  {
+    profile.t_cruise_s = 0.0f;
+    profile.omega_peak_deg_s = angle_abs / profile.t_acc_s;
+    if ((NIGHTFALL_F413_PATH_OMEGA_CAP > 0.0f) &&
+        (profile.omega_peak_deg_s > NIGHTFALL_F413_PATH_OMEGA_CAP))
+    {
+      profile.omega_peak_deg_s = NIGHTFALL_F413_PATH_OMEGA_CAP;
+    }
+    profile.t_cruise_s = (angle_abs / profile.omega_peak_deg_s) - profile.t_acc_s;
+    if (profile.t_cruise_s < 0.0f)
+    {
+      profile.t_cruise_s = 0.0f;
+    }
+  }
+  profile.t_total_s = (2.0f * profile.t_acc_s) + profile.t_cruise_s;
+  return profile;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float target,
                                                                          bool is_angle,
                                                                          f413_run_session_guard_t* guard,
@@ -605,46 +683,267 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
   return F413_RUN_SESSION_ABORT_NONE;
 }
 
-static f413_run_session_abort_reason_t f413_search_step_run_motion(uint8_t next_rel,
-                                                                   float velocity_mm_s,
-                                                                   f413_run_session_guard_t* guard)
+static f413_run_session_abort_reason_t f413_search_step_drive_segment(float distance_mm,
+                                                                      float target_velocity_mm_s,
+                                                                      float* speed_now_mm_s,
+                                                                      f413_run_session_guard_t* guard,
+                                                                      uint16_t trace_flags)
+{
+  float target_distance;
+  f413_run_session_abort_reason_t reason;
+
+  if (speed_now_mm_s == NULL)
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  if (distance_mm <= 0.0f)
+  {
+    *speed_now_mm_s = target_velocity_mm_s;
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  target_distance = f413_ctrl_get_distance() + distance_mm;
+  f413_ctrl_reset_angle();
+  f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(0.0f);
+
+  reason = f413_search_step_wait_ctrl_target(target_distance, false, guard, trace_flags);
+  *speed_now_mm_s = target_velocity_mm_s;
+  return reason;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_drive_accel_distance(
+    float distance_mm,
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags)
+{
+  const float speed_out =
+      f413_search_step_speed_after_accel((speed_now_mm_s != NULL) ? *speed_now_mm_s : 0.0f,
+                                         f413_search_step_accel_positive(params),
+                                         distance_mm);
+  return f413_search_step_drive_segment(distance_mm, speed_out, speed_now_mm_s,
+                                        guard, trace_flags);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_read_and_write_current_wall(
+    bool force_start_front_open)
+{
+  f413_wall_sensor_snapshot_t wall;
+
+  if (!f413_search_step_read_wall(&wall))
+  {
+    trace_printf("[SEARCH-RUN] FAIL(read wall snapshot)\r\n");
+    return F413_RUN_SESSION_ABORT_WALL_FAULT;
+  }
+  wall_info = f413_search_step_wall_info_from_snapshot(&wall);
+  if (force_start_front_open)
+  {
+    wall_info &= (uint16_t)~0x88U;
+  }
+  f413_search_step_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y,
+                                  (uint8_t)mouse.dir, wall_info);
+  visited[mouse.y][mouse.x] = true;
+  return F413_RUN_SESSION_ABORT_NONE;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_entry_section(
+    uint8_t op_case,
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
 {
   f413_run_session_abort_reason_t reason;
-  const bool is_turn = (next_rel != 0U);
-  const float turn_target_deg = f413_search_step_turn_target_deg(next_rel);
+  const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                         g_config.trace_motor_fwd_flag);
 
-  f413_ctrl_reset_distance();
+  f413_search_step_set_action_context(op_case,
+                                      (uint8_t)mouse.x,
+                                      (uint8_t)mouse.y,
+                                      (uint8_t)mouse.dir,
+                                      0U);
+
+  reason = f413_search_step_drive_accel_distance((float)DIST_FIRST_SEC, params,
+                                                 speed_now_mm_s, guard,
+                                                 trace_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+  reason = f413_search_step_drive_accel_distance((float)DIST_HALF_SEC, params,
+                                                 speed_now_mm_s, guard,
+                                                 trace_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  f413_search_step_advance_position();
+  return f413_search_step_read_and_write_current_wall(false);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
+{
+  (void)params;
+  return f413_search_step_drive_segment((float)(DIST_HALF_SEC * 2),
+                                        (speed_now_mm_s != NULL) ? *speed_now_mm_s : 0.0f,
+                                        speed_now_mm_s,
+                                        guard,
+                                        (uint16_t)(g_config.trace_search_safe_flag |
+                                                   g_config.trace_motor_fwd_flag));
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
+    uint8_t next_rel,
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
+{
+  const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                         g_config.trace_motor_fwd_flag);
+  f413_search_step_smooth_turn_t profile;
+  f413_run_session_abort_reason_t reason;
+  uint32_t start_ms;
+  float signed_angle;
+  float entry_speed;
+  int8_t turn_sign;
+
+  if ((params == NULL) || (speed_now_mm_s == NULL))
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+
+  signed_angle = (next_rel == 1U) ? -fabsf(params->angle_turn_90)
+                                  : fabsf(params->angle_turn_90);
+  if (fabsf(signed_angle) <= 0.0f)
+  {
+    signed_angle = (next_rel == 1U) ? -90.0f : 90.0f;
+  }
+  profile = f413_search_step_build_smooth_turn(signed_angle, params->alpha_turn90);
+  if (profile.t_total_s <= 0.0f)
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+
+  entry_speed = *speed_now_mm_s;
+  reason = f413_search_step_drive_segment(params->dist_offset_in,
+                                          params->velocity_turn90,
+                                          speed_now_mm_s,
+                                          guard,
+                                          trace_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  turn_sign = (signed_angle < 0.0f) ? -1 : 1;
   f413_ctrl_reset_angle();
-
-  if (is_turn)
-  {
-    f413_ctrl_set_velocity(0.0f);
-    f413_ctrl_set_omega(0.0f);
-    f413_ctrl_set_angle_target(turn_target_deg);
-    reason = f413_search_step_wait_ctrl_target(turn_target_deg, true, guard,
-        (uint16_t)(g_config.trace_search_safe_flag |
-                   g_config.trace_motor_rev_flag));
-  }
-  else
-  {
-    f413_ctrl_set_velocity(velocity_mm_s);
-    f413_ctrl_set_omega(0.0f);
-    f413_ctrl_set_angle_target(0.0f);
-    reason = f413_search_step_wait_ctrl_target(g_config.step_target_mm, false, guard,
-        (uint16_t)(g_config.trace_search_safe_flag |
-                   g_config.trace_motor_fwd_flag));
-  }
-
   f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(params->velocity_turn90);
+  f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
+                                profile.t_acc_s,
+                                profile.t_cruise_s);
+  start_ms = f413_search_step_tick();
+  while (1)
+  {
+    const float t_s = (float)(f413_search_step_tick() - start_ms) * 0.001f;
+    if (t_s >= profile.t_total_s)
+    {
+      break;
+    }
+    f413_search_step_set_mode_flags(trace_flags);
+    f413_ctrl_set_velocity(params->velocity_turn90);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      f413_ctrl_stop_omega_profile();
+      return reason;
+    }
+  }
+  f413_ctrl_stop_omega_profile();
+  *speed_now_mm_s = params->velocity_turn90;
+
+  return f413_search_step_drive_segment(params->dist_offset_out,
+                                        entry_speed,
+                                        speed_now_mm_s,
+                                        guard,
+                                        trace_flags);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
+{
+  f413_run_session_abort_reason_t reason;
+  const uint16_t fwd_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                       g_config.trace_motor_fwd_flag);
+
+  reason = f413_search_step_drive_segment((float)DIST_HALF_SEC, 0.0f,
+                                          speed_now_mm_s, guard, fwd_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  f413_ctrl_reset_angle();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
-  if (reason == F413_RUN_SESSION_ABORT_NONE)
+  f413_ctrl_set_angle_target(2.0f * g_config.step_turn_deg);
+  reason = f413_search_step_wait_ctrl_target(2.0f * g_config.step_turn_deg,
+                                             true,
+                                             guard,
+                                             (uint16_t)(g_config.trace_search_safe_flag |
+                                                        g_config.trace_motor_rev_flag));
+  f413_ctrl_clear_angle_target();
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
   {
-    f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
-                                               g_config.trace_motor_coast_flag));
-    reason = f413_run_session_wait_with_auto_step_guarded(g_config.path_coast_ms, guard);
+    return reason;
   }
-  return reason;
+
+  return f413_search_step_drive_accel_distance((float)DIST_HALF_SEC, params,
+                                               speed_now_mm_s, guard,
+                                               fwd_flags);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_search_motion(
+    uint8_t next_rel,
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
+{
+  switch (next_rel)
+  {
+    case 0U:
+      return f413_search_step_run_forward_section(params, speed_now_mm_s, guard);
+    case 1U:
+    case 3U:
+      return f413_search_step_run_smooth_turn(next_rel, params, speed_now_mm_s, guard);
+    case 2U:
+      return f413_search_step_run_back_turn(params, speed_now_mm_s, guard);
+    default:
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+}
+
+static f413_run_session_abort_reason_t f413_search_step_run_final_stop(
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard)
+{
+  if ((speed_now_mm_s == NULL) || (fabsf(*speed_now_mm_s) <= 1.0f))
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+  return f413_search_step_drive_segment((float)DIST_HALF_SEC, 0.0f,
+                                        speed_now_mm_s,
+                                        guard,
+                                        (uint16_t)(g_config.trace_search_safe_flag |
+                                                   g_config.trace_motor_fwd_flag));
 }
 
 void f413_search_step_config(const f413_search_step_config_t* config)
@@ -666,10 +965,10 @@ void f413_search_step_session_reset(void)
 void f413_search_step_run_search_case_once(uint8_t op_case)
 {
   f413_search_step_case_plan_t plan;
-  f413_wall_sensor_snapshot_t wall;
   f413_run_session_abort_reason_t abort_reason = F413_RUN_SESSION_ABORT_NONE;
   f413_run_session_guard_t guard = {0};
   const SearchRunParams_t* params;
+  float speed_now_mm_s = 0.0f;
   uint16_t action_count = 0U;
   uint8_t phase_index;
   bool completed = false;
@@ -720,6 +1019,20 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
   f413_search_step_set_context(1U, op_case, 0xFFU, (uint8_t)'S');
   f413_search_step_trace_start();
   f413_ctrl_start();
+  f413_ctrl_reset_distance();
+  f413_ctrl_reset_angle();
+
+  abort_reason = f413_search_step_read_and_write_current_wall(true);
+  if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    abort_reason = f413_search_step_run_entry_section(op_case, params,
+                                                      &speed_now_mm_s,
+                                                      &guard);
+    if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
+    {
+      action_count++;
+    }
+  }
 
   for (phase_index = 0U; phase_index < plan.phase_count; phase_index++)
   {
@@ -733,7 +1046,7 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
                  (unsigned int)mouse.y,
                  (unsigned int)mouse.dir);
 
-    while (!phase_done)
+    while ((abort_reason == F413_RUN_SESSION_ABORT_NONE) && !phase_done)
     {
       uint8_t next_rel = 0U;
       int step;
@@ -750,17 +1063,6 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
         abort_reason = F413_RUN_SESSION_ABORT_SWITCH;
         break;
       }
-      if (!f413_search_step_read_wall(&wall))
-      {
-        trace_printf("[SEARCH-RUN] FAIL(read wall snapshot)\r\n");
-        route_failed = true;
-        break;
-      }
-
-      wall_info = f413_search_step_wall_info_from_snapshot(&wall);
-      f413_search_step_write_map_cell((uint8_t)mouse.x, (uint8_t)mouse.y,
-                                      (uint8_t)mouse.dir, wall_info);
-      visited[mouse.y][mouse.x] = true;
 
       if (f413_search_step_target_reached(target))
       {
@@ -821,9 +1123,10 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
                    (unsigned int)wall_info,
                    (unsigned int)map[mouse.y][mouse.x]);
 
-      abort_reason = f413_search_step_run_motion(next_rel,
-                                                 params->velocity_turn90,
-                                                 &guard);
+      abort_reason = f413_search_step_run_search_motion(next_rel,
+                                                        params,
+                                                        &speed_now_mm_s,
+                                                        &guard);
       if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
       {
         break;
@@ -837,6 +1140,11 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
       {
         mouse.dir = (uint8_t)((mouse.dir + next_rel) & 0x03U);
       }
+      abort_reason = f413_search_step_read_and_write_current_wall(false);
+      if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+      {
+        break;
+      }
       action_count++;
     }
 
@@ -847,6 +1155,11 @@ void f413_search_step_run_search_case_once(uint8_t op_case)
   }
 
   completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE) && !route_failed;
+  if (completed)
+  {
+    abort_reason = f413_search_step_run_final_stop(&speed_now_mm_s, &guard);
+    completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE);
+  }
 
   f413_ctrl_clear_angle_target();
   f413_ctrl_set_velocity(0.0f);
