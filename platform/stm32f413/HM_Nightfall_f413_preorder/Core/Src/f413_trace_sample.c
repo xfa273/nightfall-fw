@@ -10,6 +10,7 @@
 #include "f413_trace_flags.h"
 #include "f413_trace_log.h"
 #include "f413_wall_runtime.h"
+#include "params.h"
 #include "trace.h"
 
 static f413_trace_sample_config_t g_config;
@@ -212,6 +213,24 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());
   trace_printf("#velocity_accel_comp_control=%u\r\n",
                f413_ctrl_velocity_accel_comp_control_enabled() ? 1U : 0U);
+  trace_printf("#omega_ff_lead_time_s=%.6f\r\n", (double)FF_OMEGA_LEAD_TIME_S);
+  trace_printf("#omega_ff_lead_max_dps=%.3f\r\n", (double)FF_OMEGA_LEAD_MAX_DPS);
+  trace_printf("#omega_ff_pwm_fan_on=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_ON);
+  trace_printf("#omega_ff_accel_pwm_fan_on=%.9f\r\n", (double)FF_OMEGA_ACCEL_PWM_FAN_ON);
+  trace_printf("#omega_ff_pwm_fan_off=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_OFF);
+  trace_printf("#omega_ff_accel_pwm_fan_off=%.9f\r\n", (double)FF_OMEGA_ACCEL_PWM_FAN_OFF);
+  trace_printf("#translation_ff_static_pwm_fan_on=%.6f\r\n",
+               (double)FF_TRANSLATION_STATIC_PWM_FAN_ON);
+  trace_printf("#translation_ff_velocity_pwm_fan_on=%.9f\r\n",
+               (double)FF_TRANSLATION_VELOCITY_PWM_FAN_ON);
+  trace_printf("#translation_ff_accel_pwm_fan_on=%.9f\r\n",
+               (double)FF_TRANSLATION_ACCEL_PWM_FAN_ON);
+  trace_printf("#translation_ff_static_pwm_fan_off=%.6f\r\n",
+               (double)FF_TRANSLATION_STATIC_PWM_FAN_OFF);
+  trace_printf("#translation_ff_velocity_pwm_fan_off=%.9f\r\n",
+               (double)FF_TRANSLATION_VELOCITY_PWM_FAN_OFF);
+  trace_printf("#translation_ff_accel_pwm_fan_off=%.9f\r\n",
+               (double)FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");

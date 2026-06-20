@@ -143,7 +143,8 @@ typedef f413_wall_sensor_snapshot_t nightfall_wall_sensor_snapshot_t;
 static void nightfall_run_search_safe_trace_session_once(void);
 static void nightfall_run_shortest_safe_trace_session_once(void);
 static void nightfall_run_search_trace_entry_once(void);
-static void nightfall_run_shortest_trace_entry_once(void);
+static void nightfall_run_shortest_trace_entry_once(uint8_t mode, uint8_t op_case);
+static void nightfall_run_shortest_trace_entry_default_once(void);
 static bool nightfall_run_stop_switch_pressed(void);
 static int16_t nightfall_run_session_encoder_l_count(void);
 static int16_t nightfall_run_session_encoder_r_count(void);
@@ -196,16 +197,17 @@ static void nightfall_run_search_trace_entry_once(void)
 #endif
 }
 
-static void nightfall_run_shortest_trace_entry_once(void)
+static void nightfall_run_shortest_trace_entry_once(uint8_t mode, uint8_t op_case)
 {
 #if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
-  if (solver_build_path(NIGHTFALL_F413_SOLVER_MODE, NIGHTFALL_F413_SOLVER_CASE))
+  if (solver_build_path(mode, op_case))
   {
     trace_printf("[RUN-TEST] shortest-entry solver-path ready mode=%u case=%u\r\n",
-                 (unsigned int)NIGHTFALL_F413_SOLVER_MODE,
-                 (unsigned int)NIGHTFALL_F413_SOLVER_CASE);
+                 (unsigned int)mode,
+                 (unsigned int)op_case);
     f413_path_run_print_preview();
-    f413_path_run_solver_session_once(NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG);
+    f413_path_run_session_once(mode, op_case, NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG,
+                               "shortest");
   }
   else
   {
@@ -215,6 +217,12 @@ static void nightfall_run_shortest_trace_entry_once(void)
 #else
   nightfall_run_shortest_safe_trace_session_once();
 #endif
+}
+
+static void nightfall_run_shortest_trace_entry_default_once(void)
+{
+  nightfall_run_shortest_trace_entry_once(NIGHTFALL_F413_SOLVER_MODE,
+                                          NIGHTFALL_F413_SOLVER_CASE);
 }
 
 static void nightfall_identity_enter_safe_mode(void)
@@ -473,10 +481,8 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
   uint16_t codes[4] = {0U, 0U, 0U, 0U};
   uint16_t code_count = 0U;
   uint8_t case_index = 1U;
-  float straight_velocity = f413_path_run_test_velocity_for_mode(mode, (sub == 9U));
-  float diagonal_velocity = straight_velocity * NIGHTFALL_F413_OP_TEST_DIAG_SCALE;
   const char* label = nightfall_op_sub_name(mode, sub);
-  uint16_t lead = (mode >= 6U) ? 204U : 203U;
+  uint16_t lead = 203U;
 
   if (sub <= 2U)
   {
@@ -498,56 +504,169 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
   switch (sub)
   {
     case 0U:
+      if ((mode == 5U) || (mode == 6U) || (mode == 7U))
+      {
+        lead = 205U;
+      }
       codes[0] = lead;
       codes[1] = 300U;
       code_count = 2U;
       break;
     case 1U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 501U;
-      code_count = 2U;
+      if (mode == 7U)
+      {
+        codes[1] = 701U;
+        codes[2] = 1001U;
+        code_count = 3U;
+      }
+      else
+      {
+        codes[1] = 501U;
+        code_count = 2U;
+      }
       break;
     case 2U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 502U;
-      code_count = 2U;
+      if (mode == 7U)
+      {
+        codes[1] = 1001U;
+        codes[2] = 704U;
+        codes[3] = 1001U;
+        code_count = 4U;
+      }
+      else
+      {
+        codes[1] = 502U;
+        code_count = 2U;
+      }
       break;
     case 3U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 701U;
-      codes[2] = 1001U;
-      code_count = 3U;
+      if (mode == 7U)
+      {
+        codes[1] = 1001U;
+        codes[2] = 802U;
+        codes[3] = 1001U;
+        code_count = 4U;
+      }
+      else
+      {
+        codes[1] = ((mode == 2U) || (mode == 6U)) ? 701U : 901U;
+        codes[2] = 1001U;
+        code_count = 3U;
+      }
       break;
     case 4U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 1001U;
-      codes[2] = 704U;
-      codes[3] = 1001U;
-      code_count = 4U;
+      if (mode == 7U)
+      {
+        codes[1] = 901U;
+        codes[2] = 1001U;
+        code_count = 3U;
+      }
+      else
+      {
+        codes[1] = 1001U;
+        codes[2] = 904U;
+        codes[3] = 1001U;
+        if ((mode == 2U) || (mode == 6U))
+        {
+          codes[2] = 704U;
+        }
+        code_count = 4U;
+      }
       break;
     case 5U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
       codes[1] = 1001U;
-      codes[2] = 802U;
-      codes[3] = 1001U;
-      code_count = 4U;
+      if (mode == 7U)
+      {
+        codes[2] = 904U;
+        codes[3] = 1001U;
+        code_count = 4U;
+      }
+      else
+      {
+        codes[2] = ((mode == 3U) || (mode == 5U)) ? 702U :
+                   ((mode == 4U) ? 701U : 802U);
+        codes[3] = 1001U;
+        code_count = 4U;
+      }
       break;
     case 6U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 901U;
-      codes[2] = 1001U;
-      code_count = 3U;
+      if (mode == 7U)
+      {
+        codes[1] = 501U;
+        codes[2] = 201U;
+        code_count = 3U;
+      }
+      else
+      {
+        codes[1] = ((mode == 3U) || (mode == 4U) || (mode == 5U)) ? 903U : 901U;
+        codes[2] = 1001U;
+        code_count = 3U;
+      }
       break;
     case 7U:
+      if ((mode >= 4U) && (mode <= 7U))
+      {
+        lead = 204U;
+      }
       codes[0] = lead;
-      codes[1] = 1001U;
-      codes[2] = 904U;
-      codes[3] = 1001U;
-      code_count = 4U;
+      if (mode == 7U)
+      {
+        codes[1] = 502U;
+        codes[2] = 201U;
+        code_count = 3U;
+      }
+      else
+      {
+        codes[1] = 1001U;
+        codes[2] = 904U;
+        codes[3] = 1001U;
+        code_count = 4U;
+      }
       break;
     case 8U:
     case 9U:
-      codes[0] = 206U;
+      if ((mode == 2U) || (mode == 4U))
+      {
+        codes[0] = 209U;
+      }
+      else if (mode == 3U)
+      {
+        codes[0] = 205U;
+      }
+      else
+      {
+        codes[0] = 203U;
+      }
       code_count = 1U;
       break;
     default:
@@ -556,8 +675,12 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 
   f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
   HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-  f413_path_run_code_sequence_once(label, mode, case_index, codes, code_count,
-                                   straight_velocity, diagonal_velocity);
+  f413_path_run_custom_path_session_once(label,
+                                         mode,
+                                         case_index,
+                                         codes,
+                                         code_count,
+                                         NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG);
 #else
   trace_printf("[OP-UI] no-op: F413 path-code test runner is disabled in this build\r\n");
 #endif
@@ -575,7 +698,7 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      nightfall_run_shortest_trace_entry_once();
+      nightfall_run_shortest_trace_entry_once(mode, op_case);
       break;
     case F413_OP_UI_ACTION_TEST_RUN_1:
       nightfall_op_run_test_after_delay('1');
@@ -985,7 +1108,7 @@ int main(void)
       nightfall_run_idle_trace_session_once,
       nightfall_run_motor_trace_session_once,
       nightfall_run_search_trace_entry_once,
-      nightfall_run_shortest_trace_entry_once
+      nightfall_run_shortest_trace_entry_default_once
     };
     f413_uart_cli_config(&uart_cli_config);
   }

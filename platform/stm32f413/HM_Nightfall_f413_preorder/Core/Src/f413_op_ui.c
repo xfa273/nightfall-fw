@@ -97,13 +97,19 @@ static void f413_op_ui_execute_case(uint8_t mode, uint8_t op_case)
       }
       break;
     case 2U:
-      if (op_case == 1U)
+    case 3U:
+    case 4U:
+    case 5U:
+    case 6U:
+    case 7U:
+      if ((op_case >= 1U) && (op_case <= 9U))
       {
         f413_op_ui_execute_action(F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY, mode, op_case, 0xFFU);
       }
       else
       {
-        trace_printf("[OP-UI] no-op: F413 shortest runner is currently wired to mode2 case1 only\r\n");
+        trace_printf("[OP-UI] no-op: shortest case%u is not assigned\r\n",
+                     (unsigned int)op_case);
       }
       break;
     case 8U:
