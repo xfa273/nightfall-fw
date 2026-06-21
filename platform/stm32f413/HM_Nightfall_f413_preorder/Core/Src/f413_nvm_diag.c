@@ -105,7 +105,7 @@ void f413_nvm_diag_run_sensor_params_status_once(void)
                (unsigned int)params.wall_offset_fr,
                (unsigned int)params.wall_offset_fl,
                (double)params.imu_offset_z);
-  trace_printf("[SENSOR-PARAM] save is intentionally not performed by OP mode9 case9\r\n");
+  trace_printf("[SENSOR-PARAM] OP mode9 case8 saves side baselines; case9 saves sensor offsets\r\n");
 }
 
 void f413_nvm_diag_run_nvm_status_once(void)

@@ -16,6 +16,44 @@ void f413_hw_set_all_leds(GPIO_PinState state)
   HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, state);
 }
 
+void f413_hw_show_led_mask(uint8_t mask)
+{
+  HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin,
+                    ((mask & F413_HW_LED_1_MASK) != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin,
+                    ((mask & F413_HW_LED_2_MASK) != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin,
+                    ((mask & F413_HW_LED_3_MASK) != 0U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void f413_hw_show_led_blink(uint8_t mask, uint32_t now_ms, uint32_t toggle_ms)
+{
+  uint8_t blink_mask = mask;
+
+  if (toggle_ms == 0U)
+  {
+    toggle_ms = F413_HW_LED_BLINK_TOGGLE_MS;
+  }
+  if (((now_ms / toggle_ms) & 0x01U) == 0U)
+  {
+    blink_mask = 0U;
+  }
+
+  f413_hw_show_led_mask(blink_mask);
+}
+
+void f413_hw_delay_with_led_blink(uint8_t mask, uint32_t duration_ms, uint32_t toggle_ms)
+{
+  uint32_t deadline = HAL_GetTick() + duration_ms;
+
+  while ((int32_t)(HAL_GetTick() - deadline) < 0)
+  {
+    f413_hw_show_led_blink(mask, HAL_GetTick(), toggle_ms);
+    HAL_Delay(10U);
+  }
+  f413_hw_show_led_mask(0U);
+}
+
 void f413_hw_show_mode_leds(uint8_t mode)
 {
   HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, (mode & 0x01U) ? GPIO_PIN_SET : GPIO_PIN_RESET);

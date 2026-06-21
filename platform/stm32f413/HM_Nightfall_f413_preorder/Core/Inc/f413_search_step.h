@@ -4,7 +4,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "f413_run_features.h"
 #include "f413_wall_sensor.h"
+
+#define F413_SEARCH_STEP_TARGET_GOAL  (0U)
+#define F413_SEARCH_STEP_TARGET_FULL  (1U)
+#define F413_SEARCH_STEP_TARGET_START (2U)
+
+#define F413_SEARCH_STEP_CASE0_TEST_NONE       (0U)
+#define F413_SEARCH_STEP_CASE0_TEST_TURN_R90   (1U)
+#define F413_SEARCH_STEP_CASE0_TEST_STRAIGHT_3 (2U)
 
 typedef bool (*f413_search_step_bool_fn)(void);
 typedef void (*f413_search_step_void_fn)(void);
@@ -38,8 +47,28 @@ typedef struct {
   uint16_t trace_motor_rev_flag;
 } f413_search_step_config_t;
 
+typedef struct {
+  uint8_t param_index;
+  uint8_t phase_count;
+  uint8_t phases[2];
+  const char* label;
+  f413_run_features_t features;
+} f413_search_step_case_config_t;
+
+typedef struct {
+  uint8_t param_index;
+  uint8_t test_kind;
+  const char* label;
+  f413_run_features_t features;
+} f413_search_step_case0_test_config_t;
+
 void f413_search_step_config(const f413_search_step_config_t* config);
 void f413_search_step_session_reset(void);
+void f413_search_step_run_config_once(uint8_t op_case,
+                                      const f413_search_step_case_config_t* case_config);
+void f413_search_step_run_case0_test_once(
+    uint8_t sub,
+    const f413_search_step_case0_test_config_t* test_config);
 void f413_search_step_run_search_case_once(uint8_t op_case);
 void f413_search_step_run_decision_preview_once(void);
 void f413_search_step_run_once(void);

@@ -57,11 +57,24 @@ static void f413_op_ui_set_selected_value(uint8_t value)
   }
 }
 
+static void f413_op_ui_show_current_leds(uint32_t now_ms)
+{
+  if (s_level == F413_OP_UI_LEVEL_TOP)
+  {
+    f413_hw_show_mode_leds(s_mode);
+    return;
+  }
+
+  f413_hw_show_led_blink(F413_HW_LED_REAR_LEFT_MASK,
+                         now_ms,
+                         F413_HW_LED_BLINK_TOGGLE_MS);
+}
+
 static void f413_op_ui_after_execute(void)
 {
   s_enter_streak = 0U;
   s_button_lock_until_ms = HAL_GetTick() + F413_OP_UI_BUTTON_LOCK_MS;
-  f413_hw_show_mode_leds(f413_op_ui_selected_value());
+  f413_op_ui_show_current_leds(HAL_GetTick());
 }
 
 static void f413_op_ui_execute_action(f413_op_ui_action_t action,
@@ -166,11 +179,11 @@ static void f413_op_ui_execute_case(uint8_t mode, uint8_t op_case)
       }
       else if (op_case == 8U)
       {
-        f413_op_ui_execute_action(F413_OP_UI_ACTION_IDENTITY_STATUS, mode, op_case, 0xFFU);
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SENSOR_SIDE_BASE_SAVE, mode, op_case, 0xFFU);
       }
       else if (op_case == 9U)
       {
-        f413_op_ui_execute_action(F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS, mode, op_case, 0xFFU);
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_SENSOR_OFFSET_SAVE, mode, op_case, 0xFFU);
       }
       else
       {
@@ -204,15 +217,7 @@ static void f413_op_ui_execute_sub(uint8_t mode, uint8_t sub)
   }
   else if (mode == 1U)
   {
-    if (sub == 3U)
-    {
-      f413_op_ui_execute_action(F413_OP_UI_ACTION_TEST_RUN_1, mode, 0U, sub);
-    }
-    else
-    {
-      trace_printf("[OP-UI] no-op: F405 mode1 case0 sub%u is not fully ported on F413 yet\r\n",
-                   (unsigned int)sub);
-    }
+    f413_op_ui_execute_action(F413_OP_UI_ACTION_SEARCH_CASE0_SUB, mode, 0U, sub);
   }
   else
   {
@@ -318,8 +323,8 @@ const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
       case 5U: return "dump latest full log bin";
       case 6U: return "wall threshold check";
       case 7U: return "NVM check";
-      case 8U: return "identity check";
-      case 9U: return "sensor parameter save";
+      case 8U: return "side wall baseline save";
+      case 9U: return "sensor offset save";
       default: return "unknown";
     }
   }
@@ -451,7 +456,7 @@ void f413_op_ui_increment_selection(void)
   f413_op_ui_set_selected_value(selected);
   s_button_lock_until_ms = HAL_GetTick() + F413_OP_UI_BUTTON_LOCK_MS;
   s_enter_streak = 0U;
-  f413_hw_show_mode_leds(selected);
+  f413_op_ui_show_current_leds(HAL_GetTick());
   f413_op_ui_beep_mode(selected);
   f413_op_ui_print_current_selection();
 }
@@ -521,6 +526,8 @@ void f413_op_ui_step(uint32_t now_ms)
   {
     return;
   }
+
+  f413_op_ui_show_current_leds(now_ms);
 
   button_pressed = f413_op_ui_stop_switch_pressed();
   if (button_pressed)

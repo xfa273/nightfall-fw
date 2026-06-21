@@ -13,6 +13,8 @@ typedef void (*f413_trace_log_fill_control_sample_fn)(nvm_trace_log_record_t* ou
                                                      uint16_t mode_flags);
 typedef void (*f413_trace_log_void_callback_t)(void);
 
+#define F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT (500U)
+
 void f413_trace_log_config(f413_trace_log_fill_control_sample_fn fill_control_sample,
                            f413_trace_log_void_callback_t update_observe_cache,
                            f413_trace_log_void_callback_t reset_observe_state);
@@ -22,6 +24,7 @@ void f413_trace_log_set_mode_flags(uint16_t mode_flags);
 void f413_trace_log_auto_abort(void);
 void f413_trace_log_auto_start(void);
 void f413_trace_log_auto_stop(void);
+void f413_trace_log_auto_stop_after_tail(uint32_t tail_ms);
 void f413_trace_log_auto_step(void);
 void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms);
 

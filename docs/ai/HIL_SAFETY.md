@@ -46,8 +46,6 @@ UART commands that are normally non-motor:
 - `v`: bounded trace CSV dump
 - `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status
-- OP UI `mode9 case8`: identity display
-- OP UI `mode9 case9`: sensor params display only
 
 Use the current baud from CMake unless a preset overrides it. At the time of this file, `Debug-stm32f413` uses USART1 at `921600 8N1`.
 
@@ -88,6 +86,8 @@ Examples:
 - UART `O`, `G`, `N`, `B`, `]` if they save or reset maze/search state
 - `nvm_params_distance_save`
 - `nvm_params_sensor_save`
+- OP UI `mode9 case8`: side wall baseline sampling and sensor parameter save
+- OP UI `mode9 case9`: wall sensor offset sampling and sensor parameter save
 - `nvm_maze_save_map`
 - `nvm_trace_log_format`
 

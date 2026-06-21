@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "f413_hw.h"
 #include "main.h"
 #include "nvm_params.h"
 #include "params.h"
@@ -34,6 +35,9 @@ static volatile uint16_t g_wall_offset_r = 0U;
 static volatile uint16_t g_wall_offset_l = 0U;
 static volatile uint16_t g_wall_offset_fr = 0U;
 static volatile uint16_t g_wall_offset_fl = 0U;
+static volatile uint16_t g_wall_base_l = WALL_CTRL_BASE_L;
+static volatile uint16_t g_wall_base_r = WALL_CTRL_BASE_R;
+static volatile uint16_t g_wall_base_f = 0U;
 
 static uint16_t f413_wall_sensor_subtract_u16(uint16_t on, uint16_t off, uint16_t offset)
 {
@@ -91,6 +95,75 @@ static void f413_wall_sensor_load_params(void)
   g_wall_offset_l = params.wall_offset_l;
   g_wall_offset_fr = params.wall_offset_fr;
   g_wall_offset_fl = params.wall_offset_fl;
+  g_wall_base_l = (params.base_l != 0U) ? params.base_l : WALL_CTRL_BASE_L;
+  g_wall_base_r = (params.base_r != 0U) ? params.base_r : WALL_CTRL_BASE_R;
+  g_wall_base_f = params.base_f;
+}
+
+static void f413_wall_sensor_apply_saved_params(const nvm_sensor_params_t* params)
+{
+  if (params == NULL)
+  {
+    return;
+  }
+
+  g_wall_offset_r = params->wall_offset_r;
+  g_wall_offset_l = params->wall_offset_l;
+  g_wall_offset_fr = params->wall_offset_fr;
+  g_wall_offset_fl = params->wall_offset_fl;
+  g_wall_base_l = (params->base_l != 0U) ? params->base_l : WALL_CTRL_BASE_L;
+  g_wall_base_r = (params->base_r != 0U) ? params->base_r : WALL_CTRL_BASE_R;
+  g_wall_base_f = params->base_f;
+}
+
+static void f413_wall_sensor_load_edit_params(nvm_sensor_params_t* params)
+{
+  if (params == NULL)
+  {
+    return;
+  }
+
+  if (!nvm_params_sensor_load(params) ||
+      f413_sensor_params_is_nvm_test_blob(params))
+  {
+    nvm_params_sensor_defaults(params);
+  }
+}
+
+static bool f413_wall_sensor_wait_snapshot(f413_wall_sensor_snapshot_t* out, uint32_t timeout_ms)
+{
+  uint32_t start_ms;
+
+  if (out == NULL)
+  {
+    return false;
+  }
+
+  start_ms = HAL_GetTick();
+  do
+  {
+    if (f413_wall_sensor_read_snapshot(out))
+    {
+      return true;
+    }
+    HAL_Delay(1U);
+  } while ((HAL_GetTick() - start_ms) <= timeout_ms);
+
+  return false;
+}
+
+static uint16_t f413_wall_sensor_avg_u32(uint32_t sum, uint16_t count)
+{
+  if (count == 0U)
+  {
+    return 0U;
+  }
+  sum /= (uint32_t)count;
+  if (sum > 65535U)
+  {
+    return 65535U;
+  }
+  return (uint16_t)sum;
 }
 
 static void f413_ir_emitters_set(GPIO_PinState fr,
@@ -170,6 +243,136 @@ bool f413_wall_sensor_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint
   *l = g_wall_adc_l;
   *vbat = g_wall_adc_vbat;
   return true;
+}
+
+void f413_wall_sensor_get_control_base(uint16_t* base_l, uint16_t* base_r, uint16_t* base_f)
+{
+  if (base_l != NULL)
+  {
+    *base_l = g_wall_base_l;
+  }
+  if (base_r != NULL)
+  {
+    *base_r = g_wall_base_r;
+  }
+  if (base_f != NULL)
+  {
+    *base_f = g_wall_base_f;
+  }
+}
+
+HAL_StatusTypeDef f413_wall_sensor_calibrate_offsets_and_save(uint16_t sample_count,
+                                                              uint32_t sample_interval_ms,
+                                                              nvm_sensor_params_t* saved)
+{
+  nvm_sensor_params_t params;
+  f413_wall_sensor_snapshot_t wall;
+  uint32_t sum_r = 0U;
+  uint32_t sum_l = 0U;
+  uint32_t sum_fr = 0U;
+  uint32_t sum_fl = 0U;
+  HAL_StatusTypeDef st;
+
+  if (sample_count == 0U)
+  {
+    return HAL_ERROR;
+  }
+
+  f413_wall_sensor_load_edit_params(&params);
+
+  for (uint16_t i = 0U; i < sample_count; i++)
+  {
+    int32_t dr;
+    int32_t dl;
+    int32_t dfr;
+    int32_t dfl;
+
+    if (!f413_wall_sensor_wait_snapshot(&wall, 200U))
+    {
+      return HAL_TIMEOUT;
+    }
+
+    dr = (int32_t)wall.r_on - (int32_t)wall.r_off;
+    dl = (int32_t)wall.l_on - (int32_t)wall.l_off;
+    dfr = (int32_t)wall.fr_on - (int32_t)wall.fr_off;
+    dfl = (int32_t)wall.fl_on - (int32_t)wall.fl_off;
+
+    sum_r += (uint32_t)((dr > 0) ? dr : 0);
+    sum_l += (uint32_t)((dl > 0) ? dl : 0);
+    sum_fr += (uint32_t)((dfr > 0) ? dfr : 0);
+    sum_fl += (uint32_t)((dfl > 0) ? dfl : 0);
+    f413_hw_show_led_blink(F413_HW_LED_REAR_RIGHT_MASK,
+                           HAL_GetTick(),
+                           F413_HW_LED_BLINK_TOGGLE_MS);
+    HAL_Delay(sample_interval_ms);
+  }
+
+  params.wall_offset_r = f413_wall_sensor_avg_u32(sum_r, sample_count);
+  params.wall_offset_l = f413_wall_sensor_avg_u32(sum_l, sample_count);
+  params.wall_offset_fr = f413_wall_sensor_avg_u32(sum_fr, sample_count);
+  params.wall_offset_fl = f413_wall_sensor_avg_u32(sum_fl, sample_count);
+
+  st = nvm_params_sensor_save(&params);
+  if (st == HAL_OK)
+  {
+    f413_wall_sensor_apply_saved_params(&params);
+    if (saved != NULL)
+    {
+      *saved = params;
+    }
+  }
+  return st;
+}
+
+HAL_StatusTypeDef f413_wall_sensor_calibrate_side_base_and_save(uint16_t sample_count,
+                                                                uint32_t sample_interval_ms,
+                                                                nvm_sensor_params_t* saved)
+{
+  nvm_sensor_params_t params;
+  f413_wall_sensor_snapshot_t wall;
+  uint32_t sum_l = 0U;
+  uint32_t sum_r = 0U;
+  uint32_t sum_f = 0U;
+  HAL_StatusTypeDef st;
+
+  if (sample_count == 0U)
+  {
+    return HAL_ERROR;
+  }
+
+  f413_wall_sensor_load_edit_params(&params);
+
+  for (uint16_t i = 0U; i < sample_count; i++)
+  {
+    if (!f413_wall_sensor_wait_snapshot(&wall, 200U))
+    {
+      return HAL_TIMEOUT;
+    }
+
+    sum_l += (uint32_t)((wall.l_delta > 0) ? wall.l_delta : 0);
+    sum_r += (uint32_t)((wall.r_delta > 0) ? wall.r_delta : 0);
+    sum_f += (uint32_t)((wall.fl_delta > 0) ? wall.fl_delta : 0);
+    sum_f += (uint32_t)((wall.fr_delta > 0) ? wall.fr_delta : 0);
+    f413_hw_show_led_blink(F413_HW_LED_REAR_RIGHT_MASK,
+                           HAL_GetTick(),
+                           F413_HW_LED_BLINK_TOGGLE_MS);
+    HAL_Delay(sample_interval_ms);
+  }
+
+  params.base_l = f413_wall_sensor_avg_u32(sum_l, sample_count);
+  params.base_r = f413_wall_sensor_avg_u32(sum_r, sample_count);
+  params.base_f = f413_wall_sensor_avg_u32(sum_f, sample_count);
+
+  st = nvm_params_sensor_save(&params);
+  if (st == HAL_OK)
+  {
+    f413_wall_sensor_apply_saved_params(&params);
+    if (saved != NULL)
+    {
+      *saved = params;
+    }
+  }
+  return st;
 }
 
 void f413_wall_sensor_get_debug_state(uint16_t* off_r,

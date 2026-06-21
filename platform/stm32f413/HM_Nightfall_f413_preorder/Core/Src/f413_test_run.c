@@ -320,12 +320,11 @@ void f413_test_run_run_now(uint8_t test_id)
     return;
   }
 
+  f413_ctrl_start();
   if (g_config.trace_on_run_start != NULL)
   {
     g_config.trace_on_run_start();
   }
-
-  f413_ctrl_start();
 
   switch (test_id)
   {

@@ -1,5 +1,6 @@
 #include "f413_trace_log.h"
 
+#include "stm32f4xx_hal.h"
 #include "trace.h"
 
 #define F413_TRACE_LOG_AUTO_BUFFER_RECORDS (1536U)
@@ -234,6 +235,23 @@ void f413_trace_log_auto_stop(void)
                (unsigned long)g_trace_log_auto_flushed_records,
                (unsigned int)overflow,
                (unsigned int)nvm_error);
+}
+
+void f413_trace_log_auto_stop_after_tail(uint32_t tail_ms)
+{
+  if ((g_trace_log_auto_enabled != 0U) && (tail_ms != 0U))
+  {
+    uint32_t deadline = HAL_GetTick() + tail_ms;
+
+    while ((int32_t)(HAL_GetTick() - deadline) < 0)
+    {
+      f413_trace_log_auto_step();
+      HAL_Delay(1U);
+    }
+    f413_trace_log_auto_step();
+  }
+
+  f413_trace_log_auto_stop();
 }
 
 void f413_trace_log_auto_step(void)

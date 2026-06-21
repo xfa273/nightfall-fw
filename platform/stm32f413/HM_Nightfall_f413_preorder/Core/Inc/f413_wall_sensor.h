@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "nvm_params.h"
 #include "stm32f4xx_hal.h"
 
 typedef struct
@@ -33,6 +34,13 @@ void f413_wall_sensor_tim6_tick(void);
 void f413_wall_sensor_adc_complete(ADC_HandleTypeDef* hadc);
 bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t* out);
 bool f413_wall_sensor_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
+void f413_wall_sensor_get_control_base(uint16_t* base_l, uint16_t* base_r, uint16_t* base_f);
+HAL_StatusTypeDef f413_wall_sensor_calibrate_offsets_and_save(uint16_t sample_count,
+                                                              uint32_t sample_interval_ms,
+                                                              nvm_sensor_params_t* saved);
+HAL_StatusTypeDef f413_wall_sensor_calibrate_side_base_and_save(uint16_t sample_count,
+                                                                uint32_t sample_interval_ms,
+                                                                nvm_sensor_params_t* saved);
 void f413_wall_sensor_get_debug_state(uint16_t* off_r,
                                       uint16_t* off_l,
                                       uint16_t* off_fr,

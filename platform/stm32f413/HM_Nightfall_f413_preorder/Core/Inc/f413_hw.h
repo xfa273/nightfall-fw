@@ -6,7 +6,17 @@
 
 #include "stm32f4xx_hal.h"
 
+#define F413_HW_LED_1_MASK (0x01U)
+#define F413_HW_LED_2_MASK (0x02U)
+#define F413_HW_LED_3_MASK (0x04U)
+#define F413_HW_LED_REAR_RIGHT_MASK F413_HW_LED_2_MASK
+#define F413_HW_LED_REAR_LEFT_MASK  F413_HW_LED_3_MASK
+#define F413_HW_LED_BLINK_TOGGLE_MS (250U)
+
 void f413_hw_set_all_leds(GPIO_PinState state);
+void f413_hw_show_led_mask(uint8_t mask);
+void f413_hw_show_led_blink(uint8_t mask, uint32_t now_ms, uint32_t toggle_ms);
+void f413_hw_delay_with_led_blink(uint8_t mask, uint32_t duration_ms, uint32_t toggle_ms);
 void f413_hw_show_mode_leds(uint8_t mode);
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms);
 void f413_hw_op_beep_enter(void);

@@ -29,9 +29,18 @@
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_imu_diag.h"
+#include "f413_mode1.h"
+#include "f413_mode2.h"
+#include "f413_mode3.h"
+#include "f413_mode4.h"
+#include "f413_mode5.h"
+#include "f413_mode6.h"
+#include "f413_mode7.h"
+#include "f413_mode_shortest.h"
 #include "f413_nvm_diag.h"
 #include "f413_op_ui.h"
 #include "f413_path_run.h"
+#include "f413_run_features.h"
 #include "f413_run_session.h"
 #include "f413_search_step.h"
 #include "f413_test_run.h"
@@ -137,6 +146,7 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
 #define NIGHTFALL_F413_TUNE_TIMEOUT_MS (1500U)
+#define NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS (1500U)
 
 typedef f413_wall_sensor_snapshot_t nightfall_wall_sensor_snapshot_t;
 
@@ -175,6 +185,7 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
 static void nightfall_op_ui_step(void);
 static void nightfall_run_fan_pwm_test_once(void);
 static void nightfall_run_encoder_test_once(void);
+static void nightfall_op_busy_delay_ms(uint32_t duration_ms);
 
 static void nightfall_run_search_trace_entry_once(void)
 {
@@ -185,6 +196,7 @@ static void nightfall_run_search_trace_entry_once(void)
                  (unsigned int)NIGHTFALL_F413_SOLVER_MODE,
                  (unsigned int)NIGHTFALL_F413_SOLVER_CASE);
     f413_path_run_print_preview();
+    f413_run_features_reset();
     f413_path_run_solver_session_once(NIGHTFALL_F413_TRACE_MODE_SEARCH_SAFE_FLAG);
   }
   else
@@ -199,24 +211,16 @@ static void nightfall_run_search_trace_entry_once(void)
 
 static void nightfall_run_shortest_trace_entry_once(uint8_t mode, uint8_t op_case)
 {
-#if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
-  if (solver_build_path(mode, op_case))
+  switch (mode)
   {
-    trace_printf("[RUN-TEST] shortest-entry solver-path ready mode=%u case=%u\r\n",
-                 (unsigned int)mode,
-                 (unsigned int)op_case);
-    f413_path_run_print_preview();
-    f413_path_run_session_once(mode, op_case, NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG,
-                               "shortest");
+    case 2U: f413_mode2_run_case(op_case); break;
+    case 3U: f413_mode3_run_case(op_case); break;
+    case 4U: f413_mode4_run_case(op_case); break;
+    case 5U: f413_mode5_run_case(op_case); break;
+    case 6U: f413_mode6_run_case(op_case); break;
+    case 7U: f413_mode7_run_case(op_case); break;
+    default: f413_mode_shortest_run_case(mode, op_case); break;
   }
-  else
-  {
-    trace_printf("[RUN-TEST] shortest-entry solver-path build failed -> fallback safe\r\n");
-    nightfall_run_shortest_safe_trace_session_once();
-  }
-#else
-  nightfall_run_shortest_safe_trace_session_once();
-#endif
 }
 
 static void nightfall_run_shortest_trace_entry_default_once(void)
@@ -269,8 +273,9 @@ static void nightfall_trace_log_on_run_start(void)
 
 static void nightfall_trace_log_on_run_stop(void)
 {
-  trace_printf("[TRACE-LOG] run-hook: stop\r\n");
-  f413_trace_log_auto_stop();
+  trace_printf("[TRACE-LOG] run-hook: stop tail=%u ms\r\n",
+               (unsigned int)F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
+  f413_trace_log_auto_stop_after_tail(F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
 }
 
 static void nightfall_op_led_show_mode(uint8_t mode)
@@ -301,9 +306,19 @@ static bool nightfall_op_enter_sensor_active(void)
          (wall.fl_delta <= NIGHTFALL_F413_OP_ENTER_RELEASE_ADC);
 }
 
+static void nightfall_op_busy_delay_ms(uint32_t duration_ms)
+{
+  f413_hw_delay_with_led_blink(F413_HW_LED_REAR_RIGHT_MASK,
+                               duration_ms,
+                               F413_HW_LED_BLINK_TOGGLE_MS);
+}
+
 static void nightfall_run_wall_sensor_test_once(void)
 {
   nightfall_wall_sensor_snapshot_t wall;
+  uint16_t base_l = 0U;
+  uint16_t base_r = 0U;
+  uint16_t base_f = 0U;
   uint16_t offset_r = 0U;
   uint16_t offset_l = 0U;
   uint16_t offset_fr = 0U;
@@ -350,6 +365,13 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)ready_mask,
                (unsigned int)phase,
                (unsigned int)inflight);
+  f413_wall_sensor_get_control_base(&base_l, &base_r, &base_f);
+  trace_printf("[HW-TEST][Wall] ctrl-base: L=%u R=%u F=%u fallback L=%u R=%u\r\n",
+               (unsigned int)base_l,
+               (unsigned int)base_r,
+               (unsigned int)base_f,
+               (unsigned int)WALL_CTRL_BASE_L,
+               (unsigned int)WALL_CTRL_BASE_R);
   trace_printf("[HW-TEST][Wall] detect: front=%u right=%u left=%u sat=%u thr FR=%u FL=%u R=%u L=%u\r\n",
                (unsigned int)wall.front_wall,
                (unsigned int)wall.right_wall,
@@ -360,6 +382,66 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_R,
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
+}
+
+static void nightfall_run_sensor_side_base_save_once(void)
+{
+  nvm_sensor_params_t saved;
+  HAL_StatusTypeDef st;
+
+  trace_printf("[SENSOR-CAL] side baseline: place at cell center with walls on both sides\r\n");
+  trace_printf("[SENSOR-CAL] wait %lu ms, then sampling 600 x 5ms; motors/fan are not used\r\n",
+               (unsigned long)NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS);
+  nightfall_op_busy_delay_ms(NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS);
+  st = f413_wall_sensor_calibrate_side_base_and_save(600U, 5U, &saved);
+  f413_hw_show_led_mask(0U);
+  if (st == HAL_OK)
+  {
+    trace_printf("[SENSOR-CAL] side baseline saved: base_l=%u base_r=%u base_f=%u off_r=%u off_l=%u off_fr=%u off_fl=%u\r\n",
+                 (unsigned int)saved.base_l,
+                 (unsigned int)saved.base_r,
+                 (unsigned int)saved.base_f,
+                 (unsigned int)saved.wall_offset_r,
+                 (unsigned int)saved.wall_offset_l,
+                 (unsigned int)saved.wall_offset_fr,
+                 (unsigned int)saved.wall_offset_fl);
+    f413_hw_buzzer_beep_ms(1200U, 160U);
+  }
+  else
+  {
+    trace_printf("[SENSOR-CAL] side baseline save failed: HAL status=%d\r\n", (int)st);
+    f413_hw_buzzer_beep_ms(3000U, 160U);
+  }
+}
+
+static void nightfall_run_sensor_offset_save_once(void)
+{
+  nvm_sensor_params_t saved;
+  HAL_StatusTypeDef st;
+
+  trace_printf("[SENSOR-CAL] offset: run with no nearby walls / ambient condition\r\n");
+  trace_printf("[SENSOR-CAL] wait %lu ms, then sampling 10 x 10ms; motors/fan are not used\r\n",
+               (unsigned long)NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS);
+  nightfall_op_busy_delay_ms(NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS);
+  st = f413_wall_sensor_calibrate_offsets_and_save(10U, 10U, &saved);
+  f413_hw_show_led_mask(0U);
+  if (st == HAL_OK)
+  {
+    trace_printf("[SENSOR-CAL] offset saved: off_r=%u off_l=%u off_fr=%u off_fl=%u base_l=%u base_r=%u base_f=%u\r\n",
+                 (unsigned int)saved.wall_offset_r,
+                 (unsigned int)saved.wall_offset_l,
+                 (unsigned int)saved.wall_offset_fr,
+                 (unsigned int)saved.wall_offset_fl,
+                 (unsigned int)saved.base_l,
+                 (unsigned int)saved.base_r,
+                 (unsigned int)saved.base_f);
+    f413_hw_buzzer_beep_ms(1200U, 160U);
+  }
+  else
+  {
+    trace_printf("[SENSOR-CAL] offset save failed: HAL status=%d\r\n", (int)st);
+    f413_hw_buzzer_beep_ms(3000U, 160U);
+  }
 }
 static void nightfall_run_imu_test_once(void)
 {
@@ -413,7 +495,7 @@ static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
   f413_test_run_clear_arm();
   f413_trace_sample_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
-  HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_test_run_run_now(test_id);
 }
 
@@ -472,218 +554,40 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
   }
 
   f413_trace_sample_set_context(9U, 0U, sub, (uint8_t)'0');
-  HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_control_tune_run_once(axis, set, pattern);
 }
 static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 {
-#if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
-  uint16_t codes[4] = {0U, 0U, 0U, 0U};
-  uint16_t code_count = 0U;
-  uint8_t case_index = 1U;
-  const char* label = nightfall_op_sub_name(mode, sub);
-  uint16_t lead = 203U;
+  f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
+  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
 
-  if (sub <= 2U)
+  switch (mode)
   {
-    case_index = (mode <= 5U) ? 3U : 1U;
-  }
-  else if ((sub >= 3U) && (sub <= 7U))
-  {
-    case_index = 8U;
-  }
-  else if (sub == 8U)
-  {
-    case_index = 1U;
-  }
-  else
-  {
-    case_index = 5U;
-  }
-
-  switch (sub)
-  {
-    case 0U:
-      if ((mode == 5U) || (mode == 6U) || (mode == 7U))
-      {
-        lead = 205U;
-      }
-      codes[0] = lead;
-      codes[1] = 300U;
-      code_count = 2U;
-      break;
-    case 1U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 701U;
-        codes[2] = 1001U;
-        code_count = 3U;
-      }
-      else
-      {
-        codes[1] = 501U;
-        code_count = 2U;
-      }
-      break;
     case 2U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 1001U;
-        codes[2] = 704U;
-        codes[3] = 1001U;
-        code_count = 4U;
-      }
-      else
-      {
-        codes[1] = 502U;
-        code_count = 2U;
-      }
+      f413_mode2_run_case0_sub(sub);
       break;
     case 3U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 1001U;
-        codes[2] = 802U;
-        codes[3] = 1001U;
-        code_count = 4U;
-      }
-      else
-      {
-        codes[1] = ((mode == 2U) || (mode == 6U)) ? 701U : 901U;
-        codes[2] = 1001U;
-        code_count = 3U;
-      }
+      f413_mode3_run_case0_sub(sub);
       break;
     case 4U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 901U;
-        codes[2] = 1001U;
-        code_count = 3U;
-      }
-      else
-      {
-        codes[1] = 1001U;
-        codes[2] = 904U;
-        codes[3] = 1001U;
-        if ((mode == 2U) || (mode == 6U))
-        {
-          codes[2] = 704U;
-        }
-        code_count = 4U;
-      }
+      f413_mode4_run_case0_sub(sub);
       break;
     case 5U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      codes[1] = 1001U;
-      if (mode == 7U)
-      {
-        codes[2] = 904U;
-        codes[3] = 1001U;
-        code_count = 4U;
-      }
-      else
-      {
-        codes[2] = ((mode == 3U) || (mode == 5U)) ? 702U :
-                   ((mode == 4U) ? 701U : 802U);
-        codes[3] = 1001U;
-        code_count = 4U;
-      }
+      f413_mode5_run_case0_sub(sub);
       break;
     case 6U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 501U;
-        codes[2] = 201U;
-        code_count = 3U;
-      }
-      else
-      {
-        codes[1] = ((mode == 3U) || (mode == 4U) || (mode == 5U)) ? 903U : 901U;
-        codes[2] = 1001U;
-        code_count = 3U;
-      }
+      f413_mode6_run_case0_sub(sub);
       break;
     case 7U:
-      if ((mode >= 4U) && (mode <= 7U))
-      {
-        lead = 204U;
-      }
-      codes[0] = lead;
-      if (mode == 7U)
-      {
-        codes[1] = 502U;
-        codes[2] = 201U;
-        code_count = 3U;
-      }
-      else
-      {
-        codes[1] = 1001U;
-        codes[2] = 904U;
-        codes[3] = 1001U;
-        code_count = 4U;
-      }
-      break;
-    case 8U:
-    case 9U:
-      if ((mode == 2U) || (mode == 4U))
-      {
-        codes[0] = 209U;
-      }
-      else if (mode == 3U)
-      {
-        codes[0] = 205U;
-      }
-      else
-      {
-        codes[0] = 203U;
-      }
-      code_count = 1U;
+      f413_mode7_run_case0_sub(sub);
       break;
     default:
+      trace_printf("[OP-UI] no-op: mode%u case0 sub%u is not assigned\r\n",
+                   (unsigned int)mode,
+                   (unsigned int)sub);
       break;
   }
-
-  f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
-  HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-  f413_path_run_custom_path_session_once(label,
-                                         mode,
-                                         case_index,
-                                         codes,
-                                         code_count,
-                                         NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG);
-#else
-  trace_printf("[OP-UI] no-op: F413 path-code test runner is disabled in this build\r\n");
-#endif
 }
 
 static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub)
@@ -692,12 +596,12 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
   {
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_search_trace_entry_once();
       break;
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
+      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_shortest_trace_entry_once(mode, op_case);
       break;
     case F413_OP_UI_ACTION_TEST_RUN_1:
@@ -736,16 +640,27 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
     case F413_OP_UI_ACTION_SENSOR_PARAMS_STATUS:
       f413_nvm_diag_run_sensor_params_status_once();
       break;
+    case F413_OP_UI_ACTION_SENSOR_SIDE_BASE_SAVE:
+      nightfall_run_sensor_side_base_save_once();
+      break;
+    case F413_OP_UI_ACTION_SENSOR_OFFSET_SAVE:
+      nightfall_run_sensor_offset_save_once();
+      break;
     case F413_OP_UI_ACTION_CONTROL_TUNE_SUB:
       nightfall_op_run_tune_sub_after_delay(sub);
       break;
     case F413_OP_UI_ACTION_PATH_CASE0_SUB:
       nightfall_op_run_case0_sub_after_delay(mode, sub);
       break;
+    case F413_OP_UI_ACTION_SEARCH_CASE0_SUB:
+      f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'T');
+      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_mode1_run_case0_sub(sub);
+      break;
     case F413_OP_UI_ACTION_SEARCH_RUN_CASE:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      HAL_Delay(NIGHTFALL_F413_OP_START_DELAY_MS);
-      f413_search_step_run_search_case_once(op_case);
+      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_mode1_run_case(op_case);
       break;
     case F413_OP_UI_ACTION_NONE:
     default:
@@ -856,7 +771,7 @@ static void nightfall_run_session_encoder_stop_r(void)
 
 static void nightfall_wall_control_apply_straight(void)
 {
-  f413_wall_runtime_control_apply(true);
+  (void)f413_wall_runtime_poll_wall_end(true);
 }
 
 static bool nightfall_run_session_wall_sensor_ok(void)
@@ -902,7 +817,7 @@ static void nightfall_run_search_safe_trace_session_once(void)
                                               NIGHTFALL_F413_RUN_SESSION_SAFE_EXPLORE_STEPS);
 }
 
-static void nightfall_run_shortest_safe_trace_session_once(void)
+static __attribute__((unused)) void nightfall_run_shortest_safe_trace_session_once(void)
 {
   f413_run_session_run_shortest_safe_trace_once(NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG,
                                                 NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG,
@@ -969,6 +884,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   trace_init();
+  f413_run_features_reset();
   {
     const f413_trace_sample_config_t trace_sample_config = {
       HAL_GetTick,

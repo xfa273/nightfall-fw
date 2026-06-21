@@ -142,8 +142,8 @@ void f413_control_tune_run_once(uint8_t axis, uint8_t set, uint8_t pattern)
                (unsigned int)set,
                f413_control_tune_pattern_name(pattern));
 
-  f413_control_tune_trace_on_run_start();
   f413_ctrl_start();
+  f413_control_tune_trace_on_run_start();
   f413_ctrl_tune_clear_done();
   f413_ctrl_tune_start(axis, set, pattern);
 

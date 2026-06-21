@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "f413_control.h"
+#include "f413_run_features.h"
 #include "params.h"
 #include "trace.h"
 
@@ -261,16 +262,26 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
 
   if (wall->right_wall && wall->left_wall)
   {
-    wall_error = (float)(wall->l_delta - WALL_CTRL_BASE_L) -
-                 (float)(wall->r_delta - WALL_CTRL_BASE_R);
+    uint16_t base_l;
+    uint16_t base_r;
+
+    f413_wall_sensor_get_control_base(&base_l, &base_r, NULL);
+    wall_error = (float)(wall->l_delta - (int32_t)base_l) -
+                 (float)(wall->r_delta - (int32_t)base_r);
   }
   else if (wall->right_wall && !wall->left_wall)
   {
-    wall_error = -2.0f * (float)(wall->r_delta - WALL_BASE_R);
+    uint16_t base_r;
+
+    f413_wall_sensor_get_control_base(NULL, &base_r, NULL);
+    wall_error = -2.0f * (float)(wall->r_delta - (int32_t)base_r);
   }
   else if (!wall->right_wall && wall->left_wall)
   {
-    wall_error = 2.0f * (float)(wall->l_delta - WALL_BASE_L);
+    uint16_t base_l;
+
+    f413_wall_sensor_get_control_base(&base_l, NULL, NULL);
+    wall_error = 2.0f * (float)(wall->l_delta - (int32_t)base_l);
   }
   else
   {
@@ -343,7 +354,7 @@ void f413_wall_runtime_control_apply(bool straight_gate)
 #if (NIGHTFALL_F413_DISABLE_WALL_CONTROL != 0U)
   (void)straight_gate;
 #else
-  if (straight_gate && g_wall_ctrl_active)
+  if (straight_gate && g_wall_ctrl_active && f413_run_features_wall_control_enabled())
   {
     f413_ctrl_set_heading_omega_correction(-g_wall_ctrl_angle_deg);
   }
@@ -352,6 +363,56 @@ void f413_wall_runtime_control_apply(bool straight_gate)
     f413_ctrl_set_heading_omega_correction(0.0f);
   }
 #endif
+}
+
+bool f413_wall_runtime_poll_wall_end(bool straight_gate)
+{
+  f413_wall_sensor_snapshot_t wall;
+
+  if (!f413_wall_runtime_read_snapshot(&wall))
+  {
+    f413_wall_runtime_control_reset();
+    return false;
+  }
+
+  f413_wall_runtime_end_update(&wall, straight_gate);
+  f413_wall_runtime_control_update(&wall, straight_gate && f413_run_features_wall_control_enabled());
+  f413_wall_runtime_control_apply(straight_gate);
+
+  return straight_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+}
+
+bool f413_wall_runtime_wall_end_detected(float* right_dist_mm, float* left_dist_mm)
+{
+  if (right_dist_mm != NULL)
+  {
+    *right_dist_mm = g_wall_end.detected_r ? g_wall_end.dist_r_mm : -1.0f;
+  }
+  if (left_dist_mm != NULL)
+  {
+    *left_dist_mm = g_wall_end.detected_l ? g_wall_end.dist_l_mm : -1.0f;
+  }
+  return g_wall_end.detected_r || g_wall_end.detected_l;
+}
+
+bool f413_wall_runtime_front_wall_reached(float ad_sum_threshold)
+{
+  f413_wall_sensor_snapshot_t wall;
+  int32_t threshold;
+
+  if (!f413_wall_runtime_read_snapshot(&wall))
+  {
+    return false;
+  }
+  if (ad_sum_threshold <= 0.0f)
+  {
+    threshold = WALL_BASE_FR + WALL_BASE_FL;
+  }
+  else
+  {
+    threshold = (int32_t)lrintf(ad_sum_threshold);
+  }
+  return wall.front_wall && ((wall.fr_delta + wall.fl_delta) >= threshold);
 }
 
 uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snapshot_t* wall,

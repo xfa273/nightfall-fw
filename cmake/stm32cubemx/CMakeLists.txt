@@ -100,9 +100,18 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_imu_diag.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode1.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode2.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode3.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode4.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode5.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode6.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode7.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode_shortest.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_nvm_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_path_run.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_features.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_search_step.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_test_run.c
