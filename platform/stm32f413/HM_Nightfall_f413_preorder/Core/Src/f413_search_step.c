@@ -1532,14 +1532,8 @@ void f413_search_step_run_config_once(uint8_t op_case,
         break;
       }
 
-      if (next_rel == 0U)
-      {
-        f413_search_step_advance_position();
-      }
-      else
-      {
-        mouse.dir = (uint8_t)((mouse.dir + next_rel) & 0x03U);
-      }
+      mouse.dir = (uint8_t)((mouse.dir + next_rel) & 0x03U);
+      f413_search_step_advance_position();
       abort_reason = f413_search_step_read_and_write_current_wall(false);
       if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
       {
