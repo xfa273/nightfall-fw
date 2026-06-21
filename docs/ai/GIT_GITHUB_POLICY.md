@@ -18,6 +18,9 @@
 ## 3. コミット
 
 - 1 commit はレビュー可能な1目的に絞る。
+- Codex は作業が長くなる場合、明示的な指示がなくても節目ごとに checkpoint commit を作る。
+- 「ローカルで作業する」という指示は、通常のローカル checkout で作業するという意味として扱い、push 禁止の意味にはしない。
+- PCトラブル等へのバックアップとして、checkpoint commit / 作業完了 commit は原則として現在の upstream branch へ push する。push しない必要がある場合は、ユーザが明示する。
 - ドキュメントだけの変更では、原則として firmware build は必須にしない。ただし CMake、linker、platform、NVM、tools の実行仕様に触れた場合は近い check を走らせる。
 - 実機HILを行った commit では、`docs/ai/WORKLOG.md` に build id、接続手段、コマンド列、モータ許可の有無、結果を書く。
 - NVM/identity/calibration/maze/trace format を変える変更は、通常のドキュメント整理 commit に混ぜない。

@@ -72,6 +72,8 @@ The worktree may be detached. Check `git status --short --branch` before startin
 Commits and GitHub operations are allowed when useful, but keep them intentional:
 
 - Use focused commits.
+- Commit and push periodically during ongoing work, even when the user says to work "locally"; in this repository, "local work" means the normal local checkout rather than a temporary worktree, not "do not push".
+- Push completed or checkpoint commits to the current branch's upstream as a backup unless the user explicitly asks not to push.
 - Do not mix firmware platform changes and host tooling changes unless the task genuinely requires both.
 - Record important AI/HIL events in `docs/ai/WORKLOG.md`.
 - For F413 HIL, record build id, command sequence, whether motors were allowed, and result.
