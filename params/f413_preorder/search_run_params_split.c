@@ -15,7 +15,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .dist_offset_in = 10.0f,
         .dist_offset_out = 13.2f,
         .val_offset_in = 630.0f,
-        .angle_turn_90 = 89.3f,
+        .angle_turn_90 = 90.0f,
         
         // 壁切れ後の追従距離
         .dist_wall_end = 44.0f,
