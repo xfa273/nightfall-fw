@@ -722,7 +722,7 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
     }
 
     f413_search_step_set_mode_flags(trace_flags);
-    reason = f413_run_session_wait_with_auto_step_guarded(10U, guard);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if ((g_config.wall_control_apply_straight != NULL) &&
         !is_angle &&
         ((trace_flags & g_config.trace_motor_fwd_flag) != 0U))
@@ -1169,6 +1169,24 @@ static f413_run_session_abort_reason_t f413_search_step_run_final_stop(
                                                    g_config.trace_motor_fwd_flag));
 }
 
+static f413_run_session_abort_reason_t f413_search_step_wait_stop_tail(
+    f413_run_session_guard_t* guard)
+{
+  f413_ctrl_stop_omega_profile();
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  if (g_config.path_coast_ms == 0U)
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
+                                             g_config.trace_motor_coast_flag));
+  return f413_run_session_wait_with_auto_step_guarded(g_config.path_coast_ms,
+                                                      guard);
+}
+
 void f413_search_step_run_case0_test_once(
     uint8_t sub,
     const f413_search_step_case0_test_config_t* test_config)
@@ -1277,12 +1295,12 @@ void f413_search_step_run_case0_test_once(
   {
     abort_reason = f413_search_step_run_final_stop(&speed_now_mm_s, &guard);
   }
+  if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    abort_reason = f413_search_step_wait_stop_tail(&guard);
+  }
   completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE);
 
-  f413_ctrl_stop_omega_profile();
-  f413_ctrl_clear_angle_target();
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
   f413_ctrl_stop();
   if (trace_started && (abort_reason != F413_RUN_SESSION_ABORT_NONE))
   {
@@ -1542,10 +1560,12 @@ void f413_search_step_run_config_once(uint8_t op_case,
     abort_reason = f413_search_step_run_final_stop(&speed_now_mm_s, &guard);
     completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE);
   }
+  if (completed)
+  {
+    abort_reason = f413_search_step_wait_stop_tail(&guard);
+    completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE);
+  }
 
-  f413_ctrl_clear_angle_target();
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
   f413_ctrl_stop();
   if (trace_started && (abort_reason != F413_RUN_SESSION_ABORT_NONE))
   {
