@@ -21,7 +21,7 @@
 #define F413_CTRL_DT              (0.001f)   /* 制御周期 [s] (1kHz) */
 #define F413_CTRL_ENCODER_CENTER  (30000U)   /* エンコーダカウンタ中央値 */
 #define F413_CTRL_CPR_WHEEL       (200.0f)   /* 100pr reflective disk: 50 cycles/rev x4 */
-#define F413_CTRL_D_TIRE          (13.35f)   /* タイヤ直径 [mm] */
+#define F413_CTRL_D_TIRE          (D_TIRE)   /* タイヤ直径 [mm], F405同様params.hで調整 */
 #define F413_CTRL_TREAD           (33.5f)    /* 左右タイヤ中心間距離 [mm] */
 #define F413_CTRL_PWM_MAX         (1000U)    /* TIM2 ARR */
 #define F413_CTRL_ENCODER_SIGN_L  (1.0f)

@@ -16,11 +16,11 @@
 /*------------------------------------------------------------
     走行系
 ------------------------------------------------------------*/
-#define D_TIRE            13.35F
+#define D_TIRE            14.5F
 #define DIST_HALF_SEC     45
 #define DIST_D_HALF_SEC   67.279
-#define DIST_FIRST_SEC    13
-#define DIST_SET_POSITION 13
+#define DIST_FIRST_SEC    8
+#define DIST_SET_POSITION 8
 
 /*------------------------------------------------------------
     フィルタ設定
@@ -327,9 +327,9 @@
 /*------------------------------------------------------------
     探索系
 ------------------------------------------------------------*/
-#define GOAL_X   15
-#define GOAL_Y   15
-#define MAZE_SIZE 32
+#define GOAL_X   2
+#define GOAL_Y   4
+#define MAZE_SIZE 16
 #define START_X   0
 #define START_Y   0
 
