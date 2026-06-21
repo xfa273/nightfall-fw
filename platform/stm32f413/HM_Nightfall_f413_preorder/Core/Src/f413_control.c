@@ -125,6 +125,7 @@ static volatile float s_acceleration_interrupt = 0.0f;
 static volatile float s_velocity_interrupt = 0.0f;
 static volatile float s_velocity_profile_target = 0.0f;
 static volatile uint8_t s_velocity_profile_clamp_enabled = 0U;
+static volatile uint8_t s_distance_feedback_enabled = 1U;
 static volatile float s_omega_interrupt = 0.0f;
 static volatile float s_target_distance = 0.0f;
 static volatile float s_target_velocity = 0.0f;
@@ -353,6 +354,17 @@ static void f413_ctrl_reset_omega_ff_state(void)
     s_omega_ref_lead = 0.0f;
 }
 
+static void f413_ctrl_sync_distance_feedback_to_real(void)
+{
+    s_target_distance = s_real_distance;
+    s_distance_error = 0.0f;
+    s_distance_error_error = 0.0f;
+    s_previous_distance_error = 0.0f;
+    s_distance_integral = 0.0f;
+    s_distance_velocity_feedback = 0.0f;
+    s_distance_outer_count = 0U;
+}
+
 static float f413_ctrl_update_velocity_accel_comp(float encoder_velocity_mm_s,
                                                   float accel_forward_mm_s2)
 {
@@ -443,6 +455,7 @@ static void f413_ctrl_reset_pid_state(void)
     s_imu_motion_sample_valid = false;
     s_distance_outer_count = 0U;
     s_distance_velocity_feedback = 0.0f;
+    s_distance_feedback_enabled = 1U;
     s_angle_outer_count = 0U;
 }
 
@@ -452,6 +465,7 @@ static void f413_ctrl_reset_profile_state(void)
     s_velocity_interrupt = 0.0f;
     s_velocity_profile_target = 0.0f;
     s_velocity_profile_clamp_enabled = 0U;
+    s_distance_feedback_enabled = 1U;
     s_omega_interrupt = 0.0f;
     s_heading_omega_correction = 0.0f;
     s_angle_target_enabled = false;
@@ -903,6 +917,11 @@ void f413_ctrl_stop(void)
 
 void f413_ctrl_set_velocity(float velocity_mm_s)
 {
+    if (s_distance_feedback_enabled != 0U)
+    {
+        f413_ctrl_sync_distance_feedback_to_real();
+    }
+    s_distance_feedback_enabled = 0U;
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = velocity_mm_s;
     s_velocity_profile_target = velocity_mm_s;
@@ -920,6 +939,8 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
         return;
     }
 
+    f413_ctrl_sync_distance_feedback_to_real();
+    s_distance_feedback_enabled = 1U;
     s_velocity_interrupt = start_velocity_mm_s;
     s_target_velocity = start_velocity_mm_s;
     s_velocity_profile_target = target_velocity_mm_s;
@@ -1470,19 +1491,57 @@ void f413_ctrl_tick(void)
         }
         s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
 
-        s_distance_error = s_target_distance - s_real_distance;
-        s_distance_outer_count++;
-        if (s_distance_outer_count >= (uint16_t)CTRL_DISTANCE_OUTER_DIV)
+        if (s_distance_feedback_enabled != 0U)
         {
+            s_distance_error = s_target_distance - s_real_distance;
+            s_distance_outer_count++;
+            if (s_distance_outer_count >= (uint16_t)CTRL_DISTANCE_OUTER_DIV)
+            {
+                s_distance_outer_count = 0U;
+                s_distance_integral += s_distance_error;
+                s_distance_error_error = s_distance_error - s_previous_distance_error;
+                s_previous_distance_error = s_distance_error;
+                s_distance_velocity_feedback = (kp_d * s_distance_error) +
+                                               (ki_d * s_distance_integral) +
+                                               (kd_d * s_distance_error_error);
+            }
+        }
+        else
+        {
+            s_distance_error = 0.0f;
+            s_distance_error_error = 0.0f;
+            s_previous_distance_error = 0.0f;
+            s_distance_integral = 0.0f;
+            s_distance_velocity_feedback = 0.0f;
             s_distance_outer_count = 0U;
-            s_distance_integral += s_distance_error;
-            s_distance_error_error = s_distance_error - s_previous_distance_error;
-            s_previous_distance_error = s_distance_error;
-            s_distance_velocity_feedback = (kp_d * s_distance_error) +
-                                           (ki_d * s_distance_integral) +
-                                           (kd_d * s_distance_error_error);
         }
         s_target_velocity = (ff_d * s_velocity_interrupt) + s_distance_velocity_feedback;
+        if (s_velocity_profile_clamp_enabled != 0U)
+        {
+            if ((s_acceleration_interrupt > 0.0f) &&
+                (s_target_velocity > s_velocity_profile_target))
+            {
+                s_target_velocity = s_velocity_profile_target;
+            }
+            else if ((s_acceleration_interrupt < 0.0f) &&
+                     (s_target_velocity < s_velocity_profile_target))
+            {
+                s_target_velocity = s_velocity_profile_target;
+            }
+            else if (s_acceleration_interrupt == 0.0f)
+            {
+                if ((s_velocity_profile_target >= 0.0f) &&
+                    (s_target_velocity > s_velocity_profile_target))
+                {
+                    s_target_velocity = s_velocity_profile_target;
+                }
+                else if ((s_velocity_profile_target < 0.0f) &&
+                         (s_target_velocity < s_velocity_profile_target))
+                {
+                    s_target_velocity = s_velocity_profile_target;
+                }
+            }
+        }
 
         s_velocity_error = s_target_velocity - s_real_velocity;
         {
