@@ -21,6 +21,7 @@ Examples:
 python3 tools/tuning/turn_tune.py simulate --runner shortest --mode 2 --code 501
 python3 tools/tuning/turn_tune.py simulate --runner search --search-index 0 --side right
 python3 tools/tuning/turn_tune.py replay tools/logging/logs/trace_bin_20260620_210552.csv --runner shortest --mode 2 --code 502 --compare-sim
+python3 tools/tuning/turn_tune.py contact tools/logging/logs/trace_bin_20260621_150116.csv --window target-angle --tread 34.5
 python3 tools/tuning/turn_tune.py fit --runner shortest --mode 2 --code 501 --target-x 104 --target-y 96 --target-theta -90
 ```
 
@@ -31,5 +32,8 @@ Notes:
   and `real_velocity_mm_s` / `real_omega_mdps` streams. The logged target omega
   is the controller reference, so it may include heading correction outside the
   pure omega profile.
+- `contact` compares signed left/right encoder deltas with IMU omega over a
+  selected trace window. Use it to distinguish wheel-side tracking error from
+  tire/floor yaw compliance or slip.
 - `fit` prints suggested C initializer assignments only. It does not edit params.
   By default it varies velocity, alpha, in/out offsets, and the angle field.

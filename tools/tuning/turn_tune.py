@@ -99,6 +99,10 @@ class TraceRecord:
     distance_mm: Optional[float]
     target_angle_deg: Optional[float]
     angle_deg: Optional[float]
+    encoder_l_delta: Optional[float]
+    encoder_r_delta: Optional[float]
+    motor_out_l: Optional[float]
+    motor_out_r: Optional[float]
 
 
 @dataclass(frozen=True)
@@ -580,6 +584,10 @@ def load_trace_csv(path: Path) -> tuple[dict[str, str], list[TraceRecord]]:
                         distance_mm=_row_float(row, ("distance_mm",)),
                         target_angle_deg=(target_angle_mdeg / 1000.0 if target_angle_mdeg is not None else None),
                         angle_deg=(angle_mdeg / 1000.0 if angle_mdeg is not None else None),
+                        encoder_l_delta=_row_float(row, ("encoder_l",)),
+                        encoder_r_delta=_row_float(row, ("encoder_r",)),
+                        motor_out_l=_row_float(row, ("motor_out_l",)),
+                        motor_out_r=_row_float(row, ("motor_out_r",)),
                     )
                 )
             except ValueError:
@@ -834,6 +842,184 @@ def print_replay_summary(result: ReplayResult, sim: Optional[SimResult] = None) 
         )
 
 
+def _mean(values: list[float]) -> Optional[float]:
+    return float(statistics.mean(values)) if values else None
+
+
+def _rms(values: list[float]) -> Optional[float]:
+    return math.sqrt(statistics.mean([v * v for v in values])) if values else None
+
+
+def _series_stats(values: list[float]) -> dict[str, Optional[float]]:
+    return {
+        "mean": _mean(values),
+        "min": min(values) if values else None,
+        "max": max(values) if values else None,
+        "rms": _rms(values),
+    }
+
+
+def _integrate_omega(records: list[TraceRecord], target: bool) -> float:
+    total = 0.0
+    for prev, cur in zip(records, records[1:]):
+        dt_s = max(0.0, (cur.timestamp_ms - prev.timestamp_ms) / 1000.0)
+        if target:
+            omega = 0.5 * (prev.target_omega_deg_s + cur.target_omega_deg_s)
+        else:
+            omega = 0.5 * (prev.real_omega_deg_s + cur.real_omega_deg_s)
+        total += omega * dt_s
+    return total
+
+
+def _trace_window_by_distance(
+    records: list[TraceRecord],
+    source: str,
+    start_mm: float,
+    end_mm: float,
+) -> list[TraceRecord]:
+    def value(record: TraceRecord) -> Optional[float]:
+        return record.distance_mm if source == "real-distance" else record.target_distance_mm
+
+    return [r for r in records if value(r) is not None and start_mm <= value(r) <= end_mm]
+
+
+def _trace_window_by_target_omega(records: list[TraceRecord], threshold: float) -> list[TraceRecord]:
+    indexes = [i for i, r in enumerate(records) if abs(r.target_omega_deg_s) >= threshold]
+    return records[min(indexes) : max(indexes) + 1] if indexes else []
+
+
+def _trace_window_by_target_angle(records: list[TraceRecord], epsilon_deg: float) -> list[TraceRecord]:
+    indexes = [
+        i
+        for i, r in enumerate(records)
+        if r.target_angle_deg is not None and abs(r.target_angle_deg) >= epsilon_deg
+    ]
+    return records[min(indexes) : max(indexes) + 1] if indexes else []
+
+
+def contact_window_records(records: list[TraceRecord], args: argparse.Namespace) -> tuple[str, list[TraceRecord]]:
+    if args.window == "target-omega":
+        return args.window, _trace_window_by_target_omega(records, args.omega_threshold)
+    if args.window == "target-angle":
+        return args.window, _trace_window_by_target_angle(records, args.target_angle_epsilon)
+    if args.window in ("real-distance", "target-distance"):
+        return (
+            args.window,
+            _trace_window_by_distance(records, args.window, args.start_distance, args.end_distance),
+        )
+    if args.window == "all":
+        return args.window, records
+    raise ValueError(f"unknown contact window: {args.window}")
+
+
+def analyze_contact(csv_path: Path, args: argparse.Namespace) -> dict[str, object]:
+    _, records = load_trace_csv(csv_path)
+    window_name, selected = contact_window_records(records, args)
+    if len(selected) < 2:
+        raise ValueError("not enough records selected for contact analysis")
+
+    tick_records = selected[1:]
+    if any(r.encoder_l_delta is None or r.encoder_r_delta is None for r in tick_records):
+        raise ValueError("selected records do not contain encoder_l/encoder_r columns")
+
+    mm_per_tick = math.pi * args.tire_diameter / args.cpr
+    dist_l_mm = sum(float(r.encoder_l_delta) * mm_per_tick for r in tick_records)
+    dist_r_mm = sum(float(r.encoder_r_delta) * mm_per_tick for r in tick_records)
+    enc_distance_mm = 0.5 * (dist_l_mm + dist_r_mm)
+    enc_yaw_deg = ((dist_r_mm - dist_l_mm) / args.tread) * (180.0 / math.pi)
+    target_yaw_deg = _integrate_omega(selected, target=True)
+    imu_yaw_deg = _integrate_omega(selected, target=False)
+
+    wheel_l_speed = [float(r.encoder_l_delta) * mm_per_tick / DT_S for r in tick_records]
+    wheel_r_speed = [float(r.encoder_r_delta) * mm_per_tick / DT_S for r in tick_records]
+    wheel_avg_speed = [0.5 * (l + r) for l, r in zip(wheel_l_speed, wheel_r_speed)]
+    encoder_omega = [((r - l) / args.tread) * (180.0 / math.pi) for l, r in zip(wheel_l_speed, wheel_r_speed)]
+    motor_l = [float(r.motor_out_l) for r in selected if r.motor_out_l is not None]
+    motor_r = [float(r.motor_out_r) for r in selected if r.motor_out_r is not None]
+
+    return {
+        "path": str(csv_path),
+        "window": window_name,
+        "records": len(selected),
+        "duration_ms": selected[-1].timestamp_ms - selected[0].timestamp_ms,
+        "target_distance_start_mm": selected[0].target_distance_mm,
+        "target_distance_end_mm": selected[-1].target_distance_mm,
+        "real_distance_start_mm": selected[0].distance_mm,
+        "real_distance_end_mm": selected[-1].distance_mm,
+        "tire_diameter_mm": args.tire_diameter,
+        "tread_mm": args.tread,
+        "cpr": args.cpr,
+        "mm_per_tick": mm_per_tick,
+        "encoder_left_distance_mm": dist_l_mm,
+        "encoder_right_distance_mm": dist_r_mm,
+        "encoder_distance_mm": enc_distance_mm,
+        "encoder_yaw_deg": enc_yaw_deg,
+        "target_yaw_deg": target_yaw_deg,
+        "imu_yaw_deg": imu_yaw_deg,
+        "encoder_minus_imu_yaw_deg": enc_yaw_deg - imu_yaw_deg,
+        "encoder_minus_target_yaw_deg": enc_yaw_deg - target_yaw_deg,
+        "imu_minus_target_yaw_deg": imu_yaw_deg - target_yaw_deg,
+        "wheel_left_speed_mm_s": _series_stats(wheel_l_speed),
+        "wheel_right_speed_mm_s": _series_stats(wheel_r_speed),
+        "wheel_avg_speed_mm_s": _series_stats(wheel_avg_speed),
+        "encoder_omega_deg_s": _series_stats(encoder_omega),
+        "target_omega_deg_s": _series_stats([r.target_omega_deg_s for r in selected]),
+        "imu_omega_deg_s": _series_stats([r.real_omega_deg_s for r in selected]),
+        "real_velocity_mm_s": _series_stats([r.real_velocity_mm_s for r in selected]),
+        "target_velocity_mm_s": _series_stats([r.target_velocity_mm_s for r in selected]),
+        "motor_out_l": _series_stats(motor_l),
+        "motor_out_r": _series_stats(motor_r),
+    }
+
+
+def _fmt_stat(stats: dict[str, Optional[float]]) -> str:
+    def fmt(value: Optional[float]) -> str:
+        return "n/a" if value is None else f"{value:.3f}"
+
+    return (
+        f"mean={fmt(stats['mean'])} min={fmt(stats['min'])} "
+        f"max={fmt(stats['max'])} rms={fmt(stats['rms'])}"
+    )
+
+
+def print_contact_summary(result: dict[str, object]) -> None:
+    print(f"[TURN-CONTACT] file={result['path']}")
+    print(
+        f"[TURN-CONTACT] window={result['window']} records={result['records']} "
+        f"duration={result['duration_ms']}ms tread={float(result['tread_mm']):.3f}mm "
+        f"tire={float(result['tire_diameter_mm']):.3f}mm cpr={float(result['cpr']):.1f}"
+    )
+    print(
+        "[TURN-CONTACT] distance "
+        f"target={_fmt_optional(result['target_distance_start_mm'], 'mm')}.."
+        f"{_fmt_optional(result['target_distance_end_mm'], 'mm')} "
+        f"real={_fmt_optional(result['real_distance_start_mm'], 'mm')}.."
+        f"{_fmt_optional(result['real_distance_end_mm'], 'mm')}"
+    )
+    print(
+        "[TURN-CONTACT] wheel_distance "
+        f"left={float(result['encoder_left_distance_mm']):.3f}mm "
+        f"right={float(result['encoder_right_distance_mm']):.3f}mm "
+        f"avg={float(result['encoder_distance_mm']):.3f}mm"
+    )
+    print(
+        "[TURN-CONTACT] yaw "
+        f"encoder={float(result['encoder_yaw_deg']):.3f}deg "
+        f"imu={float(result['imu_yaw_deg']):.3f}deg "
+        f"target={float(result['target_yaw_deg']):.3f}deg "
+        f"enc-imu={float(result['encoder_minus_imu_yaw_deg']):.3f}deg "
+        f"imu-target={float(result['imu_minus_target_yaw_deg']):.3f}deg"
+    )
+    print(f"[TURN-CONTACT] speed_l {_fmt_stat(result['wheel_left_speed_mm_s'])}")
+    print(f"[TURN-CONTACT] speed_r {_fmt_stat(result['wheel_right_speed_mm_s'])}")
+    print(f"[TURN-CONTACT] speed_avg {_fmt_stat(result['wheel_avg_speed_mm_s'])}")
+    print(f"[TURN-CONTACT] omega_encoder {_fmt_stat(result['encoder_omega_deg_s'])}")
+    print(f"[TURN-CONTACT] omega_imu {_fmt_stat(result['imu_omega_deg_s'])}")
+    print(f"[TURN-CONTACT] omega_target {_fmt_stat(result['target_omega_deg_s'])}")
+    print(f"[TURN-CONTACT] motor_l {_fmt_stat(result['motor_out_l'])}")
+    print(f"[TURN-CONTACT] motor_r {_fmt_stat(result['motor_out_r'])}")
+
+
 def _fmt_optional(value: Optional[float], unit: str) -> str:
     return "n/a" if value is None else f"{value:.3f}{unit}"
 
@@ -1038,6 +1224,19 @@ def command_replay(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_contact(args: argparse.Namespace) -> int:
+    if args.tire_diameter is None:
+        root = repo_root()
+        params_h = Path(args.params_h) if args.params_h else root / "params/f413_preorder/params.h"
+        args.tire_diameter = _parse_define_float(params_h, "D_TIRE", 14.5)
+    result = analyze_contact(resolve_csv_path(args.csv_path), args)
+    if args.json:
+        print(json.dumps(result, indent=2, sort_keys=True))
+    else:
+        print_contact_summary(result)
+    return 0
+
+
 def command_fit(args: argparse.Namespace) -> int:
     constants = load_constants(args)
     turn = resolve_turn(args)
@@ -1087,6 +1286,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
     replay.add_argument("--integration", choices=("previous", "trapezoid"), default="previous")
     replay.add_argument("--compare-sim", action="store_true", help="also simulate selected turn and print pose differences")
     replay.set_defaults(func=command_replay)
+
+    contact = subparsers.add_parser("contact", help="compare encoder wheel odometry with IMU omega in a trace CSV")
+    add_common_paths(contact)
+    add_json_arg(contact)
+    contact.add_argument("csv_path", help="trace CSV path or directory")
+    contact.add_argument("--window", choices=("target-omega", "target-angle", "real-distance", "target-distance", "all"), default="target-angle")
+    contact.add_argument("--start-distance", type=float, default=55.0, help="distance window start [mm]")
+    contact.add_argument("--end-distance", type=float, default=138.0, help="distance window end [mm]")
+    contact.add_argument("--omega-threshold", type=float, default=DEFAULT_OMEGA_THRESHOLD_DPS, help="target omega active threshold [deg/s]")
+    contact.add_argument("--target-angle-epsilon", type=float, default=0.001, help="target-angle active threshold [deg]")
+    contact.add_argument("--tread", type=float, default=34.5, help="wheel tread [mm]")
+    contact.add_argument("--tire-diameter", type=float, default=None, help="tire diameter [mm]; defaults to D_TIRE from params.h")
+    contact.add_argument("--cpr", type=float, default=200.0, help="encoder counts per wheel revolution")
+    contact.set_defaults(func=command_contact)
 
     fit = subparsers.add_parser("fit", help="fit turn parameters to a target final pose")
     add_common_paths(fit)
