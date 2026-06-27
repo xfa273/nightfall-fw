@@ -767,6 +767,92 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment(float dist
   return reason;
 }
 
+static bool f413_search_step_front_wall_present(void)
+{
+  f413_wall_sensor_snapshot_t wall;
+
+  return f413_search_step_read_wall(&wall) && wall.front_wall;
+}
+
+static void f413_search_step_apply_straight_runtime(uint16_t trace_flags)
+{
+  if ((g_config.wall_control_apply_straight != NULL) &&
+      ((trace_flags & g_config.trace_motor_fwd_flag) != 0U))
+  {
+    g_config.wall_control_apply_straight();
+  }
+}
+
+static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_segment(
+    float distance_mm,
+    float target_velocity_mm_s,
+    float front_threshold,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  float target_distance;
+
+  if (speed_now_mm_s == NULL)
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  if ((distance_mm <= 0.0f) || !f413_run_features_front_wall_correction_enabled() ||
+      f413_run_features_test_mode_run() || !f413_search_step_front_wall_present())
+  {
+    return f413_search_step_drive_segment(distance_mm, target_velocity_mm_s,
+                                          speed_now_mm_s, guard, trace_flags);
+  }
+
+  target_distance = f413_ctrl_get_distance() + distance_mm;
+  f413_ctrl_reset_angle();
+  f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(0.0f);
+
+  while (1)
+  {
+    if ((fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance)) ||
+        f413_wall_runtime_front_wall_reached(front_threshold))
+    {
+      break;
+    }
+    f413_search_step_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    f413_search_step_apply_straight_runtime(trace_flags);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      *speed_now_mm_s = target_velocity_mm_s;
+      return reason;
+    }
+  }
+
+  if (!f413_wall_runtime_front_wall_reached(front_threshold) &&
+      (WALL_END_EXTEND_MAX_MM > 0.0F))
+  {
+    const float extend_target = f413_ctrl_get_distance() + WALL_END_EXTEND_MAX_MM;
+    f413_ctrl_set_velocity(target_velocity_mm_s);
+    while (fabsf(f413_ctrl_get_distance()) < fabsf(extend_target))
+    {
+      if (f413_wall_runtime_front_wall_reached(front_threshold))
+      {
+        break;
+      }
+      f413_search_step_set_mode_flags(trace_flags);
+      reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+      f413_search_step_apply_straight_runtime(trace_flags);
+      if (reason != F413_RUN_SESSION_ABORT_NONE)
+      {
+        break;
+      }
+    }
+  }
+
+  *speed_now_mm_s = target_velocity_mm_s;
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
     float distance_mm,
     float target_velocity_mm_s,
@@ -1041,11 +1127,12 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
   }
 
   entry_speed = *speed_now_mm_s;
-  reason = f413_search_step_drive_segment(params->dist_offset_in,
-                                          params->velocity_turn90,
-                                          speed_now_mm_s,
-                                          guard,
-                                          trace_flags);
+  reason = f413_search_step_drive_front_wall_entry_segment(params->dist_offset_in,
+                                                           params->velocity_turn90,
+                                                           params->val_offset_in,
+                                                           speed_now_mm_s,
+                                                           guard,
+                                                           trace_flags);
   if (reason != F413_RUN_SESSION_ABORT_NONE)
   {
     return reason;

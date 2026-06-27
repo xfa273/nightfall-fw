@@ -33,6 +33,24 @@ typedef struct {
     .test_mode_run = false, \
   }
 
+#define F413_MODE1_FEATURES_FRONTWALL_OFF_INIT \
+  { \
+    .wall_control_enabled = true, \
+    .wall_end_correction_enabled = true, \
+    .front_wall_correction_enabled = false, \
+    .angle_accum_mode = true, \
+    .test_mode_run = false, \
+  }
+
+#define F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT \
+  { \
+    .wall_control_enabled = true, \
+    .wall_end_correction_enabled = false, \
+    .front_wall_correction_enabled = false, \
+    .angle_accum_mode = true, \
+    .test_mode_run = false, \
+  }
+
 #define F413_MODE1_FEATURES_CASE0_TEST_INIT \
   { \
     .wall_control_enabled = false, \
