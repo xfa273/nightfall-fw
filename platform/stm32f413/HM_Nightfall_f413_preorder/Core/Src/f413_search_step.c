@@ -34,6 +34,9 @@ typedef struct {
 
 static f413_search_step_config_t g_config;
 static bool g_session_active = false;
+static uint8_t g_search_dual_wall_streak = 0U;
+static uint8_t g_search_right_wall_streak = 0U;
+static uint8_t g_search_left_wall_streak = 0U;
 
 static uint32_t f413_search_step_tick(void)
 {
@@ -111,6 +114,88 @@ static void f413_search_step_set_action_context(uint8_t op_case,
                                     (dir & 0x03U));
 
   f413_search_step_set_context(1U, op_case, packed_xy, packed_action);
+}
+
+static void f413_search_step_prepare_straight_angle_control(void)
+{
+  if (!f413_run_features_angle_accum_mode())
+  {
+    f413_ctrl_reset_angle();
+  }
+  f413_ctrl_clear_angle_target();
+}
+
+static void f413_search_step_prepare_turn_angle_control(void)
+{
+  if (!f413_run_features_angle_accum_mode())
+  {
+    f413_ctrl_reset_angle();
+  }
+  f413_ctrl_clear_angle_target();
+  f413_wall_runtime_control_clear();
+}
+
+static void f413_search_step_angle_reset_streak_clear(void)
+{
+  g_search_dual_wall_streak = 0U;
+  g_search_right_wall_streak = 0U;
+  g_search_left_wall_streak = 0U;
+}
+
+static void f413_search_step_angle_reset_streak_update(void)
+{
+  const bool right_wall = ((wall_info & 0x44U) != 0U);
+  const bool left_wall = ((wall_info & 0x11U) != 0U);
+
+  if (!f413_run_features_angle_accum_mode())
+  {
+    f413_search_step_angle_reset_streak_clear();
+    return;
+  }
+
+  if (right_wall && left_wall)
+  {
+    if (g_search_dual_wall_streak < UINT8_MAX)
+    {
+      g_search_dual_wall_streak++;
+    }
+  }
+  else
+  {
+    g_search_dual_wall_streak = 0U;
+  }
+
+  if (right_wall)
+  {
+    if (g_search_right_wall_streak < UINT8_MAX)
+    {
+      g_search_right_wall_streak++;
+    }
+  }
+  else
+  {
+    g_search_right_wall_streak = 0U;
+  }
+
+  if (left_wall)
+  {
+    if (g_search_left_wall_streak < UINT8_MAX)
+    {
+      g_search_left_wall_streak++;
+    }
+  }
+  else
+  {
+    g_search_left_wall_streak = 0U;
+  }
+
+  if ((g_search_dual_wall_streak >= SEARCH_ANGLE_RESET_DUAL_WALL_STREAK_CELLS) ||
+      (g_search_right_wall_streak >= SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS) ||
+      (g_search_left_wall_streak >= SEARCH_ANGLE_RESET_SINGLE_WALL_STREAK_CELLS))
+  {
+    f413_ctrl_reset_angle();
+    f413_search_step_angle_reset_streak_clear();
+  }
 }
 
 static bool f413_search_step_is_goal_cell(uint8_t x, uint8_t y)
@@ -757,10 +842,9 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment(float dist
   }
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
-  f413_ctrl_reset_angle();
+  f413_search_step_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(0.0f);
 
   reason = f413_search_step_wait_ctrl_target(target_distance, false, guard, trace_flags);
   *speed_now_mm_s = target_velocity_mm_s;
@@ -806,10 +890,9 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
   }
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
-  f413_ctrl_reset_angle();
+  f413_search_step_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(0.0f);
 
   while (1)
   {
@@ -880,10 +963,9 @@ static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
   f413_wall_runtime_end_clear();
-  f413_ctrl_reset_angle();
+  f413_search_step_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(0.0f);
 
   while (1)
   {
@@ -1100,12 +1182,15 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard)
 {
-  const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
-                                         g_config.trace_motor_fwd_flag);
+  const uint16_t straight_trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                                  g_config.trace_motor_fwd_flag);
+  const uint16_t turn_trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                              g_config.trace_motor_rev_flag);
   f413_search_step_smooth_turn_t profile;
   f413_run_session_abort_reason_t reason;
   uint32_t start_ms;
   float signed_angle;
+  float angle_90;
   float entry_speed;
   int8_t turn_sign;
 
@@ -1114,8 +1199,8 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
 
-  signed_angle = (next_rel == 1U) ? -fabsf(params->angle_turn_90)
-                                  : fabsf(params->angle_turn_90);
+  angle_90 = f413_run_features_angle_accum_mode() ? 90.0f : params->angle_turn_90;
+  signed_angle = (next_rel == 1U) ? -fabsf(angle_90) : fabsf(angle_90);
   if (fabsf(signed_angle) <= 0.0f)
   {
     signed_angle = (next_rel == 1U) ? -90.0f : 90.0f;
@@ -1132,15 +1217,14 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
                                                            params->val_offset_in,
                                                            speed_now_mm_s,
                                                            guard,
-                                                           trace_flags);
+                                                           straight_trace_flags);
   if (reason != F413_RUN_SESSION_ABORT_NONE)
   {
     return reason;
   }
 
   turn_sign = (signed_angle < 0.0f) ? -1 : 1;
-  f413_ctrl_reset_angle();
-  f413_ctrl_clear_angle_target();
+  f413_search_step_prepare_turn_angle_control();
   f413_ctrl_set_velocity(params->velocity_turn90);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
@@ -1153,7 +1237,7 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
     {
       break;
     }
-    f413_search_step_set_mode_flags(trace_flags);
+    f413_search_step_set_mode_flags(turn_trace_flags);
     f413_ctrl_set_velocity(params->velocity_turn90);
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
@@ -1169,7 +1253,7 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
                                         entry_speed,
                                         speed_now_mm_s,
                                         guard,
-                                        trace_flags);
+                                        straight_trace_flags);
 }
 
 static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
@@ -1188,6 +1272,7 @@ static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
     return reason;
   }
 
+  f413_wall_runtime_control_clear();
   f413_ctrl_reset_angle();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
@@ -1312,7 +1397,9 @@ void f413_search_step_run_case0_test_once(
 
   params = &searchRunParams[test_config->param_index];
   f413_run_features_set(&test_config->features);
+  f413_wall_runtime_set_control_gains(params->kp_wall, 0.0f);
   f413_search_step_map_init_empty();
+  f413_search_step_angle_reset_streak_clear();
   mouse.x = START_X;
   mouse.y = START_Y;
   mouse.dir = 0U;
@@ -1425,6 +1512,7 @@ void f413_search_step_config(const f413_search_step_config_t* config)
 void f413_search_step_session_reset(void)
 {
   g_session_active = false;
+  f413_search_step_angle_reset_streak_clear();
   mouse.x = START_X;
   mouse.y = START_Y;
   mouse.dir = 0U;
@@ -1469,7 +1557,9 @@ void f413_search_step_run_config_once(uint8_t op_case,
 
   params = &searchRunParams[case_config->param_index];
   f413_run_features_set(&case_config->features);
+  f413_wall_runtime_set_control_gains(params->kp_wall, 0.0f);
   f413_search_step_map_init_empty();
+  f413_search_step_angle_reset_streak_clear();
   mouse.x = START_X;
   mouse.y = START_Y;
   mouse.dir = 0U;
@@ -1626,6 +1716,14 @@ void f413_search_step_run_config_once(uint8_t op_case,
       {
         break;
       }
+      if (next_rel == 0U)
+      {
+        f413_search_step_angle_reset_streak_update();
+      }
+      else
+      {
+        f413_search_step_angle_reset_streak_clear();
+      }
       action_count++;
     }
 
@@ -1774,6 +1872,7 @@ void f413_search_step_run_once(void)
   if (!g_session_active)
   {
     f413_search_step_map_init_empty();
+    f413_search_step_angle_reset_streak_clear();
     mouse.x = START_X;
     mouse.y = START_Y;
     mouse.dir = 0U;
@@ -1833,9 +1932,11 @@ void f413_search_step_run_once(void)
   f413_ctrl_start();
   f413_ctrl_reset_distance();
   f413_ctrl_reset_angle();
+  f413_wall_runtime_set_control_gains(searchRunParams[0].kp_wall, 0.0f);
 
   if (is_turn)
   {
+    f413_wall_runtime_control_clear();
     f413_ctrl_set_velocity(0.0f);
     f413_ctrl_set_omega(0.0f);
     f413_ctrl_set_angle_target(turn_target_deg);
@@ -1847,7 +1948,7 @@ void f413_search_step_run_once(void)
   {
     f413_ctrl_set_velocity(g_config.step_velocity_mm_s);
     f413_ctrl_set_omega(0.0f);
-    f413_ctrl_set_angle_target(0.0f);
+    f413_ctrl_clear_angle_target();
     abort_reason = f413_search_step_wait_ctrl_target(g_config.step_target_mm, false, &guard,
         (uint16_t)(g_config.trace_search_safe_flag |
                    g_config.trace_motor_fwd_flag));

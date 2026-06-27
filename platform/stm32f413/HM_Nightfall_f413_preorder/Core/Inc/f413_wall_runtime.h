@@ -24,8 +24,11 @@ typedef struct {
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config);
 void f413_wall_runtime_end_clear(void);
+void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal);
+void f413_wall_runtime_control_clear(void);
 void f413_wall_runtime_control_apply(bool straight_gate);
 bool f413_wall_runtime_poll_wall_end(bool straight_gate);
+void f413_wall_runtime_poll_diagonal(bool diagonal_gate);
 bool f413_wall_runtime_wall_end_detected(float* right_dist_mm, float* left_dist_mm);
 bool f413_wall_runtime_front_wall_reached(float ad_sum_threshold);
 uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snapshot_t* wall,

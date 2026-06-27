@@ -536,6 +536,42 @@ static float f413_ctrl_clamp_angle_omega(float omega_deg_s)
     return f413_ctrl_clamp_omega_abs(omega_deg_s, F413_CTRL_ANGLE_OMEGA_MAX);
 }
 
+static void f413_ctrl_reset_angle_outer_state(void)
+{
+    s_target_omega = 0.0f;
+    s_angle_outer_count = 0U;
+    s_angle_error = 0.0f;
+    s_previous_angle_error = 0.0f;
+    s_angle_error_error = 0.0f;
+    s_angle_integral = 0.0f;
+}
+
+static void f413_ctrl_update_angle_outer_loop(float kp_a,
+                                              float ki_a,
+                                              float kd_a,
+                                              float ff_a)
+{
+    if ((ff_a == 1.0f) && (kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
+    {
+        f413_ctrl_reset_angle_outer_state();
+        return;
+    }
+
+    s_angle_error = s_target_angle - s_real_angle;
+    s_angle_outer_count++;
+    if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
+    {
+        s_angle_outer_count = 0U;
+        s_angle_integral += s_angle_error;
+        s_angle_error_error = s_angle_error - s_previous_angle_error;
+        s_previous_angle_error = s_angle_error;
+        s_target_omega = f413_ctrl_clamp_angle_omega(((ff_a - 1.0f) * s_omega_interrupt) +
+                                                      (kp_a * s_angle_error) +
+                                                      (ki_a * s_angle_integral) +
+                                                      (kd_a * s_angle_error_error));
+    }
+}
+
 static float f413_ctrl_update_omega_output(float omega_ref,
                                            float kp_o,
                                            float ki_o,
@@ -996,19 +1032,13 @@ void f413_ctrl_set_angle_target(float angle_deg)
     f413_ctrl_cancel_omega_profile();
     s_target_angle = angle_deg;
     s_angle_target_enabled = true;
-    s_target_omega = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
-    s_angle_outer_count = 0U;
+    f413_ctrl_reset_angle_outer_state();
 }
 
 void f413_ctrl_clear_angle_target(void)
 {
     s_angle_target_enabled = false;
-    s_target_omega = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
-    s_angle_outer_count = 0U;
+    f413_ctrl_reset_angle_outer_state();
 }
 
 void f413_ctrl_set_heading_omega_correction(float omega_deg_s)
@@ -1111,12 +1141,8 @@ void  f413_ctrl_reset_angle(void)
     s_encoder_angle = 0.0f;
     s_encoder_omega = 0.0f;
     s_target_angle = 0.0f;
-    s_angle_integral = 0.0f;
-    s_previous_angle_error = 0.0f;
-    s_angle_error = 0.0f;
-    s_angle_error_error = 0.0f;
-    s_target_omega = 0.0f;
-    s_angle_outer_count = 0U;
+    s_angle_target_enabled = false;
+    f413_ctrl_reset_angle_outer_state();
 }
 float f413_ctrl_get_real_velocity(void) { return s_real_velocity; }
 float f413_ctrl_get_real_omega(void)    { return s_real_omega; }
@@ -1578,45 +1604,16 @@ void f413_ctrl_tick(void)
 
         if (s_omega_profile_active)
         {
-            s_target_angle += s_omega_interrupt * F413_CTRL_DT;
-            s_target_omega = 0.0f;
-            s_angle_outer_count = 0U;
-            s_angle_error = 0.0f;
-            s_previous_angle_error = 0.0f;
-            s_angle_error_error = 0.0f;
-            s_angle_integral = 0.0f;
+            s_target_angle += (s_omega_interrupt + s_heading_omega_correction) * F413_CTRL_DT;
+            f413_ctrl_update_angle_outer_loop(kp_a, ki_a, kd_a, ff_a);
         }
         else
         {
             if (!s_angle_target_enabled)
             {
-                s_target_angle += s_omega_interrupt * F413_CTRL_DT;
+                s_target_angle += (s_omega_interrupt + s_heading_omega_correction) * F413_CTRL_DT;
             }
-            if ((ff_a == 1.0f) && (kp_a == 0.0f) && (ki_a == 0.0f) && (kd_a == 0.0f))
-            {
-                s_target_omega = 0.0f;
-                s_angle_outer_count = 0U;
-                s_angle_error = 0.0f;
-                s_previous_angle_error = 0.0f;
-                s_angle_error_error = 0.0f;
-                s_angle_integral = 0.0f;
-            }
-            else
-            {
-                s_angle_error = s_target_angle - s_real_angle;
-                s_angle_outer_count++;
-                if (s_angle_outer_count >= (uint16_t)CTRL_ANGLE_OUTER_DIV)
-                {
-                    s_angle_outer_count = 0U;
-                    s_angle_integral += s_angle_error;
-                    s_angle_error_error = s_angle_error - s_previous_angle_error;
-                    s_previous_angle_error = s_angle_error;
-                    s_target_omega = f413_ctrl_clamp_angle_omega(((ff_a - 1.0f) * s_omega_interrupt) +
-                                                                  (kp_a * s_angle_error) +
-                                                                  (ki_a * s_angle_integral) +
-                                                                  (kd_a * s_angle_error_error));
-                }
-            }
+            f413_ctrl_update_angle_outer_loop(kp_a, ki_a, kd_a, ff_a);
         }
 
         {

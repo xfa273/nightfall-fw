@@ -27,11 +27,13 @@
 #define NIGHTFALL_F413_DISABLE_WALL_CONTROL (0U)
 #endif
 
-#define F413_WALL_RUNTIME_CTRL_KP_DEG_PER_ADC (KP_DEFAULT)
 #define F413_WALL_RUNTIME_CTRL_MAX_DEG        (WALL_CTRL_MAX)
 #define F413_WALL_RUNTIME_CTRL_LPF_ALPHA      (F413_WALL_CTRL_LPF_ALPHA)
 #define F413_WALL_RUNTIME_CTRL_SLEW_DEG       (WALL_CTRL_SLEW_MAX)
 #define F413_WALL_RUNTIME_CTRL_MIN_VEL_MM_S   (20.0f)
+#ifndef F413_WALL_RUNTIME_DIAGONAL_THR
+#define F413_WALL_RUNTIME_DIAGONAL_THR        (0.0f)
+#endif
 
 typedef struct
 {
@@ -57,6 +59,11 @@ static f413_wall_runtime_end_state_t g_wall_end;
 static float g_wall_ctrl_angle_deg = 0.0f;
 static float g_wall_ctrl_error_lpf = 0.0f;
 static bool g_wall_ctrl_active = false;
+static float g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
+static float g_diagonal_ctrl_omega_deg_s = 0.0f;
+static float g_diagonal_ctrl_kp_deg_per_adc = 0.0f;
+static float g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
+static bool g_diagonal_ctrl_active = false;
 
 static bool f413_wall_runtime_read_snapshot(f413_wall_sensor_snapshot_t* wall)
 {
@@ -238,7 +245,70 @@ static void f413_wall_runtime_control_reset(void)
   g_wall_ctrl_angle_deg = 0.0f;
   g_wall_ctrl_error_lpf = 0.0f;
   g_wall_ctrl_active = false;
-  f413_ctrl_set_heading_omega_correction(0.0f);
+}
+
+static void f413_wall_runtime_diagonal_reset(void)
+{
+  g_diagonal_ctrl_omega_deg_s = 0.0f;
+  g_diagonal_ctrl_active = false;
+}
+
+static void f413_wall_runtime_apply_heading_correction(bool straight_gate,
+                                                       bool diagonal_gate)
+{
+  float control_deg_s = 0.0f;
+
+  if (straight_gate && g_wall_ctrl_active &&
+      f413_run_features_wall_control_enabled() &&
+      !f413_run_features_test_mode_run())
+  {
+    control_deg_s += g_wall_ctrl_angle_deg;
+  }
+  if (diagonal_gate && g_diagonal_ctrl_active)
+  {
+    control_deg_s += g_diagonal_ctrl_omega_deg_s;
+  }
+
+  f413_ctrl_set_heading_omega_correction(-control_deg_s);
+}
+
+static void f413_wall_runtime_diagonal_update(const f413_wall_sensor_snapshot_t* wall,
+                                              bool gate_on)
+{
+  float diag_control = 0.0f;
+
+  if ((wall == NULL) || !gate_on || wall->saturated ||
+      (fabsf(f413_ctrl_get_target_velocity()) < F413_WALL_RUNTIME_CTRL_MIN_VEL_MM_S) ||
+      (g_diagonal_ctrl_kp_deg_per_adc == 0.0f))
+  {
+    f413_wall_runtime_diagonal_reset();
+    return;
+  }
+
+  if ((wall->fr_delta > g_diagonal_ctrl_thr) && (wall->fl_delta > g_diagonal_ctrl_thr))
+  {
+    if (wall->fr_delta > wall->fl_delta)
+    {
+      diag_control = -g_diagonal_ctrl_kp_deg_per_adc *
+                     (float)(wall->fr_delta - wall->fl_delta);
+    }
+    else
+    {
+      diag_control = g_diagonal_ctrl_kp_deg_per_adc *
+                     (float)(wall->fl_delta - wall->fr_delta);
+    }
+  }
+  else if (wall->fr_delta > g_diagonal_ctrl_thr)
+  {
+    diag_control = -g_diagonal_ctrl_kp_deg_per_adc * (float)wall->fr_delta;
+  }
+  else if (wall->fl_delta > g_diagonal_ctrl_thr)
+  {
+    diag_control = g_diagonal_ctrl_kp_deg_per_adc * (float)wall->fl_delta;
+  }
+
+  g_diagonal_ctrl_omega_deg_s = diag_control;
+  g_diagonal_ctrl_active = (diag_control != 0.0f);
 }
 
 static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* wall, bool gate_on)
@@ -291,7 +361,7 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
 
   g_wall_ctrl_error_lpf += F413_WALL_RUNTIME_CTRL_LPF_ALPHA *
                            (wall_error - g_wall_ctrl_error_lpf);
-  target_deg = g_wall_ctrl_error_lpf * F413_WALL_RUNTIME_CTRL_KP_DEG_PER_ADC;
+  target_deg = g_wall_ctrl_error_lpf * g_wall_ctrl_kp_deg_per_adc;
   if (fabsf(target_deg) < WALL_CTRL_MIN)
   {
     target_deg = 0.0f;
@@ -349,19 +419,38 @@ void f413_wall_runtime_end_clear(void)
   memset(&g_wall_end, 0, sizeof(g_wall_end));
 }
 
+void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal)
+{
+  g_wall_ctrl_kp_deg_per_adc = kp_wall;
+  g_diagonal_ctrl_kp_deg_per_adc = kp_diagonal;
+  g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
+}
+
+void f413_wall_runtime_control_clear(void)
+{
+  f413_wall_runtime_control_reset();
+  f413_wall_runtime_diagonal_reset();
+  f413_wall_runtime_apply_heading_correction(false, false);
+}
+
 void f413_wall_runtime_control_apply(bool straight_gate)
 {
 #if (NIGHTFALL_F413_DISABLE_WALL_CONTROL != 0U)
   (void)straight_gate;
+  f413_wall_runtime_control_clear();
 #else
-  if (straight_gate && g_wall_ctrl_active && f413_run_features_wall_control_enabled())
+  if (!straight_gate ||
+      !f413_run_features_wall_control_enabled() ||
+      f413_run_features_test_mode_run())
   {
-    f413_ctrl_set_heading_omega_correction(-g_wall_ctrl_angle_deg);
+    f413_wall_runtime_control_reset();
+    f413_wall_runtime_diagonal_reset();
   }
   else
   {
-    f413_ctrl_set_heading_omega_correction(0.0f);
+    f413_wall_runtime_diagonal_reset();
   }
+  f413_wall_runtime_apply_heading_correction(straight_gate, false);
 #endif
 }
 
@@ -372,14 +461,41 @@ bool f413_wall_runtime_poll_wall_end(bool straight_gate)
   if (!f413_wall_runtime_read_snapshot(&wall))
   {
     f413_wall_runtime_control_reset();
+    f413_wall_runtime_apply_heading_correction(false, false);
     return false;
   }
 
   f413_wall_runtime_end_update(&wall, straight_gate);
-  f413_wall_runtime_control_update(&wall, straight_gate && f413_run_features_wall_control_enabled());
+  f413_wall_runtime_control_update(&wall,
+                                   straight_gate &&
+                                   f413_run_features_wall_control_enabled() &&
+                                   !f413_run_features_test_mode_run());
   f413_wall_runtime_control_apply(straight_gate);
 
   return straight_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+}
+
+void f413_wall_runtime_poll_diagonal(bool diagonal_gate)
+{
+  f413_wall_sensor_snapshot_t wall;
+
+  if (diagonal_gate)
+  {
+    f413_wall_runtime_control_reset();
+  }
+  if (!f413_wall_runtime_read_snapshot(&wall))
+  {
+    f413_wall_runtime_diagonal_reset();
+    f413_wall_runtime_apply_heading_correction(false, false);
+    return;
+  }
+
+  f413_wall_runtime_diagonal_update(&wall, diagonal_gate);
+  if (!diagonal_gate)
+  {
+    f413_wall_runtime_diagonal_reset();
+  }
+  f413_wall_runtime_apply_heading_correction(false, diagonal_gate);
 }
 
 bool f413_wall_runtime_wall_end_detected(float* right_dist_mm, float* left_dist_mm)
@@ -461,7 +577,7 @@ uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snap
     flags |= F413_WALL_RUNTIME_TRACE_GATE_FLAG;
   }
 
-  if (g_wall_ctrl_active)
+  if (g_wall_ctrl_active || g_diagonal_ctrl_active)
   {
     flags |= F413_WALL_RUNTIME_TRACE_CTRL_FLAG;
   }
@@ -485,8 +601,6 @@ bool f413_wall_runtime_fill_observe(nvm_trace_log_record_t* out, uint16_t mode_f
   }
 
   gate_on = f413_wall_runtime_gate_on(mode_flags);
-  f413_wall_runtime_end_update(&wall, gate_on);
-  f413_wall_runtime_control_update(&wall, gate_on);
 
   f413_wall_runtime_fill_snapshot(out, &wall, gate_on);
 
