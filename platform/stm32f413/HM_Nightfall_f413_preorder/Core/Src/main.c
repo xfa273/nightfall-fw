@@ -147,6 +147,7 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
 #define NIGHTFALL_F413_TUNE_TIMEOUT_MS (1500U)
 #define NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS (1500U)
+#define NIGHTFALL_F413_WALL_SENSOR_MONITOR_PERIOD_MS (500U)
 
 typedef f413_wall_sensor_snapshot_t nightfall_wall_sensor_snapshot_t;
 
@@ -382,6 +383,85 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_R,
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
+}
+
+static void nightfall_run_wall_sensor_monitor_once(void)
+{
+  uint16_t base_l = 0U;
+  uint16_t base_r = 0U;
+  uint16_t base_f = 0U;
+  uint16_t offset_r = 0U;
+  uint16_t offset_l = 0U;
+  uint16_t offset_fr = 0U;
+  uint16_t offset_fl = 0U;
+  uint8_t ready_mask = 0U;
+  uint8_t phase = 0U;
+  uint8_t inflight = 0U;
+
+  f413_wall_sensor_get_debug_state(&offset_r,
+                                   &offset_l,
+                                   &offset_fr,
+                                   &offset_fl,
+                                   &ready_mask,
+                                   &phase,
+                                   &inflight);
+  f413_wall_sensor_get_control_base(&base_l, &base_r, &base_f);
+  trace_printf("[HW-TEST][Wall] monitor start period=%lums; press PUSH to stop\r\n",
+               (unsigned long)NIGHTFALL_F413_WALL_SENSOR_MONITOR_PERIOD_MS);
+  trace_printf("[HW-TEST][Wall] offset R=%u L=%u FR=%u FL=%u ready=0x%02X phase=%u inflight=%u\r\n",
+               (unsigned int)offset_r,
+               (unsigned int)offset_l,
+               (unsigned int)offset_fr,
+               (unsigned int)offset_fl,
+               (unsigned int)ready_mask,
+               (unsigned int)phase,
+               (unsigned int)inflight);
+  trace_printf("[HW-TEST][Wall] ctrl-base L=%u R=%u F=%u fallback L=%u R=%u thr FR=%u FL=%u R=%u L=%u\r\n",
+               (unsigned int)base_l,
+               (unsigned int)base_r,
+               (unsigned int)base_f,
+               (unsigned int)WALL_CTRL_BASE_L,
+               (unsigned int)WALL_CTRL_BASE_R,
+               (unsigned int)WALL_BASE_FR,
+               (unsigned int)WALL_BASE_FL,
+               (unsigned int)WALL_BASE_R,
+               (unsigned int)WALL_BASE_L);
+
+  while (!nightfall_run_stop_switch_pressed())
+  {
+    nightfall_wall_sensor_snapshot_t wall;
+
+    if (nightfall_wall_sensor_read_snapshot(&wall))
+    {
+      trace_printf("[HW-TEST][Wall] t=%lu off R=%u L=%u FR=%u FL=%u on R=%u L=%u FR=%u FL=%u d R=%ld L=%ld FR=%ld FL=%ld det F=%u R=%u L=%u sat=%u VB=%u\r\n",
+                   (unsigned long)HAL_GetTick(),
+                   (unsigned int)wall.r_off,
+                   (unsigned int)wall.l_off,
+                   (unsigned int)wall.fr_off,
+                   (unsigned int)wall.fl_off,
+                   (unsigned int)wall.r_on,
+                   (unsigned int)wall.l_on,
+                   (unsigned int)wall.fr_on,
+                   (unsigned int)wall.fl_on,
+                   (long)wall.r_delta,
+                   (long)wall.l_delta,
+                   (long)wall.fr_delta,
+                   (long)wall.fl_delta,
+                   (unsigned int)wall.front_wall,
+                   (unsigned int)wall.right_wall,
+                   (unsigned int)wall.left_wall,
+                   (unsigned int)wall.saturated,
+                   (unsigned int)wall.vbat_on);
+    }
+    else
+    {
+      trace_printf("[HW-TEST][Wall] FAIL(read snapshot)\r\n");
+    }
+
+    HAL_Delay(NIGHTFALL_F413_WALL_SENSOR_MONITOR_PERIOD_MS);
+  }
+
+  trace_printf("[HW-TEST][Wall] monitor stop\r\n");
 }
 
 static void nightfall_run_sensor_side_base_save_once(void)
@@ -623,7 +703,14 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       nightfall_run_encoder_test_once();
       break;
     case F413_OP_UI_ACTION_WALL_SENSOR_TEST:
-      nightfall_run_wall_sensor_test_once();
+      if ((mode == 9U) && (op_case == 3U))
+      {
+        nightfall_run_wall_sensor_monitor_once();
+      }
+      else
+      {
+        nightfall_run_wall_sensor_test_once();
+      }
       break;
     case F413_OP_UI_ACTION_FAN_PWM_TEST:
       nightfall_run_fan_pwm_test_once();
