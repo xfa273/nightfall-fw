@@ -77,6 +77,8 @@ static uint32_t g_search_event_log_uncommitted = 0U;
 static nvm_trace_log_header_t g_search_event_log_header;
 static nvm_status_t g_search_event_log_status = NVM_STATUS_OK;
 static float g_search_sensor_kx = 1.0f;
+static bool g_search_wall_read_valid = false;
+static f413_wall_sensor_snapshot_t g_search_wall_read_snapshot;
 
 static uint32_t f413_search_step_tick(void)
 {
@@ -258,6 +260,13 @@ static void f413_search_event_fill_control(nvm_trace_log_record_t* rec,
     rec->adc_l = (uint16_t)wall->l_delta;
     rec->adc_vbat = wall->vbat_on;
   }
+  if (g_search_wall_read_valid)
+  {
+    rec->wall_read_fr = (uint16_t)g_search_wall_read_snapshot.fr_delta;
+    rec->wall_read_r = (uint16_t)g_search_wall_read_snapshot.r_delta;
+    rec->wall_read_fl = (uint16_t)g_search_wall_read_snapshot.fl_delta;
+    rec->wall_read_l = (uint16_t)g_search_wall_read_snapshot.l_delta;
+  }
 }
 
 static bool f413_search_event_read_wall_optional(f413_wall_sensor_snapshot_t* wall)
@@ -369,6 +378,7 @@ static bool f413_search_event_start(uint8_t op_case,
   g_search_event_log_uncommitted = 0U;
   g_search_event_log_status = NVM_STATUS_OK;
   g_search_event_log_active = true;
+  g_search_wall_read_valid = false;
 
   for (i = 0U; (phases != NULL) && (i < phase_count) && (i < 4U); i++)
   {
@@ -1559,6 +1569,8 @@ static f413_run_session_abort_reason_t f413_search_step_read_and_write_current_w
     return F413_RUN_SESSION_ABORT_WALL_FAULT;
   }
   wall_info = f413_search_step_wall_info_from_snapshot(&wall);
+  g_search_wall_read_snapshot = wall;
+  g_search_wall_read_valid = true;
   if (force_start_front_open)
   {
     wall_info &= (uint16_t)~0x88U;
@@ -2296,6 +2308,7 @@ void f413_search_step_session_reset(void)
 {
   g_session_active = false;
   g_search_sensor_kx = 1.0f;
+  g_search_wall_read_valid = false;
   f413_search_step_angle_reset_streak_clear();
   mouse.x = START_X;
   mouse.y = START_Y;

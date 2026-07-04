@@ -117,6 +117,18 @@ def _flag_text(flags: int) -> str:
     return "|".join(names) if names else "-"
 
 
+def _wall_read_text(row: dict[str, str]) -> str:
+    values = [
+        _i(row, "wall_read_fr"),
+        _i(row, "wall_read_r"),
+        _i(row, "wall_read_fl"),
+        _i(row, "wall_read_l"),
+    ]
+    if not any(values):
+        return ""
+    return f" read_adc=FR/R/FL/L:{values[0]}/{values[1]}/{values[2]}/{values[3]}"
+
+
 def _event_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         row
@@ -128,26 +140,33 @@ def _event_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
 def _detail(row: dict[str, str]) -> str:
     event_type = _i(row, "event_type")
     if event_type == 0xE1:
-        return f"phase_status={PHASE_STATUS_NAMES.get(_i(row, 'event_smap_step'), _i(row, 'event_smap_step'))}"
+        return (
+            f"phase_status={PHASE_STATUS_NAMES.get(_i(row, 'event_smap_step'), _i(row, 'event_smap_step'))}"
+            f"{_wall_read_text(row)}"
+        )
     if event_type == 0xE2:
         return (
             f"smap={_i(row, 'event_smap_step')} wall=0x{_i(row, 'event_wall_info'):04X} "
             f"cell=0x{_i(row, 'event_map_cell'):04X} next_after={REL_NAMES.get(_i(row, 'event_next_after_forward'), '-')}"
+            f"{_wall_read_text(row)}"
         )
     if event_type == 0xE3:
         motion = MOTION_NAMES.get(_i(row, "event_motion_kind"), str(_i(row, "event_motion_kind")))
         return (
             f"{motion} status={_i(row, 'event_motion_status')} "
             f"dt={_i(row, 'event_motion_duration_ms')}ms arg0={_i(row, 'event_arg0_x1000') / 1000.0:.3f} "
-            f"arg1={_i(row, 'event_arg1_x1000') / 1000.0:.3f}"
+            f"arg1={_i(row, 'event_arg1_x1000') / 1000.0:.3f}{_wall_read_text(row)}"
         )
     if event_type == 0xE4:
-        return f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')}"
+        return (
+            f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')}"
+            f"{_wall_read_text(row)}"
+        )
     if event_type == 0xE5:
         reason = ROUTE_FAIL_REASON_NAMES.get(_i(row, "event_route_reason"), _i(row, "event_route_reason"))
         return (
             f"reason={reason} smap={_i(row, 'event_smap_step')} wall=0x{_i(row, 'event_wall_info'):04X} "
-            f"cell=0x{_i(row, 'event_map_cell'):04X}"
+            f"cell=0x{_i(row, 'event_map_cell'):04X}{_wall_read_text(row)}"
         )
     return f"param={_i(row, 'event_param_index')}"
 

@@ -10,7 +10,7 @@ extern "C" {
 #endif
 
 #define NVM_TRACE_LOG_MAGIC (0x544C4F47UL)
-#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00050000UL)
+#define NVM_TRACE_LOG_SCHEMA_VERSION (0x00060000UL)
 
 typedef struct __attribute__((packed)) {
     uint32_t magic;
@@ -50,6 +50,10 @@ typedef struct __attribute__((packed)) {
     uint16_t adc_fl;
     uint16_t adc_l;
     uint16_t adc_vbat;
+    uint16_t wall_read_fr;
+    uint16_t wall_read_r;
+    uint16_t wall_read_fl;
+    uint16_t wall_read_l;
     uint16_t flags;
     uint8_t op_mode;
     uint8_t op_case;

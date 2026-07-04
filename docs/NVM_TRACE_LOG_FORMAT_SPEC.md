@@ -1,4 +1,4 @@
-# NVM Trace Log Format Spec (v5)
+# NVM Trace Log Format Spec (v6)
 
 この文書は `NVM_AREA_TRACE_LOG` に保存するトレースログの形式を定義します。
 
@@ -8,8 +8,8 @@
 
 - 対象エリア: `NVM_AREA_TRACE_LOG`
 - 主用途: `STM32F413` + FRAM backend での走行後ログ解析
-- schema version: `0x00050000` (`NVM_TRACE_LOG_SCHEMA_VERSION`)
-- CSV format name: `nightfall_trace_csv_v5`
+- schema version: `0x00060000` (`NVM_TRACE_LOG_SCHEMA_VERSION`)
+- CSV format name: `nightfall_trace_csv_v6`
 
 ---
 
@@ -50,7 +50,7 @@ typedef struct __attribute__((packed)) {
 ### 各フィールド
 
 - `magic`: `0x544C4F47` (`"TLOG"`)
-- `version`: `0x00050000`
+- `version`: `0x00060000`
 - `length`: `sizeof(nvm_trace_log_header_t)`
 - `crc`: ヘッダpayloadの加算チェックサム
   - 対象: `record_size` 以降（先頭16byteを除く）
@@ -93,6 +93,10 @@ typedef struct __attribute__((packed)) {
     uint16_t adc_fl;
     uint16_t adc_l;
     uint16_t adc_vbat;
+    uint16_t wall_read_fr;
+    uint16_t wall_read_r;
+    uint16_t wall_read_fl;
+    uint16_t wall_read_l;
     uint16_t flags;
     uint8_t op_mode;
     uint8_t op_case;
@@ -121,8 +125,9 @@ typedef struct __attribute__((packed)) {
 - `reserved_i32_0..3`: `#wall_trace_observe=1` の場合は壁センサdelta（FR, R, FL, L）、それ以外は将来拡張用32bit符号付き予備
 - `encoder_l/r`: 左右エンコーダカウンタ値
 - `motor_out_l/r`: 左右モータ制御出力（符号付きPWM相当）
-- `adc_fr/r/fl/l`: 壁センサADC raw
+- `adc_fr/r/fl/l`: 記録時点の壁センサdelta
 - `adc_vbat`: バッテリADC raw
+- `wall_read_fr/r/fl/l`: 探索イベントログで直近の地図更新・壁判断に実際に使用した壁センサdelta。通常traceでは0。
 - `flags`: 状態フラグ
 - `op_mode`: 操作UI mode
 - `op_case`: 操作UI case
@@ -155,18 +160,19 @@ typedef struct __attribute__((packed)) {
 `v` / `V` / `mode9 case5` は以下のメタ行を出力する。
 
 ```text
-#log_format=nightfall_trace_csv_v5
+#log_format=nightfall_trace_csv_v6
 #fw_target=...
 #fw_version=...
 #fw_build_type=...
 #fw_git_sha=...
 #fw_git_dirty=...
-#fw_log_schema=0x00050000
+#fw_log_schema=0x00060000
+#search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas
 #wall_trace_observe=1
 #wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l
 #wall_trace_reserved_u16_0=flags
 #wall_trace_reserved_u16_1=dist_q4_lr
-#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
+#mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,wall_read_fr,wall_read_r,wall_read_fl,wall_read_l,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
 ```
 
 CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。

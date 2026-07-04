@@ -258,6 +258,7 @@ def _build_nightfall_plot(df):
         ("Encoder", "count/tick", ["encoder_l", "encoder_r"]),
         ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
         ("Wall Sensor", "ADC", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
+        ("Search Wall Read", "ADC", ["wall_read_fr", "wall_read_r", "wall_read_fl", "wall_read_l"]),
         ("Battery", "ADC", ["adc_vbat"]),
         ("Angle", "deg", ["angle_deg", "target_angle_deg", "angle_mdeg", "target_angle_mdeg"]),
         ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "gyro_z_raw_dps", "omega_error_dps", "target_omega_mdps", "real_omega_mdps", "gyro_z_raw_mdps"]),

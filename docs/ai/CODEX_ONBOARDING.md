@@ -64,7 +64,7 @@ The repository is in a transition state:
 These are known and should be cleaned up opportunistically:
 
 - Some older docs still say `Cascade`; current primary agent is Codex.
-- Some older docs mention trace schema v1/v2/v3/v4; current `nvm_trace_log.h` defines schema `0x00050000` and CSV `nightfall_trace_csv_v5`.
+- Some older docs mention trace schema v1/v2/v3/v4/v5; current `nvm_trace_log.h` defines schema `0x00060000` and CSV `nightfall_trace_csv_v6`.
 - Some names still use `f413_preorder`; official machine naming is `mini_r2_0`.
 - `board/` mostly contains future placeholders. Most board/hardware behavior still lives under `platform/`.
 - F405 is not yet a true single MCU-family runtime-selected binary; `nightfall_stm32f405` is currently an aggregate target for `nightfall_mini_r1_0` and `nightfall_classic_r1_0`.

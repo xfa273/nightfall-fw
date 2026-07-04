@@ -306,7 +306,7 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
   trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
                (unsigned long)dump_count,
                (unsigned long)available);
-  trace_printf("#log_format=nightfall_trace_csv_v5\r\n");
+  trace_printf("#log_format=nightfall_trace_csv_v6\r\n");
   trace_printf("#fw_target=%s\r\n", FW_TARGET);
   trace_printf("#fw_version=%s\r\n", FW_VERSION);
   trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
@@ -337,6 +337,7 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
   trace_printf("target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,");
   trace_printf("target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,target_angle_mdeg,accel_forward_mm_s2,");
   trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
+  trace_printf("wall_read_fr,wall_read_r,wall_read_fl,wall_read_l,");
   trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
 
   for (i = dump_count; i > 0U; i--)
@@ -377,11 +378,15 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
                  (int)rec.motor_out_l,
                  (int)rec.motor_out_r,
                  (unsigned int)rec.adc_fr);
-    trace_printf("%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
+    trace_printf("%u,%u,%u,%u,%u,%u,%u,%u,%u,%ld,%ld,%ld,%ld,%u,%u\r\n",
                  (unsigned int)rec.adc_r,
                  (unsigned int)rec.adc_fl,
                  (unsigned int)rec.adc_l,
                  (unsigned int)rec.adc_vbat,
+                 (unsigned int)rec.wall_read_fr,
+                 (unsigned int)rec.wall_read_r,
+                 (unsigned int)rec.wall_read_fl,
+                 (unsigned int)rec.wall_read_l,
                  (unsigned int)rec.flags,
                  (long)rec.reserved_i32_0,
                  (long)rec.reserved_i32_1,
