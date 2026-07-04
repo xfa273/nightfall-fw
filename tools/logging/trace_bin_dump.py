@@ -130,6 +130,36 @@ RECORD_STRUCT_V4 = struct.Struct("<II19i4h6H4B2H")
 RECORD_STRUCT_V5 = struct.Struct("<II15i4h6H4B2H")
 RECORD_STRUCT = RECORD_STRUCT_V5
 RECORD_COLUMNS = RECORD_COLUMNS_V5
+SEARCH_EVENT_MARKER = 0x5345
+SEARCH_EVENT_SESSION_START = 0xE0
+SEARCH_EVENT_PHASE = 0xE1
+SEARCH_EVENT_DECISION = 0xE2
+SEARCH_EVENT_MOTION_END = 0xE3
+SEARCH_EVENT_SESSION_END = 0xE4
+SEARCH_EVENT_COLUMNS = [
+    "event_marker",
+    "event_type",
+    "event_action",
+    "event_x",
+    "event_y",
+    "event_dir",
+    "event_next_rel",
+    "event_phase",
+    "event_target",
+    "event_flags",
+    "event_wall_info",
+    "event_map_cell",
+    "event_smap_step",
+    "event_next_after_forward",
+    "event_param_index",
+    "event_motion_kind",
+    "event_motion_status",
+    "event_motion_duration_ms",
+    "event_arg0_x1000",
+    "event_arg1_x1000",
+    "event_completed",
+    "event_route_failed",
+]
 RECORD_LAYOUTS = {
     RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
     RECORD_STRUCT_V4.size: (RECORD_STRUCT_V4, RECORD_COLUMNS_V4),
@@ -367,6 +397,95 @@ def _record_to_row(values: tuple[int, ...], record_size: int) -> list[str]:
     raise ValueError(f"unsupported record size: {record_size}")
 
 
+def _int_field(row: dict[str, str], key: str, default: int = 0) -> int:
+    try:
+        return int(float(row.get(key, "")))
+    except (TypeError, ValueError):
+        return default
+
+
+def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
+    data = dict(zip(columns, row))
+    marker = _int_field(data, "reserved_u16_0")
+    event_type = _int_field(data, "test_id")
+
+    if marker != SEARCH_EVENT_MARKER or event_type < SEARCH_EVENT_SESSION_START:
+        return ["0"] * len(SEARCH_EVENT_COLUMNS)
+
+    action = _int_field(data, "reserved_u16_1")
+    pose = _int_field(data, "reserved_i32_0") & 0xFFFFFFFF
+    x = pose & 0xFF
+    y = (pose >> 8) & 0xFF
+    direction = (pose >> 16) & 0x03
+    next_rel = (pose >> 18) & 0x03
+    phase = (pose >> 20) & 0x0F
+    target = (pose >> 24) & 0x0F
+    event_flags = (pose >> 28) & 0x0F
+
+    wall_info = 0
+    map_cell = 0
+    smap_step = 0
+    next_after_forward = 0
+    param_index = 0
+    motion_kind = 0
+    motion_status = 0
+    motion_duration_ms = 0
+    arg0_x1000 = 0
+    arg1_x1000 = 0
+    completed = 0
+    route_failed = 0
+
+    r1 = _int_field(data, "reserved_i32_1")
+    r2 = _int_field(data, "reserved_i32_2")
+    r3 = _int_field(data, "reserved_i32_3")
+
+    if event_type in (SEARCH_EVENT_PHASE, SEARCH_EVENT_DECISION):
+        wall_pack = r1 & 0xFFFFFFFF
+        wall_info = wall_pack & 0xFFFF
+        map_cell = (wall_pack >> 16) & 0xFFFF
+    if event_type == SEARCH_EVENT_DECISION:
+        smap_step = r2
+        next_after_forward = r3 & 0xFF
+        param_index = (r3 >> 16) & 0xFF
+    elif event_type == SEARCH_EVENT_SESSION_START:
+        param_index = r2
+    elif event_type == SEARCH_EVENT_MOTION_END:
+        motion_pack = r3 & 0xFFFFFFFF
+        motion_kind = (motion_pack >> 24) & 0xFF
+        motion_status = (motion_pack >> 16) & 0xFF
+        motion_duration_ms = motion_pack & 0xFFFF
+        arg0_x1000 = r1
+        arg1_x1000 = r2
+    elif event_type == SEARCH_EVENT_SESSION_END:
+        completed = r2
+        route_failed = r3
+
+    return [
+        str(marker),
+        str(event_type),
+        str(action),
+        str(x),
+        str(y),
+        str(direction),
+        str(next_rel),
+        str(phase),
+        str(target),
+        str(event_flags),
+        str(wall_info),
+        str(map_cell),
+        str(smap_step),
+        str(next_after_forward),
+        str(param_index),
+        str(motion_kind),
+        str(motion_status),
+        str(motion_duration_ms),
+        str(arg0_x1000),
+        str(arg1_x1000),
+        str(completed),
+        str(route_failed),
+    ]
+
+
 def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list[str]], int]:
     pos = 0
     while True:
@@ -404,9 +523,12 @@ def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list
                 }
                 rows: list[list[str]] = []
                 off = frame["header_size"]
+                columns = record_columns_for_size(frame["record_size"])
                 for _ in range(frame["record_count"]):
                     rec = rec_struct.unpack_from(payload, off)
-                    rows.append(_record_to_row(rec, frame["record_size"]))
+                    row = _record_to_row(rec, frame["record_size"])
+                    row.extend(_decode_search_event(row, columns))
+                    rows.append(row)
                     off += frame["record_size"]
                 return frame, header, rows, idx
         pos = idx + 1
@@ -419,7 +541,7 @@ def write_csv(path: Path, frame: dict[str, int], header: dict[str, int], rows: l
         f.write(f"#bin_record_count={frame['record_count']}\n")
         f.write(f"#bin_available_count={frame['available_count']}\n")
         f.write(f"#bin_header_total_records={header['total_records']}\n")
-        f.write("#mm_columns=" + ",".join(record_columns_for_size(frame["record_size"])) + "\n")
+        f.write("#mm_columns=" + ",".join(record_columns_for_size(frame["record_size"]) + SEARCH_EVENT_COLUMNS) + "\n")
         writer = csv.writer(f)
         for row in rows:
             writer.writerow(row)

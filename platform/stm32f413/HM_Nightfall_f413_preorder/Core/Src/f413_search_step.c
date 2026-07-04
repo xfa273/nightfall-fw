@@ -7,8 +7,10 @@
 #include "f413_path_run.h"
 #include "f413_run_features.h"
 #include "f413_run_session.h"
+#include "f413_trace_flags.h"
 #include "f413_wall_runtime.h"
 #include "nvm_params.h"
+#include "nvm_trace_log.h"
 #include "params.h"
 #include "search.h"
 #include "search_run_params.h"
@@ -22,9 +24,34 @@
 #define F413_SEARCH_STEP_MAZE_START_FORCED_WALLS (0x07U)
 #define F413_SEARCH_STEP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
 #define F413_SEARCH_STEP_SPIN_R720_TARGET_DEG (-720.0f)
+#define F413_SEARCH_STEP_DRIVE_WAIT_MS (200U)
 #ifndef F413_SEARCH_STEP_AUTO_MAX_ACTIONS
-#define F413_SEARCH_STEP_AUTO_MAX_ACTIONS (256U)
+#define F413_SEARCH_STEP_AUTO_MAX_ACTIONS (3000U)
 #endif
+
+#define F413_SEARCH_EVENT_MARKER (0x5345U)
+#define F413_SEARCH_EVENT_HEADER_COMMIT_RECORDS (8U)
+#define F413_SEARCH_EVENT_SESSION_START (0xE0U)
+#define F413_SEARCH_EVENT_PHASE (0xE1U)
+#define F413_SEARCH_EVENT_DECISION (0xE2U)
+#define F413_SEARCH_EVENT_MOTION_END (0xE3U)
+#define F413_SEARCH_EVENT_SESSION_END (0xE4U)
+
+#define F413_SEARCH_EVENT_PHASE_START (1U)
+#define F413_SEARCH_EVENT_PHASE_REACHED (2U)
+#define F413_SEARCH_EVENT_PHASE_FULL_COMPLETE (3U)
+
+#define F413_SEARCH_EVENT_MOTION_ENTRY (1U)
+#define F413_SEARCH_EVENT_MOTION_FORWARD (2U)
+#define F413_SEARCH_EVENT_MOTION_TURN_R90 (3U)
+#define F413_SEARCH_EVENT_MOTION_BACK_TURN (4U)
+#define F413_SEARCH_EVENT_MOTION_TURN_L90 (5U)
+#define F413_SEARCH_EVENT_MOTION_FINAL_STOP (6U)
+
+#define F413_SEARCH_EVENT_FLAG_KNOWN_STRAIGHT (0x01U)
+#define F413_SEARCH_EVENT_FLAG_ACCELED_BEFORE (0x02U)
+#define F413_SEARCH_EVENT_FLAG_ACCELED_AFTER (0x04U)
+#define F413_SEARCH_EVENT_FLAG_NEXT_TURN90 (0x08U)
 
 typedef struct {
   float omega_peak_deg_s;
@@ -38,6 +65,11 @@ static bool g_session_active = false;
 static uint8_t g_search_dual_wall_streak = 0U;
 static uint8_t g_search_right_wall_streak = 0U;
 static uint8_t g_search_left_wall_streak = 0U;
+static bool g_search_event_log_active = false;
+static uint32_t g_search_event_log_seq = 0U;
+static uint32_t g_search_event_log_uncommitted = 0U;
+static nvm_trace_log_header_t g_search_event_log_header;
+static nvm_status_t g_search_event_log_status = NVM_STATUS_OK;
 
 static uint32_t f413_search_step_tick(void)
 {
@@ -115,6 +147,317 @@ static void f413_search_step_set_action_context(uint8_t op_case,
                                     (dir & 0x03U));
 
   f413_search_step_set_context(1U, op_case, packed_xy, packed_action);
+}
+
+static int32_t f413_search_step_i32_round(float value)
+{
+  if (value > 2147483000.0f)
+  {
+    return 2147483000L;
+  }
+  if (value < -2147483000.0f)
+  {
+    return -2147483000L;
+  }
+  return (int32_t)lrintf(value);
+}
+
+static int32_t f413_search_event_pack_pose(uint8_t x,
+                                           uint8_t y,
+                                           uint8_t dir,
+                                           uint8_t next_rel,
+                                           uint8_t phase,
+                                           uint8_t target,
+                                           uint8_t event_flags)
+{
+  uint32_t packed = 0U;
+
+  packed |= (uint32_t)x;
+  packed |= (uint32_t)y << 8U;
+  packed |= ((uint32_t)dir & 0x03U) << 16U;
+  packed |= ((uint32_t)next_rel & 0x03U) << 18U;
+  packed |= ((uint32_t)phase & 0x0FU) << 20U;
+  packed |= ((uint32_t)target & 0x0FU) << 24U;
+  packed |= ((uint32_t)event_flags & 0x0FU) << 28U;
+  return (int32_t)packed;
+}
+
+static int32_t f413_search_event_pack_wall(uint16_t rel_wall_info, uint16_t map_cell)
+{
+  uint32_t packed = (uint32_t)rel_wall_info | ((uint32_t)map_cell << 16U);
+  return (int32_t)packed;
+}
+
+static int32_t f413_search_event_pack_motion(uint8_t motion_kind,
+                                             uint8_t status,
+                                             uint16_t duration_ms)
+{
+  uint32_t packed = (uint32_t)duration_ms;
+
+  packed |= ((uint32_t)status) << 16U;
+  packed |= ((uint32_t)motion_kind) << 24U;
+  return (int32_t)packed;
+}
+
+static void f413_search_event_fill_control(nvm_trace_log_record_t* rec,
+                                           const f413_wall_sensor_snapshot_t* wall,
+                                           uint16_t mode_flags)
+{
+  if (rec == NULL)
+  {
+    return;
+  }
+
+  rec->timestamp_ms = f413_search_step_tick();
+  rec->target_distance_x1000 = f413_search_step_i32_round(f413_ctrl_get_target_distance() * 1000.0f);
+  rec->distance_mm = f413_search_step_i32_round(f413_ctrl_get_distance());
+  rec->angle_mdeg = f413_search_step_i32_round(f413_ctrl_get_log_angle() * 1000.0f);
+  rec->target_velocity_mm_s = f413_search_step_i32_round(f413_ctrl_get_target_velocity());
+  rec->real_velocity_mm_s = f413_search_step_i32_round(f413_ctrl_get_real_velocity());
+  rec->accel_velocity_mm_s = f413_search_step_i32_round(f413_ctrl_get_accel_velocity());
+  rec->target_omega_mdps = f413_search_step_i32_round(f413_ctrl_get_target_omega() * 1000.0f);
+  rec->real_omega_mdps = f413_search_step_i32_round(f413_ctrl_get_log_real_omega() * 1000.0f);
+  rec->gyro_z_raw_mdps = f413_search_step_i32_round(f413_ctrl_get_gyro_z_raw() * 1000.0f);
+  rec->target_angle_mdeg = f413_search_step_i32_round(f413_ctrl_get_target_angle() * 1000.0f);
+  rec->accel_forward_mm_s2 = f413_search_step_i32_round(f413_ctrl_get_accel_forward());
+  rec->encoder_l = f413_ctrl_get_log_encoder_delta_l();
+  rec->encoder_r = f413_ctrl_get_log_encoder_delta_r();
+  rec->motor_out_l = f413_ctrl_get_motor_out_l();
+  rec->motor_out_r = f413_ctrl_get_motor_out_r();
+  rec->flags = mode_flags;
+  if (f413_ctrl_angle_target_enabled())
+  {
+    rec->flags |= NIGHTFALL_F413_TRACE_ANGLE_TARGET_FLAG;
+  }
+  if (wall != NULL)
+  {
+    rec->adc_fr = (uint16_t)wall->fr_delta;
+    rec->adc_r = (uint16_t)wall->r_delta;
+    rec->adc_fl = (uint16_t)wall->fl_delta;
+    rec->adc_l = (uint16_t)wall->l_delta;
+    rec->adc_vbat = wall->vbat_on;
+  }
+}
+
+static bool f413_search_event_read_wall_optional(f413_wall_sensor_snapshot_t* wall)
+{
+  if (wall == NULL)
+  {
+    return false;
+  }
+  memset(wall, 0, sizeof(*wall));
+  return f413_search_step_read_wall(wall);
+}
+
+static void f413_search_event_append_record(const nvm_trace_log_record_t* rec)
+{
+  nvm_status_t st;
+  uint8_t commit_header;
+
+  if (!g_search_event_log_active || (rec == NULL))
+  {
+    return;
+  }
+
+  commit_header =
+      (g_search_event_log_uncommitted + 1U >= F413_SEARCH_EVENT_HEADER_COMMIT_RECORDS) ? 1U : 0U;
+  st = nvm_trace_log_append_cached(&g_search_event_log_header, rec, commit_header);
+  if (st != NVM_STATUS_OK)
+  {
+    if (g_search_event_log_status == NVM_STATUS_OK)
+    {
+      trace_printf("[SEARCH-EVENT] append: FAIL NVM=%d seq=%lu\r\n",
+                   (int)st,
+                   (unsigned long)rec->seq);
+    }
+    g_search_event_log_status = st;
+    g_search_event_log_active = false;
+    return;
+  }
+  g_search_event_log_uncommitted++;
+  if (commit_header != 0U)
+  {
+    g_search_event_log_uncommitted = 0U;
+  }
+}
+
+static void f413_search_event_append(uint8_t event_id,
+                                     uint8_t op_case,
+                                     uint16_t action,
+                                     uint8_t x,
+                                     uint8_t y,
+                                     uint8_t dir,
+                                     uint8_t next_rel,
+                                     uint8_t phase,
+                                     uint8_t target,
+                                     uint8_t event_flags,
+                                     int32_t reserved_1,
+                                     int32_t reserved_2,
+                                     int32_t reserved_3,
+                                     uint16_t mode_flags)
+{
+  nvm_trace_log_record_t rec;
+  f413_wall_sensor_snapshot_t wall;
+  const f413_wall_sensor_snapshot_t* wall_ptr = NULL;
+
+  memset(&rec, 0, sizeof(rec));
+  if (f413_search_event_read_wall_optional(&wall))
+  {
+    wall_ptr = &wall;
+  }
+
+  rec.seq = g_search_event_log_seq++;
+  f413_search_event_fill_control(&rec, wall_ptr, mode_flags);
+  rec.op_mode = 1U;
+  rec.op_case = op_case;
+  rec.op_sub = (uint8_t)(action & 0xFFU);
+  rec.test_id = event_id;
+  rec.reserved_u16_0 = F413_SEARCH_EVENT_MARKER;
+  rec.reserved_u16_1 = action;
+  rec.reserved_i32_0 = f413_search_event_pack_pose(x, y, dir, next_rel, phase, target, event_flags);
+  rec.reserved_i32_1 = reserved_1;
+  rec.reserved_i32_2 = reserved_2;
+  rec.reserved_i32_3 = reserved_3;
+
+  f413_search_event_append_record(&rec);
+}
+
+static bool f413_search_event_start(uint8_t op_case,
+                                    uint8_t param_index,
+                                    uint8_t phase_count,
+                                    const uint8_t* phases)
+{
+  nvm_status_t st;
+  int32_t phase_pack = 0;
+  uint8_t i;
+
+  st = nvm_trace_log_format();
+  if (st != NVM_STATUS_OK)
+  {
+    trace_printf("[SEARCH-EVENT] format: FAIL NVM=%d\r\n", (int)st);
+    return false;
+  }
+  st = nvm_trace_log_get_header(&g_search_event_log_header);
+  if (st != NVM_STATUS_OK)
+  {
+    trace_printf("[SEARCH-EVENT] header: FAIL NVM=%d\r\n", (int)st);
+    return false;
+  }
+
+  g_search_event_log_seq = 0U;
+  g_search_event_log_uncommitted = 0U;
+  g_search_event_log_status = NVM_STATUS_OK;
+  g_search_event_log_active = true;
+
+  for (i = 0U; (phases != NULL) && (i < phase_count) && (i < 4U); i++)
+  {
+    phase_pack |= (int32_t)((uint32_t)(phases[i] & 0x0FU) << (i * 4U));
+  }
+
+  f413_search_event_append(F413_SEARCH_EVENT_SESSION_START,
+                           op_case,
+                           0U,
+                           (uint8_t)mouse.x,
+                           (uint8_t)mouse.y,
+                           (uint8_t)mouse.dir,
+                           0U,
+                           0U,
+                           (phase_count > 0U && phases != NULL) ? phases[0] : 0U,
+                           0U,
+                           phase_pack,
+                           (int32_t)param_index,
+                           (int32_t)F413_SEARCH_STEP_AUTO_MAX_ACTIONS,
+                           g_config.trace_search_safe_flag);
+  trace_printf("[SEARCH-EVENT] start cap=%lu max_actions=%lu\r\n",
+               (unsigned long)g_search_event_log_header.record_capacity,
+               (unsigned long)F413_SEARCH_STEP_AUTO_MAX_ACTIONS);
+  return true;
+}
+
+static void f413_search_event_finish(uint8_t op_case,
+                                     uint16_t action_count,
+                                     bool completed,
+                                     bool route_failed,
+                                     f413_run_session_abort_reason_t abort_reason)
+{
+  nvm_status_t st;
+
+  if (!g_search_event_log_active)
+  {
+    return;
+  }
+
+  f413_search_event_append(F413_SEARCH_EVENT_SESSION_END,
+                           op_case,
+                           action_count,
+                           (uint8_t)mouse.x,
+                           (uint8_t)mouse.y,
+                           (uint8_t)mouse.dir,
+                           0U,
+                           0U,
+                           0U,
+                           completed ? 0U : 1U,
+                           (int32_t)abort_reason,
+                           (int32_t)completed,
+                           (int32_t)route_failed,
+                           g_config.trace_search_safe_flag);
+
+  if (g_search_event_log_active && (g_search_event_log_uncommitted != 0U))
+  {
+    st = nvm_trace_log_commit_header(&g_search_event_log_header);
+    if (st != NVM_STATUS_OK)
+    {
+      trace_printf("[SEARCH-EVENT] commit: FAIL NVM=%d\r\n", (int)st);
+      g_search_event_log_status = st;
+    }
+    g_search_event_log_uncommitted = 0U;
+  }
+
+  trace_printf("[SEARCH-EVENT] stop total=%lu stored=%lu status=%d\r\n",
+               (unsigned long)g_search_event_log_header.total_records,
+               (unsigned long)((g_search_event_log_header.total_records > g_search_event_log_header.record_capacity)
+                                   ? g_search_event_log_header.record_capacity
+                                   : g_search_event_log_header.total_records),
+               (int)g_search_event_log_status);
+  g_search_event_log_active = false;
+}
+
+static uint8_t f413_search_event_flags(bool known_straight,
+                                       bool acceled_before,
+                                       bool acceled_after,
+                                       bool next_is_turn90)
+{
+  uint8_t flags = 0U;
+
+  if (known_straight)
+  {
+    flags |= F413_SEARCH_EVENT_FLAG_KNOWN_STRAIGHT;
+  }
+  if (acceled_before)
+  {
+    flags |= F413_SEARCH_EVENT_FLAG_ACCELED_BEFORE;
+  }
+  if (acceled_after)
+  {
+    flags |= F413_SEARCH_EVENT_FLAG_ACCELED_AFTER;
+  }
+  if (next_is_turn90)
+  {
+    flags |= F413_SEARCH_EVENT_FLAG_NEXT_TURN90;
+  }
+  return flags;
+}
+
+static uint8_t f413_search_event_motion_kind_from_rel(uint8_t next_rel)
+{
+  switch (next_rel)
+  {
+    case 0U: return F413_SEARCH_EVENT_MOTION_FORWARD;
+    case 1U: return F413_SEARCH_EVENT_MOTION_TURN_R90;
+    case 2U: return F413_SEARCH_EVENT_MOTION_BACK_TURN;
+    case 3U: return F413_SEARCH_EVENT_MOTION_TURN_L90;
+    default: return 0U;
+  }
 }
 
 static void f413_search_step_prepare_straight_angle_control(void)
@@ -713,6 +1056,17 @@ static float f413_search_step_accel_positive(const SearchRunParams_t* params)
   return 1000.0f;
 }
 
+static float f413_search_step_accel_dash(const SearchRunParams_t* params)
+{
+  if ((params != NULL) &&
+      (params->acceleration_straight_dash > 0.0f) &&
+      (fabsf(params->acceleration_straight_dash - params->acceleration_straight) > 1e-3f))
+  {
+    return params->acceleration_straight_dash;
+  }
+  return f413_search_step_accel_positive(params);
+}
+
 static float f413_search_step_speed_after_accel(float speed_mm_s,
                                                 float accel_mm_s2,
                                                 float distance_mm)
@@ -857,6 +1211,108 @@ static bool f413_search_step_front_wall_present(void)
   f413_wall_sensor_snapshot_t wall;
 
   return f413_search_step_read_wall(&wall) && wall.front_wall;
+}
+
+static bool f413_search_step_front_wall_strong_present(void)
+{
+  f413_wall_sensor_snapshot_t wall;
+
+  if (!f413_search_step_read_wall(&wall))
+  {
+    return false;
+  }
+  return ((float)wall.fr_delta > ((float)WALL_BASE_FR * 1.5f)) &&
+         ((float)wall.fl_delta > ((float)WALL_BASE_FL * 1.5f));
+}
+
+static float f413_search_step_clampf(float value, float min_value, float max_value)
+{
+  if (value < min_value)
+  {
+    return min_value;
+  }
+  if (value > max_value)
+  {
+    return max_value;
+  }
+  return value;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_match_front_position(
+    f413_run_session_guard_t* guard)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  uint16_t stable_count = 0U;
+  uint16_t count;
+  const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                         g_config.trace_motor_coast_flag);
+
+  if (!f413_search_step_front_wall_strong_present())
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  f413_wall_runtime_control_clear();
+  f413_ctrl_clear_angle_target();
+
+  for (count = 0U; count < 2000U; count++)
+  {
+    f413_wall_sensor_snapshot_t wall;
+    int32_t e_fr_cnt;
+    int32_t e_fl_cnt;
+    float e_pos;
+    float e_ang;
+    float v_cmd;
+    float w_cmd;
+
+    if (!f413_search_step_read_wall(&wall))
+    {
+      return F413_RUN_SESSION_ABORT_WALL_FAULT;
+    }
+    if (((float)wall.fr_delta <= ((float)WALL_BASE_FR * 1.5f)) ||
+        ((float)wall.fl_delta <= ((float)WALL_BASE_FL * 1.5f)))
+    {
+      break;
+    }
+
+    e_fr_cnt = wall.fr_delta - (int32_t)F_ALIGN_TARGET_FR;
+    e_fl_cnt = wall.fl_delta - (int32_t)F_ALIGN_TARGET_FL;
+    if ((fabsf((float)e_fr_cnt) <= (float)MATCH_POS_TOL) &&
+        (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_TOL))
+    {
+      stable_count++;
+      if (stable_count >= MATCH_POS_STABLE_COUNT)
+      {
+        break;
+      }
+    }
+    else
+    {
+      stable_count = 0U;
+    }
+
+    e_pos = 0.5f * ((float)e_fr_cnt + (float)e_fl_cnt);
+    e_ang = (float)(e_fr_cnt - e_fl_cnt);
+    v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS * e_pos,
+                                    -MATCH_POS_VEL_MAX,
+                                    MATCH_POS_VEL_MAX);
+    w_cmd = f413_search_step_clampf(-MATCH_POS_KP_ROT * e_ang,
+                                    -MATCH_POS_OMEGA_MAX,
+                                    MATCH_POS_OMEGA_MAX);
+
+    f413_ctrl_set_velocity(v_cmd);
+    f413_ctrl_set_omega(w_cmd);
+    f413_search_step_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  return reason;
 }
 
 static void f413_search_step_apply_straight_runtime(uint16_t trace_flags)
@@ -1009,16 +1465,30 @@ static f413_run_session_abort_reason_t f413_search_step_drive_accel_distance(
                                         guard, trace_flags);
 }
 
-static f413_run_session_abort_reason_t f413_search_step_drive_decel_distance(
+static f413_run_session_abort_reason_t f413_search_step_drive_accel_distance_with_accel(
     float distance_mm,
-    const SearchRunParams_t* params,
+    float accel_mm_s2,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags)
+{
+  const float speed_out =
+      f413_search_step_speed_after_accel((speed_now_mm_s != NULL) ? *speed_now_mm_s : 0.0f,
+                                         accel_mm_s2,
+                                         distance_mm);
+  return f413_search_step_drive_segment(distance_mm, speed_out, speed_now_mm_s,
+                                        guard, trace_flags);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_drive_decel_distance_with_accel(
+    float distance_mm,
+    float accel_mm_s2,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
     uint16_t trace_flags)
 {
   float speed_in = (speed_now_mm_s != NULL) ? *speed_now_mm_s : 0.0f;
-  float accel = f413_search_step_accel_positive(params);
-  float speed_sq = (speed_in * speed_in) - (2.0f * accel * distance_mm);
+  float speed_sq = (speed_in * speed_in) - (2.0f * accel_mm_s2 * distance_mm);
   float speed_out = (speed_sq > 0.0f) ? sqrtf(speed_sq) : 0.0f;
 
   return f413_search_step_drive_segment(distance_mm, speed_out, speed_now_mm_s,
@@ -1096,11 +1566,12 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
 
   if ((acceled != NULL) && known_straight && !*acceled)
   {
-    reason = f413_search_step_drive_accel_distance((float)(DIST_HALF_SEC * 2),
-                                                   params,
-                                                   speed_now_mm_s,
-                                                   guard,
-                                                   trace_flags);
+    reason = f413_search_step_drive_accel_distance_with_accel(
+        (float)(DIST_HALF_SEC * 2),
+        f413_search_step_accel_dash(params),
+        speed_now_mm_s,
+        guard,
+        trace_flags);
     if (reason == F413_RUN_SESSION_ABORT_NONE)
     {
       *acceled = true;
@@ -1112,11 +1583,12 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
   {
     if (next_is_turn90)
     {
-      reason = f413_search_step_drive_decel_distance((float)DIST_HALF_SEC,
-                                                     params,
-                                                     speed_now_mm_s,
-                                                     guard,
-                                                     trace_flags);
+      reason = f413_search_step_drive_decel_distance_with_accel(
+          (float)DIST_HALF_SEC,
+          f413_search_step_accel_dash(params),
+          speed_now_mm_s,
+          guard,
+          trace_flags);
       if (reason != F413_RUN_SESSION_ABORT_NONE)
       {
         return reason;
@@ -1142,11 +1614,12 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
     }
     else
     {
-      reason = f413_search_step_drive_decel_distance((float)(DIST_HALF_SEC * 2),
-                                                     params,
-                                                     speed_now_mm_s,
-                                                     guard,
-                                                     trace_flags);
+      reason = f413_search_step_drive_decel_distance_with_accel(
+          (float)(DIST_HALF_SEC * 2),
+          f413_search_step_accel_dash(params),
+          speed_now_mm_s,
+          guard,
+          trace_flags);
     }
     if (reason == F413_RUN_SESSION_ABORT_NONE)
     {
@@ -1326,12 +1799,46 @@ static f413_run_session_abort_reason_t f413_search_step_run_spot_spin_profile(
   return reason;
 }
 
+static f413_run_session_abort_reason_t f413_search_step_drive_wait(
+    f413_run_session_guard_t* guard)
+{
+  if (F413_SEARCH_STEP_DRIVE_WAIT_MS == 0U)
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
+                                             g_config.trace_motor_coast_flag));
+  return f413_run_session_wait_with_auto_step_guarded(F413_SEARCH_STEP_DRIVE_WAIT_MS,
+                                                      guard);
+}
+
+static f413_run_session_abort_reason_t f413_search_step_turn_in_place_to_angle(
+    float target_angle_deg,
+    f413_run_session_guard_t* guard)
+{
+  f413_run_session_abort_reason_t reason;
+  const uint16_t turn_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                        g_config.trace_motor_rev_flag);
+
+  f413_search_step_prepare_turn_angle_control();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(target_angle_deg);
+  reason = f413_search_step_wait_ctrl_target(target_angle_deg, true, guard, turn_flags);
+  f413_ctrl_clear_angle_target();
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
     const SearchRunParams_t* params,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard)
 {
   f413_run_session_abort_reason_t reason;
+  float target_angle_deg;
   const uint16_t fwd_flags = (uint16_t)(g_config.trace_search_safe_flag |
                                        g_config.trace_motor_fwd_flag);
 
@@ -1342,17 +1849,72 @@ static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
     return reason;
   }
 
-  f413_wall_runtime_control_clear();
-  f413_ctrl_reset_angle();
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(2.0f * g_config.step_turn_deg);
-  reason = f413_search_step_wait_ctrl_target(2.0f * g_config.step_turn_deg,
-                                             true,
-                                             guard,
-                                             (uint16_t)(g_config.trace_search_safe_flag |
-                                                        g_config.trace_motor_rev_flag));
-  f413_ctrl_clear_angle_target();
+  reason = f413_search_step_drive_wait(guard);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  if ((params != NULL) &&
+      (params->wall_align_enable != 0U) &&
+      f413_search_step_front_wall_strong_present())
+  {
+    const bool right_wall = ((wall_info & 0x44U) != 0U);
+    const bool left_wall = ((wall_info & 0x11U) != 0U);
+    const float right90 = -fabsf(g_config.step_turn_deg);
+    const float left90 = fabsf(g_config.step_turn_deg);
+
+    reason = f413_search_step_match_front_position(guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+    f413_ctrl_reset_angle();
+
+    if (right_wall)
+    {
+      reason = f413_search_step_turn_in_place_to_angle(right90, guard);
+      if (reason == F413_RUN_SESSION_ABORT_NONE)
+      {
+        reason = f413_search_step_match_front_position(guard);
+      }
+      if (reason == F413_RUN_SESSION_ABORT_NONE)
+      {
+        f413_ctrl_reset_angle();
+        reason = f413_search_step_turn_in_place_to_angle(right90, guard);
+      }
+    }
+    else if (left_wall)
+    {
+      reason = f413_search_step_turn_in_place_to_angle(left90, guard);
+      if (reason == F413_RUN_SESSION_ABORT_NONE)
+      {
+        reason = f413_search_step_match_front_position(guard);
+      }
+      if (reason == F413_RUN_SESSION_ABORT_NONE)
+      {
+        f413_ctrl_reset_angle();
+        reason = f413_search_step_turn_in_place_to_angle(left90, guard);
+      }
+    }
+    else
+    {
+      reason = f413_search_step_turn_in_place_to_angle(2.0f * g_config.step_turn_deg, guard);
+    }
+  }
+  else
+  {
+    target_angle_deg = f413_run_features_angle_accum_mode()
+                           ? (f413_ctrl_get_target_angle() + (2.0f * g_config.step_turn_deg))
+                           : (2.0f * g_config.step_turn_deg);
+    reason = f413_search_step_turn_in_place_to_angle(target_angle_deg, guard);
+  }
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  reason = f413_search_step_drive_wait(guard);
   if (reason != F413_RUN_SESSION_ABORT_NONE)
   {
     return reason;
@@ -1606,7 +2168,7 @@ void f413_search_step_run_config_once(uint8_t op_case,
   uint8_t phase_index;
   bool completed = false;
   bool route_failed = false;
-  bool trace_started = false;
+  bool event_log_started = false;
   bool acceled = false;
   HAL_StatusTypeDef save_status = HAL_OK;
 
@@ -1659,15 +2221,49 @@ void f413_search_step_run_config_once(uint8_t op_case,
   f413_ctrl_reset_distance();
   f413_ctrl_reset_angle();
 
+  event_log_started = f413_search_event_start(op_case,
+                                              case_config->param_index,
+                                              case_config->phase_count,
+                                              case_config->phases);
   abort_reason = f413_search_step_read_and_write_current_wall(true);
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
-    f413_search_step_set_context(1U, op_case, 0xFFU, (uint8_t)'S');
-    f413_search_step_trace_start();
-    trace_started = true;
+    uint32_t motion_start_ms;
+
+    f413_search_event_append(F413_SEARCH_EVENT_DECISION,
+                             op_case,
+                             action_count,
+                             (uint8_t)mouse.x,
+                             (uint8_t)mouse.y,
+                             (uint8_t)mouse.dir,
+                             0U,
+                             0x0FU,
+                             case_config->phases[0],
+                             f413_search_event_flags(false, false, acceled, false),
+                             f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                             -1,
+                             (int32_t)((uint32_t)case_config->param_index << 16U),
+                             g_config.trace_search_safe_flag);
+    motion_start_ms = f413_search_step_tick();
     abort_reason = f413_search_step_run_entry_section(op_case, params,
                                                       &speed_now_mm_s,
                                                       &guard);
+    f413_search_event_append(F413_SEARCH_EVENT_MOTION_END,
+                             op_case,
+                             action_count,
+                             (uint8_t)mouse.x,
+                             (uint8_t)mouse.y,
+                             (uint8_t)mouse.dir,
+                             0U,
+                             0x0FU,
+                             case_config->phases[0],
+                             f413_search_event_flags(false, false, acceled, false),
+                             f413_search_step_i32_round((float)(DIST_FIRST_SEC + DIST_HALF_SEC) * 1000.0f),
+                             f413_search_step_i32_round(speed_now_mm_s * 1000.0f),
+                             f413_search_event_pack_motion(F413_SEARCH_EVENT_MOTION_ENTRY,
+                                                           (uint8_t)abort_reason,
+                                                           (uint16_t)(f413_search_step_tick() - motion_start_ms)),
+                             g_config.trace_search_safe_flag);
     if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
     {
       action_count++;
@@ -1685,6 +2281,20 @@ void f413_search_step_run_config_once(uint8_t op_case,
                  (unsigned int)mouse.x,
                  (unsigned int)mouse.y,
                  (unsigned int)mouse.dir);
+    f413_search_event_append(F413_SEARCH_EVENT_PHASE,
+                             op_case,
+                             action_count,
+                             (uint8_t)mouse.x,
+                             (uint8_t)mouse.y,
+                             (uint8_t)mouse.dir,
+                             0U,
+                             phase_index,
+                             target,
+                             f413_search_event_flags(false, acceled, acceled, false),
+                             f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                             (int32_t)F413_SEARCH_EVENT_PHASE_START,
+                             0,
+                             g_config.trace_search_safe_flag);
 
     while ((abort_reason == F413_RUN_SESSION_ABORT_NONE) && !phase_done)
     {
@@ -1692,6 +2302,8 @@ void f413_search_step_run_config_once(uint8_t op_case,
       uint8_t next_after_forward = 0xFFU;
       bool known_straight = false;
       bool next_is_turn90 = false;
+      bool acceled_before = acceled;
+      uint32_t motion_start_ms;
       int step;
 
       if (action_count >= F413_SEARCH_STEP_AUTO_MAX_ACTIONS)
@@ -1715,6 +2327,20 @@ void f413_search_step_run_config_once(uint8_t op_case,
                      (unsigned int)mouse.x,
                      (unsigned int)mouse.y,
                      (unsigned int)mouse.dir);
+        f413_search_event_append(F413_SEARCH_EVENT_PHASE,
+                                 op_case,
+                                 action_count,
+                                 (uint8_t)mouse.x,
+                                 (uint8_t)mouse.y,
+                                 (uint8_t)mouse.dir,
+                                 0U,
+                                 phase_index,
+                                 target,
+                                 f413_search_event_flags(false, acceled, acceled, false),
+                                 f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                                 (int32_t)F413_SEARCH_EVENT_PHASE_REACHED,
+                                 0,
+                                 g_config.trace_search_safe_flag);
         phase_done = true;
         break;
       }
@@ -1727,6 +2353,20 @@ void f413_search_step_run_config_once(uint8_t op_case,
                      (unsigned int)mouse.x,
                      (unsigned int)mouse.y,
                      (unsigned int)mouse.dir);
+        f413_search_event_append(F413_SEARCH_EVENT_PHASE,
+                                 op_case,
+                                 action_count,
+                                 (uint8_t)mouse.x,
+                                 (uint8_t)mouse.y,
+                                 (uint8_t)mouse.dir,
+                                 0U,
+                                 phase_index,
+                                 target,
+                                 f413_search_event_flags(false, acceled, acceled, false),
+                                 f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                                 (int32_t)F413_SEARCH_EVENT_PHASE_FULL_COMPLETE,
+                                 0,
+                                 g_config.trace_search_safe_flag);
         phase_done = true;
         break;
       }
@@ -1774,6 +2414,25 @@ void f413_search_step_run_config_once(uint8_t op_case,
                    (unsigned int)wall_info,
                    (unsigned int)map[mouse.y][mouse.x]);
 
+      f413_search_event_append(F413_SEARCH_EVENT_DECISION,
+                               op_case,
+                               action_count,
+                               (uint8_t)mouse.x,
+                               (uint8_t)mouse.y,
+                               (uint8_t)mouse.dir,
+                               next_rel,
+                               phase_index,
+                               target,
+                               f413_search_event_flags(known_straight,
+                                                       acceled_before,
+                                                       acceled,
+                                                       next_is_turn90),
+                               f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                               (int32_t)step,
+                               (int32_t)((uint32_t)next_after_forward |
+                                         ((uint32_t)case_config->param_index << 16U)),
+                               g_config.trace_search_safe_flag);
+      motion_start_ms = f413_search_step_tick();
       abort_reason = f413_search_step_run_search_motion(next_rel,
                                                         params,
                                                         &speed_now_mm_s,
@@ -1781,6 +2440,28 @@ void f413_search_step_run_config_once(uint8_t op_case,
                                                         &acceled,
                                                         known_straight,
                                                         next_is_turn90);
+      f413_search_event_append(F413_SEARCH_EVENT_MOTION_END,
+                               op_case,
+                               action_count,
+                               (uint8_t)mouse.x,
+                               (uint8_t)mouse.y,
+                               (uint8_t)mouse.dir,
+                               next_rel,
+                               phase_index,
+                               target,
+                               f413_search_event_flags(known_straight,
+                                                       acceled_before,
+                                                       acceled,
+                                                       next_is_turn90),
+                               f413_search_step_i32_round(
+                                   ((next_rel == 0U) ? (float)(DIST_HALF_SEC * 2)
+                                                     : f413_search_step_turn_target_deg(next_rel)) *
+                                   1000.0f),
+                               f413_search_step_i32_round(speed_now_mm_s * 1000.0f),
+                               f413_search_event_pack_motion(f413_search_event_motion_kind_from_rel(next_rel),
+                                                             (uint8_t)abort_reason,
+                                                             (uint16_t)(f413_search_step_tick() - motion_start_ms)),
+                               g_config.trace_search_safe_flag);
       if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
       {
         break;
@@ -1813,7 +2494,24 @@ void f413_search_step_run_config_once(uint8_t op_case,
   completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE) && !route_failed;
   if (completed)
   {
+    uint32_t motion_start_ms = f413_search_step_tick();
     abort_reason = f413_search_step_run_final_stop(&speed_now_mm_s, &guard);
+    f413_search_event_append(F413_SEARCH_EVENT_MOTION_END,
+                             op_case,
+                             action_count,
+                             (uint8_t)mouse.x,
+                             (uint8_t)mouse.y,
+                             (uint8_t)mouse.dir,
+                             0U,
+                             0x0EU,
+                             0U,
+                             f413_search_event_flags(false, acceled, acceled, false),
+                             f413_search_step_i32_round((float)DIST_HALF_SEC * 1000.0f),
+                             0,
+                             f413_search_event_pack_motion(F413_SEARCH_EVENT_MOTION_FINAL_STOP,
+                                                           (uint8_t)abort_reason,
+                                                           (uint16_t)(f413_search_step_tick() - motion_start_ms)),
+                             g_config.trace_search_safe_flag);
     completed = (abort_reason == F413_RUN_SESSION_ABORT_NONE);
   }
   if (completed)
@@ -1823,16 +2521,10 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
 
   f413_ctrl_stop();
-  if (trace_started && (abort_reason != F413_RUN_SESSION_ABORT_NONE))
-  {
-    f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
-        f413_run_session_abort_reason_to_trace_flag(abort_reason)));
-    f413_search_step_trace_auto_step();
-  }
-  if (trace_started)
+  if (event_log_started)
   {
     f413_search_step_set_mode_flags(0U);
-    f413_search_step_trace_stop();
+    f413_search_event_finish(op_case, action_count, completed, route_failed, abort_reason);
   }
   f413_run_session_guard_cleanup(&guard);
 
