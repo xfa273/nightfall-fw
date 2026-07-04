@@ -251,8 +251,8 @@
 ------------------------------------------------------------*/
 #define WALL_BASE_FR  160
 #define WALL_BASE_FL  160
-#define WALL_BASE_R   160
-#define WALL_BASE_L   160
+#define WALL_BASE_R   300
+#define WALL_BASE_L   300
 #define K_SENSOR      1.00F
 
 #ifndef SENSOR_DIST_GAIN

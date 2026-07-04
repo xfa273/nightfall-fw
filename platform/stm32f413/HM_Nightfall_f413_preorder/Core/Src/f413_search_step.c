@@ -76,6 +76,7 @@ static uint32_t g_search_event_log_seq = 0U;
 static uint32_t g_search_event_log_uncommitted = 0U;
 static nvm_trace_log_header_t g_search_event_log_header;
 static nvm_status_t g_search_event_log_status = NVM_STATUS_OK;
+static float g_search_sensor_kx = 1.0f;
 
 static uint32_t f413_search_step_tick(void)
 {
@@ -153,6 +154,20 @@ static void f413_search_step_set_action_context(uint8_t op_case,
                                     (dir & 0x03U));
 
   f413_search_step_set_context(1U, op_case, packed_xy, packed_action);
+}
+
+static float f413_search_step_sensor_kx_sanitize(float sensor_kx)
+{
+  if ((sensor_kx < 0.3f) || (sensor_kx > 2.0f))
+  {
+    return 1.0f;
+  }
+  return sensor_kx;
+}
+
+static bool f413_search_step_wall_delta_present(int32_t delta, uint16_t base)
+{
+  return (float)delta > ((float)base * g_search_sensor_kx);
 }
 
 static int32_t f413_search_step_i32_round(float value)
@@ -721,15 +736,16 @@ static uint16_t f413_search_step_wall_info_from_snapshot(const f413_wall_sensor_
   {
     return 0U;
   }
-  if (wall->front_wall)
+  if (f413_search_step_wall_delta_present(wall->fr_delta, WALL_BASE_FR) ||
+      f413_search_step_wall_delta_present(wall->fl_delta, WALL_BASE_FL))
   {
     info |= 0x88U;
   }
-  if (wall->right_wall)
+  if (f413_search_step_wall_delta_present(wall->r_delta, WALL_BASE_R))
   {
     info |= 0x44U;
   }
-  if (wall->left_wall)
+  if (f413_search_step_wall_delta_present(wall->l_delta, WALL_BASE_L))
   {
     info |= 0x11U;
   }
@@ -2155,6 +2171,7 @@ void f413_search_step_run_case0_test_once(
   }
 
   params = &searchRunParams[test_config->param_index];
+  g_search_sensor_kx = f413_search_step_sensor_kx_sanitize(params->sensor_kx);
   f413_run_features_set(&test_config->features);
   f413_wall_runtime_set_control_gains(params->kp_wall, 0.0f);
   f413_search_step_map_init_empty();
@@ -2278,6 +2295,7 @@ void f413_search_step_config(const f413_search_step_config_t* config)
 void f413_search_step_session_reset(void)
 {
   g_session_active = false;
+  g_search_sensor_kx = 1.0f;
   f413_search_step_angle_reset_streak_clear();
   mouse.x = START_X;
   mouse.y = START_Y;
@@ -2322,6 +2340,7 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
 
   params = &searchRunParams[case_config->param_index];
+  g_search_sensor_kx = f413_search_step_sensor_kx_sanitize(params->sensor_kx);
   f413_run_features_set(&case_config->features);
   f413_wall_runtime_set_control_gains(params->kp_wall, 0.0f);
   f413_search_step_map_init_empty();
@@ -2772,6 +2791,7 @@ void f413_search_step_run_decision_preview_once(void)
   int step;
   HAL_StatusTypeDef st;
 
+  g_search_sensor_kx = f413_search_step_sensor_kx_sanitize(searchRunParams[0].sensor_kx);
   if (!f413_search_step_read_wall(&wall))
   {
     trace_printf("[SEARCH-PREVIEW] FAIL(read wall snapshot)\r\n");
@@ -2819,6 +2839,7 @@ void f413_search_step_run_once(void)
   bool is_turn;
   float turn_target_deg;
 
+  g_search_sensor_kx = f413_search_step_sensor_kx_sanitize(searchRunParams[0].sensor_kx);
   if (f413_search_step_trace_auto_is_enabled())
   {
     trace_printf("[SEARCH-STEP] busy(auto already running)\r\n");
@@ -2976,6 +2997,7 @@ void f413_search_step_run_map_probe_once(void)
   HAL_StatusTypeDef st;
   uint32_t i;
 
+  g_search_sensor_kx = f413_search_step_sensor_kx_sanitize(searchRunParams[0].sensor_kx);
   if (!f413_search_step_read_wall(&wall))
   {
     trace_printf("[SEARCH-MAP] FAIL(read wall snapshot)\r\n");
