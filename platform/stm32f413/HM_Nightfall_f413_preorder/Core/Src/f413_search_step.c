@@ -26,6 +26,7 @@
 #define F413_SEARCH_STEP_SPIN_R720_TARGET_DEG (-720.0f)
 #define F413_SEARCH_STEP_DRIVE_WAIT_MS (200U)
 #define F413_SEARCH_STEP_REVERSE_VELOCITY_MM_S (-60.0f)
+#define F413_SEARCH_STEP_FRONT_MATCH_TOO_CLOSE_MARGIN_COUNTS (3 * MATCH_POS_TOL)
 #ifndef F413_SEARCH_STEP_AUTO_MAX_ACTIONS
 #define F413_SEARCH_STEP_AUTO_MAX_ACTIONS (3000U)
 #endif
@@ -1552,6 +1553,170 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
   return reason;
 }
 
+static bool f413_search_step_front_match_wall_detected(
+    const f413_wall_sensor_snapshot_t* wall)
+{
+  return (wall != NULL) &&
+         (wall->fr_delta > (int32_t)F_ALIGN_DETECT_THR) &&
+         (wall->fl_delta > (int32_t)F_ALIGN_DETECT_THR);
+}
+
+static bool f413_search_step_front_match_too_close(
+    const f413_wall_sensor_snapshot_t* wall)
+{
+  const int32_t fr_limit = (int32_t)F_ALIGN_TARGET_FR +
+                           (int32_t)F413_SEARCH_STEP_FRONT_MATCH_TOO_CLOSE_MARGIN_COUNTS;
+  const int32_t fl_limit = (int32_t)F_ALIGN_TARGET_FL +
+                           (int32_t)F413_SEARCH_STEP_FRONT_MATCH_TOO_CLOSE_MARGIN_COUNTS;
+
+  return (wall != NULL) &&
+         ((wall->fr_delta > fr_limit) || (wall->fl_delta > fl_limit));
+}
+
+static uint16_t f413_search_step_front_match_motor_flags(float v_cmd,
+                                                         float w_cmd)
+{
+  uint16_t flags = g_config.trace_search_safe_flag;
+
+  if ((fabsf(v_cmd) <= 0.01f) && (fabsf(w_cmd) <= 0.01f))
+  {
+    flags = (uint16_t)(flags | g_config.trace_motor_coast_flag);
+  }
+  else if (v_cmd < -0.01f)
+  {
+    flags = (uint16_t)(flags | g_config.trace_motor_rev_flag);
+  }
+  else
+  {
+    flags = (uint16_t)(flags | g_config.trace_motor_fwd_flag);
+  }
+  return flags;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wait(
+    f413_run_session_guard_t* guard,
+    const char* reason_text)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  uint16_t resume_count = 0U;
+  uint32_t last_print_ms = f413_search_step_tick();
+  const uint16_t stop_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                        g_config.trace_motor_coast_flag);
+
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_search_step_set_mode_flags(stop_flags);
+  trace_printf("[SEARCH-TEST] front-match pause(%s)\r\n", reason_text);
+
+  while (resume_count < MATCH_POS_TIMEOUT_MS)
+  {
+    f413_wall_sensor_snapshot_t wall;
+    uint32_t now_ms;
+
+    if (!f413_search_step_read_wall(&wall))
+    {
+      return F413_RUN_SESSION_ABORT_WALL_FAULT;
+    }
+    if (f413_search_step_front_match_wall_detected(&wall) &&
+        !f413_search_step_front_match_too_close(&wall))
+    {
+      resume_count++;
+    }
+    else
+    {
+      resume_count = 0U;
+    }
+
+    now_ms = f413_search_step_tick();
+    if ((now_ms - last_print_ms) >= 500U)
+    {
+      trace_printf("[SEARCH-TEST] front-match waiting FR=%ld FL=%ld\r\n",
+                   (long)wall.fr_delta,
+                   (long)wall.fl_delta);
+      last_print_ms = now_ms;
+    }
+
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+  }
+
+  trace_printf("[SEARCH-TEST] front-match resume\r\n");
+  return F413_RUN_SESSION_ABORT_NONE;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
+    f413_run_session_guard_t* guard)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+
+  f413_wall_runtime_control_clear();
+  f413_ctrl_clear_angle_target();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+
+  trace_printf("[SEARCH-TEST] front-match continuous: stop switch exits, reset also safe\r\n");
+
+  while (reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_wall_sensor_snapshot_t wall;
+    int32_t e_fr_cnt;
+    int32_t e_fl_cnt;
+    float e_pos;
+    float e_ang;
+    float v_cmd;
+    float w_cmd;
+
+    if (!f413_search_step_read_wall(&wall))
+    {
+      return F413_RUN_SESSION_ABORT_WALL_FAULT;
+    }
+    if (!f413_search_step_front_match_wall_detected(&wall))
+    {
+      reason = f413_search_step_front_match_stop_and_wait(guard, "front-wall-lost");
+      continue;
+    }
+    if (f413_search_step_front_match_too_close(&wall))
+    {
+      reason = f413_search_step_front_match_stop_and_wait(guard, "too-close");
+      continue;
+    }
+
+    e_fr_cnt = wall.fr_delta - (int32_t)F_ALIGN_TARGET_FR;
+    e_fl_cnt = wall.fl_delta - (int32_t)F_ALIGN_TARGET_FL;
+    e_ang = (float)(e_fr_cnt - e_fl_cnt);
+
+    if ((fabsf((float)e_fr_cnt) <= (float)MATCH_POS_TOL) &&
+        (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_TOL) &&
+        (fabsf(e_ang) <= (float)MATCH_POS_TOL_ANGLE))
+    {
+      v_cmd = 0.0f;
+      w_cmd = 0.0f;
+    }
+    else
+    {
+      e_pos = 0.5f * ((float)e_fr_cnt + (float)e_fl_cnt);
+      v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS * e_pos,
+                                      -MATCH_POS_VEL_MAX,
+                                      MATCH_POS_VEL_MAX);
+      w_cmd = f413_search_step_clampf(-MATCH_POS_KP_ROT * e_ang,
+                                      -MATCH_POS_OMEGA_MAX,
+                                      MATCH_POS_OMEGA_MAX);
+    }
+
+    f413_ctrl_set_velocity(v_cmd);
+    f413_ctrl_set_omega(w_cmd);
+    f413_search_step_set_mode_flags(f413_search_step_front_match_motor_flags(v_cmd, w_cmd));
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+  }
+
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  return reason;
+}
+
 static void f413_search_step_apply_straight_runtime(uint16_t trace_flags)
 {
   if ((g_config.wall_control_apply_straight != NULL) &&
@@ -2641,16 +2806,22 @@ void f413_search_step_run_case0_test_once(
                                                     fwd_flags);
     }
   }
+  else if (test_config->test_kind == F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS)
+  {
+    abort_reason = f413_search_step_front_match_continuous(&guard);
+  }
   else
   {
     abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
 
-  if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
+  if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
+      (test_config->test_kind != F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS))
   {
     abort_reason = f413_search_step_run_final_stop(&speed_now_mm_s, &guard);
   }
-  if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
+  if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
+      (test_config->test_kind != F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS))
   {
     abort_reason = f413_search_step_wait_stop_tail(&guard);
   }

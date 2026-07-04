@@ -60,7 +60,7 @@ typedef struct {
     .test_mode_run = true, \
   }
 
-static const f413_mode1_case0_sub_t k_case0_subs[4] = {
+static const f413_mode1_case0_sub_t k_case0_subs[5] = {
   {
     0U,
     "ALPHA_ROTATE_90: spot spin R720",
@@ -84,6 +84,12 @@ static const f413_mode1_case0_sub_t k_case0_subs[4] = {
     "searchRunParams[0] standard: first section -> two full sections",
     {0U, F413_SEARCH_STEP_CASE0_TEST_STRAIGHT_3,
      "mode1-case0-sub3 standard straight 3-section", F413_MODE1_FEATURES_CASE0_TEST_INIT},
+  },
+  {
+    4U,
+    "params.h front wall match: continuous follow",
+    {0U, F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS,
+     "mode1-case0-sub4 front wall match continuous", F413_MODE1_FEATURES_CASE0_TEST_INIT},
   },
 };
 
@@ -151,7 +157,7 @@ void f413_mode1_run_case(uint8_t op_case)
 
 void f413_mode1_run_case0_sub(uint8_t sub)
 {
-  if (sub >= 4U)
+  if (sub >= 5U)
   {
     f413_search_step_run_case0_test_once(sub, NULL);
     return;

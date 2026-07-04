@@ -15,6 +15,7 @@
 #define F413_SEARCH_STEP_CASE0_TEST_TURN_R90   (1U)
 #define F413_SEARCH_STEP_CASE0_TEST_STRAIGHT_3 (2U)
 #define F413_SEARCH_STEP_CASE0_TEST_SPIN_R720  (3U)
+#define F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS (4U)
 
 typedef bool (*f413_search_step_bool_fn)(void);
 typedef void (*f413_search_step_void_fn)(void);

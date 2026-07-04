@@ -376,6 +376,7 @@ const char* f413_op_ui_sub_name(uint8_t mode, uint8_t sub)
       case 1U: return "standard speed turn test";
       case 2U: return "low speed turn test";
       case 3U: return "straight 3-section test";
+      case 4U: return "front wall match follow";
       default: return "not assigned";
     }
   }
