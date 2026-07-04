@@ -36,10 +36,16 @@
 #define F413_SEARCH_EVENT_DECISION (0xE2U)
 #define F413_SEARCH_EVENT_MOTION_END (0xE3U)
 #define F413_SEARCH_EVENT_SESSION_END (0xE4U)
+#define F413_SEARCH_EVENT_ROUTE_FAIL (0xE5U)
 
 #define F413_SEARCH_EVENT_PHASE_START (1U)
 #define F413_SEARCH_EVENT_PHASE_REACHED (2U)
 #define F413_SEARCH_EVENT_PHASE_FULL_COMPLETE (3U)
+#define F413_SEARCH_EVENT_PHASE_FULL_UNREACHABLE (4U)
+
+#define F413_SEARCH_EVENT_ROUTE_FAIL_MAX_ACTIONS (1U)
+#define F413_SEARCH_EVENT_ROUTE_FAIL_NO_CURRENT_STEP (2U)
+#define F413_SEARCH_EVENT_ROUTE_FAIL_NO_NEXT_REL (3U)
 
 #define F413_SEARCH_EVENT_MOTION_ENTRY (1U)
 #define F413_SEARCH_EVENT_MOTION_FORWARD (2U)
@@ -458,6 +464,33 @@ static uint8_t f413_search_event_motion_kind_from_rel(uint8_t next_rel)
     case 3U: return F413_SEARCH_EVENT_MOTION_TURN_L90;
     default: return 0U;
   }
+}
+
+static void f413_search_event_append_route_fail(uint8_t op_case,
+                                                uint16_t action,
+                                                uint8_t x,
+                                                uint8_t y,
+                                                uint8_t dir,
+                                                uint8_t phase,
+                                                uint8_t target,
+                                                bool acceled,
+                                                uint8_t reason,
+                                                int step)
+{
+  f413_search_event_append(F413_SEARCH_EVENT_ROUTE_FAIL,
+                           op_case,
+                           action,
+                           x,
+                           y,
+                           dir,
+                           0U,
+                           phase,
+                           target,
+                           f413_search_event_flags(false, acceled, acceled, false),
+                           f413_search_event_pack_wall(wall_info, map[y][x]),
+                           (int32_t)step,
+                           (int32_t)reason,
+                           g_config.trace_search_safe_flag);
 }
 
 static void f413_search_step_prepare_straight_angle_control(void)
@@ -1324,6 +1357,10 @@ static void f413_search_step_apply_straight_runtime(uint16_t trace_flags)
   }
 }
 
+static f413_run_session_abort_reason_t f413_search_step_turn_in_place_to_angle(
+    float target_angle_deg,
+    f413_run_session_guard_t* guard);
+
 static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_segment(
     float distance_mm,
     float target_velocity_mm_s,
@@ -1551,6 +1588,84 @@ static f413_run_session_abort_reason_t f413_search_step_run_entry_section(
   return f413_search_step_read_and_write_current_wall(false);
 }
 
+static f413_run_session_abort_reason_t f413_search_step_run_forward_wall_align(
+    const SearchRunParams_t* params,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags,
+    bool* aligned)
+{
+  f413_wall_sensor_snapshot_t wall;
+  f413_run_session_abort_reason_t reason;
+  bool align_right = false;
+  bool align_left = false;
+  float base_target_angle;
+  float side_angle;
+  float side_target_angle;
+  float return_target_angle;
+
+  if (aligned != NULL)
+  {
+    *aligned = false;
+  }
+  if ((params == NULL) || (speed_now_mm_s == NULL) ||
+      (params->wall_align_enable == 0U) ||
+      (fabsf(f413_wall_runtime_latest_error()) <= (float)WALL_ALIGN_ERR_THR))
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+  if (!f413_search_step_read_wall(&wall))
+  {
+    return F413_RUN_SESSION_ABORT_WALL_FAULT;
+  }
+
+  align_right = (wall.r_delta > (int32_t)((float)WALL_BASE_R * 1.3f));
+  align_left = !align_right && (wall.l_delta > (int32_t)((float)WALL_BASE_L * 1.3f));
+  if (!align_right && !align_left)
+  {
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  reason = f413_search_step_drive_segment((float)DIST_HALF_SEC, 0.0f,
+                                          speed_now_mm_s, guard, trace_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  base_target_angle = f413_run_features_angle_accum_mode() ? f413_ctrl_get_target_angle() : 0.0f;
+  side_angle = align_right ? -fabsf(g_config.step_turn_deg) : fabsf(g_config.step_turn_deg);
+  side_target_angle = f413_run_features_angle_accum_mode() ? (base_target_angle + side_angle)
+                                                           : side_angle;
+  return_target_angle = f413_run_features_angle_accum_mode() ? base_target_angle
+                                                             : -side_angle;
+
+  reason = f413_search_step_turn_in_place_to_angle(side_target_angle, guard);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+  reason = f413_search_step_match_front_position(guard);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+  reason = f413_search_step_turn_in_place_to_angle(return_target_angle, guard);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    return reason;
+  }
+
+  reason = f413_search_step_drive_accel_distance((float)DIST_HALF_SEC, params,
+                                                 speed_now_mm_s, guard,
+                                                 trace_flags);
+  if ((reason == F413_RUN_SESSION_ABORT_NONE) && (aligned != NULL))
+  {
+    *aligned = true;
+  }
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
     const SearchRunParams_t* params,
     float* speed_now_mm_s,
@@ -1561,6 +1676,7 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
 {
   f413_run_session_abort_reason_t reason;
   bool wall_end_found = false;
+  bool wall_aligned = false;
   const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
                                          g_config.trace_motor_fwd_flag);
 
@@ -1626,6 +1742,17 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
       *acceled = false;
     }
     return reason;
+  }
+
+  if ((acceled == NULL) || !*acceled)
+  {
+    reason = f413_search_step_run_forward_wall_align(params, speed_now_mm_s,
+                                                     guard, trace_flags,
+                                                     &wall_aligned);
+    if ((reason != F413_RUN_SESSION_ABORT_NONE) || wall_aligned)
+    {
+      return reason;
+    }
   }
 
   reason = f413_search_step_drive_wallend_segment(
@@ -2310,6 +2437,16 @@ void f413_search_step_run_config_once(uint8_t op_case,
       {
         trace_printf("[SEARCH-RUN] stop(max actions=%u)\r\n",
                      (unsigned int)F413_SEARCH_STEP_AUTO_MAX_ACTIONS);
+        f413_search_event_append_route_fail(op_case,
+                                            action_count,
+                                            (uint8_t)mouse.x,
+                                            (uint8_t)mouse.y,
+                                            (uint8_t)mouse.dir,
+                                            phase_index,
+                                            target,
+                                            acceled,
+                                            F413_SEARCH_EVENT_ROUTE_FAIL_MAX_ACTIONS,
+                                            -1);
         route_failed = true;
         break;
       }
@@ -2370,8 +2507,58 @@ void f413_search_step_run_config_once(uint8_t op_case,
         phase_done = true;
         break;
       }
-      if ((step < 0) ||
-          !f413_search_step_choose_next_relative((uint8_t)mouse.x,
+      if ((target == F413_SEARCH_STEP_TARGET_FULL) && (step < 0))
+      {
+        trace_printf("[SEARCH-RUN] phase%u full unreachable pos=(%u,%u,%u) wall=0x%04X cell=0x%04X step=%d\r\n",
+                     (unsigned int)phase_index,
+                     (unsigned int)mouse.x,
+                     (unsigned int)mouse.y,
+                     (unsigned int)mouse.dir,
+                     (unsigned int)wall_info,
+                     (unsigned int)map[mouse.y][mouse.x],
+                     step);
+        f413_search_event_append(F413_SEARCH_EVENT_PHASE,
+                                 op_case,
+                                 action_count,
+                                 (uint8_t)mouse.x,
+                                 (uint8_t)mouse.y,
+                                 (uint8_t)mouse.dir,
+                                 0U,
+                                 phase_index,
+                                 target,
+                                 f413_search_event_flags(false, acceled, acceled, false),
+                                 f413_search_event_pack_wall(wall_info, map[mouse.y][mouse.x]),
+                                 (int32_t)F413_SEARCH_EVENT_PHASE_FULL_UNREACHABLE,
+                                 (int32_t)step,
+                                 g_config.trace_search_safe_flag);
+        phase_done = true;
+        break;
+      }
+      if (step < 0)
+      {
+        trace_printf("[SEARCH-RUN] FAIL(no current step) phase=%u target=%s pos=(%u,%u,%u) wall=0x%04X cell=0x%04X step=%d\r\n",
+                     (unsigned int)phase_index,
+                     f413_search_step_target_name(target),
+                     (unsigned int)mouse.x,
+                     (unsigned int)mouse.y,
+                     (unsigned int)mouse.dir,
+                     (unsigned int)wall_info,
+                     (unsigned int)map[mouse.y][mouse.x],
+                     step);
+        f413_search_event_append_route_fail(op_case,
+                                            action_count,
+                                            (uint8_t)mouse.x,
+                                            (uint8_t)mouse.y,
+                                            (uint8_t)mouse.dir,
+                                            phase_index,
+                                            target,
+                                            acceled,
+                                            F413_SEARCH_EVENT_ROUTE_FAIL_NO_CURRENT_STEP,
+                                            step);
+        route_failed = true;
+        break;
+      }
+      if (!f413_search_step_choose_next_relative((uint8_t)mouse.x,
                                                  (uint8_t)mouse.y,
                                                  (uint8_t)mouse.dir,
                                                  &next_rel))
@@ -2385,6 +2572,16 @@ void f413_search_step_run_config_once(uint8_t op_case,
                      (unsigned int)wall_info,
                      (unsigned int)map[mouse.y][mouse.x],
                      step);
+        f413_search_event_append_route_fail(op_case,
+                                            action_count,
+                                            (uint8_t)mouse.x,
+                                            (uint8_t)mouse.y,
+                                            (uint8_t)mouse.dir,
+                                            phase_index,
+                                            target,
+                                            acceled,
+                                            F413_SEARCH_EVENT_ROUTE_FAIL_NO_NEXT_REL,
+                                            step);
         route_failed = true;
         break;
       }

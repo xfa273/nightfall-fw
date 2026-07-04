@@ -11,6 +11,7 @@ EVENT_NAMES = {
     0xE2: "decision",
     0xE3: "motion_end",
     0xE4: "session_end",
+    0xE5: "route_fail",
 }
 TARGET_NAMES = {
     0: "goal",
@@ -41,6 +42,12 @@ PHASE_STATUS_NAMES = {
     1: "start",
     2: "reached",
     3: "full_complete",
+    4: "full_unreachable",
+}
+ROUTE_FAIL_REASON_NAMES = {
+    1: "max_actions",
+    2: "no_current_step",
+    3: "no_next_rel",
 }
 
 
@@ -136,6 +143,12 @@ def _detail(row: dict[str, str]) -> str:
         )
     if event_type == 0xE4:
         return f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')}"
+    if event_type == 0xE5:
+        reason = ROUTE_FAIL_REASON_NAMES.get(_i(row, "event_route_reason"), _i(row, "event_route_reason"))
+        return (
+            f"reason={reason} smap={_i(row, 'event_smap_step')} wall=0x{_i(row, 'event_wall_info'):04X} "
+            f"cell=0x{_i(row, 'event_map_cell'):04X}"
+        )
     return f"param={_i(row, 'event_param_index')}"
 
 

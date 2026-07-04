@@ -136,6 +136,7 @@ SEARCH_EVENT_PHASE = 0xE1
 SEARCH_EVENT_DECISION = 0xE2
 SEARCH_EVENT_MOTION_END = 0xE3
 SEARCH_EVENT_SESSION_END = 0xE4
+SEARCH_EVENT_ROUTE_FAIL = 0xE5
 SEARCH_EVENT_COLUMNS = [
     "event_marker",
     "event_type",
@@ -159,6 +160,7 @@ SEARCH_EVENT_COLUMNS = [
     "event_arg1_x1000",
     "event_completed",
     "event_route_failed",
+    "event_route_reason",
 ]
 RECORD_LAYOUTS = {
     RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
@@ -434,19 +436,25 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
     arg1_x1000 = 0
     completed = 0
     route_failed = 0
+    route_reason = 0
 
     r1 = _int_field(data, "reserved_i32_1")
     r2 = _int_field(data, "reserved_i32_2")
     r3 = _int_field(data, "reserved_i32_3")
 
-    if event_type in (SEARCH_EVENT_PHASE, SEARCH_EVENT_DECISION):
+    if event_type in (SEARCH_EVENT_PHASE, SEARCH_EVENT_DECISION, SEARCH_EVENT_ROUTE_FAIL):
         wall_pack = r1 & 0xFFFFFFFF
         wall_info = wall_pack & 0xFFFF
         map_cell = (wall_pack >> 16) & 0xFFFF
-    if event_type == SEARCH_EVENT_DECISION:
+    if event_type == SEARCH_EVENT_PHASE:
+        smap_step = r2
+    elif event_type == SEARCH_EVENT_DECISION:
         smap_step = r2
         next_after_forward = r3 & 0xFF
         param_index = (r3 >> 16) & 0xFF
+    elif event_type == SEARCH_EVENT_ROUTE_FAIL:
+        smap_step = r2
+        route_reason = r3
     elif event_type == SEARCH_EVENT_SESSION_START:
         param_index = r2
     elif event_type == SEARCH_EVENT_MOTION_END:
@@ -483,6 +491,7 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         str(arg1_x1000),
         str(completed),
         str(route_failed),
+        str(route_reason),
     ]
 
 

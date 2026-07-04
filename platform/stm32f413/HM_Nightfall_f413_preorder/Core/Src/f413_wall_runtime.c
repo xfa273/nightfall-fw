@@ -60,6 +60,7 @@ static f413_wall_runtime_config_t g_config;
 static f413_wall_runtime_end_state_t g_wall_end;
 static float g_wall_ctrl_angle_deg = 0.0f;
 static float g_wall_ctrl_error_lpf = 0.0f;
+static float g_wall_ctrl_latest_error = 0.0f;
 static bool g_wall_ctrl_active = false;
 static float g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
 static float g_diagonal_ctrl_omega_deg_s = 0.0f;
@@ -246,6 +247,7 @@ static void f413_wall_runtime_control_reset(void)
 {
   g_wall_ctrl_angle_deg = 0.0f;
   g_wall_ctrl_error_lpf = 0.0f;
+  g_wall_ctrl_latest_error = 0.0f;
   g_wall_ctrl_active = false;
 }
 
@@ -362,6 +364,7 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
     f413_wall_sensor_get_control_base(&base_l, &base_r, NULL);
     wall_error = (float)(wall->l_delta - (int32_t)base_l) -
                  (float)(wall->r_delta - (int32_t)base_r);
+    g_wall_ctrl_latest_error = wall_error;
   }
   else if (right_wall && !left_wall)
   {
@@ -369,6 +372,7 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
 
     f413_wall_sensor_get_control_base(NULL, &base_r, NULL);
     wall_error = -2.0f * (float)(wall->r_delta - (int32_t)base_r);
+    g_wall_ctrl_latest_error = -1.0f * (float)(wall->r_delta - (int32_t)base_r);
   }
   else if (!right_wall && left_wall)
   {
@@ -376,10 +380,12 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
 
     f413_wall_sensor_get_control_base(&base_l, NULL, NULL);
     wall_error = 2.0f * (float)(wall->l_delta - (int32_t)base_l);
+    g_wall_ctrl_latest_error = (float)(wall->l_delta - (int32_t)base_l);
   }
   else
   {
     wall_error = 0.0f;
+    g_wall_ctrl_latest_error = 0.0f;
   }
 
   g_wall_ctrl_error_lpf += F413_WALL_RUNTIME_CTRL_LPF_ALPHA *
@@ -456,6 +462,11 @@ void f413_wall_runtime_control_clear(void)
   f413_wall_runtime_control_reset();
   f413_wall_runtime_diagonal_reset();
   f413_wall_runtime_apply_heading_correction(false, false);
+}
+
+float f413_wall_runtime_latest_error(void)
+{
+  return g_wall_ctrl_latest_error;
 }
 
 void f413_wall_runtime_control_apply(bool straight_gate)

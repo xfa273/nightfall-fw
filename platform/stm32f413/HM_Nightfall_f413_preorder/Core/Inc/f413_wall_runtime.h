@@ -26,6 +26,7 @@ void f413_wall_runtime_config(const f413_wall_runtime_config_t* config);
 void f413_wall_runtime_end_clear(void);
 void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal);
 void f413_wall_runtime_control_clear(void);
+float f413_wall_runtime_latest_error(void);
 void f413_wall_runtime_control_apply(bool straight_gate);
 bool f413_wall_runtime_poll_wall_end(bool straight_gate);
 void f413_wall_runtime_poll_diagonal(bool diagonal_gate);
