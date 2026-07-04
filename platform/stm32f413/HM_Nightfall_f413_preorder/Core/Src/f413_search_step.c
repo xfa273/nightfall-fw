@@ -70,6 +70,12 @@ typedef struct {
   float t_total_s;
 } f413_search_step_smooth_turn_t;
 
+typedef struct {
+  bool initialized;
+  float fr_delta;
+  float fl_delta;
+} f413_search_step_front_match_filter_t;
+
 static f413_search_step_config_t g_config;
 static bool g_session_active = false;
 static uint8_t g_search_dual_wall_streak = 0U;
@@ -1476,10 +1482,88 @@ static float f413_search_step_clampf(float value, float min_value, float max_val
   return value;
 }
 
+static float f413_search_step_front_match_lpf_alpha(void)
+{
+  return f413_search_step_clampf(MATCH_POS_SENSOR_LPF_ALPHA, 0.0f, 1.0f);
+}
+
+static void f413_search_step_front_match_filter_reset(
+    f413_search_step_front_match_filter_t* filter)
+{
+  if (filter != NULL)
+  {
+    filter->initialized = false;
+    filter->fr_delta = 0.0f;
+    filter->fl_delta = 0.0f;
+  }
+}
+
+static void f413_search_step_front_match_filter_update(
+    f413_search_step_front_match_filter_t* filter,
+    const f413_wall_sensor_snapshot_t* wall)
+{
+  float alpha;
+
+  if ((filter == NULL) || (wall == NULL))
+  {
+    return;
+  }
+  if (!filter->initialized)
+  {
+    filter->initialized = true;
+    filter->fr_delta = (float)wall->fr_delta;
+    filter->fl_delta = (float)wall->fl_delta;
+    return;
+  }
+
+  alpha = f413_search_step_front_match_lpf_alpha();
+  filter->fr_delta += alpha * ((float)wall->fr_delta - filter->fr_delta);
+  filter->fl_delta += alpha * ((float)wall->fl_delta - filter->fl_delta);
+}
+
+static int32_t f413_search_step_front_match_error_fr(
+    const f413_search_step_front_match_filter_t* filter)
+{
+  if ((filter == NULL) || !filter->initialized)
+  {
+    return 0;
+  }
+  return (int32_t)lroundf(filter->fr_delta) - (int32_t)F_ALIGN_TARGET_FR;
+}
+
+static int32_t f413_search_step_front_match_error_fl(
+    const f413_search_step_front_match_filter_t* filter)
+{
+  if ((filter == NULL) || !filter->initialized)
+  {
+    return 0;
+  }
+  return (int32_t)lroundf(filter->fl_delta) - (int32_t)F_ALIGN_TARGET_FL;
+}
+
+static bool f413_search_step_front_match_within_tight(int32_t e_fr_cnt,
+                                                      int32_t e_fl_cnt,
+                                                      float e_ang)
+{
+  return (fabsf((float)e_fr_cnt) <= (float)MATCH_POS_TOL) &&
+         (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_TOL) &&
+         (fabsf(e_ang) <= (float)MATCH_POS_TOL_ANGLE);
+}
+
+static bool f413_search_step_front_match_within_hold(int32_t e_fr_cnt,
+                                                     int32_t e_fl_cnt,
+                                                     float e_ang)
+{
+  return (fabsf((float)e_fr_cnt) <= (float)MATCH_POS_HOLD_RELEASE_TOL) &&
+         (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_HOLD_RELEASE_TOL) &&
+         (fabsf(e_ang) <= (float)MATCH_POS_HOLD_RELEASE_TOL_ANGLE);
+}
+
 static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     f413_run_session_guard_t* guard)
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  f413_search_step_front_match_filter_t filter = {0};
   uint16_t stable_count = 0U;
   uint16_t count;
   const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
@@ -1513,30 +1597,31 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
       break;
     }
 
-    e_fr_cnt = wall.fr_delta - (int32_t)F_ALIGN_TARGET_FR;
-    e_fl_cnt = wall.fl_delta - (int32_t)F_ALIGN_TARGET_FL;
-    if ((fabsf((float)e_fr_cnt) <= (float)MATCH_POS_TOL) &&
-        (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_TOL))
+    f413_search_step_front_match_filter_update(&filter, &wall);
+    e_fr_cnt = f413_search_step_front_match_error_fr(&filter);
+    e_fl_cnt = f413_search_step_front_match_error_fl(&filter);
+    e_ang = (float)(e_fr_cnt - e_fl_cnt);
+    if (f413_search_step_front_match_within_tight(e_fr_cnt, e_fl_cnt, e_ang))
     {
       stable_count++;
       if (stable_count >= MATCH_POS_STABLE_COUNT)
       {
         break;
       }
+      v_cmd = 0.0f;
+      w_cmd = 0.0f;
     }
     else
     {
       stable_count = 0U;
+      e_pos = 0.5f * ((float)e_fr_cnt + (float)e_fl_cnt);
+      v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS * e_pos,
+                                      -MATCH_POS_VEL_MAX,
+                                      MATCH_POS_VEL_MAX);
+      w_cmd = f413_search_step_clampf(-MATCH_POS_KP_ROT * e_ang,
+                                      -MATCH_POS_OMEGA_MAX,
+                                      MATCH_POS_OMEGA_MAX);
     }
-
-    e_pos = 0.5f * ((float)e_fr_cnt + (float)e_fl_cnt);
-    e_ang = (float)(e_fr_cnt - e_fl_cnt);
-    v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS * e_pos,
-                                    -MATCH_POS_VEL_MAX,
-                                    MATCH_POS_VEL_MAX);
-    w_cmd = f413_search_step_clampf(-MATCH_POS_KP_ROT * e_ang,
-                                    -MATCH_POS_OMEGA_MAX,
-                                    MATCH_POS_OMEGA_MAX);
 
     f413_ctrl_set_velocity(v_cmd);
     f413_ctrl_set_omega(w_cmd);
@@ -1651,6 +1736,9 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     f413_run_session_guard_t* guard)
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  f413_search_step_front_match_filter_t filter = {0};
+  uint16_t stable_count = 0U;
+  bool holding = false;
 
   f413_wall_runtime_control_clear();
   f413_ctrl_clear_angle_target();
@@ -1676,27 +1764,47 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     if (!f413_search_step_front_match_wall_detected(&wall))
     {
       reason = f413_search_step_front_match_stop_and_wait(guard, "front-wall-lost");
+      f413_search_step_front_match_filter_reset(&filter);
+      stable_count = 0U;
+      holding = false;
       continue;
     }
     if (f413_search_step_front_match_too_close(&wall))
     {
       reason = f413_search_step_front_match_stop_and_wait(guard, "too-close");
+      f413_search_step_front_match_filter_reset(&filter);
+      stable_count = 0U;
+      holding = false;
       continue;
     }
 
-    e_fr_cnt = wall.fr_delta - (int32_t)F_ALIGN_TARGET_FR;
-    e_fl_cnt = wall.fl_delta - (int32_t)F_ALIGN_TARGET_FL;
+    f413_search_step_front_match_filter_update(&filter, &wall);
+    e_fr_cnt = f413_search_step_front_match_error_fr(&filter);
+    e_fl_cnt = f413_search_step_front_match_error_fl(&filter);
     e_ang = (float)(e_fr_cnt - e_fl_cnt);
 
-    if ((fabsf((float)e_fr_cnt) <= (float)MATCH_POS_TOL) &&
-        (fabsf((float)e_fl_cnt) <= (float)MATCH_POS_TOL) &&
-        (fabsf(e_ang) <= (float)MATCH_POS_TOL_ANGLE))
+    if (holding && f413_search_step_front_match_within_hold(e_fr_cnt, e_fl_cnt, e_ang))
     {
+      v_cmd = 0.0f;
+      w_cmd = 0.0f;
+    }
+    else if (f413_search_step_front_match_within_tight(e_fr_cnt, e_fl_cnt, e_ang))
+    {
+      if (stable_count < MATCH_POS_STABLE_COUNT)
+      {
+        stable_count++;
+      }
+      if (stable_count >= MATCH_POS_STABLE_COUNT)
+      {
+        holding = true;
+      }
       v_cmd = 0.0f;
       w_cmd = 0.0f;
     }
     else
     {
+      stable_count = 0U;
+      holding = false;
       e_pos = 0.5f * ((float)e_fr_cnt + (float)e_fl_cnt);
       v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS * e_pos,
                                       -MATCH_POS_VEL_MAX,
