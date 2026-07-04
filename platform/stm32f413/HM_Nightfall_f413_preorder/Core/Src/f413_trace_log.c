@@ -1,9 +1,10 @@
 #include "f413_trace_log.h"
 
+#include "f413_trace_flags.h"
 #include "stm32f4xx_hal.h"
 #include "trace.h"
 
-#define F413_TRACE_LOG_AUTO_BUFFER_RECORDS (1536U)
+#define F413_TRACE_LOG_AUTO_BUFFER_RECORDS (2048U)
 #define F413_TRACE_LOG_AUTO_FLUSH_RECORDS_PER_STEP (8U)
 #define F413_TRACE_LOG_AUTO_HEADER_COMMIT_RECORDS (8U)
 #define F413_TRACE_LOG_AUTO_FLAG (0x8000U)
@@ -25,6 +26,15 @@ static nvm_status_t g_trace_log_auto_nvm_status = NVM_STATUS_OK;
 static f413_trace_log_fill_control_sample_fn g_fill_control_sample = 0;
 static f413_trace_log_void_callback_t g_update_observe_cache = 0;
 static f413_trace_log_void_callback_t g_reset_observe_state = 0;
+
+static bool f413_trace_log_auto_defer_nvm_flush(void)
+{
+  const uint16_t motor_mask = (uint16_t)(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG |
+                                         NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG |
+                                         NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
+
+  return (g_trace_log_auto_mode_flags & motor_mask) != 0U;
+}
 
 static nvm_status_t f413_trace_log_auto_flush_buffer(void)
 {
@@ -266,6 +276,11 @@ void f413_trace_log_auto_step(void)
   if (g_update_observe_cache != 0)
   {
     g_update_observe_cache();
+  }
+
+  if (f413_trace_log_auto_defer_nvm_flush())
+  {
+    return;
   }
 
   if (g_trace_log_auto_nvm_error == 0U)

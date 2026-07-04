@@ -16,7 +16,7 @@
 /*------------------------------------------------------------
     走行系
 ------------------------------------------------------------*/
-#define D_TIRE            14.88
+#define D_TIRE            14.37
 #define DIST_HALF_SEC     45.0
 #define DIST_D_HALF_SEC   67.279
 #define DIST_FIRST_SEC    5
@@ -33,6 +33,10 @@
 
 #ifndef F413_IMU_GYRO_Z_LPF_TAU
 #define F413_IMU_GYRO_Z_LPF_TAU 0.0F
+#endif
+
+#ifndef F413_IMU_GYRO_Z_SCALE
+#define F413_IMU_GYRO_Z_SCALE 1.0F
 #endif
 
 #ifndef F413_IMU_ACCEL_FORWARD_LPF_TAU
@@ -247,8 +251,9 @@
 ------------------------------------------------------------*/
 #define WALL_BASE_FR  160
 #define WALL_BASE_FL  160
-#define WALL_BASE_R   200
-#define WALL_BASE_L   200
+#define WALL_BASE_R   160
+#define WALL_BASE_L   160
+/* Wall-control wall-drop derivative threshold. */
 #define WALL_DIFF_THR 22
 #define K_SENSOR      1.00F
 
@@ -327,8 +332,8 @@
 /*------------------------------------------------------------
     探索系
 ------------------------------------------------------------*/
-#define GOAL_X   2
-#define GOAL_Y   3
+#define GOAL_X   1
+#define GOAL_Y   0
 #define MAZE_SIZE 16
 #define START_X   0
 #define START_Y   0

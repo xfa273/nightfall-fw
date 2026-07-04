@@ -31,6 +31,8 @@
 #define F413_WALL_RUNTIME_CTRL_LPF_ALPHA      (F413_WALL_CTRL_LPF_ALPHA)
 #define F413_WALL_RUNTIME_CTRL_SLEW_DEG       (WALL_CTRL_SLEW_MAX)
 #define F413_WALL_RUNTIME_CTRL_MIN_VEL_MM_S   (20.0f)
+#define F413_WALL_RUNTIME_CTRL_DIFF_THR       (WALL_DIFF_THR)
+#define F413_WALL_RUNTIME_CTRL_DIFF_MARGIN    (30)
 #ifndef F413_WALL_RUNTIME_DIAGONAL_THR
 #define F413_WALL_RUNTIME_DIAGONAL_THR        (0.0f)
 #endif
@@ -253,6 +255,19 @@ static void f413_wall_runtime_diagonal_reset(void)
   g_diagonal_ctrl_active = false;
 }
 
+static bool f413_wall_runtime_control_wall_present(int32_t delta,
+                                                   uint16_t base,
+                                                   int32_t deriv)
+{
+  int32_t threshold = (int32_t)base;
+
+  if (deriv < -(int32_t)F413_WALL_RUNTIME_CTRL_DIFF_THR)
+  {
+    threshold += F413_WALL_RUNTIME_CTRL_DIFF_MARGIN;
+  }
+  return delta > threshold;
+}
+
 static void f413_wall_runtime_apply_heading_correction(bool straight_gate,
                                                        bool diagonal_gate)
 {
@@ -316,6 +331,8 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
   float wall_error = 0.0f;
   float target_deg;
   float delta;
+  bool right_wall;
+  bool left_wall;
 
 #if (NIGHTFALL_F413_DISABLE_WALL_CONTROL != 0U)
   (void)wall;
@@ -330,7 +347,14 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
     return;
   }
 
-  if (wall->right_wall && wall->left_wall)
+  right_wall = f413_wall_runtime_control_wall_present(wall->r_delta,
+                                                      WALL_BASE_R,
+                                                      g_wall_end.deriv_r);
+  left_wall = f413_wall_runtime_control_wall_present(wall->l_delta,
+                                                     WALL_BASE_L,
+                                                     g_wall_end.deriv_l);
+
+  if (right_wall && left_wall)
   {
     uint16_t base_l;
     uint16_t base_r;
@@ -339,14 +363,14 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
     wall_error = (float)(wall->l_delta - (int32_t)base_l) -
                  (float)(wall->r_delta - (int32_t)base_r);
   }
-  else if (wall->right_wall && !wall->left_wall)
+  else if (right_wall && !left_wall)
   {
     uint16_t base_r;
 
     f413_wall_sensor_get_control_base(NULL, &base_r, NULL);
     wall_error = -2.0f * (float)(wall->r_delta - (int32_t)base_r);
   }
-  else if (!wall->right_wall && wall->left_wall)
+  else if (!right_wall && left_wall)
   {
     uint16_t base_l;
 
@@ -355,8 +379,7 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
   }
   else
   {
-    f413_wall_runtime_control_reset();
-    return;
+    wall_error = 0.0f;
   }
 
   g_wall_ctrl_error_lpf += F413_WALL_RUNTIME_CTRL_LPF_ALPHA *
@@ -386,7 +409,9 @@ static void f413_wall_runtime_control_update(const f413_wall_sensor_snapshot_t* 
   }
 
   g_wall_ctrl_angle_deg += delta;
-  g_wall_ctrl_active = true;
+  g_wall_ctrl_active = (target_deg != 0.0f) ||
+                       (g_wall_ctrl_angle_deg != 0.0f) ||
+                       (g_wall_ctrl_error_lpf != 0.0f);
 #endif
 }
 

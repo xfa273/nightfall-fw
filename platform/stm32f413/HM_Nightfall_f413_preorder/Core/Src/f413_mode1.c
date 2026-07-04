@@ -63,9 +63,9 @@ typedef struct {
 static const f413_mode1_case0_sub_t k_case0_subs[4] = {
   {
     0U,
-    "reserved",
-    {0U, F413_SEARCH_STEP_CASE0_TEST_NONE,
-     "mode1-case0-sub0 reserved", F413_MODE1_FEATURES_CASE0_TEST_INIT},
+    "ALPHA_ROTATE_90: spot spin R720",
+    {0U, F413_SEARCH_STEP_CASE0_TEST_SPIN_R720,
+     "mode1-case0-sub0 spot spin R720", F413_MODE1_FEATURES_CASE0_TEST_INIT},
   },
   {
     1U,
@@ -110,7 +110,7 @@ static const f413_mode1_case_t k_cases[8] = {
     4U,
     "searchRunParams[0] standard: GOAL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_GOAL, 0U},
-     "mode1-case4 standard goal", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
+     "mode1-case4 standard goal", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
   },
   {
     5U,

@@ -2,6 +2,7 @@
 
 #include "f413_control.h"
 #include "main.h"
+#include "params.h"
 #include "trace.h"
 
 #define F413_IMU_DIAG_WHO_AM_I_REG (0x0FU)
@@ -149,7 +150,7 @@ static bool f413_imu_diag_read_gyro_z_dps(float* out)
     return false;
   }
 
-  *out = (float)raw_z * F413_IMU_DIAG_GYRO_SENSITIVITY;
+  *out = (float)raw_z * F413_IMU_DIAG_GYRO_SENSITIVITY * F413_IMU_GYRO_Z_SCALE;
   return true;
 }
 

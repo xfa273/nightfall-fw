@@ -812,7 +812,9 @@ static int16_t imu_read16_le(uint8_t reg_l)
 
 static float imu_read_gyro_z_dps(void)
 {
-    return (float)imu_read16_le(F413_IMU_OUTZ_G_L) * F413_IMU_GYRO_SENSITIVITY;
+    return (float)imu_read16_le(F413_IMU_OUTZ_G_L) *
+           F413_IMU_GYRO_SENSITIVITY *
+           F413_IMU_GYRO_Z_SCALE;
 }
 
 static float imu_read_accel_forward_mm_s2(void)

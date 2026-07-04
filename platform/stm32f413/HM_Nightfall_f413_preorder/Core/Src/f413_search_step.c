@@ -21,6 +21,7 @@
 #define F413_SEARCH_STEP_MAZE_WALL_KNOWN_MASK (0x0FU)
 #define F413_SEARCH_STEP_MAZE_START_FORCED_WALLS (0x07U)
 #define F413_SEARCH_STEP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
+#define F413_SEARCH_STEP_SPIN_R720_TARGET_DEG (-720.0f)
 #ifndef F413_SEARCH_STEP_AUTO_MAX_ACTIONS
 #define F413_SEARCH_STEP_AUTO_MAX_ACTIONS (256U)
 #endif
@@ -1256,6 +1257,75 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
                                         straight_trace_flags);
 }
 
+static f413_run_session_abort_reason_t f413_search_step_run_spot_spin_profile(
+    float target_angle_deg,
+    float alpha_deg_s2,
+    f413_run_session_guard_t* guard)
+{
+  const uint16_t turn_trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
+                                              g_config.trace_motor_rev_flag);
+  f413_search_step_smooth_turn_t profile;
+  f413_run_session_abort_reason_t reason;
+  uint32_t start_ms;
+  int8_t turn_sign;
+
+  profile = f413_search_step_build_smooth_turn(target_angle_deg, alpha_deg_s2);
+  if (profile.t_total_s <= 0.0f)
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+
+  turn_sign = (target_angle_deg < 0.0f) ? -1 : 1;
+  trace_printf("[SEARCH-TEST] spin target=%.0fdeg alpha=%.0f omega_peak=%.0fdps total=%.2fs\r\n",
+               (double)target_angle_deg,
+               (double)alpha_deg_s2,
+               (double)((float)turn_sign * profile.omega_peak_deg_s),
+               (double)profile.t_total_s);
+
+  f413_search_step_prepare_turn_angle_control();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
+                                profile.t_acc_s,
+                                profile.t_cruise_s);
+
+  start_ms = f413_search_step_tick();
+  while (1)
+  {
+    const float t_s = (float)(f413_search_step_tick() - start_ms) * 0.001f;
+    if (t_s >= profile.t_total_s)
+    {
+      break;
+    }
+    f413_search_step_set_mode_flags(turn_trace_flags);
+    f413_ctrl_set_velocity(0.0f);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      f413_ctrl_stop_omega_profile();
+      f413_ctrl_clear_angle_target();
+      f413_ctrl_set_velocity(0.0f);
+      f413_ctrl_set_omega(0.0f);
+      return reason;
+    }
+  }
+
+  f413_ctrl_stop_omega_profile();
+  f413_ctrl_set_velocity(0.0f);
+  f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(target_angle_deg);
+
+  reason = f413_search_step_wait_ctrl_target(target_angle_deg,
+                                             true,
+                                             guard,
+                                             turn_trace_flags);
+  if (reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_ctrl_clear_angle_target();
+  }
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
     const SearchRunParams_t* params,
     float* speed_now_mm_s,
@@ -1435,6 +1505,13 @@ void f413_search_step_run_case0_test_once(
                                                       &speed_now_mm_s,
                                                       &guard);
     }
+  }
+  else if (test_config->test_kind == F413_SEARCH_STEP_CASE0_TEST_SPIN_R720)
+  {
+    abort_reason = f413_search_step_run_spot_spin_profile(
+        F413_SEARCH_STEP_SPIN_R720_TARGET_DEG,
+        (float)ALPHA_ROTATE_90,
+        &guard);
   }
   else if (test_config->test_kind == F413_SEARCH_STEP_CASE0_TEST_STRAIGHT_3)
   {

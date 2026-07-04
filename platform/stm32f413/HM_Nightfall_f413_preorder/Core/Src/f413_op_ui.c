@@ -354,7 +354,7 @@ const char* f413_op_ui_sub_name(uint8_t mode, uint8_t sub)
   {
     switch (sub)
     {
-      case 0U: return "reserved";
+      case 0U: return "spot spin right 720";
       case 1U: return "standard speed turn test";
       case 2U: return "low speed turn test";
       case 3U: return "straight 3-section test";
