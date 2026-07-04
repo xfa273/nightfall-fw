@@ -37,6 +37,7 @@ MOTION_NAMES = {
     4: "back_turn_180",
     5: "smooth_turn_l90",
     6: "final_stop",
+    7: "reverse_section",
 }
 PHASE_STATUS_NAMES = {
     1: "start",
@@ -48,6 +49,7 @@ ROUTE_FAIL_REASON_NAMES = {
     1: "max_actions",
     2: "no_current_step",
     3: "no_next_rel",
+    4: "map_save_guard",
 }
 
 
