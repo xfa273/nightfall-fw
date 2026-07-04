@@ -60,6 +60,7 @@ void f413_op_ui_print_selection(uint8_t level, uint8_t mode, uint8_t op_case, ui
 void f413_op_ui_print_current_selection(void);
 void f413_op_ui_increment_selection(void);
 void f413_op_ui_enter_selection(void);
+void f413_op_ui_lock_after_run_end(void);
 void f413_op_ui_step(uint32_t now_ms);
 void f413_op_ui_uart_push_once(void);
 void f413_op_ui_uart_enter_once(void);

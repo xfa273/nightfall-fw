@@ -8,6 +8,7 @@
 #define F413_OP_UI_POLL_MS (40U)
 #define F413_OP_UI_BUTTON_LOCK_MS (250U)
 #define F413_OP_UI_ENTER_STREAK (3U)
+#define F413_OP_UI_RUN_END_TOGGLE_MS (400U)
 
 static f413_op_ui_config_t s_config;
 static uint8_t s_mode = 0U;
@@ -19,9 +20,14 @@ static uint32_t s_button_lock_until_ms = 0U;
 static uint8_t s_enter_streak = 0U;
 static bool s_button_prev_pressed = false;
 static bool s_enter_latched = false;
+static bool s_run_end_locked = false;
 
 static bool f413_op_ui_can_accept_input(void)
 {
+  if (s_run_end_locked)
+  {
+    return false;
+  }
   return (s_config.can_accept_input == NULL) || s_config.can_accept_input();
 }
 
@@ -59,6 +65,18 @@ static void f413_op_ui_set_selected_value(uint8_t value)
 
 static void f413_op_ui_show_current_leds(uint32_t now_ms)
 {
+  if (s_run_end_locked)
+  {
+    uint8_t mask = F413_HW_LED_REAR_RIGHT_MASK;
+
+    if (((now_ms / F413_OP_UI_RUN_END_TOGGLE_MS) & 0x01U) != 0U)
+    {
+      mask = F413_HW_LED_REAR_LEFT_MASK;
+    }
+    f413_hw_show_led_mask(mask);
+    return;
+  }
+
   if (s_level == F413_OP_UI_LEVEL_TOP)
   {
     f413_hw_show_mode_leds(s_mode);
@@ -511,6 +529,17 @@ void f413_op_ui_enter_selection(void)
   f413_op_ui_after_execute();
 }
 
+void f413_op_ui_lock_after_run_end(void)
+{
+  s_run_end_locked = true;
+  s_enter_streak = 0U;
+  s_button_prev_pressed = false;
+  s_enter_latched = true;
+  s_button_lock_until_ms = UINT32_MAX;
+  trace_printf("[OP-UI] run-end lock: input disabled; rear LEDs alternate until reset\r\n");
+  f413_op_ui_show_current_leds(HAL_GetTick());
+}
+
 void f413_op_ui_step(uint32_t now_ms)
 {
   bool button_pressed;
@@ -521,6 +550,12 @@ void f413_op_ui_step(uint32_t now_ms)
     return;
   }
   s_next_ui_poll_ms = now_ms + F413_OP_UI_POLL_MS;
+
+  if (s_run_end_locked)
+  {
+    f413_op_ui_show_current_leds(now_ms);
+    return;
+  }
 
   if (!f413_op_ui_can_accept_input())
   {

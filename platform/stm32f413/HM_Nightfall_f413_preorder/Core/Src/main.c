@@ -678,11 +678,13 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_search_trace_entry_once();
+      f413_op_ui_lock_after_run_end();
       break;
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_shortest_trace_entry_once(mode, op_case);
+      f413_op_ui_lock_after_run_end();
       break;
     case F413_OP_UI_ACTION_TEST_RUN_1:
       nightfall_op_run_test_after_delay('1');
@@ -748,6 +750,7 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
       f413_mode1_run_case(op_case);
+      f413_op_ui_lock_after_run_end();
       break;
     case F413_OP_UI_ACTION_NONE:
     default:
