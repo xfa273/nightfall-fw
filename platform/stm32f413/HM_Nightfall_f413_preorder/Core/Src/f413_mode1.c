@@ -42,6 +42,15 @@ typedef struct {
     .test_mode_run = false, \
   }
 
+#define F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT \
+  { \
+    .wall_control_enabled = true, \
+    .wall_end_correction_enabled = false, \
+    .front_wall_correction_enabled = false, \
+    .angle_accum_mode = true, \
+    .test_mode_run = false, \
+  }
+
 #define F413_MODE1_FEATURES_CASE0_TEST_INIT \
   { \
     .wall_control_enabled = false, \
@@ -83,25 +92,25 @@ static const f413_mode1_case_t k_cases[8] = {
     1U,
     "searchRunParams[0] standard: GOAL -> FULL",
     {0U, 2U, {F413_SEARCH_STEP_TARGET_GOAL, F413_SEARCH_STEP_TARGET_FULL},
-     "mode1-case1 standard goal-full", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
+     "mode1-case1 standard goal-full", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
   },
   {
     2U,
     "searchRunParams[0] standard: FULL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_FULL, 0U},
-     "mode1-case2 standard full", F413_MODE1_FEATURES_ALL_ON_INIT},
+     "mode1-case2 standard full", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
   },
   {
     3U,
     "searchRunParams[0] standard: GOAL -> START",
     {0U, 2U, {F413_SEARCH_STEP_TARGET_GOAL, F413_SEARCH_STEP_TARGET_START},
-     "mode1-case3 standard goal-start", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
+     "mode1-case3 standard goal-start", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
   },
   {
     4U,
     "searchRunParams[0] standard: GOAL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_GOAL, 0U},
-     "mode1-case4 standard goal", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
+     "mode1-case4 standard goal", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
   },
   {
     5U,
