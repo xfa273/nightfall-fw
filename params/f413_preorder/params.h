@@ -253,8 +253,6 @@
 #define WALL_BASE_FL  160
 #define WALL_BASE_R   160
 #define WALL_BASE_L   160
-/* Wall-control wall-drop derivative threshold. */
-#define WALL_DIFF_THR 22
 #define K_SENSOR      1.00F
 
 #ifndef SENSOR_DIST_GAIN
@@ -275,6 +273,7 @@
 #endif
 
 #define WALL_END_DERIV_FALL_THR 200
+#define WALL_CTRL_DERIV_FALL_THR 200
 
 #ifndef WALL_END_EXTEND_MAX_MM
 #define WALL_END_EXTEND_MAX_MM  10.0F

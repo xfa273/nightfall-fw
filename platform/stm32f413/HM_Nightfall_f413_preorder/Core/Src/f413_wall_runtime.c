@@ -31,7 +31,7 @@
 #define F413_WALL_RUNTIME_CTRL_LPF_ALPHA      (F413_WALL_CTRL_LPF_ALPHA)
 #define F413_WALL_RUNTIME_CTRL_SLEW_DEG       (WALL_CTRL_SLEW_MAX)
 #define F413_WALL_RUNTIME_CTRL_MIN_VEL_MM_S   (20.0f)
-#define F413_WALL_RUNTIME_CTRL_DIFF_THR       (WALL_DIFF_THR)
+#define F413_WALL_RUNTIME_CTRL_DERIV_FALL_THR (WALL_CTRL_DERIV_FALL_THR)
 #define F413_WALL_RUNTIME_CTRL_DIFF_MARGIN    (30)
 #ifndef F413_WALL_RUNTIME_DIAGONAL_THR
 #define F413_WALL_RUNTIME_DIAGONAL_THR        (0.0f)
@@ -261,7 +261,7 @@ static bool f413_wall_runtime_control_wall_present(int32_t delta,
 {
   int32_t threshold = (int32_t)base;
 
-  if (deriv < -(int32_t)F413_WALL_RUNTIME_CTRL_DIFF_THR)
+  if (deriv < -(int32_t)F413_WALL_RUNTIME_CTRL_DERIV_FALL_THR)
   {
     threshold += F413_WALL_RUNTIME_CTRL_DIFF_MARGIN;
   }
