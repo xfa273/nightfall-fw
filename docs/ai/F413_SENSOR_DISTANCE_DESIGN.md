@@ -117,16 +117,59 @@ bool f413_wall_distance_side_present(const f413_wall_distance_snapshot_t* s, boo
 
 ## Conversion Model
 
-Initial model:
+Existing `sensor_distance.c` behavior:
 
-- Use monotonic per-channel LUTs with linear interpolation.
+- Convert ADC to distance by finding the surrounding LUT segment and applying linear interpolation directly in `(adc, mm)` space.
+- For FL/FR/front-sum only, optionally apply a 3-point distance-domain PCHIP warp after LUT conversion.
+- The 3-point warp is useful for global scale/offset correction, but it cannot remove local interpolation error caused by the optical sensor curve.
+
+Design target:
+
+- Use monotonic per-channel LUTs, but do not assume a coarse, uniformly spaced table is accurate enough.
+- Generate the firmware LUT offline from calibration data with an error-bounded adaptive knot selection:
+  - keep more points where the ADC-vs-distance curve has high curvature.
+  - keep fewer points where the curve is smooth.
+  - report the worst interpolation error in millimeters before accepting the table.
 - Clamp or mark invalid outside the calibrated range for control use.
 - Keep unwarped values in logs for diagnosis.
-- Apply 3-point distance-domain warp only after LUT conversion.
+- Apply 3-point distance-domain warp only after LUT conversion, and use it only for per-unit/per-environment correction.
 
 This matches the practical shape used by satoshihamasuna while reusing the Nightfall `sensor_distance` module.
 
-Future model if needed:
+Candidate interpolation models for the calibration tool:
+
+1. Baseline ADC-domain linear interpolation
+   - Current firmware behavior.
+   - Cheapest runtime path.
+   - Acceptable only if the generated adaptive LUT meets the error target.
+
+2. Transformed-domain linear interpolation
+   - Interpolate using a transformed sensor axis such as:
+
+     ```text
+     x = log(delta_adc)
+     ```
+
+     or, if the measured data is closer to an inverse-power curve:
+
+     ```text
+     x = 1 / sqrt(delta_adc)
+     ```
+
+   - This can reduce the number of LUT points, but adds runtime math or requires an additional transformed lookup table.
+
+3. Monotone cubic interpolation
+   - Use PCHIP in ADC or transformed-ADC domain.
+   - Preserves monotonicity better than a normal spline.
+   - More runtime cost and more implementation complexity, so use it only if the adaptive LUT is still too large or inaccurate.
+
+Recommended first firmware implementation:
+
+- Keep the existing ADC-domain linear interpolation in firmware.
+- Make the calibration tool generate a non-uniform adaptive LUT that proves the linear interpolation error is below the target.
+- Use transformed-domain/PCHIP fitting in the host tool as an analysis path first, not as the first control-path dependency.
+
+Future compact model if needed:
 
 - Add a log-model option similar to kerikun11:
 
@@ -250,4 +293,3 @@ Before using distance conversion in normal exploration:
 - a 5 mm movement of the front wall changes the converted distance promptly and in the correct direction.
 - front-wall match works without the previous delayed/oscillatory response.
 - logs show raw ADC and distance-domain decisions agree on simple maze cases.
-
