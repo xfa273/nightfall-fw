@@ -22,6 +22,14 @@
 - モータ・ファン・走行・探索・最短・NVM破壊的操作は、安全条件と作業意図が明確な場合だけ実行する
 - 旧委譲関連の互換資産は `docs/ai/archive/delegation-legacy/` にアーカイブとして保持する
 
+## 外部マイクロマウス実装の優先参照
+
+壁制御、位置合わせ、探索、走行制御などの公開実装を調査するときは、上位勢の参考実装としてまず以下のGitHubユーザのリポジトリを優先確認する。
+
+- Naophis: https://github.com/Naophis?tab=repositories
+- satoshihamasuna: https://github.com/satoshihamasuna?tab=repositories
+- kerikun11: https://github.com/kerikun11?tab=repositories
+
 ## 標準フロー
 
 1. Codex がタスクを整理
