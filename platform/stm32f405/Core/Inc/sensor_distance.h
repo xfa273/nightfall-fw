@@ -10,6 +10,7 @@
 #define INC_SENSOR_DISTANCE_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -21,9 +22,24 @@ extern "C" {
 #define SENSOR_DIST_LUT_MAX_POINTS 128
 #endif
 
+typedef enum {
+    SENSOR_DISTANCE_INTERP_LINEAR = 0,
+    SENSOR_DISTANCE_INTERP_PCHIP = 1,
+} sensor_distance_interpolation_t;
+
 // Initialize module with default coarse LUT (0..90mm, 10mm step)
 // Safe to call multiple times.
 void sensor_distance_init(void);
+
+// Optional profile hook. The weak default does nothing; profile-specific code
+// can override it and call sensor_distance_set_lut_*().
+void sensor_distance_load_profile_luts(void);
+
+// Select interpolation inside the AD->mm LUT. Default is linear to preserve the
+// existing F405 behavior. PCHIP is shape-preserving and uses slopes computed
+// from the current monotonic LUT.
+void sensor_distance_set_interpolation(sensor_distance_interpolation_t mode);
+sensor_distance_interpolation_t sensor_distance_get_interpolation(void);
 
 // Set/replace FL/FR/L/R LUTs
 //  - mm[i]: distance in mm (monotonically increasing)
@@ -40,6 +56,11 @@ size_t sensor_distance_lut_size_fl(void);
 size_t sensor_distance_lut_size_fr(void);
 size_t sensor_distance_lut_size_l (void);
 size_t sensor_distance_lut_size_r (void);
+bool sensor_distance_ad_in_range_fl(uint16_t ad_value);
+bool sensor_distance_ad_in_range_fr(uint16_t ad_value);
+bool sensor_distance_ad_in_range_l (uint16_t ad_value);
+bool sensor_distance_ad_in_range_r (uint16_t ad_value);
+bool sensor_distance_ad_in_range_fsum(uint16_t ad_sum);
 
 // Convert AD -> distance [mm] using LUTs with linear interpolation.
 // If input is outside the LUT AD range, perform linear extrapolation at the nearest edge (no clipping).

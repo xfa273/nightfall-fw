@@ -136,6 +136,16 @@ bool f413_wall_distance_side_present(const f413_wall_distance_snapshot_t* s, boo
 
 `f413_wall_distance_init()` should call `sensor_distance_init()` and then `nvm_params_distance_load_and_apply()`. If NVM distance data is missing, default LUTs are still used.
 
+Initial implementation status:
+
+- `sensor_distance` supports two LUT interpolation modes:
+  - `SENSOR_DISTANCE_INTERP_LINEAR`: legacy default.
+  - `SENSOR_DISTANCE_INTERP_PCHIP`: shape-preserving cubic interpolation over the current monotonic LUT.
+- `f413_wall_distance_init()` selects PCHIP for F413 distance snapshots.
+- F413 exposes a non-motor UART diagnostic command:
+  - `n`: print one raw/distance wall-sensor snapshot.
+- Runtime control still uses the existing raw ADC paths until distance conversion is validated.
+
 ## Conversion Model
 
 Existing `sensor_distance.c` behavior:
@@ -244,6 +254,25 @@ Recommended measurement points:
 
 Use at least a few hundred samples per point, because the resulting table becomes a control primitive.
 
+Suggested CSV format for the host fitter:
+
+```csv
+distance_mm,fr_delta,fl_delta,r_delta,l_delta
+40,4080,4090,,
+40,4076,4087,,
+45,3890,3340,,
+...
+25,,,3420,4090
+25,,,3417,4086
+```
+
+Notes:
+
+- Use `delta` values after off/on subtraction and saved dark offset correction.
+- Front and side measurements can share one CSV; leave unused sensor columns blank.
+- Keep separate rows for repeated samples. The fitter uses them to estimate noise.
+- Use millimeters from the actual wall/reference plane used by the run logic, not from an arbitrary sensor package datum.
+
 ## Tooling
 
 Add a host tool after the firmware logging path exists:
@@ -258,6 +287,20 @@ Responsibilities:
 - generate C arrays or params snippets
 - plot raw delta vs distance
 - report conversion error and repeatability
+- generate `params/f413_preorder/sensor_distance_lut.c`
+
+Typical command:
+
+```sh
+python3 tools/logging/fit_sensor_distance.py sensor_distance_cal.csv \
+  --emit-c params/f413_preorder/sensor_distance_lut.c \
+  --max-error-mm 1.0
+```
+
+The generated profile function overrides the weak default
+`sensor_distance_load_profile_luts()` hook. On the next F413 build,
+`sensor_distance_init()` loads the built-in fallback table first and then
+replaces the calibrated channels with the generated profile tables.
 
 The first validation should compare:
 

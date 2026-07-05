@@ -16,25 +16,32 @@
 // Internal storage for LUTs (FL/FR)
 static uint16_t s_mm_fl[SENSOR_DIST_LUT_MAX_POINTS];
 static uint16_t s_ad_fl[SENSOR_DIST_LUT_MAX_POINTS];
+static float    s_m_fl[SENSOR_DIST_LUT_MAX_POINTS];
 static size_t   s_n_fl = 0;
 
 static uint16_t s_mm_fr[SENSOR_DIST_LUT_MAX_POINTS];
 static uint16_t s_ad_fr[SENSOR_DIST_LUT_MAX_POINTS];
+static float    s_m_fr[SENSOR_DIST_LUT_MAX_POINTS];
 static size_t   s_n_fr = 0;
 
 // Side wall sensors (L/R)
 static uint16_t s_mm_l[SENSOR_DIST_LUT_MAX_POINTS];
 static uint16_t s_ad_l[SENSOR_DIST_LUT_MAX_POINTS];
+static float    s_m_l[SENSOR_DIST_LUT_MAX_POINTS];
 static size_t   s_n_l = 0;
 
 static uint16_t s_mm_r[SENSOR_DIST_LUT_MAX_POINTS];
 static uint16_t s_ad_r[SENSOR_DIST_LUT_MAX_POINTS];
+static float    s_m_r[SENSOR_DIST_LUT_MAX_POINTS];
 static size_t   s_n_r = 0;
 
 // Combined front (FL+FR) LUT storage
 static uint16_t s_mm_fsum[SENSOR_DIST_LUT_MAX_POINTS];
 static uint16_t s_ad_fsum[SENSOR_DIST_LUT_MAX_POINTS];
+static float    s_m_fsum[SENSOR_DIST_LUT_MAX_POINTS];
 static size_t   s_n_fsum = 0;
+
+static sensor_distance_interpolation_t s_interp_mode = SENSOR_DISTANCE_INTERP_LINEAR;
 
 // Optional FRONT-SUM distance-domain warp: mm_est -> mm_true (3-point PCHIP)
 static int   s_fsum_warp_valid = 0;
@@ -83,6 +90,10 @@ static const uint16_t s_r_side_fine[] = {
 };
 static const size_t s_n_fine = sizeof(s_mm_fine)/sizeof(s_mm_fine[0]);
 
+__attribute__((weak)) void sensor_distance_load_profile_luts(void)
+{
+}
+
 static int validate_lut(const uint16_t *mm, const uint16_t *ad, size_t n)
 {
     if (!mm || !ad) return -1;
@@ -93,6 +104,53 @@ static int validate_lut(const uint16_t *mm, const uint16_t *ad, size_t n)
         if (!(ad[i] < ad[i-1])) return -1;
     }
     return 0;
+}
+
+static float pchip_endpoint_slope(float h0, float h1, float d0, float d1)
+{
+    float m = ((2.0f * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+
+    if (m * d0 <= 0.0f) {
+        return 0.0f;
+    }
+    if (fabsf(m) > fabsf(3.0f * d0)) {
+        return 3.0f * d0;
+    }
+    return m;
+}
+
+static void compute_pchip_slopes_desc_ad(const uint16_t *mm, const uint16_t *ad, size_t n, float *m)
+{
+    float h[SENSOR_DIST_LUT_MAX_POINTS - 1U];
+    float d[SENSOR_DIST_LUT_MAX_POINTS - 1U];
+
+    if ((mm == NULL) || (ad == NULL) || (m == NULL) || (n < 2U)) {
+        return;
+    }
+
+    for (size_t i = 0U; i + 1U < n; i++) {
+        h[i] = (float)ad[i] - (float)ad[i + 1U];
+        d[i] = ((float)mm[i + 1U] - (float)mm[i]) / h[i];
+    }
+
+    if (n == 2U) {
+        m[0] = d[0];
+        m[1] = d[0];
+        return;
+    }
+
+    for (size_t i = 1U; i + 1U < n; i++) {
+        if ((d[i - 1U] * d[i]) <= 0.0f) {
+            m[i] = 0.0f;
+        } else {
+            const float w1 = 2.0f * h[i] + h[i - 1U];
+            const float w2 = h[i] + 2.0f * h[i - 1U];
+            m[i] = (w1 + w2) / ((w1 / d[i - 1U]) + (w2 / d[i]));
+        }
+    }
+
+    m[0] = pchip_endpoint_slope(h[0], h[1], d[0], d[1]);
+    m[n - 1U] = pchip_endpoint_slope(h[n - 2U], h[n - 3U], d[n - 2U], d[n - 3U]);
 }
 
 void sensor_distance_init(void)
@@ -113,6 +171,25 @@ void sensor_distance_init(void)
         s_fsum_ad_init[i] = (uint16_t)(s_fl_fine[i] + s_fr_fine[i]);
     }
     (void)sensor_distance_set_lut_front_sum(s_fsum_mm_init, s_fsum_ad_init, s_n_fine);
+    sensor_distance_load_profile_luts();
+}
+
+void sensor_distance_set_interpolation(sensor_distance_interpolation_t mode)
+{
+    if (mode != SENSOR_DISTANCE_INTERP_PCHIP) {
+        mode = SENSOR_DISTANCE_INTERP_LINEAR;
+    }
+    s_interp_mode = mode;
+    compute_pchip_slopes_desc_ad(s_mm_fl, s_ad_fl, s_n_fl, s_m_fl);
+    compute_pchip_slopes_desc_ad(s_mm_fr, s_ad_fr, s_n_fr, s_m_fr);
+    compute_pchip_slopes_desc_ad(s_mm_l, s_ad_l, s_n_l, s_m_l);
+    compute_pchip_slopes_desc_ad(s_mm_r, s_ad_r, s_n_r, s_m_r);
+    compute_pchip_slopes_desc_ad(s_mm_fsum, s_ad_fsum, s_n_fsum, s_m_fsum);
+}
+
+sensor_distance_interpolation_t sensor_distance_get_interpolation(void)
+{
+    return s_interp_mode;
 }
 
 int sensor_distance_set_lut_fl(const uint16_t *mm, const uint16_t *ad, size_t n)
@@ -121,6 +198,7 @@ int sensor_distance_set_lut_fl(const uint16_t *mm, const uint16_t *ad, size_t n)
     memcpy(s_mm_fl, mm, n * sizeof(uint16_t));
     memcpy(s_ad_fl, ad, n * sizeof(uint16_t));
     s_n_fl = n;
+    compute_pchip_slopes_desc_ad(s_mm_fl, s_ad_fl, s_n_fl, s_m_fl);
     return 0;
 }
 
@@ -130,6 +208,7 @@ int sensor_distance_set_lut_fr(const uint16_t *mm, const uint16_t *ad, size_t n)
     memcpy(s_mm_fr, mm, n * sizeof(uint16_t));
     memcpy(s_ad_fr, ad, n * sizeof(uint16_t));
     s_n_fr = n;
+    compute_pchip_slopes_desc_ad(s_mm_fr, s_ad_fr, s_n_fr, s_m_fr);
     return 0;
 }
 
@@ -139,6 +218,7 @@ int sensor_distance_set_lut_l(const uint16_t *mm, const uint16_t *ad, size_t n)
     memcpy(s_mm_l, mm, n * sizeof(uint16_t));
     memcpy(s_ad_l, ad, n * sizeof(uint16_t));
     s_n_l = n;
+    compute_pchip_slopes_desc_ad(s_mm_l, s_ad_l, s_n_l, s_m_l);
     return 0;
 }
 
@@ -148,6 +228,7 @@ int sensor_distance_set_lut_r(const uint16_t *mm, const uint16_t *ad, size_t n)
     memcpy(s_mm_r, mm, n * sizeof(uint16_t));
     memcpy(s_ad_r, ad, n * sizeof(uint16_t));
     s_n_r = n;
+    compute_pchip_slopes_desc_ad(s_mm_r, s_ad_r, s_n_r, s_m_r);
     return 0;
 }
 
@@ -162,6 +243,7 @@ int sensor_distance_set_lut_front_sum(const uint16_t *mm, const uint16_t *ad_sum
     memcpy(s_mm_fsum, mm, n * sizeof(uint16_t));
     memcpy(s_ad_fsum, ad_sum, n * sizeof(uint16_t));
     s_n_fsum = n;
+    compute_pchip_slopes_desc_ad(s_mm_fsum, s_ad_fsum, s_n_fsum, s_m_fsum);
     return 0;
 }
 
@@ -218,12 +300,75 @@ static float interpolate_mm_from_ad(const uint16_t *mm, const uint16_t *ad, size
     return mm1 + t * (mm2 - mm1);
 }
 
+static float pchip_mm_from_ad(const uint16_t *mm, const uint16_t *ad, const float *m, size_t n, uint16_t ad_in)
+{
+    int extrap = 0;
+    size_t i;
+    float x;
+    float x0;
+    float h;
+    float t;
+    float t2;
+    float t3;
+    float h00;
+    float h10;
+    float h01;
+    float h11;
+
+    if ((n < 2U) || (m == NULL)) {
+        return interpolate_mm_from_ad(mm, ad, n, ad_in);
+    }
+
+    i = find_segment_desc(ad, n, ad_in, &extrap);
+    x = -(float)ad_in;
+    if (extrap != 0) {
+        if (ad_in >= ad[0]) {
+            return (float)mm[0] + m[0] * (x - (-(float)ad[0]));
+        }
+        return (float)mm[n - 1U] + m[n - 1U] * (x - (-(float)ad[n - 1U]));
+    }
+
+    x0 = -(float)ad[i];
+    h = (float)ad[i] - (float)ad[i + 1U];
+    if (h <= 0.0f) {
+        return (float)mm[i];
+    }
+
+    t = (x - x0) / h;
+    t2 = t * t;
+    t3 = t2 * t;
+    h00 = 2.0f * t3 - 3.0f * t2 + 1.0f;
+    h10 = t3 - 2.0f * t2 + t;
+    h01 = -2.0f * t3 + 3.0f * t2;
+    h11 = t3 - t2;
+    return h00 * (float)mm[i] +
+           h10 * h * m[i] +
+           h01 * (float)mm[i + 1U] +
+           h11 * h * m[i + 1U];
+}
+
+static float convert_mm_from_ad(const uint16_t *mm, const uint16_t *ad, const float *m, size_t n, uint16_t ad_in)
+{
+    if (s_interp_mode == SENSOR_DISTANCE_INTERP_PCHIP) {
+        return pchip_mm_from_ad(mm, ad, m, n, ad_in);
+    }
+    return interpolate_mm_from_ad(mm, ad, n, ad_in);
+}
+
+static bool ad_in_range(const uint16_t *ad, size_t n, uint16_t ad_value)
+{
+    if (n < 2U) {
+        return false;
+    }
+    return (ad_value <= ad[0]) && (ad_value >= ad[n - 1U]);
+}
+
 float sensor_distance_from_fl_unwarped(uint16_t ad_value)
 {
     if (s_n_fl < 2) {
         sensor_distance_init();
     }
-    return SENSOR_DIST_GAIN * interpolate_mm_from_ad(s_mm_fl, s_ad_fl, s_n_fl, ad_value);
+    return SENSOR_DIST_GAIN * convert_mm_from_ad(s_mm_fl, s_ad_fl, s_m_fl, s_n_fl, ad_value);
 }
 
 float sensor_distance_from_fl(uint16_t ad_value)
@@ -258,7 +403,7 @@ float sensor_distance_from_fr_unwarped(uint16_t ad_value)
     if (s_n_fr < 2) {
         sensor_distance_init();
     }
-    return SENSOR_DIST_GAIN * interpolate_mm_from_ad(s_mm_fr, s_ad_fr, s_n_fr, ad_value);
+    return SENSOR_DIST_GAIN * convert_mm_from_ad(s_mm_fr, s_ad_fr, s_m_fr, s_n_fr, ad_value);
 }
 
 float sensor_distance_from_fr(uint16_t ad_value)
@@ -298,7 +443,7 @@ float sensor_distance_from_l(uint16_t ad_value)
         sensor_distance_init();
         if (s_n_l < 2) return 0.0f;
     }
-    return SENSOR_DIST_GAIN * interpolate_mm_from_ad(s_mm_l, s_ad_l, s_n_l, ad_value);
+    return SENSOR_DIST_GAIN * convert_mm_from_ad(s_mm_l, s_ad_l, s_m_l, s_n_l, ad_value);
 }
 
 float sensor_distance_from_r(uint16_t ad_value)
@@ -307,7 +452,7 @@ float sensor_distance_from_r(uint16_t ad_value)
         sensor_distance_init();
         if (s_n_r < 2) return 0.0f;
     }
-    return SENSOR_DIST_GAIN * interpolate_mm_from_ad(s_mm_r, s_ad_r, s_n_r, ad_value);
+    return SENSOR_DIST_GAIN * convert_mm_from_ad(s_mm_r, s_ad_r, s_m_r, s_n_r, ad_value);
 }
 
 float sensor_distance_from_fsum(uint16_t ad_sum)
@@ -357,7 +502,37 @@ float sensor_distance_from_fsum_unwarped(uint16_t ad_sum)
     if (s_n_fsum < 2) {
         sensor_distance_init();
     }
-    return SENSOR_DIST_GAIN * interpolate_mm_from_ad(s_mm_fsum, s_ad_fsum, s_n_fsum, ad_sum);
+    return SENSOR_DIST_GAIN * convert_mm_from_ad(s_mm_fsum, s_ad_fsum, s_m_fsum, s_n_fsum, ad_sum);
+}
+
+bool sensor_distance_ad_in_range_fl(uint16_t ad_value)
+{
+    if (s_n_fl < 2) sensor_distance_init();
+    return ad_in_range(s_ad_fl, s_n_fl, ad_value);
+}
+
+bool sensor_distance_ad_in_range_fr(uint16_t ad_value)
+{
+    if (s_n_fr < 2) sensor_distance_init();
+    return ad_in_range(s_ad_fr, s_n_fr, ad_value);
+}
+
+bool sensor_distance_ad_in_range_l(uint16_t ad_value)
+{
+    if (s_n_l < 2) sensor_distance_init();
+    return ad_in_range(s_ad_l, s_n_l, ad_value);
+}
+
+bool sensor_distance_ad_in_range_r(uint16_t ad_value)
+{
+    if (s_n_r < 2) sensor_distance_init();
+    return ad_in_range(s_ad_r, s_n_r, ad_value);
+}
+
+bool sensor_distance_ad_in_range_fsum(uint16_t ad_sum)
+{
+    if (s_n_fsum < 2) sensor_distance_init();
+    return ad_in_range(s_ad_fsum, s_n_fsum, ad_sum);
 }
 
 // Helper: compute monotone PCHIP slopes for 3 points

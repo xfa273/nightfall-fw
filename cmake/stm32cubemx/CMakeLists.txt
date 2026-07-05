@@ -93,6 +93,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/maze_grid.c
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/shortest_run_params_split.c
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder/sensor_distance_lut.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
@@ -119,6 +120,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_log.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_sample.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_uart_cli.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_distance.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_runtime.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_sensor.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c

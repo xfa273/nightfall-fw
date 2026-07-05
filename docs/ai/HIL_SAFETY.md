@@ -37,6 +37,7 @@ UART commands that are normally non-motor:
 
 - `p`: switch raw check
 - `w`: wall sensor snapshot
+- `n`: wall sensor distance-conversion snapshot
 - `W`: wall-end monitor
 - `i`: IMU WHO_AM_I
 - `I`: manual IMU angle observation

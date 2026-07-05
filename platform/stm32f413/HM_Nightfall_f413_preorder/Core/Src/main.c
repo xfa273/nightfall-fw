@@ -49,6 +49,7 @@
 #include "f413_trace_diag.h"
 #include "f413_trace_sample.h"
 #include "f413_uart_cli.h"
+#include "f413_wall_distance.h"
 #include "f413_wall_runtime.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
@@ -383,6 +384,59 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_R,
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
+}
+
+static void nightfall_run_wall_distance_test_once(void)
+{
+  f413_wall_distance_snapshot_t dist;
+
+  if (!f413_wall_distance_read_snapshot(&dist))
+  {
+    trace_printf("[HW-TEST][WallDist] FAIL(read snapshot)\r\n");
+    return;
+  }
+
+  trace_printf("[HW-TEST][WallDist] delta: FR=%ld R=%ld FL=%ld L=%ld fsum=%lu\r\n",
+               (long)dist.adc.fr_delta,
+               (long)dist.adc.r_delta,
+               (long)dist.adc.fl_delta,
+               (long)dist.adc.l_delta,
+               (unsigned long)((uint32_t)dist.adc.fr_delta + (uint32_t)dist.adc.fl_delta));
+  trace_printf("[HW-TEST][WallDist] mm: FR=%.2f R=%.2f FL=%.2f L=%.2f FSUM=%.2f\r\n",
+               (double)dist.fr_mm,
+               (double)dist.r_mm,
+               (double)dist.fl_mm,
+               (double)dist.l_mm,
+               (double)dist.front_sum_mm);
+  trace_printf("[HW-TEST][WallDist] unwarped: FR=%.2f FL=%.2f FSUM=%.2f params=%u\r\n",
+               (double)dist.fr_mm_unwarped,
+               (double)dist.fl_mm_unwarped,
+               (double)dist.front_sum_mm_unwarped,
+               (unsigned int)dist.distance_params_loaded);
+  trace_printf("[HW-TEST][WallDist] mask: valid=0x%04X extrap=0x%04X sat=0x%04X low=0x%04X front_valid=%u right_valid=%u left_valid=%u\r\n",
+               (unsigned int)dist.valid_mask,
+               (unsigned int)dist.extrapolated_mask,
+               (unsigned int)dist.saturated_mask,
+               (unsigned int)dist.below_signal_mask,
+               (unsigned int)dist.front_valid,
+               (unsigned int)dist.right_valid,
+               (unsigned int)dist.left_valid);
+  trace_printf("#sensor_distance_columns=record,t_ms,fr_delta,r_delta,fl_delta,l_delta,fr_mm,r_mm,fl_mm,l_mm,front_sum_mm,valid_mask,extrapolated_mask,saturated_mask,below_signal_mask\r\n");
+  trace_printf("sensor_distance,%lu,%ld,%ld,%ld,%ld,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%u\r\n",
+               (unsigned long)HAL_GetTick(),
+               (long)dist.adc.fr_delta,
+               (long)dist.adc.r_delta,
+               (long)dist.adc.fl_delta,
+               (long)dist.adc.l_delta,
+               (double)dist.fr_mm,
+               (double)dist.r_mm,
+               (double)dist.fl_mm,
+               (double)dist.l_mm,
+               (double)dist.front_sum_mm,
+               (unsigned int)dist.valid_mask,
+               (unsigned int)dist.extrapolated_mask,
+               (unsigned int)dist.saturated_mask,
+               (unsigned int)dist.below_signal_mask);
 }
 
 static void nightfall_run_wall_sensor_monitor_once(void)
@@ -975,6 +1029,7 @@ int main(void)
 
   trace_init();
   f413_run_features_reset();
+  f413_wall_distance_init();
   {
     const f413_trace_sample_config_t trace_sample_config = {
       HAL_GetTick,
@@ -1112,6 +1167,7 @@ int main(void)
   {
     const f413_uart_cli_config_t uart_cli_config = {
       nightfall_run_wall_sensor_test_once,
+      nightfall_run_wall_distance_test_once,
       nightfall_op_run_tune_sub_after_delay,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
