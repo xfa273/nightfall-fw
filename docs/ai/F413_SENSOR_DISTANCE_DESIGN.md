@@ -20,6 +20,27 @@ Observed useful patterns:
 - kerikun11 `micromouse-kerise-firmware`: separates wall detection from wall distance, uses averaged distance values, validity/hysteresis, and calibration references. Front-wall attachment is a bounded, timeout-controlled motion based on front sensor distance errors.
 - Naophis `ExiaNona`: uses `front_dist`/`front_mid_dist` and millimeter-domain offsets for search slalom and pivot/front-wall correction decisions.
 
+## LTR-209 Sensor Considerations
+
+The F413 machine uses Lite-On LTR-209 phototransistors.
+
+Datasheet reference: https://xonstorage.z8.web.core.windows.net/pdf/liteon_ltr209_apr22_xonlink.pdf
+
+Relevant device traits:
+
+- NPN phototransistor, lensed clear end-looking package.
+- Narrow optical acceptance: half angle is about 8 degrees to the half-power point.
+- Matched to 940 nm infrared emitters.
+- The phototransistor response is a detector-current response to irradiance; in a micromouse, the measured ADC-to-distance curve additionally includes LED radiation pattern, wall reflectance, sensor angle, wall angle, ADC/load circuit, and saturation.
+
+Implications for conversion:
+
+- A single first-principles formula should not be trusted as the primary calibration.
+- The conversion must be per-channel and measured on the actual machine.
+- Close range can saturate or bend sharply; far range has low slope and becomes noisy.
+- Extrapolated distances are useful for logs, but should not be used for control.
+- Shape-preserving interpolation is preferred over ordinary cubic splines, because overshoot would create false wall distances.
+
 ## Current Nightfall State
 
 Existing pieces that should be reused:
@@ -161,13 +182,26 @@ Candidate interpolation models for the calibration tool:
 3. Monotone cubic interpolation
    - Use PCHIP in ADC or transformed-ADC domain.
    - Preserves monotonicity better than a normal spline.
-   - More runtime cost and more implementation complexity, so use it only if the adaptive LUT is still too large or inaccurate.
+   - Better suited to the LTR-209 reflected-light curve than coarse ADC-domain linear interpolation.
+   - Requires precomputed slopes and careful monotonicity enforcement, but runtime cost is still small for four wall sensors on STM32F413.
 
-Recommended first firmware implementation:
+Recommended firmware direction:
 
-- Keep the existing ADC-domain linear interpolation in firmware.
-- Make the calibration tool generate a non-uniform adaptive LUT that proves the linear interpolation error is below the target.
-- Use transformed-domain/PCHIP fitting in the host tool as an analysis path first, not as the first control-path dependency.
+- Keep the existing ADC-domain linear interpolation as the fallback and as the first comparison baseline.
+- Add a general per-channel monotone PCHIP mode as the preferred control-path candidate.
+- Generate PCHIP slopes offline from the calibrated, monotonic table; firmware should only do segment search and cubic evaluation.
+- Use the same measured calibration data to compare:
+  - ADC-domain linear interpolation with adaptive knots.
+  - log-ADC-domain linear interpolation.
+  - inverse-power / `1 / sqrt(delta_adc)` style transformed interpolation.
+  - ADC-domain PCHIP.
+- Select PCHIP only when the validation report shows lower max error than adaptive linear without noise amplification.
+
+Practical initial choice:
+
+- Front-wall position matching: prefer front-sum PCHIP for translation and individual FL/FR PCHIP for yaw balance.
+- Side wall control: start with side-channel PCHIP only after logs show stable side distance; raw derivative can still be better for wall-cut timing.
+- Wall existence: use distance thresholds only behind a feature flag until raw/distance decisions agree in successful exploration logs.
 
 Future compact model if needed:
 
