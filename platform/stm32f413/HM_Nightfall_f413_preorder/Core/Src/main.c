@@ -391,15 +391,18 @@ static void nightfall_run_wall_sensor_test_once(void)
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
 }
 
-static void nightfall_run_wall_distance_test_once(void)
+static void nightfall_run_wall_distance_test(bool verbose)
 {
   f413_wall_sensor_average_t avg;
   f413_wall_distance_snapshot_t dist;
   bool average_ok;
   bool convert_ok = false;
 
-  trace_printf("\r\n[Wall sensor LUT] Measuring %u samples. Please wait...\r\n",
-               (unsigned int)NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES);
+  if (verbose)
+  {
+    trace_printf("\r\n[Wall sensor LUT] Measuring %u samples. Please wait...\r\n",
+                 (unsigned int)NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES);
+  }
   average_ok = f413_wall_sensor_read_average(&avg,
                                              NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES,
                                              NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS,
@@ -423,6 +426,18 @@ static void nightfall_run_wall_distance_test_once(void)
   if (!convert_ok)
   {
     trace_printf("[HW-TEST][WallDist] FAIL(convert average)\r\n");
+    HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+    (void)f413_wall_sensor_resume_async();
+    return;
+  }
+
+  if (!verbose)
+  {
+    trace_printf("FR: %ld  FL: %ld  R: %ld  L: %ld\r\n",
+                 (long)dist.adc.fr_delta,
+                 (long)dist.adc.fl_delta,
+                 (long)dist.adc.r_delta,
+                 (long)dist.adc.l_delta);
     HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
     (void)f413_wall_sensor_resume_async();
     return;
@@ -491,6 +506,16 @@ static void nightfall_run_wall_distance_test_once(void)
   trace_printf("============================================\r\n\r\n");
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
   (void)f413_wall_sensor_resume_async();
+}
+
+static void nightfall_run_wall_distance_test_once(void)
+{
+  nightfall_run_wall_distance_test(false);
+}
+
+static void nightfall_run_wall_distance_debug_test_once(void)
+{
+  nightfall_run_wall_distance_test(true);
 }
 
 static void nightfall_run_wall_sensor_monitor_once(void)
@@ -1222,6 +1247,7 @@ int main(void)
     const f413_uart_cli_config_t uart_cli_config = {
       nightfall_run_wall_sensor_test_once,
       nightfall_run_wall_distance_test_once,
+      nightfall_run_wall_distance_debug_test_once,
       nightfall_op_run_tune_sub_after_delay,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,

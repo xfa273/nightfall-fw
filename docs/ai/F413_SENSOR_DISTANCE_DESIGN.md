@@ -143,9 +143,11 @@ Initial implementation status:
   - `SENSOR_DISTANCE_INTERP_PCHIP`: shape-preserving cubic interpolation over the current monotonic LUT.
 - `f413_wall_distance_init()` selects PCHIP for F413 distance snapshots.
 - F413 exposes a non-motor UART diagnostic command:
-  - `n`: average 512 distinct completed sensor frames, then print raw/distance values.
-  - The result includes standard deviation and min/max for each channel.
-  - The highlighted calibration row uses the fitter's exact order:
+  - `n`: average 512 distinct completed sensor frames, then print only
+    `FR`, `FL`, `R`, and `L` in the fitter's sensor order.
+  - `:`: print the detailed calibration view with standard deviation, min/max,
+    converted distance, and validity masks.
+  - The detailed view's highlighted calibration row uses the fitter's exact order:
     `DIST_MM,FR,FL,R,L`; replace `DIST_MM` with the fixture distance.
 - Runtime control still uses the existing raw ADC paths until distance conversion is validated.
 

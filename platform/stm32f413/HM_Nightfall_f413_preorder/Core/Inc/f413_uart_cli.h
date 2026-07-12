@@ -7,6 +7,7 @@ typedef struct
 {
   void (*run_wall_sensor_test)(void);
   void (*run_wall_distance_test)(void);
+  void (*run_wall_distance_debug_test)(void);
   void (*run_tune_sub)(uint8_t sub);
   void (*trace_run_start)(void);
   void (*trace_run_stop)(void);
