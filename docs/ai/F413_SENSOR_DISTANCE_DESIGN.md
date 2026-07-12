@@ -145,7 +145,8 @@ Initial implementation status:
 - F413 exposes a non-motor UART diagnostic command:
   - `n`: average 512 distinct completed sensor frames, then print raw/distance values.
   - The result includes standard deviation and min/max for each channel.
-  - `sensor_avg,FR,R,FL,L,count` is the compact row for LUT data collection.
+  - The highlighted calibration row uses the fitter's exact order:
+    `DIST_MM,FR,FL,R,L`; replace `DIST_MM` with the fixture distance.
 - Runtime control still uses the existing raw ADC paths until distance conversion is validated.
 
 ## Conversion Model

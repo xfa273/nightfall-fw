@@ -398,9 +398,8 @@ static void nightfall_run_wall_distance_test_once(void)
   bool average_ok;
   bool convert_ok = false;
 
-  trace_printf("[HW-TEST][WallDist] averaging %u samples at %lu ms interval...\r\n",
-               (unsigned int)NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES,
-               (unsigned long)NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS);
+  trace_printf("\r\n[Wall sensor LUT] Measuring %u samples. Please wait...\r\n",
+               (unsigned int)NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES);
   average_ok = f413_wall_sensor_read_average(&avg,
                                              NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES,
                                              NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS,
@@ -429,84 +428,67 @@ static void nightfall_run_wall_distance_test_once(void)
     return;
   }
 
-  trace_printf("sensor_avg,%ld,%ld,%ld,%ld,%u\r\n",
-               (long)dist.adc.fr_delta,
-               (long)dist.adc.r_delta,
-               (long)dist.adc.fl_delta,
-               (long)dist.adc.l_delta,
-               (unsigned int)avg.sample_count);
+  trace_printf("\r\n========== WALL SENSOR LUT SAMPLE ==========\r\n");
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-
-  trace_printf("[HW-TEST][WallDist] delta: FR=%ld R=%ld FL=%ld L=%ld fsum=%lu\r\n",
-               (long)dist.adc.fr_delta,
-               (long)dist.adc.r_delta,
-               (long)dist.adc.fl_delta,
-               (long)dist.adc.l_delta,
-               (unsigned long)((uint32_t)dist.adc.fr_delta + (uint32_t)dist.adc.fl_delta));
-  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("[HW-TEST][WallDist] stats: n=%u elapsed=%lu ms std FR=%.2f R=%.2f FL=%.2f L=%.2f\r\n",
+  trace_printf("Average: %u samples, %lu ms\r\n",
                (unsigned int)avg.sample_count,
-               (unsigned long)avg.elapsed_ms,
+               (unsigned long)avg.elapsed_ms);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nCOPY INTO CALIBRATION CSV\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  columns : distance_mm,fr_delta,fl_delta,r_delta,l_delta\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  row     : DIST_MM,%ld,%ld,%ld,%ld\r\n",
+               (long)dist.adc.fr_delta,
+               (long)dist.adc.fl_delta,
+               (long)dist.adc.r_delta,
+               (long)dist.adc.l_delta);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  Replace DIST_MM with the fixture distance.\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nChannel     Mean    StdDev       Min       Max\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("FR      %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.fr_delta,
                (double)avg.fr_delta_stddev,
-               (double)avg.r_delta_stddev,
+               (long)avg.fr_delta_min,
+               (long)avg.fr_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("FL      %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.fl_delta,
                (double)avg.fl_delta_stddev,
-               (double)avg.l_delta_stddev);
+               (long)avg.fl_delta_min,
+               (long)avg.fl_delta_max);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("[HW-TEST][WallDist] range: FR=%ld..%ld R=%ld..%ld FL=%ld..%ld L=%ld..%ld\r\n",
-               (long)avg.fr_delta_min, (long)avg.fr_delta_max,
-               (long)avg.r_delta_min, (long)avg.r_delta_max,
-               (long)avg.fl_delta_min, (long)avg.fl_delta_max,
-               (long)avg.l_delta_min, (long)avg.l_delta_max);
+  trace_printf("R       %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.r_delta,
+               (double)avg.r_delta_stddev,
+               (long)avg.r_delta_min,
+               (long)avg.r_delta_max);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("[HW-TEST][WallDist] mm: FR=%.2f R=%.2f FL=%.2f L=%.2f FSUM=%.2f\r\n",
+  trace_printf("L       %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.l_delta,
+               (double)avg.l_delta_stddev,
+               (long)avg.l_delta_min,
+               (long)avg.l_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nDistance preview [mm]\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  FR=%.2f  FL=%.2f  R=%.2f  L=%.2f  FRONT_SUM=%.2f\r\n",
                (double)dist.fr_mm,
-               (double)dist.r_mm,
                (double)dist.fl_mm,
+               (double)dist.r_mm,
                (double)dist.l_mm,
                (double)dist.front_sum_mm);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("[HW-TEST][WallDist] unwarped: FR=%.2f FL=%.2f FSUM=%.2f params=%u\r\n",
-               (double)dist.fr_mm_unwarped,
-               (double)dist.fl_mm_unwarped,
-               (double)dist.front_sum_mm_unwarped,
-               (unsigned int)dist.distance_params_loaded);
-  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("[HW-TEST][WallDist] mask: valid=0x%04X extrap=0x%04X sat=0x%04X low=0x%04X front_valid=%u right_valid=%u left_valid=%u\r\n",
+  trace_printf("  params=%u  valid=0x%02X  extrap=0x%02X  saturated=0x%02X  low=0x%02X\r\n",
+               (unsigned int)dist.distance_params_loaded,
                (unsigned int)dist.valid_mask,
                (unsigned int)dist.extrapolated_mask,
                (unsigned int)dist.saturated_mask,
-               (unsigned int)dist.below_signal_mask,
-               (unsigned int)dist.front_valid,
-               (unsigned int)dist.right_valid,
-               (unsigned int)dist.left_valid);
+               (unsigned int)dist.below_signal_mask);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("#sensor_distance_columns=record,t_ms,fr_delta,r_delta,fl_delta,l_delta,fr_mm,r_mm,fl_mm,l_mm,front_sum_mm,valid_mask,extrapolated_mask,saturated_mask,below_signal_mask,sample_count,elapsed_ms,fr_stddev,r_stddev,fl_stddev,l_stddev,fr_min,fr_max,r_min,r_max,fl_min,fl_max,l_min,l_max\r\n");
-  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("sensor_distance,%lu,%ld,%ld,%ld,%ld,%.3f,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%u,%u,%lu,%.3f,%.3f,%.3f,%.3f,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld\r\n",
-               (unsigned long)HAL_GetTick(),
-               (long)dist.adc.fr_delta,
-               (long)dist.adc.r_delta,
-               (long)dist.adc.fl_delta,
-               (long)dist.adc.l_delta,
-               (double)dist.fr_mm,
-               (double)dist.r_mm,
-               (double)dist.fl_mm,
-               (double)dist.l_mm,
-               (double)dist.front_sum_mm,
-               (unsigned int)dist.valid_mask,
-               (unsigned int)dist.extrapolated_mask,
-               (unsigned int)dist.saturated_mask,
-               (unsigned int)dist.below_signal_mask,
-               (unsigned int)avg.sample_count,
-               (unsigned long)avg.elapsed_ms,
-               (double)avg.fr_delta_stddev,
-               (double)avg.r_delta_stddev,
-               (double)avg.fl_delta_stddev,
-               (double)avg.l_delta_stddev,
-               (long)avg.fr_delta_min, (long)avg.fr_delta_max,
-               (long)avg.r_delta_min, (long)avg.r_delta_max,
-               (long)avg.fl_delta_min, (long)avg.fl_delta_max,
-               (long)avg.l_delta_min, (long)avg.l_delta_max);
+  trace_printf("============================================\r\n\r\n");
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
   (void)f413_wall_sensor_resume_async();
 }
