@@ -39,6 +39,8 @@ typedef struct
 
 void f413_wall_distance_init(void);
 bool f413_wall_distance_params_loaded(void);
+bool f413_wall_distance_convert_snapshot(const f413_wall_sensor_snapshot_t* adc,
+                                         f413_wall_distance_snapshot_t* out);
 bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out);
 bool f413_wall_distance_front_present(const f413_wall_distance_snapshot_t* s);
 bool f413_wall_distance_side_present(const f413_wall_distance_snapshot_t* s, bool right);

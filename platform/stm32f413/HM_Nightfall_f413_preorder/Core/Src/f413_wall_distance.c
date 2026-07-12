@@ -84,7 +84,8 @@ bool f413_wall_distance_params_loaded(void)
   return s_wall_distance_params_loaded;
 }
 
-bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out)
+bool f413_wall_distance_convert_snapshot(const f413_wall_sensor_snapshot_t* adc,
+                                         f413_wall_distance_snapshot_t* out)
 {
   uint16_t fr;
   uint16_t r;
@@ -97,7 +98,7 @@ bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out)
   bool fl_sat;
   bool l_sat;
 
-  if (out == NULL)
+  if ((adc == NULL) || (out == NULL))
   {
     return false;
   }
@@ -106,10 +107,7 @@ bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out)
     f413_wall_distance_init();
   }
   memset(out, 0, sizeof(*out));
-  if (!f413_wall_sensor_read_snapshot(&out->adc))
-  {
-    return false;
-  }
+  out->adc = *adc;
 
   fr = f413_wall_distance_u16_delta(out->adc.fr_delta);
   r = f413_wall_distance_u16_delta(out->adc.r_delta);
@@ -170,6 +168,17 @@ bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out)
   out->right_valid = (out->valid_mask & F413_WALL_DISTANCE_CH_R) != 0U;
   out->left_valid = (out->valid_mask & F413_WALL_DISTANCE_CH_L) != 0U;
   return true;
+}
+
+bool f413_wall_distance_read_snapshot(f413_wall_distance_snapshot_t* out)
+{
+  f413_wall_sensor_snapshot_t adc;
+
+  if (!f413_wall_sensor_read_snapshot(&adc))
+  {
+    return false;
+  }
+  return f413_wall_distance_convert_snapshot(&adc, out);
 }
 
 bool f413_wall_distance_front_present(const f413_wall_distance_snapshot_t* s)
