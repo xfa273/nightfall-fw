@@ -43,6 +43,7 @@
 | 右エンコーダ基板 | `cad/eagle/HM_Nightfall-mini-2e_Encoder-PCB-R_v1.sch` / `.brd` | `cad/kicad/HM_Nightfall-mini-2e_Encoder-PCB-R/` |
 | ST-LINK 変換基板 | `cad/eagle/STLink-Adapter.sch` / `.brd` | `cad/kicad/STLink-Adapter/` |
 | UART 変換基板 | `cad/eagle/UART-Adapter.sch` / `.brd` | `cad/kicad/UART-Adapter/` |
+| WeAct 5 V変換基板 | ST-LINK変換基板から派生 | `cad/kicad/WeAct-Adapter-5V/` |
 
 ### 左エンコーダ基板 初回チェック結果
 
@@ -67,3 +68,10 @@
 - ERC: 4 errors / 8 warnings
 - DRC: 39 errors / 35 warnings
 - JLCPCB 向けルール適用後 DRC: 0 errors / 26 warnings
+
+### WeAct 5 V変換基板 チェック結果
+
+- KiCad 10.0.3で設計
+- ERC: 3 errors / 6 warnings（Eagleインポート由来の既知事項）
+- DRC: 0 errors / 26 warnings、未配線0（警告数はST-LINK変換基板と同じ）
+- 発注用Gerber: `cad/kicad/WeAct-Adapter-5V/fabrication/WeAct-Adapter-5V-gerbers.zip`

@@ -1,0 +1,24 @@
+Drill report for WeAct-Adapter-5V.kicad_pcb
+Created on 2026-07-12T13:22:38
+
+Copper Layer Stackup:
+    =============================================================
+    L1 :  F.Cu                      front
+    L2 :  B.Cu                      back
+
+
+Drill file 'WeAct-Adapter-5V.drl' contains
+    plated through holes:
+    =============================================================
+    T1  0.350mm  0.0138"  (8 holes))
+    T2  0.650mm  0.0256"  (10 holes))
+    T3  0.900mm  0.0354"  (3 holes))
+
+    Total plated holes count 21
+
+
+Not plated through holes are merged with plated holes
+    unplated through holes:
+    =============================================================
+
+    Total unplated holes count 0

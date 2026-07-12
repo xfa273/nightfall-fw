@@ -1,0 +1,39 @@
+ERC report (2026-07-12T13:19:58, Encoding UTF8)
+Report includes: Errors, Warnings, Exclusions
+
+***** Sheet /
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(134.62 mm, 68.58 mm): Symbol #P+7 ピン 1 [+5V, 電源入力, ライン]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(160.02 mm, 121.92 mm): Symbol #SUPPLY1 ピン 1 [GND, 電源入力, ライン]
+[power_pin_not_driven]: Input Power pin not driven by any Output Power pins
+    ; error
+    @(175.26 mm, 81.28 mm): Symbol #+3V14 ピン 1 [+3V3, 電源入力, ライン]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(134.62 mm, 83.82 mm): ラベル 'NRST'
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'WeAct-Adapter-5V' が含まれていません
+    ; warning
+    @(147.32 mm, 83.82 mm): シンボル K1 [62201021121]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'WeAct-Adapter-5V' が含まれていません
+    ; warning
+    @(147.32 mm, 111.76 mm): シンボル TP1 [TP-1X4]
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'WeAct-Adapter-5V' が含まれていません
+    ; warning
+    @(147.32 mm, 132.08 mm): シンボル TP2 [TP-1X3]
+[isolated_pin_label]: Label connected to only one pin
+    ; warning
+    @(157.48 mm, 81.28 mm): ラベル 'BOOT0'
+[footprint_link_issues]: 現在の構成にはフットプリント ライブラリ 'WeAct-Adapter-5V' が含まれていません
+    ; warning
+    @(175.26 mm, 111.76 mm): シンボル SW1 [EG1218S]
+
+ ** ERC messages: 9  Errors 3  Warnings 6
+
+ ** Ignored checks:
+    - Global label only appears once in the schematic
+    - Four connection points are joined together
+    - SPICE model issue
+    - Assigned footprint doesn't match footprint filters
