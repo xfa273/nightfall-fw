@@ -1,5 +1,5 @@
 Drill report for WeAct-Adapter-5V.kicad_pcb
-Created on 2026-07-12T13:22:38
+Created on 2026-07-12T14:12:31
 
 Copper Layer Stackup:
     =============================================================
