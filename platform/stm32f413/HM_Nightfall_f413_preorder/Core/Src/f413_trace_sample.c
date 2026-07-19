@@ -302,9 +302,10 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (double)FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
   trace_printf("#search_step_context=op_mode1_case1_to_8:op_sub=(y<<4)|x,test_id=0x80|(next_rel<<2)|dir\r\n");
   trace_printf("#search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas\r\n");
-  trace_printf("#front_match_trace=mode1_case0_sub4 marker=0x%04X period_ms=%lu\r\n",
+  trace_printf("#front_match_trace=mode1_case0_sub4 marker=0x%04X active_period_ms=%lu idle_period_ms=%lu\r\n",
                (unsigned int)F413_TRACE_SAMPLE_FRONT_MATCH_MARKER,
-               (unsigned long)MATCH_POS_TRACE_PERIOD_MS);
+               (unsigned long)MATCH_POS_TRACE_PERIOD_MS,
+               (unsigned long)MATCH_POS_TRACE_IDLE_PERIOD_MS);
   trace_printf("#front_match_reserved_i32=fr_mm_x1000,fl_mm_x1000,position_error_mm_x1000,yaw_error_mm_x1000\r\n");
   trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)

@@ -1582,6 +1582,8 @@ static float f413_search_step_front_match_error_yaw(
 
 static uint16_t f413_search_step_front_match_motor_flags(float v_cmd,
                                                          float w_cmd);
+static bool f413_search_step_front_match_too_close(
+    const f413_wall_distance_snapshot_t* distance);
 
 static uint16_t f413_search_step_front_match_state_elapsed(
     const f413_front_match_controller_t* controller)
@@ -1607,7 +1609,9 @@ static void f413_search_step_front_match_sync_angle_target(
   {
     f413_ctrl_clear_angle_target();
   }
-  else if (output->phase == F413_FRONT_MATCH_PHASE_SETTLE_YAW)
+  else if ((output->phase == F413_FRONT_MATCH_PHASE_SETTLE_YAW) ||
+           (output->phase == F413_FRONT_MATCH_PHASE_SETTLE_FINAL) ||
+           (output->phase == F413_FRONT_MATCH_PHASE_HOLD))
   {
     f413_ctrl_set_angle_target(f413_ctrl_get_angle());
   }
@@ -1646,7 +1650,8 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     {
       return F413_RUN_SESSION_ABORT_WALL_FAULT;
     }
-    if (!distance.front_valid ||
+    if (f413_search_step_front_match_too_close(&distance) ||
+        !distance.front_valid ||
         ((float)distance.adc.fr_delta <= ((float)WALL_BASE_FR * 1.5f)) ||
         ((float)distance.adc.fl_delta <= ((float)WALL_BASE_FL * 1.5f)))
     {
@@ -1728,6 +1733,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
   f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+  f413_search_step_set_trace_period(MATCH_POS_TRACE_IDLE_PERIOD_MS);
   f413_search_step_set_mode_flags(stop_flags);
   trace_printf("[SEARCH-TEST] front-match pause(%s)\r\n", reason_text);
 
@@ -1826,6 +1832,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
       f413_search_step_front_match_filter_reset(&filter);
       f413_front_match_init(&controller);
       f413_ctrl_clear_angle_target();
+      f413_search_step_set_trace_period(MATCH_POS_TRACE_PERIOD_MS);
       continue;
     }
     if (!f413_search_step_front_match_wall_detected(&distance))
@@ -1837,6 +1844,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
       f413_search_step_front_match_filter_reset(&filter);
       f413_front_match_init(&controller);
       f413_ctrl_clear_angle_target();
+      f413_search_step_set_trace_period(MATCH_POS_TRACE_PERIOD_MS);
       continue;
     }
 
@@ -1858,6 +1866,9 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     f413_search_step_set_mode_flags(
         f413_search_step_front_match_motor_flags(output.velocity_mm_s,
                                                  output.omega_deg_s));
+    f413_search_step_set_trace_period(output.holding
+                                          ? MATCH_POS_TRACE_IDLE_PERIOD_MS
+                                          : MATCH_POS_TRACE_PERIOD_MS);
     f413_search_step_set_front_match_trace(
         true,
         output.phase,
