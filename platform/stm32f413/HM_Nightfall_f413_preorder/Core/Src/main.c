@@ -489,12 +489,17 @@ static void nightfall_run_wall_distance_test(bool verbose)
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
   trace_printf("\r\nDistance preview [mm]\r\n");
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
-  trace_printf("  FR=%.2f  FL=%.2f  R=%.2f  L=%.2f  FRONT_SUM=%.2f\r\n",
+  trace_printf("  LUT/control FR=%.2f  FL=%.2f  FRONT_SUM=%.2f\r\n",
+               (double)dist.fr_mm_unwarped,
+               (double)dist.fl_mm_unwarped,
+               (double)dist.front_sum_mm_unwarped);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  NVM-warped FR=%.2f  FL=%.2f  FRONT_SUM=%.2f  R=%.2f  L=%.2f\r\n",
                (double)dist.fr_mm,
                (double)dist.fl_mm,
+               (double)dist.front_sum_mm,
                (double)dist.r_mm,
-               (double)dist.l_mm,
-               (double)dist.front_sum_mm);
+               (double)dist.l_mm);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
   trace_printf("  params=%u  valid=0x%02X  extrap=0x%02X  saturated=0x%02X  low=0x%02X\r\n",
                (unsigned int)dist.distance_params_loaded,

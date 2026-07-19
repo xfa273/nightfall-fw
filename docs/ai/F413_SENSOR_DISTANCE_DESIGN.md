@@ -136,7 +136,7 @@ bool f413_wall_distance_side_present(const f413_wall_distance_snapshot_t* s, boo
 
 `f413_wall_distance_init()` should call `sensor_distance_init()` and then `nvm_params_distance_load_and_apply()`. If NVM distance data is missing, default LUTs are still used.
 
-Initial implementation status:
+Implementation status:
 
 - `sensor_distance` supports two LUT interpolation modes:
   - `SENSOR_DISTANCE_INTERP_LINEAR`: legacy default.
@@ -149,7 +149,12 @@ Initial implementation status:
     converted distance, and validity masks.
   - The detailed view's highlighted calibration row uses the fitter's exact order:
     `DIST_MM,FR,FL,R,L`; replace `DIST_MM` with the fixture distance.
-- Runtime control still uses the existing raw ADC paths until distance conversion is validated.
+- The F413 front-wall match path now uses calibrated PCHIP distance values:
+  - front-sum distance controls translation.
+  - individual FR/FL distance difference controls yaw.
+  - both normal exploration matching and the continuous mode1 test use the same path.
+- Wall detection, side-wall control, wall-end detection, and search wall writes still use the
+  existing raw ADC paths until their distance conversions are separately calibrated.
 
 ## Conversion Model
 
@@ -248,7 +253,8 @@ Separate three things:
 
 Recommended measurement points:
 
-- Front sensors: 40 to 125 mm, every 5 mm.
+- Front sensors: cover the actual correction range at 5 mm intervals. For the F413 fixture,
+  the calibrated sensor-to-wall range is 2 to 62 mm at `2 + 5*n` mm.
 - Side sensors: 25 to 80 mm, every 5 mm.
 - For each point, record at least:
   - off ADC mean/std
@@ -258,6 +264,28 @@ Recommended measurement points:
   - sample count
 
 Use at least a few hundred samples per point, because the resulting table becomes a control primitive.
+
+### F413 Front Calibration Applied 2026-07-19
+
+The committed source data is:
+
+- `params/f413_preorder/sensor_distance_calibration.csv`
+- regulated bench supply
+- fixture positions `2 + 5*n` mm from 2 through 62 mm
+- repeated 7, 12, 17, and 22 mm measurements are retained as separate rows and averaged by
+  the fitter
+- the intermediate 2.5 mm-offset series is excluded because the fixture wall angle is less
+  reliable at those positions
+
+The generated FR, FL, and front-sum tables are in
+`params/f413_preorder/sensor_distance_lut.c`. The fitter's PCHIP validation reported:
+
+- FR: sample maximum error 0.241 mm; leave-one-out maximum error 0.580 mm
+- FL: sample maximum error 0.211 mm; leave-one-out maximum error 0.373 mm
+
+Front-wall matching uses a 7.0 mm target. It deliberately consumes the unwarped profile-LUT
+values because the existing F413 NVM distance-warp anchors are not calibrated against this
+fixture. The detailed `:` diagnostic prints profile-LUT and NVM-warped values separately.
 
 Suggested CSV format for the host fitter:
 
