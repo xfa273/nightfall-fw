@@ -125,6 +125,34 @@ static void f413_search_step_set_mode_flags(uint16_t flags)
   }
 }
 
+static void f413_search_step_set_trace_period(uint32_t period_ms)
+{
+  if (g_config.trace_set_period_ms != NULL)
+  {
+    g_config.trace_set_period_ms(period_ms);
+  }
+}
+
+static void f413_search_step_set_front_match_trace(bool active,
+                                                    f413_front_match_phase_t phase,
+                                                    float fr_mm,
+                                                    float fl_mm,
+                                                    float position_error_mm,
+                                                    float yaw_error_mm,
+                                                    uint16_t state_elapsed_ms)
+{
+  if (g_config.trace_set_front_match != NULL)
+  {
+    g_config.trace_set_front_match(active,
+                                   (uint8_t)phase,
+                                   fr_mm,
+                                   fl_mm,
+                                   position_error_mm,
+                                   yaw_error_mm,
+                                   state_elapsed_ms);
+  }
+}
+
 static void f413_search_step_trace_start(void)
 {
   if (g_config.trace_on_run_start != NULL)
@@ -1555,6 +1583,18 @@ static float f413_search_step_front_match_error_yaw(
 static uint16_t f413_search_step_front_match_motor_flags(float v_cmd,
                                                          float w_cmd);
 
+static uint16_t f413_search_step_front_match_state_elapsed(
+    const f413_front_match_controller_t* controller)
+{
+  if (controller == NULL)
+  {
+    return 0U;
+  }
+  return (controller->phase == F413_FRONT_MATCH_PHASE_HOLD)
+             ? controller->release_elapsed_ms
+             : controller->phase_elapsed_ms;
+}
+
 static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     f413_run_session_guard_t* guard)
 {
@@ -1659,7 +1699,8 @@ static uint16_t f413_search_step_front_match_motor_flags(float v_cmd,
 
 static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wait(
     f413_run_session_guard_t* guard,
-    const char* reason_text)
+    const char* reason_text,
+    f413_front_match_phase_t pause_phase)
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   uint16_t resume_count = 0U;
@@ -1686,6 +1727,14 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
     {
       return F413_RUN_SESSION_ABORT_WALL_FAULT;
     }
+    f413_search_step_set_front_match_trace(
+        true,
+        pause_phase,
+        distance.fr_mm_unwarped,
+        distance.fl_mm_unwarped,
+        distance.front_sum_mm_unwarped - F_ALIGN_TARGET_MM,
+        distance.fr_mm_unwarped - distance.fl_mm_unwarped,
+        resume_count);
     if (f413_search_step_front_match_wall_detected(&distance) &&
         !f413_search_step_front_match_too_close(&distance))
     {
@@ -1752,14 +1801,20 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     }
     if (!f413_search_step_front_match_wall_detected(&distance))
     {
-      reason = f413_search_step_front_match_stop_and_wait(guard, "front-wall-lost");
+      reason = f413_search_step_front_match_stop_and_wait(
+          guard,
+          "front-wall-lost",
+          F413_FRONT_MATCH_PHASE_PAUSED_WALL_LOST);
       f413_search_step_front_match_filter_reset(&filter);
       f413_front_match_init(&controller);
       continue;
     }
     if (f413_search_step_front_match_too_close(&distance))
     {
-      reason = f413_search_step_front_match_stop_and_wait(guard, "too-close");
+      reason = f413_search_step_front_match_stop_and_wait(
+          guard,
+          "too-close",
+          F413_FRONT_MATCH_PHASE_PAUSED_TOO_CLOSE);
       f413_search_step_front_match_filter_reset(&filter);
       f413_front_match_init(&controller);
       continue;
@@ -1782,6 +1837,14 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     f413_search_step_set_mode_flags(
         f413_search_step_front_match_motor_flags(output.velocity_mm_s,
                                                  output.omega_deg_s));
+    f413_search_step_set_front_match_trace(
+        true,
+        output.phase,
+        filter.fr_mm,
+        filter.fl_mm,
+        e_pos_mm,
+        e_yaw_mm,
+        f413_search_step_front_match_state_elapsed(&controller));
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
   }
 
@@ -2830,6 +2893,17 @@ void f413_search_step_run_case0_test_once(
   f413_ctrl_reset_distance();
   f413_ctrl_reset_angle();
   f413_search_step_set_context(1U, 0U, sub, (uint8_t)'T');
+  f413_search_step_set_front_match_trace(false,
+                                         F413_FRONT_MATCH_PHASE_ALIGN_YAW,
+                                         0.0f,
+                                         0.0f,
+                                         0.0f,
+                                         0.0f,
+                                         0U);
+  f413_search_step_set_trace_period(
+      (test_config->test_kind == F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS)
+          ? MATCH_POS_TRACE_PERIOD_MS
+          : 1U);
   f413_search_step_trace_start();
   trace_started = true;
 
@@ -2912,6 +2986,14 @@ void f413_search_step_run_case0_test_once(
     f413_search_step_set_mode_flags(0U);
     f413_search_step_trace_stop();
   }
+  f413_search_step_set_front_match_trace(false,
+                                         F413_FRONT_MATCH_PHASE_ALIGN_YAW,
+                                         0.0f,
+                                         0.0f,
+                                         0.0f,
+                                         0.0f,
+                                         0U);
+  f413_search_step_set_trace_period(1U);
   f413_run_session_guard_cleanup(&guard);
   f413_run_features_reset();
 

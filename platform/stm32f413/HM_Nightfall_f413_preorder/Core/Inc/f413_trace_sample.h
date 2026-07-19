@@ -24,10 +24,20 @@ typedef struct {
   f413_trace_sample_read_adc_fn read_adc_raw;
 } f413_trace_sample_config_t;
 
+#define F413_TRACE_SAMPLE_FRONT_MATCH_MARKER (0xF400U)
+#define F413_TRACE_SAMPLE_FRONT_MATCH_MARKER_MASK (0xFF00U)
+
 void f413_trace_sample_config(const f413_trace_sample_config_t* config);
 void f413_trace_sample_set_identity(nvm_status_t status, const nvm_identity_block_t* identity);
 void f413_trace_sample_set_context(uint8_t mode, uint8_t op_case, uint8_t sub, uint8_t test_id);
 void f413_trace_sample_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id);
+void f413_trace_sample_set_front_match(bool active,
+                                       uint8_t phase,
+                                       float fr_mm,
+                                       float fl_mm,
+                                       float position_error_mm,
+                                       float yaw_error_mm,
+                                       uint16_t state_elapsed_ms);
 void f413_trace_sample_update_observe_cache(void);
 void f413_trace_sample_emit_extra_csv_meta(void);
 void f413_trace_sample_fill(nvm_trace_log_record_t* out, uint32_t seq);

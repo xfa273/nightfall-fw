@@ -7,6 +7,7 @@
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
+- `analyze_front_match_csv.py`: 前壁位置合わせテストの状態遷移・距離誤差・指令追従を要約
 - `export_plotjuggler_csv.py`: FRAM trace CSVをPlotJugglerで読みやすいCSVへ変換
 - `run_plotjuggler.sh`: CSV変換後、固定テンプレート付きでPlotJugglerを起動
 - `render_search_dump.py`: F413 UART `@` の `[SEARCH-DUMP]` をASCII迷路へ変換
@@ -75,6 +76,15 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
+
+## `analyze_front_match_csv.py` の前壁位置合わせ評価
+
+- `mode1 case0 sub4` の専用テレメトリを抽出します。
+- 各状態の継続時間、左右前センサの換算距離、位置・姿勢誤差、速度・角速度の指令値と実測値を表示します。
+- `paused-wall-lost` / `paused-too-close` により安全停止の理由も確認できます。
+- 例:
+  - `python3 tools/logging/analyze_front_match_csv.py tools/logging/logs`
+  - `python3 tools/logging/analyze_front_match_csv.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv`
 
 ## FRAM trace CSV表示（調整時の標準運用）
 

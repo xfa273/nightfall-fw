@@ -21,6 +21,7 @@ void f413_trace_log_config(f413_trace_log_fill_control_sample_fn fill_control_sa
 bool f413_trace_log_auto_is_enabled(void);
 uint16_t f413_trace_log_get_mode_flags(void);
 void f413_trace_log_set_mode_flags(uint16_t mode_flags);
+void f413_trace_log_set_period_ms(uint32_t period_ms);
 void f413_trace_log_auto_abort(void);
 void f413_trace_log_auto_start(void);
 void f413_trace_log_auto_stop(void);

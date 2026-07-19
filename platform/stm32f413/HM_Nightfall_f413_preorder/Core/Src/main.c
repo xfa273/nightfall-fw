@@ -1207,6 +1207,8 @@ int main(void)
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
       nightfall_trace_log_set_mode_flags,
+      f413_trace_log_set_period_ms,
+      f413_trace_sample_set_front_match,
       nightfall_trace_log_auto_step,
       nightfall_wall_control_apply_straight,
       NIGHTFALL_F413_PATH_TIMEOUT_MS,

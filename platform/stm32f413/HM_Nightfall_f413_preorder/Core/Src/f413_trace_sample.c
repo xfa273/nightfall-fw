@@ -32,6 +32,14 @@ static volatile int32_t g_reserved_i32_2 = 0;
 static volatile int32_t g_reserved_i32_3 = 0;
 static volatile uint16_t g_reserved_u16_0 = 0U;
 static volatile uint16_t g_reserved_u16_1 = 0U;
+static volatile uint32_t g_front_match_generation = 0U;
+static volatile uint8_t g_front_match_active = 0U;
+static volatile uint8_t g_front_match_phase = 0U;
+static volatile int32_t g_front_match_fr_mm_x1000 = 0;
+static volatile int32_t g_front_match_fl_mm_x1000 = 0;
+static volatile int32_t g_front_match_position_error_mm_x1000 = 0;
+static volatile int32_t g_front_match_yaw_error_mm_x1000 = 0;
+static volatile uint16_t g_front_match_state_elapsed_ms = 0U;
 static uint8_t g_last_test_id = 0U;
 static f413_run_session_abort_reason_t g_last_test_abort_reason = F413_RUN_SESSION_ABORT_NONE;
 static float g_last_test_distance_mm = 0.0f;
@@ -121,6 +129,45 @@ static void f413_trace_sample_fill_context(nvm_trace_log_record_t* out)
   out->test_id = g_context_test_id;
 }
 
+static void f413_trace_sample_fill_front_match(nvm_trace_log_record_t* out)
+{
+  uint32_t generation_before;
+  uint32_t generation_after;
+  uint8_t active;
+  uint8_t phase;
+  int32_t fr_mm_x1000;
+  int32_t fl_mm_x1000;
+  int32_t position_error_mm_x1000;
+  int32_t yaw_error_mm_x1000;
+  uint16_t state_elapsed_ms;
+
+  generation_before = g_front_match_generation;
+  if ((generation_before & 1U) != 0U)
+  {
+    return;
+  }
+  active = g_front_match_active;
+  phase = g_front_match_phase;
+  fr_mm_x1000 = g_front_match_fr_mm_x1000;
+  fl_mm_x1000 = g_front_match_fl_mm_x1000;
+  position_error_mm_x1000 = g_front_match_position_error_mm_x1000;
+  yaw_error_mm_x1000 = g_front_match_yaw_error_mm_x1000;
+  state_elapsed_ms = g_front_match_state_elapsed_ms;
+  generation_after = g_front_match_generation;
+  if (!active || (generation_before != generation_after) ||
+      ((generation_after & 1U) != 0U))
+  {
+    return;
+  }
+
+  out->reserved_i32_0 = fr_mm_x1000;
+  out->reserved_i32_1 = fl_mm_x1000;
+  out->reserved_i32_2 = position_error_mm_x1000;
+  out->reserved_i32_3 = yaw_error_mm_x1000;
+  out->reserved_u16_0 = (uint16_t)(F413_TRACE_SAMPLE_FRONT_MATCH_MARKER | phase);
+  out->reserved_u16_1 = state_elapsed_ms;
+}
+
 void f413_trace_sample_config(const f413_trace_sample_config_t* config)
 {
   if (config != NULL)
@@ -166,6 +213,28 @@ void f413_trace_sample_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub
   {
     *test_id = g_context_test_id;
   }
+}
+
+void f413_trace_sample_set_front_match(bool active,
+                                       uint8_t phase,
+                                       float fr_mm,
+                                       float fl_mm,
+                                       float position_error_mm,
+                                       float yaw_error_mm,
+                                       uint16_t state_elapsed_ms)
+{
+  g_front_match_generation += 1U;
+  g_front_match_active = 0U;
+  g_front_match_phase = phase;
+  g_front_match_fr_mm_x1000 = f413_trace_sample_scale_float(fr_mm, 1000.0f);
+  g_front_match_fl_mm_x1000 = f413_trace_sample_scale_float(fl_mm, 1000.0f);
+  g_front_match_position_error_mm_x1000 =
+      f413_trace_sample_scale_float(position_error_mm, 1000.0f);
+  g_front_match_yaw_error_mm_x1000 =
+      f413_trace_sample_scale_float(yaw_error_mm, 1000.0f);
+  g_front_match_state_elapsed_ms = state_elapsed_ms;
+  g_front_match_active = active ? 1U : 0U;
+  g_front_match_generation += 1U;
 }
 
 void f413_trace_sample_update_observe_cache(void)
@@ -233,6 +302,11 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (double)FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
   trace_printf("#search_step_context=op_mode1_case1_to_8:op_sub=(y<<4)|x,test_id=0x80|(next_rel<<2)|dir\r\n");
   trace_printf("#search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas\r\n");
+  trace_printf("#front_match_trace=mode1_case0_sub4 marker=0x%04X period_ms=%lu\r\n",
+               (unsigned int)F413_TRACE_SAMPLE_FRONT_MATCH_MARKER,
+               (unsigned long)MATCH_POS_TRACE_PERIOD_MS);
+  trace_printf("#front_match_reserved_i32=fr_mm_x1000,fl_mm_x1000,position_error_mm_x1000,yaw_error_mm_x1000\r\n");
+  trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
@@ -319,6 +393,7 @@ void f413_trace_sample_fill(nvm_trace_log_record_t* out, uint32_t seq)
   }
   f413_trace_sample_fill_flags(out);
   f413_trace_sample_fill_context(out);
+  f413_trace_sample_fill_front_match(out);
 }
 
 void f413_trace_sample_fill_control(nvm_trace_log_record_t* out,
@@ -355,6 +430,7 @@ void f413_trace_sample_fill_control(nvm_trace_log_record_t* out,
   }
   f413_trace_sample_fill_flags(out);
   f413_trace_sample_fill_context(out);
+  f413_trace_sample_fill_front_match(out);
 }
 
 void f413_trace_sample_record_result(uint8_t test_id,

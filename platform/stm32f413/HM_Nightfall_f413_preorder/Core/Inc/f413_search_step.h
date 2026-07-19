@@ -26,6 +26,14 @@ typedef void (*f413_search_step_trace_context_fn)(uint8_t mode,
                                                   uint8_t sub,
                                                   uint8_t test_id);
 typedef void (*f413_search_step_trace_flags_fn)(uint16_t mode_flags);
+typedef void (*f413_search_step_trace_period_fn)(uint32_t period_ms);
+typedef void (*f413_search_step_front_match_trace_fn)(bool active,
+                                                      uint8_t phase,
+                                                      float fr_mm,
+                                                      float fl_mm,
+                                                      float position_error_mm,
+                                                      float yaw_error_mm,
+                                                      uint16_t state_elapsed_ms);
 
 typedef struct {
   f413_search_step_bool_fn stop_switch_pressed;
@@ -36,6 +44,8 @@ typedef struct {
   f413_search_step_void_fn trace_on_run_start;
   f413_search_step_void_fn trace_on_run_stop;
   f413_search_step_trace_flags_fn trace_set_mode_flags;
+  f413_search_step_trace_period_fn trace_set_period_ms;
+  f413_search_step_front_match_trace_fn trace_set_front_match;
   f413_search_step_void_fn trace_auto_step;
   f413_search_step_void_fn wall_control_apply_straight;
   uint32_t path_timeout_ms;

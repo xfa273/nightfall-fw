@@ -11,6 +11,8 @@
 
 static volatile uint8_t g_trace_log_auto_enabled = 0U;
 static uint32_t g_trace_log_auto_period_ms = 1U;
+static volatile uint32_t g_trace_log_auto_last_sample_ms = 0U;
+static volatile uint8_t g_trace_log_auto_last_sample_valid = 0U;
 static volatile uint32_t g_trace_log_auto_seq = 0U;
 static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
 static nvm_trace_log_record_t g_trace_log_auto_buffer[F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
@@ -144,6 +146,19 @@ void f413_trace_log_set_mode_flags(uint16_t mode_flags)
   g_trace_log_auto_mode_flags = mode_flags;
 }
 
+void f413_trace_log_set_period_ms(uint32_t period_ms)
+{
+  if (period_ms < 1U)
+  {
+    period_ms = 1U;
+  }
+  else if (period_ms > 1000U)
+  {
+    period_ms = 1000U;
+  }
+  g_trace_log_auto_period_ms = period_ms;
+}
+
 void f413_trace_log_auto_abort(void)
 {
   g_trace_log_auto_enabled = 0U;
@@ -179,6 +194,8 @@ void f413_trace_log_auto_start(void)
   g_trace_log_auto_buffer_head = 0U;
   g_trace_log_auto_buffer_tail = 0U;
   g_trace_log_auto_buffer_overflow = 0U;
+  g_trace_log_auto_last_sample_ms = 0U;
+  g_trace_log_auto_last_sample_valid = 0U;
   g_trace_log_auto_nvm_header_valid = 1U;
   g_trace_log_auto_uncommitted_records = 0U;
   g_trace_log_auto_flushed_records = 0U;
@@ -314,6 +331,13 @@ void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms)
   {
     return;
   }
+  if ((g_trace_log_auto_last_sample_valid != 0U) &&
+      ((timestamp_ms - g_trace_log_auto_last_sample_ms) < g_trace_log_auto_period_ms))
+  {
+    return;
+  }
+  g_trace_log_auto_last_sample_ms = timestamp_ms;
+  g_trace_log_auto_last_sample_valid = 1U;
 
   head = g_trace_log_auto_buffer_head;
   tail = g_trace_log_auto_buffer_tail;
