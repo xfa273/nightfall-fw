@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "f413_control.h"
+#include "f413_front_match.h"
 #include "f413_path_run.h"
 #include "f413_run_features.h"
 #include "f413_run_session.h"
@@ -1541,53 +1542,26 @@ static float f413_search_step_front_match_error_position(
   return filter->front_sum_mm - F_ALIGN_TARGET_MM;
 }
 
-static float f413_search_step_front_match_error_fr(
+static float f413_search_step_front_match_error_yaw(
     const f413_search_step_front_match_filter_t* filter)
 {
   if ((filter == NULL) || !filter->initialized)
   {
     return 0.0f;
   }
-  return filter->fr_mm - F_ALIGN_TARGET_MM;
+  return filter->fr_mm - filter->fl_mm;
 }
 
-static float f413_search_step_front_match_error_fl(
-    const f413_search_step_front_match_filter_t* filter)
-{
-  if ((filter == NULL) || !filter->initialized)
-  {
-    return 0.0f;
-  }
-  return filter->fl_mm - F_ALIGN_TARGET_MM;
-}
-
-static bool f413_search_step_front_match_within_tight(float e_fr_mm,
-                                                      float e_fl_mm,
-                                                      float e_yaw_mm)
-{
-  return (fabsf(e_fr_mm) <= MATCH_POS_TOL_MM) &&
-         (fabsf(e_fl_mm) <= MATCH_POS_TOL_MM) &&
-         (fabsf(e_yaw_mm) <= MATCH_POS_TOL_YAW_MM);
-}
-
-static bool f413_search_step_front_match_within_hold(float e_fr_mm,
-                                                     float e_fl_mm,
-                                                     float e_yaw_mm)
-{
-  return (fabsf(e_fr_mm) <= MATCH_POS_HOLD_RELEASE_TOL_MM) &&
-         (fabsf(e_fl_mm) <= MATCH_POS_HOLD_RELEASE_TOL_MM) &&
-         (fabsf(e_yaw_mm) <= MATCH_POS_HOLD_RELEASE_TOL_YAW_MM);
-}
+static uint16_t f413_search_step_front_match_motor_flags(float v_cmd,
+                                                         float w_cmd);
 
 static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     f413_run_session_guard_t* guard)
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   f413_search_step_front_match_filter_t filter = {0};
-  uint16_t stable_count = 0U;
-  uint16_t count;
-  const uint16_t trace_flags = (uint16_t)(g_config.trace_search_safe_flag |
-                                         g_config.trace_motor_coast_flag);
+  f413_front_match_controller_t controller;
+  uint32_t count;
 
   if (!f413_search_step_front_wall_strong_present())
   {
@@ -1596,17 +1570,15 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
 
   f413_wall_runtime_control_clear();
   f413_ctrl_clear_angle_target();
+  f413_front_match_init(&controller);
 
-  for (count = 0U; count < 2000U; count++)
+  for (count = 0U; count < MATCH_POS_MAX_DURATION_MS; count++)
   {
     f413_wall_sensor_snapshot_t wall;
     f413_wall_distance_snapshot_t distance;
-    float e_fr_mm;
-    float e_fl_mm;
     float e_pos_mm;
     float e_yaw_mm;
-    float v_cmd;
-    float w_cmd;
+    f413_front_match_output_t output;
 
     if (!f413_search_step_read_wall(&wall))
     {
@@ -1624,34 +1596,19 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     }
 
     f413_search_step_front_match_filter_update(&filter, &distance);
-    e_fr_mm = f413_search_step_front_match_error_fr(&filter);
-    e_fl_mm = f413_search_step_front_match_error_fl(&filter);
-    e_yaw_mm = e_fr_mm - e_fl_mm;
-    if (f413_search_step_front_match_within_tight(e_fr_mm, e_fl_mm, e_yaw_mm))
+    e_pos_mm = f413_search_step_front_match_error_position(&filter);
+    e_yaw_mm = f413_search_step_front_match_error_yaw(&filter);
+    f413_front_match_step(&controller, e_pos_mm, e_yaw_mm, 1U, &output);
+    if (output.complete)
     {
-      stable_count++;
-      if (stable_count >= MATCH_POS_STABLE_COUNT)
-      {
-        break;
-      }
-      v_cmd = 0.0f;
-      w_cmd = 0.0f;
-    }
-    else
-    {
-      stable_count = 0U;
-      e_pos_mm = f413_search_step_front_match_error_position(&filter);
-      v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS_MM * e_pos_mm,
-                                      -MATCH_POS_VEL_MAX,
-                                      MATCH_POS_VEL_MAX);
-      w_cmd = f413_search_step_clampf(MATCH_POS_KP_ROT_MM * e_yaw_mm,
-                                      -MATCH_POS_OMEGA_MAX,
-                                      MATCH_POS_OMEGA_MAX);
+      break;
     }
 
-    f413_ctrl_set_velocity(v_cmd);
-    f413_ctrl_set_omega(w_cmd);
-    f413_search_step_set_mode_flags(trace_flags);
+    f413_ctrl_set_velocity(output.velocity_mm_s);
+    f413_ctrl_set_omega(output.omega_deg_s);
+    f413_search_step_set_mode_flags(
+        f413_search_step_front_match_motor_flags(output.velocity_mm_s,
+                                                 output.omega_deg_s));
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
@@ -1715,7 +1672,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
   f413_search_step_set_mode_flags(stop_flags);
   trace_printf("[SEARCH-TEST] front-match pause(%s)\r\n", reason_text);
 
-  while (resume_count < MATCH_POS_TIMEOUT_MS)
+  while (resume_count < MATCH_POS_RECOVERY_VALID_MS)
   {
     f413_wall_sensor_snapshot_t wall;
     f413_wall_distance_snapshot_t distance;
@@ -1767,13 +1724,13 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   f413_search_step_front_match_filter_t filter = {0};
-  uint16_t stable_count = 0U;
-  bool holding = false;
+  f413_front_match_controller_t controller;
 
   f413_wall_runtime_control_clear();
   f413_ctrl_clear_angle_target();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
+  f413_front_match_init(&controller);
 
   trace_printf("[SEARCH-TEST] front-match continuous: stop switch exits, reset also safe\r\n");
 
@@ -1781,12 +1738,9 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
   {
     f413_wall_sensor_snapshot_t wall;
     f413_wall_distance_snapshot_t distance;
-    float e_fr_mm;
-    float e_fl_mm;
     float e_pos_mm;
     float e_yaw_mm;
-    float v_cmd;
-    float w_cmd;
+    f413_front_match_output_t output;
 
     if (!f413_search_step_read_wall(&wall))
     {
@@ -1800,58 +1754,34 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     {
       reason = f413_search_step_front_match_stop_and_wait(guard, "front-wall-lost");
       f413_search_step_front_match_filter_reset(&filter);
-      stable_count = 0U;
-      holding = false;
+      f413_front_match_init(&controller);
       continue;
     }
     if (f413_search_step_front_match_too_close(&distance))
     {
       reason = f413_search_step_front_match_stop_and_wait(guard, "too-close");
       f413_search_step_front_match_filter_reset(&filter);
-      stable_count = 0U;
-      holding = false;
+      f413_front_match_init(&controller);
       continue;
     }
 
     f413_search_step_front_match_filter_update(&filter, &distance);
-    e_fr_mm = f413_search_step_front_match_error_fr(&filter);
-    e_fl_mm = f413_search_step_front_match_error_fl(&filter);
-    e_yaw_mm = e_fr_mm - e_fl_mm;
-
-    if (holding && f413_search_step_front_match_within_hold(e_fr_mm, e_fl_mm, e_yaw_mm))
+    e_pos_mm = f413_search_step_front_match_error_position(&filter);
+    e_yaw_mm = f413_search_step_front_match_error_yaw(&filter);
+    f413_front_match_step(&controller, e_pos_mm, e_yaw_mm, 1U, &output);
+    if (output.phase_changed)
     {
-      v_cmd = 0.0f;
-      w_cmd = 0.0f;
-    }
-    else if (f413_search_step_front_match_within_tight(e_fr_mm, e_fl_mm, e_yaw_mm))
-    {
-      if (stable_count < MATCH_POS_STABLE_COUNT)
-      {
-        stable_count++;
-      }
-      if (stable_count >= MATCH_POS_STABLE_COUNT)
-      {
-        holding = true;
-      }
-      v_cmd = 0.0f;
-      w_cmd = 0.0f;
-    }
-    else
-    {
-      stable_count = 0U;
-      holding = false;
-      e_pos_mm = f413_search_step_front_match_error_position(&filter);
-      v_cmd = f413_search_step_clampf(MATCH_POS_KP_TRANS_MM * e_pos_mm,
-                                      -MATCH_POS_VEL_MAX,
-                                      MATCH_POS_VEL_MAX);
-      w_cmd = f413_search_step_clampf(MATCH_POS_KP_ROT_MM * e_yaw_mm,
-                                      -MATCH_POS_OMEGA_MAX,
-                                      MATCH_POS_OMEGA_MAX);
+      trace_printf("[SEARCH-TEST] front-match phase=%s pos=%.2fmm yaw=%.2fmm\r\n",
+                   f413_front_match_phase_name(output.phase),
+                   (double)e_pos_mm,
+                   (double)e_yaw_mm);
     }
 
-    f413_ctrl_set_velocity(v_cmd);
-    f413_ctrl_set_omega(w_cmd);
-    f413_search_step_set_mode_flags(f413_search_step_front_match_motor_flags(v_cmd, w_cmd));
+    f413_ctrl_set_velocity(output.velocity_mm_s);
+    f413_ctrl_set_omega(output.omega_deg_s);
+    f413_search_step_set_mode_flags(
+        f413_search_step_front_match_motor_flags(output.velocity_mm_s,
+                                                 output.omega_deg_s));
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
   }
 

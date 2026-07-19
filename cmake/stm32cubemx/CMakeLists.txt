@@ -98,6 +98,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_diag.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_front_match.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_imu_diag.c

@@ -87,7 +87,7 @@ static const f413_mode1_case0_sub_t k_case0_subs[5] = {
   },
   {
     4U,
-    "params.h front wall match: continuous follow",
+    "params.h front wall match: staged align/settle/hold",
     {0U, F413_SEARCH_STEP_CASE0_TEST_FRONT_MATCH_CONTINUOUS,
      "mode1-case0-sub4 front wall match continuous", F413_MODE1_FEATURES_CASE0_TEST_INIT},
   },

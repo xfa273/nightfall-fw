@@ -153,6 +153,16 @@ Implementation status:
   - front-sum distance controls translation.
   - individual FR/FL distance difference controls yaw.
   - both normal exploration matching and the continuous mode1 test use the same path.
+- Front-wall matching uses a staged controller in `f413_front_match.c`:
+  - align yaw with translation stopped.
+  - stop and wait for yaw sensor/mechanical settling.
+  - align translation with rotation stopped.
+  - stop for a final settling interval before accepting the pose.
+  - hold with zero motor commands, and reacquire only after a wider error threshold is
+    exceeded continuously.
+- The finite exploration path exits on the first accepted hold. The continuous mode1 test
+  remains in hold so small sensor/mechanical motion does not repeatedly restart the motors,
+  while a deliberate wall displacement still restarts alignment.
 - Wall detection, side-wall control, wall-end detection, and search wall writes still use the
   existing raw ADC paths until their distance conversions are separately calibrated.
 
@@ -364,11 +374,12 @@ For search logs, keep raw wall-read values and add distance values later, becaus
    - fixed machine, no motor required.
    - collect tables for front and side sensors.
 
-3. Use distance only in the front-wall match test mode.
+3. Use distance in the front-wall match test mode and the matching step used by exploration.
    - target in mm.
-   - translation error: average of FR/FL distance errors.
+   - translation error: calibrated front-sum distance error.
    - rotation error: FR/FL distance difference.
-   - no heavy LPF in the control path; use bounded command and stable-count exit.
+   - no heavy LPF in the control path; use bounded staged motion, explicit settling, and
+     delayed hold release.
 
 4. Add distance-domain logs to normal exploration.
    - compare wall read decisions against distance-domain thresholds.
