@@ -1727,12 +1727,9 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   uint16_t resume_count = 0U;
   uint32_t last_print_ms = f413_search_step_tick();
-  const uint16_t stop_flags = (uint16_t)(g_config.trace_search_safe_flag |
-                                        g_config.trace_motor_coast_flag);
+  const uint16_t stop_flags = g_config.trace_search_safe_flag;
 
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+  f413_ctrl_stop();
   f413_search_step_set_trace_period(MATCH_POS_TRACE_IDLE_PERIOD_MS);
   f413_search_step_set_mode_flags(stop_flags);
   trace_printf("[SEARCH-TEST] front-match pause(%s)\r\n", reason_text);
@@ -1788,6 +1785,8 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
     }
   }
 
+  f413_ctrl_start();
+  f413_ctrl_clear_angle_target();
   trace_printf("[SEARCH-TEST] front-match resume\r\n");
   return F413_RUN_SESSION_ABORT_NONE;
 }
@@ -1798,6 +1797,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   f413_search_step_front_match_filter_t filter = {0};
   f413_front_match_controller_t controller;
+  bool control_running = true;
 
   f413_wall_runtime_control_clear();
   f413_ctrl_clear_angle_target();
@@ -1852,7 +1852,23 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     e_pos_mm = f413_search_step_front_match_error_position(&filter);
     e_yaw_mm = f413_search_step_front_match_error_yaw(&filter);
     f413_front_match_step(&controller, e_pos_mm, e_yaw_mm, 1U, &output);
-    f413_search_step_front_match_sync_angle_target(&output);
+    if (!control_running && !output.holding)
+    {
+      f413_ctrl_start();
+      control_running = true;
+      if (output.phase == F413_FRONT_MATCH_PHASE_ALIGN_YAW)
+      {
+        f413_ctrl_clear_angle_target();
+      }
+      else
+      {
+        f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+      }
+    }
+    else if (control_running)
+    {
+      f413_search_step_front_match_sync_angle_target(&output);
+    }
     if (output.phase_changed)
     {
       trace_printf("[SEARCH-TEST] front-match phase=%s pos=%.2fmm yaw=%.2fmm\r\n",
@@ -1861,11 +1877,23 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
                    (double)e_yaw_mm);
     }
 
-    f413_ctrl_set_velocity(output.velocity_mm_s);
-    f413_ctrl_set_omega(output.omega_deg_s);
-    f413_search_step_set_mode_flags(
-        f413_search_step_front_match_motor_flags(output.velocity_mm_s,
-                                                 output.omega_deg_s));
+    if (output.holding)
+    {
+      if (control_running)
+      {
+        f413_ctrl_stop();
+        control_running = false;
+      }
+      f413_search_step_set_mode_flags(g_config.trace_search_safe_flag);
+    }
+    else
+    {
+      f413_ctrl_set_velocity(output.velocity_mm_s);
+      f413_ctrl_set_omega(output.omega_deg_s);
+      f413_search_step_set_mode_flags(
+          f413_search_step_front_match_motor_flags(output.velocity_mm_s,
+                                                   output.omega_deg_s));
+    }
     f413_search_step_set_trace_period(output.holding
                                           ? MATCH_POS_TRACE_IDLE_PERIOD_MS
                                           : MATCH_POS_TRACE_PERIOD_MS);
