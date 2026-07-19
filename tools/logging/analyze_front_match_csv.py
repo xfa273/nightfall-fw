@@ -45,37 +45,55 @@ def _select_csv(path: Path) -> Path:
 
 def _read_samples(path: Path) -> list[dict[str, float | int]]:
     samples: list[dict[str, float | int]] = []
+    columns: list[str] | None = None
+    data_lines: list[str] = []
     with path.open(newline="", encoding="utf-8-sig") as handle:
-        lines = (line for line in handle if line.strip() and not line.startswith("#"))
-        reader = csv.DictReader(lines)
-        for row in reader:
-            marker_phase = _int(row, "reserved_u16_0")
-            if (
-                _int(row, "op_mode", -1) != 1
-                or _int(row, "op_case", -1) != 0
-                or _int(row, "op_sub", -1) != 4
-                or (marker_phase & FRONT_MATCH_MARKER_MASK) != FRONT_MATCH_MARKER
-            ):
-                continue
-            samples.append(
-                {
-                    "timestamp_ms": _int(row, "timestamp_ms"),
-                    "phase": marker_phase & 0xFF,
-                    "state_elapsed_ms": _int(row, "reserved_u16_1"),
-                    "fr_mm": _int(row, "reserved_i32_0") / 1000.0,
-                    "fl_mm": _int(row, "reserved_i32_1") / 1000.0,
-                    "position_error_mm": _int(row, "reserved_i32_2") / 1000.0,
-                    "yaw_error_mm": _int(row, "reserved_i32_3") / 1000.0,
-                    "target_velocity_mm_s": _int(row, "target_velocity_mm_s"),
-                    "real_velocity_mm_s": _int(row, "real_velocity_mm_s"),
-                    "target_omega_dps": _int(row, "target_omega_mdps") / 1000.0,
-                    "real_omega_dps": _int(row, "real_omega_mdps") / 1000.0,
-                    "motor_out_l": _int(row, "motor_out_l"),
-                    "motor_out_r": _int(row, "motor_out_r"),
-                    "adc_fr": _int(row, "adc_fr"),
-                    "adc_fl": _int(row, "adc_fl"),
-                }
-            )
+        for line in handle:
+            if line.startswith("#mm_columns="):
+                columns = next(csv.reader([line.removeprefix("#mm_columns=").strip()]))
+            elif line.strip() and not line.startswith("#"):
+                data_lines.append(line)
+
+    if columns is None:
+        reader: object = csv.DictReader(data_lines)
+    else:
+        rows = csv.reader(data_lines)
+        reader = (
+            dict(zip(columns, values))
+            for values in rows
+            if values != columns and len(values) >= len(columns)
+        )
+
+    for row in reader:
+        if not isinstance(row, dict):
+            continue
+        marker_phase = _int(row, "reserved_u16_0")
+        if (
+            _int(row, "op_mode", -1) != 1
+            or _int(row, "op_case", -1) != 0
+            or _int(row, "op_sub", -1) != 4
+            or (marker_phase & FRONT_MATCH_MARKER_MASK) != FRONT_MATCH_MARKER
+        ):
+            continue
+        samples.append(
+            {
+                "timestamp_ms": _int(row, "timestamp_ms"),
+                "phase": marker_phase & 0xFF,
+                "state_elapsed_ms": _int(row, "reserved_u16_1"),
+                "fr_mm": _int(row, "reserved_i32_0") / 1000.0,
+                "fl_mm": _int(row, "reserved_i32_1") / 1000.0,
+                "position_error_mm": _int(row, "reserved_i32_2") / 1000.0,
+                "yaw_error_mm": _int(row, "reserved_i32_3") / 1000.0,
+                "target_velocity_mm_s": _int(row, "target_velocity_mm_s"),
+                "real_velocity_mm_s": _int(row, "real_velocity_mm_s"),
+                "target_omega_dps": _int(row, "target_omega_mdps") / 1000.0,
+                "real_omega_dps": _int(row, "real_omega_mdps") / 1000.0,
+                "motor_out_l": _int(row, "motor_out_l"),
+                "motor_out_r": _int(row, "motor_out_r"),
+                "adc_fr": _int(row, "adc_fr"),
+                "adc_fl": _int(row, "adc_fl"),
+            }
+        )
     return samples
 
 
