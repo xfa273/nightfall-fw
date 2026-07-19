@@ -1595,6 +1595,24 @@ static uint16_t f413_search_step_front_match_state_elapsed(
              : controller->phase_elapsed_ms;
 }
 
+static void f413_search_step_front_match_sync_angle_target(
+    const f413_front_match_output_t* output)
+{
+  if ((output == NULL) || !output->phase_changed)
+  {
+    return;
+  }
+
+  if (output->phase == F413_FRONT_MATCH_PHASE_ALIGN_YAW)
+  {
+    f413_ctrl_clear_angle_target();
+  }
+  else if (output->phase == F413_FRONT_MATCH_PHASE_SETTLE_YAW)
+  {
+    f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+  }
+}
+
 static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     f413_run_session_guard_t* guard)
 {
@@ -1639,6 +1657,7 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     e_pos_mm = f413_search_step_front_match_error_position(&filter);
     e_yaw_mm = f413_search_step_front_match_error_yaw(&filter);
     f413_front_match_step(&controller, e_pos_mm, e_yaw_mm, 1U, &output);
+    f413_search_step_front_match_sync_angle_target(&output);
     if (output.complete)
     {
       break;
@@ -1664,9 +1683,7 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
 static bool f413_search_step_front_match_wall_detected(
     const f413_wall_distance_snapshot_t* distance)
 {
-  return (distance != NULL) && distance->front_valid &&
-         (distance->adc.fr_delta > (int32_t)F_ALIGN_DETECT_THR_ADC) &&
-         (distance->adc.fl_delta > (int32_t)F_ALIGN_DETECT_THR_ADC);
+  return (distance != NULL) && distance->front_valid;
 }
 
 static bool f413_search_step_front_match_too_close(
@@ -1710,6 +1727,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_stop_and_wai
 
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
+  f413_ctrl_set_angle_target(f413_ctrl_get_angle());
   f413_search_step_set_mode_flags(stop_flags);
   trace_printf("[SEARCH-TEST] front-match pause(%s)\r\n", reason_text);
 
@@ -1799,16 +1817,6 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     {
       return F413_RUN_SESSION_ABORT_WALL_FAULT;
     }
-    if (!f413_search_step_front_match_wall_detected(&distance))
-    {
-      reason = f413_search_step_front_match_stop_and_wait(
-          guard,
-          "front-wall-lost",
-          F413_FRONT_MATCH_PHASE_PAUSED_WALL_LOST);
-      f413_search_step_front_match_filter_reset(&filter);
-      f413_front_match_init(&controller);
-      continue;
-    }
     if (f413_search_step_front_match_too_close(&distance))
     {
       reason = f413_search_step_front_match_stop_and_wait(
@@ -1817,6 +1825,18 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
           F413_FRONT_MATCH_PHASE_PAUSED_TOO_CLOSE);
       f413_search_step_front_match_filter_reset(&filter);
       f413_front_match_init(&controller);
+      f413_ctrl_clear_angle_target();
+      continue;
+    }
+    if (!f413_search_step_front_match_wall_detected(&distance))
+    {
+      reason = f413_search_step_front_match_stop_and_wait(
+          guard,
+          "front-wall-lost",
+          F413_FRONT_MATCH_PHASE_PAUSED_WALL_LOST);
+      f413_search_step_front_match_filter_reset(&filter);
+      f413_front_match_init(&controller);
+      f413_ctrl_clear_angle_target();
       continue;
     }
 
@@ -1824,6 +1844,7 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     e_pos_mm = f413_search_step_front_match_error_position(&filter);
     e_yaw_mm = f413_search_step_front_match_error_yaw(&filter);
     f413_front_match_step(&controller, e_pos_mm, e_yaw_mm, 1U, &output);
+    f413_search_step_front_match_sync_angle_target(&output);
     if (output.phase_changed)
     {
       trace_printf("[SEARCH-TEST] front-match phase=%s pos=%.2fmm yaw=%.2fmm\r\n",

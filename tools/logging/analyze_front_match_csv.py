@@ -163,9 +163,13 @@ def analyze(path: Path) -> int:
         for index in range(1, len(samples))
         if samples[index]["phase"] != samples[index - 1]["phase"]
     ]
-    hold_entries = sum(next_phase == 4 for _, next_phase in transitions)
+    hold_entries = int(samples[0]["phase"] == 4) + sum(
+        next_phase == 4 for _, next_phase in transitions
+    )
     reacquires = sum(prev_phase == 4 and next_phase in (0, 2) for prev_phase, next_phase in transitions)
-    pause_entries = sum(next_phase in (0xFE, 0xFF) for _, next_phase in transitions)
+    pause_entries = int(samples[0]["phase"] in (0xFE, 0xFF)) + sum(
+        next_phase in (0xFE, 0xFF) for _, next_phase in transitions
+    )
     hold_samples = [sample for sample in samples if sample["phase"] == 4]
     hold_commanded = sum(
         abs(float(sample["target_velocity_mm_s"])) > 1.0

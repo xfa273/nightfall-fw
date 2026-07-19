@@ -304,7 +304,6 @@
 #define WALL_ALIGN_ERR_THR  700
 
 #define F_ALIGN_TARGET_MM           7.0F
-#define F_ALIGN_DETECT_THR_ADC      500
 #define F_ALIGN_TOO_CLOSE_MM        4.5F
 
 #define MATCH_POS_KP_TRANS_MM       40.0F
