@@ -35,6 +35,7 @@ static void f413_front_match_change_phase(f413_front_match_controller_t* control
   }
   controller->phase = phase;
   controller->phase_elapsed_ms = 0U;
+  controller->settle_gap_elapsed_ms = 0U;
   controller->release_elapsed_ms = 0U;
   output->phase_changed = true;
 }
@@ -54,6 +55,7 @@ void f413_front_match_init(f413_front_match_controller_t* controller)
   }
   controller->phase = F413_FRONT_MATCH_PHASE_ALIGN_YAW;
   controller->phase_elapsed_ms = 0U;
+  controller->settle_gap_elapsed_ms = 0U;
   controller->release_elapsed_ms = 0U;
 }
 
@@ -94,18 +96,34 @@ void f413_front_match_step(f413_front_match_controller_t* controller,
       break;
 
     case F413_FRONT_MATCH_PHASE_SETTLE_YAW:
-      controller->phase_elapsed_ms = f413_front_match_elapsed_add(
-          controller->phase_elapsed_ms,
-          elapsed_ms);
-      if (controller->phase_elapsed_ms >= MATCH_POS_YAW_SETTLE_MS)
+      if (fabsf(yaw_error_mm) <= MATCH_POS_YAW_TOL_MM)
       {
-        if (fabsf(yaw_error_mm) <= MATCH_POS_YAW_TOL_MM)
+        controller->settle_gap_elapsed_ms = 0U;
+        controller->phase_elapsed_ms = f413_front_match_elapsed_add(
+            controller->phase_elapsed_ms,
+            elapsed_ms);
+        if (controller->phase_elapsed_ms >= MATCH_POS_YAW_SETTLE_MS)
         {
           f413_front_match_change_phase(controller,
                                         F413_FRONT_MATCH_PHASE_ALIGN_POSITION,
                                         output);
         }
+      }
+      else
+      {
+        controller->settle_gap_elapsed_ms = f413_front_match_elapsed_add(
+            controller->settle_gap_elapsed_ms,
+            elapsed_ms);
+        if (controller->phase_elapsed_ms > elapsed_ms)
+        {
+          controller->phase_elapsed_ms -= elapsed_ms;
+        }
         else
+        {
+          controller->phase_elapsed_ms = 0U;
+        }
+        if ((fabsf(yaw_error_mm) > MATCH_POS_YAW_RESTART_MM) ||
+            (controller->settle_gap_elapsed_ms > MATCH_POS_SETTLE_GAP_MS))
         {
           f413_front_match_change_phase(controller,
                                         F413_FRONT_MATCH_PHASE_ALIGN_YAW,
@@ -137,27 +155,40 @@ void f413_front_match_step(f413_front_match_controller_t* controller,
       break;
 
     case F413_FRONT_MATCH_PHASE_SETTLE_FINAL:
-      controller->phase_elapsed_ms = f413_front_match_elapsed_add(
-          controller->phase_elapsed_ms,
-          elapsed_ms);
-      if (controller->phase_elapsed_ms >= MATCH_POS_FINAL_SETTLE_MS)
+      if (f413_front_match_within_target(position_error_mm, yaw_error_mm))
       {
-        if (f413_front_match_within_target(position_error_mm, yaw_error_mm))
+        controller->settle_gap_elapsed_ms = 0U;
+        controller->phase_elapsed_ms = f413_front_match_elapsed_add(
+            controller->phase_elapsed_ms,
+            elapsed_ms);
+        if (controller->phase_elapsed_ms >= MATCH_POS_FINAL_SETTLE_MS)
         {
           f413_front_match_change_phase(controller,
                                         F413_FRONT_MATCH_PHASE_HOLD,
                                         output);
         }
-        else if (fabsf(yaw_error_mm) > MATCH_POS_YAW_TOL_MM)
+      }
+      else
+      {
+        controller->settle_gap_elapsed_ms = f413_front_match_elapsed_add(
+            controller->settle_gap_elapsed_ms,
+            elapsed_ms);
+        if (controller->phase_elapsed_ms > elapsed_ms)
         {
-          f413_front_match_change_phase(controller,
-                                        F413_FRONT_MATCH_PHASE_ALIGN_YAW,
-                                        output);
+          controller->phase_elapsed_ms -= elapsed_ms;
         }
         else
         {
+          controller->phase_elapsed_ms = 0U;
+        }
+        if ((fabsf(position_error_mm) > MATCH_POS_TRANS_RESTART_MM) ||
+            (fabsf(yaw_error_mm) > MATCH_POS_YAW_RESTART_MM) ||
+            (controller->settle_gap_elapsed_ms > MATCH_POS_SETTLE_GAP_MS))
+        {
           f413_front_match_change_phase(controller,
-                                        F413_FRONT_MATCH_PHASE_ALIGN_POSITION,
+                                        (fabsf(yaw_error_mm) > MATCH_POS_YAW_TOL_MM)
+                                            ? F413_FRONT_MATCH_PHASE_ALIGN_YAW
+                                            : F413_FRONT_MATCH_PHASE_ALIGN_POSITION,
                                         output);
         }
       }

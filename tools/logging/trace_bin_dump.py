@@ -178,6 +178,9 @@ SEARCH_EVENT_MOTION_END = 0xE3
 SEARCH_EVENT_SESSION_END = 0xE4
 SEARCH_EVENT_ROUTE_FAIL = 0xE5
 SEARCH_EVENT_WALL_END = 0xE6
+SEARCH_EVENT_FRONT_MATCH_PACK_MARKER = 0xA0000000
+SEARCH_EVENT_FRONT_MATCH_PACK_MASK = 0xF0000000
+SEARCH_EVENT_FRONT_MATCH_TIME_UNIT_MS = 5
 SEARCH_EVENT_COLUMNS = [
     "event_marker",
     "event_type",
@@ -202,6 +205,16 @@ SEARCH_EVENT_COLUMNS = [
     "event_completed",
     "event_route_failed",
     "event_route_reason",
+    "event_front_match_1_present",
+    "event_front_match_1_status",
+    "event_front_match_1_duration_ms",
+    "event_front_match_1_position_error_x1000",
+    "event_front_match_1_yaw_error_x1000",
+    "event_front_match_2_present",
+    "event_front_match_2_status",
+    "event_front_match_2_duration_ms",
+    "event_front_match_2_position_error_x1000",
+    "event_front_match_2_yaw_error_x1000",
 ]
 RECORD_LAYOUTS = {
     RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
@@ -500,6 +513,26 @@ def _int_field(row: dict[str, str], key: str, default: int = 0) -> int:
         return default
 
 
+def _decode_front_match(value: int) -> tuple[int, int, int, int, int]:
+    packed = value & 0xFFFFFFFF
+    if (packed & SEARCH_EVENT_FRONT_MATCH_PACK_MASK) != SEARCH_EVENT_FRONT_MATCH_PACK_MARKER:
+        return 0, 0, 0, 0, 0
+
+    position_error_x20 = (packed >> 8) & 0xFF
+    yaw_error_x20 = packed & 0xFF
+    if position_error_x20 & 0x80:
+        position_error_x20 -= 0x100
+    if yaw_error_x20 & 0x80:
+        yaw_error_x20 -= 0x100
+    return (
+        1,
+        (packed >> 25) & 0x07,
+        ((packed >> 16) & 0x1FF) * SEARCH_EVENT_FRONT_MATCH_TIME_UNIT_MS,
+        position_error_x20 * 50,
+        yaw_error_x20 * 50,
+    )
+
+
 def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
     data = dict(zip(columns, row))
     marker = _int_field(data, "reserved_u16_0")
@@ -531,6 +564,8 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
     completed = 0
     route_failed = 0
     route_reason = 0
+    front_match_1 = (0, 0, 0, 0, 0)
+    front_match_2 = (0, 0, 0, 0, 0)
 
     r1 = _int_field(data, "reserved_i32_1")
     r2 = _int_field(data, "reserved_i32_2")
@@ -558,6 +593,12 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         motion_duration_ms = motion_pack & 0xFFFF
         arg0_x1000 = r1
         arg1_x1000 = r2
+        front_match_1 = _decode_front_match(r1)
+        front_match_2 = _decode_front_match(r2)
+        if front_match_1[0]:
+            arg0_x1000 = 0
+        if front_match_2[0]:
+            arg1_x1000 = 0
     elif event_type == SEARCH_EVENT_WALL_END:
         motion_duration_ms = r3 & 0xFFFF
         arg0_x1000 = r1
@@ -590,6 +631,8 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         str(completed),
         str(route_failed),
         str(route_reason),
+        *(str(value) for value in front_match_1),
+        *(str(value) for value in front_match_2),
     ]
 
 

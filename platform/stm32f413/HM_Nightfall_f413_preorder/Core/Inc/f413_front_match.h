@@ -20,6 +20,7 @@ typedef struct
 {
   f413_front_match_phase_t phase;
   uint16_t phase_elapsed_ms;
+  uint16_t settle_gap_elapsed_ms;
   uint16_t release_elapsed_ms;
 } f413_front_match_controller_t;
 

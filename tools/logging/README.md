@@ -8,6 +8,7 @@
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
 - `analyze_front_match_csv.py`: 前壁位置合わせテストの状態遷移・距離誤差・指令追従を要約
+- `analyze_search_event_log.py`: 探索の区画判断・動作結果・壁切れ・前壁位置合わせ結果を要約
 - `export_plotjuggler_csv.py`: FRAM trace CSVをPlotJugglerで読みやすいCSVへ変換
 - `run_plotjuggler.sh`: CSV変換後、固定テンプレート付きでPlotJugglerを起動
 - `render_search_dump.py`: F413 UART `@` の `[SEARCH-DUMP]` をASCII迷路へ変換
@@ -85,6 +86,15 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_front_match_csv.py tools/logging/logs`
   - `python3 tools/logging/analyze_front_match_csv.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv`
+
+## `analyze_search_event_log.py` の探索要約
+
+- `motion_end` には動作時間と終了状態を表示します。
+- 探索中に前壁位置合わせを行った動作では、`fm1` / `fm2` に完了種別、所要時間、最終位置・姿勢誤差を表示します。
+- 完了種別は `complete`（通常完了）、`relaxed`（時間経過後の緩和完了）、`timeout`、`wall_lost`、`aborted`、`not_run` です。
+- 前壁位置合わせ結果は既存の動作レコード内に格納するため、長時間探索のレコード消費量は増えません。
+- 例:
+  - `python3 tools/logging/analyze_search_event_log.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv`
 
 ## FRAM trace CSV表示（調整時の標準運用）
 
