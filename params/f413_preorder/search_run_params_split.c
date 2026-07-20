@@ -18,7 +18,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .angle_turn_90 = 90.0f,
         
         // 壁切れ後の追従距離
-        .dist_wall_end = 44.0f,
+        .dist_wall_end = 45.0f,
         
         // 壁制御パラメータ
         .kp_wall = 0.02f,
@@ -54,7 +54,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .angle_turn_90 = 90.0f,
         
         // 壁切れ後の追従距離
-        .dist_wall_end = 44.0f,
+        .dist_wall_end = 45.0f,
         
         // 壁制御パラメータ
         .kp_wall = 0.03f,
