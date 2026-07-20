@@ -104,7 +104,7 @@ static const f413_mode1_case_t k_cases[8] = {
     2U,
     "searchRunParams[0] standard: FULL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_FULL, 0U},
-     "mode1-case2 standard full", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
+     "mode1-case2 standard full", F413_MODE1_FEATURES_ALL_ON_INIT},
   },
   {
     3U,
