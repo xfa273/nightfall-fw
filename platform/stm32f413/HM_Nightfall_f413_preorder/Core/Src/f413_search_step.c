@@ -1480,11 +1480,19 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment(float dist
   return reason;
 }
 
-static bool f413_search_step_front_wall_present(void)
+static bool f413_search_step_front_wall_distance_mm(float* distance_mm)
 {
-  f413_wall_sensor_snapshot_t wall;
+  f413_wall_distance_snapshot_t distance;
 
-  return f413_search_step_read_wall(&wall) && wall.front_wall;
+  if ((distance_mm == NULL) ||
+      !f413_wall_distance_read_snapshot(&distance) ||
+      !f413_wall_distance_front_present(&distance))
+  {
+    return false;
+  }
+
+  *distance_mm = distance.front_sum_mm_unwarped;
+  return isfinite(*distance_mm);
 }
 
 static bool f413_search_step_front_match_too_close(
@@ -2076,20 +2084,26 @@ static f413_run_session_abort_reason_t f413_search_step_turn_in_place_to_angle(
 static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_segment(
     float distance_mm,
     float target_velocity_mm_s,
-    float front_threshold,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
     uint16_t trace_flags)
 {
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  float front_distance_mm;
+  float front_target_mm;
   float target_distance;
+  bool front_reached = false;
 
   if (speed_now_mm_s == NULL)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
+  /* At a cell entrance the nose-to-wall distance is the centered distance
+     plus half a cell. The turn should begin at the nominal offset endpoint. */
+  front_target_mm = F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - distance_mm;
   if ((distance_mm <= 0.0f) || !f413_run_features_front_wall_correction_enabled() ||
-      f413_run_features_test_mode_run() || !f413_search_step_front_wall_present())
+      f413_run_features_test_mode_run() || (front_target_mm <= 0.0f) ||
+      !f413_search_step_front_wall_distance_mm(&front_distance_mm))
   {
     return f413_search_step_drive_segment(distance_mm, target_velocity_mm_s,
                                           speed_now_mm_s, guard, trace_flags);
@@ -2102,8 +2116,13 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
 
   while (1)
   {
-    if ((fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance)) ||
-        f413_wall_runtime_front_wall_reached(front_threshold))
+    if (f413_search_step_front_wall_distance_mm(&front_distance_mm) &&
+        (front_distance_mm <= front_target_mm))
+    {
+      front_reached = true;
+      break;
+    }
+    if (fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance))
     {
       break;
     }
@@ -2117,14 +2136,17 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
     }
   }
 
-  if (!f413_wall_runtime_front_wall_reached(front_threshold) &&
-      (WALL_END_EXTEND_MAX_MM > 0.0F))
+  if (!front_reached && (WALL_END_EXTEND_MAX_MM > 0.0F))
   {
     const float extend_target = f413_ctrl_get_distance() + WALL_END_EXTEND_MAX_MM;
     f413_ctrl_set_velocity(target_velocity_mm_s);
     while (fabsf(f413_ctrl_get_distance()) < fabsf(extend_target))
     {
-      if (f413_wall_runtime_front_wall_reached(front_threshold))
+      if (!f413_search_step_front_wall_distance_mm(&front_distance_mm))
+      {
+        break;
+      }
+      if (front_distance_mm <= front_target_mm)
       {
         break;
       }
@@ -2536,7 +2558,6 @@ static f413_run_session_abort_reason_t f413_search_step_run_smooth_turn(
   entry_speed = *speed_now_mm_s;
   reason = f413_search_step_drive_front_wall_entry_segment(params->dist_offset_in,
                                                            params->velocity_turn90,
-                                                           params->val_offset_in,
                                                            speed_now_mm_s,
                                                            guard,
                                                            straight_trace_flags);

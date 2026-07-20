@@ -116,7 +116,7 @@ static const f413_mode1_case_t k_cases[8] = {
     4U,
     "searchRunParams[0] standard: GOAL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_GOAL, 0U},
-     "mode1-case4 standard goal", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
+     "mode1-case4 standard goal", F413_MODE1_FEATURES_ALL_ON_INIT},
   },
   {
     5U,

@@ -14,7 +14,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 8.0f,
         .dist_offset_out = 12.8f,
-        .val_offset_in = 630.0f,
+        .val_offset_in = 630.0f,  // F413探索小回りは距離換算を使用（互換用）
         .angle_turn_90 = 90.0f,
         
         // 壁切れ後の追従距離
@@ -50,7 +50,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .acceleration_turn = 0.0f,
         .dist_offset_in = 10.0f,
         .dist_offset_out = 14.5f,
-        .val_offset_in = 650.0f,
+        .val_offset_in = 650.0f,  // F413探索小回りは距離換算を使用（互換用）
         .angle_turn_90 = 90.0f,
         
         // 壁切れ後の追従距離
