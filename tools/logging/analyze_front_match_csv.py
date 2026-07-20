@@ -18,6 +18,7 @@ PHASE_NAMES = {
     2: "align-position",
     3: "settle-final",
     4: "hold",
+    5: "backoff-too-close",
     0xFE: "paused-wall-lost",
     0xFF: "paused-too-close",
 }
@@ -167,6 +168,9 @@ def analyze(path: Path) -> int:
         next_phase == 4 for _, next_phase in transitions
     )
     reacquires = sum(prev_phase == 4 and next_phase in (0, 2) for prev_phase, next_phase in transitions)
+    backoff_entries = int(samples[0]["phase"] == 5) + sum(
+        next_phase == 5 for _, next_phase in transitions
+    )
     pause_entries = int(samples[0]["phase"] in (0xFE, 0xFF)) + sum(
         next_phase in (0xFE, 0xFF) for _, next_phase in transitions
     )
@@ -178,6 +182,7 @@ def analyze(path: Path) -> int:
     )
     print(
         f"events: hold_entries={hold_entries} reacquires={reacquires} "
+        f"backoff_entries={backoff_entries} "
         f"pause_entries={pause_entries} hold_commanded_samples={hold_commanded}"
     )
     return 0

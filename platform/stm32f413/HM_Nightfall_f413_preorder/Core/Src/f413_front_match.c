@@ -214,6 +214,7 @@ const char* f413_front_match_phase_name(f413_front_match_phase_t phase)
     case F413_FRONT_MATCH_PHASE_ALIGN_POSITION: return "align-position";
     case F413_FRONT_MATCH_PHASE_SETTLE_FINAL: return "settle-final";
     case F413_FRONT_MATCH_PHASE_HOLD: return "hold";
+    case F413_FRONT_MATCH_PHASE_BACKOFF_TOO_CLOSE: return "backoff-too-close";
     case F413_FRONT_MATCH_PHASE_PAUSED_WALL_LOST: return "paused-wall-lost";
     case F413_FRONT_MATCH_PHASE_PAUSED_TOO_CLOSE: return "paused-too-close";
     default: return "unknown";
