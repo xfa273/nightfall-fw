@@ -71,6 +71,8 @@
 #define NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS   (1U)
 #define NIGHTFALL_WALL_DISTANCE_AVG_TIMEOUT_MS    (2000U)
 #define NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS      (10U)
+#define NIGHTFALL_WALL_END_BEEP_PERIOD            (1800U)
+#define NIGHTFALL_WALL_END_BEEP_MS                (20U)
 
 /* USER CODE END PD */
 
@@ -1002,6 +1004,12 @@ static void nightfall_wall_control_apply_straight(void)
   (void)f413_wall_runtime_poll_wall_end(true);
 }
 
+static void nightfall_search_wall_end_notify(void)
+{
+  f413_hw_buzzer_beep_async(NIGHTFALL_WALL_END_BEEP_PERIOD,
+                            NIGHTFALL_WALL_END_BEEP_MS);
+}
+
 static bool nightfall_run_session_wall_sensor_ok(void)
 {
   nightfall_wall_sensor_snapshot_t wall;
@@ -1211,6 +1219,7 @@ int main(void)
       f413_trace_sample_set_front_match,
       nightfall_trace_log_auto_step,
       nightfall_wall_control_apply_straight,
+      nightfall_search_wall_end_notify,
       NIGHTFALL_F413_PATH_TIMEOUT_MS,
       NIGHTFALL_F413_PATH_COAST_MS,
       NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S,
@@ -2100,6 +2109,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM5)
   {
     f413_ctrl_tick();
+    f413_hw_buzzer_tick_1ms();
     nightfall_trace_log_auto_tick_sample();
   }
   else if (htim->Instance == TIM6)

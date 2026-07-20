@@ -177,6 +177,7 @@ SEARCH_EVENT_DECISION = 0xE2
 SEARCH_EVENT_MOTION_END = 0xE3
 SEARCH_EVENT_SESSION_END = 0xE4
 SEARCH_EVENT_ROUTE_FAIL = 0xE5
+SEARCH_EVENT_WALL_END = 0xE6
 SEARCH_EVENT_COLUMNS = [
     "event_marker",
     "event_type",
@@ -555,6 +556,10 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         motion_kind = (motion_pack >> 24) & 0xFF
         motion_status = (motion_pack >> 16) & 0xFF
         motion_duration_ms = motion_pack & 0xFFFF
+        arg0_x1000 = r1
+        arg1_x1000 = r2
+    elif event_type == SEARCH_EVENT_WALL_END:
+        motion_duration_ms = r3 & 0xFFFF
         arg0_x1000 = r1
         arg1_x1000 = r2
     elif event_type == SEARCH_EVENT_SESSION_END:

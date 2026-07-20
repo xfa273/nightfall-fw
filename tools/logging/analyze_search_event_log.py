@@ -12,6 +12,7 @@ EVENT_NAMES = {
     0xE3: "motion_end",
     0xE4: "session_end",
     0xE5: "route_fail",
+    0xE6: "wall_end",
 }
 TARGET_NAMES = {
     0: "goal",
@@ -138,6 +139,13 @@ def _wall_read_text(row: dict[str, str]) -> str:
     return f" read_adc=FR/R/FL/L:{values[0]}/{values[1]}/{values[2]}/{values[3]}"
 
 
+def _adc_text(row: dict[str, str]) -> str:
+    return (
+        f" adc=FR/R/FL/L:{_i(row, 'adc_fr')}/{_i(row, 'adc_r')}/"
+        f"{_i(row, 'adc_fl')}/{_i(row, 'adc_l')}"
+    )
+
+
 def _event_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         row
@@ -181,6 +189,19 @@ def _detail(row: dict[str, str]) -> str:
         return (
             f"reason={reason} smap={_i(row, 'event_smap_step')} wall=0x{_i(row, 'event_wall_info'):04X} "
             f"cell=0x{_i(row, 'event_map_cell'):04X}{_wall_read_text(row)}"
+        )
+    if event_type == 0xE6:
+        right_x1000 = _i(row, "event_arg0_x1000", -1)
+        left_x1000 = _i(row, "event_arg1_x1000", -1)
+        sides = "".join(("R" if right_x1000 >= 0 else "", "L" if left_x1000 >= 0 else ""))
+        packed = _i(row, "reserved_i32_3") & 0xFFFFFFFF
+        segment_length_mm = ((packed >> 16) & 0xFFFF) / 10.0
+        right_text = f"{right_x1000 / 1000.0:.3f}" if right_x1000 >= 0 else "-"
+        left_text = f"{left_x1000 / 1000.0:.3f}" if left_x1000 >= 0 else "-"
+        return (
+            f"side={sides or '-'} segment_pos_mm=R:{right_text}/L:{left_text} "
+            f"dt={_i(row, 'event_motion_duration_ms')}ms segment={segment_length_mm:.1f}mm"
+            f"{_adc_text(row)}"
         )
     return f"param={_i(row, 'event_param_index')}"
 

@@ -135,6 +135,22 @@ typedef struct __attribute__((packed)) {
 - `test_id`: UART/テスト識別子
 - `reserved_u16_0..1`: `#wall_trace_observe=1` の場合は壁観測flags/壁切れ距離圧縮値、それ以外は将来拡張用16bit予備
 
+### 探索イベントレコード
+
+探索イベントログでは `reserved_u16_0=0x5345` をマーカーとし、`test_id` にイベント種別を格納する。
+`0xE0..0xE5` はsession/phase/decision/motion/end/failure、`0xE6` は壁切れ検出を表す。
+
+壁切れイベント (`0xE6`) の追加フィールドは以下のとおり。
+
+- `reserved_i32_1`: 監視区間開始から右壁切れ検出位置までの距離 (mm * 1000)。未検出は`-1`。
+- `reserved_i32_2`: 監視区間開始から左壁切れ検出位置までの距離 (mm * 1000)。未検出は`-1`。
+- `reserved_i32_3[15:0]`: 監視開始から検出までの時間 (ms)。
+- `reserved_i32_3[31:16]`: 監視区間の設定長 (mm * 10)。
+- `timestamp_ms`、`distance_mm`、`adc_fr/r/fl/l`: 検出イベントを記録した時点の時刻、累積走行距離、壁センサdelta。
+
+通常のdecision/motionログを3000動作分保持できる容量を優先するため、壁切れ詳細イベントは1走行240件まで記録する。
+超過件数は走行終了時の`[SEARCH-EVENT] ... wall_end=... dropped=...`に表示する。
+
 ### flags
 
 - bit0 (`0x0001`): スイッチ押下状態（押下時1）

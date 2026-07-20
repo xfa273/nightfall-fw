@@ -9,6 +9,15 @@
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim11;
 
+static volatile uint16_t g_buzzer_async_remaining_ms = 0U;
+
+static void f413_hw_buzzer_async_stop(void)
+{
+  g_buzzer_async_remaining_ms = 0U;
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
+  (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+}
+
 void f413_hw_set_all_leds(GPIO_PinState state)
 {
   HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, state);
@@ -63,6 +72,10 @@ void f413_hw_show_mode_leds(uint8_t mode)
 
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms)
 {
+  if (g_buzzer_async_remaining_ms != 0U)
+  {
+    f413_hw_buzzer_async_stop();
+  }
   if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
   {
     return;
@@ -73,6 +86,41 @@ void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms)
   HAL_Delay(ms);
   __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
   (void)HAL_TIM_PWM_Stop(&htim11, TIM_CHANNEL_1);
+}
+
+void f413_hw_buzzer_beep_async(uint16_t period, uint16_t ms)
+{
+  if ((period == 0U) || (ms == 0U))
+  {
+    return;
+  }
+  if (g_buzzer_async_remaining_ms != 0U)
+  {
+    f413_hw_buzzer_async_stop();
+  }
+
+  __HAL_TIM_SET_AUTORELOAD(&htim11, period);
+  __HAL_TIM_SET_COUNTER(&htim11, 0U);
+  __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, (period * 6U) / 10U);
+  if (HAL_TIM_PWM_Start(&htim11, TIM_CHANNEL_1) != HAL_OK)
+  {
+    __HAL_TIM_SET_COMPARE(&htim11, TIM_CHANNEL_1, 0U);
+    return;
+  }
+  g_buzzer_async_remaining_ms = ms;
+}
+
+void f413_hw_buzzer_tick_1ms(void)
+{
+  if (g_buzzer_async_remaining_ms == 0U)
+  {
+    return;
+  }
+  g_buzzer_async_remaining_ms--;
+  if (g_buzzer_async_remaining_ms == 0U)
+  {
+    f413_hw_buzzer_async_stop();
+  }
 }
 
 void f413_hw_op_beep_enter(void)

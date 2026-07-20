@@ -27,6 +27,7 @@ typedef void (*f413_search_step_trace_context_fn)(uint8_t mode,
                                                   uint8_t test_id);
 typedef void (*f413_search_step_trace_flags_fn)(uint16_t mode_flags);
 typedef void (*f413_search_step_trace_period_fn)(uint32_t period_ms);
+typedef void (*f413_search_step_wall_end_notify_fn)(void);
 typedef void (*f413_search_step_front_match_trace_fn)(bool active,
                                                       uint8_t phase,
                                                       float fr_mm,
@@ -48,6 +49,7 @@ typedef struct {
   f413_search_step_front_match_trace_fn trace_set_front_match;
   f413_search_step_void_fn trace_auto_step;
   f413_search_step_void_fn wall_control_apply_straight;
+  f413_search_step_wall_end_notify_fn wall_end_notify;
   uint32_t path_timeout_ms;
   uint32_t path_coast_ms;
   float step_velocity_mm_s;
