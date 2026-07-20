@@ -98,13 +98,13 @@ static const f413_mode1_case_t k_cases[8] = {
     1U,
     "searchRunParams[0] standard: GOAL -> FULL",
     {0U, 2U, {F413_SEARCH_STEP_TARGET_GOAL, F413_SEARCH_STEP_TARGET_FULL},
-     "mode1-case1 standard goal-full", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
+     "mode1-case1 standard goal-full", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
   },
   {
     2U,
     "searchRunParams[0] standard: FULL",
     {0U, 1U, {F413_SEARCH_STEP_TARGET_FULL, 0U},
-     "mode1-case2 standard full", F413_MODE1_FEATURES_WALLEND_FRONTWALL_OFF_INIT},
+     "mode1-case2 standard full", F413_MODE1_FEATURES_WALLEND_OFF_INIT},
   },
   {
     3U,
