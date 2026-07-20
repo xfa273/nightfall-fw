@@ -1706,6 +1706,16 @@ static f413_run_session_abort_reason_t f413_search_step_match_front_position(
 
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
+  if ((reason == F413_RUN_SESSION_ABORT_NONE) &&
+      (MATCH_POS_POST_COMPLETE_DELAY_MS > 0U))
+  {
+    f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+    f413_search_step_set_mode_flags((uint16_t)(g_config.trace_search_safe_flag |
+                                               g_config.trace_motor_coast_flag));
+    reason = f413_run_session_wait_with_auto_step_guarded(
+        MATCH_POS_POST_COMPLETE_DELAY_MS,
+        guard);
+  }
   return reason;
 }
 
@@ -2578,22 +2588,33 @@ static f413_run_session_abort_reason_t f413_search_step_run_spot_spin_profile(
   f413_search_step_smooth_turn_t profile;
   f413_run_session_abort_reason_t reason;
   uint32_t start_ms;
+  float start_target_angle_deg;
+  float turn_angle_deg;
   int8_t turn_sign;
 
-  profile = f413_search_step_build_smooth_turn(target_angle_deg, alpha_deg_s2);
+  f413_search_step_prepare_turn_angle_control();
+  start_target_angle_deg = f413_ctrl_get_target_angle();
+  turn_angle_deg = target_angle_deg - start_target_angle_deg;
+  if (fabsf(turn_angle_deg) <= 0.01f)
+  {
+    f413_ctrl_set_angle_target(target_angle_deg);
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+
+  profile = f413_search_step_build_smooth_turn(turn_angle_deg, alpha_deg_s2);
   if (profile.t_total_s <= 0.0f)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
 
-  turn_sign = (target_angle_deg < 0.0f) ? -1 : 1;
-  trace_printf("[SEARCH-TEST] spin target=%.0fdeg alpha=%.0f omega_peak=%.0fdps total=%.2fs\r\n",
+  turn_sign = (turn_angle_deg < 0.0f) ? -1 : 1;
+  trace_printf("[SEARCH] spin target=%.0fdeg delta=%.0fdeg alpha=%.0f omega_peak=%.0fdps total=%.2fs\r\n",
                (double)target_angle_deg,
+               (double)turn_angle_deg,
                (double)alpha_deg_s2,
                (double)((float)turn_sign * profile.omega_peak_deg_s),
                (double)profile.t_total_s);
 
-  f413_search_step_prepare_turn_angle_control();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
@@ -2697,15 +2718,10 @@ static f413_run_session_abort_reason_t f413_search_step_turn_in_place_to_angle(
     float target_angle_deg,
     f413_run_session_guard_t* guard)
 {
-  f413_run_session_abort_reason_t reason;
-  const uint16_t turn_flags = (uint16_t)(g_config.trace_search_safe_flag |
-                                        g_config.trace_motor_rev_flag);
-
-  f413_search_step_prepare_turn_angle_control();
-  f413_ctrl_set_velocity(0.0f);
-  f413_ctrl_set_omega(0.0f);
-  f413_ctrl_set_angle_target(target_angle_deg);
-  reason = f413_search_step_wait_ctrl_target(target_angle_deg, true, guard, turn_flags);
+  const f413_run_session_abort_reason_t reason =
+      f413_search_step_run_spot_spin_profile(target_angle_deg,
+                                             (float)ALPHA_ROTATE_90,
+                                             guard);
   f413_ctrl_clear_angle_target();
   return reason;
 }
