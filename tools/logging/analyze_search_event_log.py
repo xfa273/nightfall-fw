@@ -51,6 +51,13 @@ ROUTE_FAIL_REASON_NAMES = {
     3: "no_next_rel",
     4: "map_save_guard",
 }
+ABORT_REASON_NAMES = {
+    0: "none",
+    1: "switch",
+    2: "wall_fault",
+    3: "encoder_fault",
+    4: "imu_fault",
+}
 
 
 def _is_number(text: str) -> bool:
@@ -154,14 +161,19 @@ def _detail(row: dict[str, str]) -> str:
         )
     if event_type == 0xE3:
         motion = MOTION_NAMES.get(_i(row, "event_motion_kind"), str(_i(row, "event_motion_kind")))
+        status = _i(row, "event_motion_status")
+        status_text = ABORT_REASON_NAMES.get(status, str(status))
         return (
-            f"{motion} status={_i(row, 'event_motion_status')} "
+            f"{motion} status={status_text}({status}) "
             f"dt={_i(row, 'event_motion_duration_ms')}ms arg0={_i(row, 'event_arg0_x1000') / 1000.0:.3f} "
             f"arg1={_i(row, 'event_arg1_x1000') / 1000.0:.3f}{_wall_read_text(row)}"
         )
     if event_type == 0xE4:
+        abort_reason = _i(row, "reserved_i32_1")
+        abort_text = ABORT_REASON_NAMES.get(abort_reason, str(abort_reason))
         return (
-            f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')}"
+            f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')} "
+            f"abort={abort_text}({abort_reason})"
             f"{_wall_read_text(row)}"
         )
     if event_type == 0xE5:

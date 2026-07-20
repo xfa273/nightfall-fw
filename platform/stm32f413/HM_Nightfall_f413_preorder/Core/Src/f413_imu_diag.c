@@ -24,10 +24,30 @@
 
 extern SPI_HandleTypeDef hspi2;
 
+static uint32_t f413_imu_diag_lock_spi2(void)
+{
+  const uint32_t tim5_irq_enabled = NVIC_GetEnableIRQ(TIM5_IRQn);
+
+  /* TIM5 owns SPI2 while sampling the IMU. Keep diagnostic transfers atomic
+     so the 1 kHz control interrupt cannot enter between CS and HAL SPI setup. */
+  HAL_NVIC_DisableIRQ(TIM5_IRQn);
+  return tim5_irq_enabled;
+}
+
+static void f413_imu_diag_unlock_spi2(uint32_t tim5_irq_enabled)
+{
+  if (tim5_irq_enabled != 0U)
+  {
+    HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  }
+}
+
 bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
 {
   uint8_t tx[2];
   uint8_t rx[2] = {0U, 0U};
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   if (out == NULL)
   {
@@ -37,15 +57,18 @@ bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
   tx[0] = (uint8_t)(reg | 0x80U);
   tx[1] = 0x00U;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2U, 20U) != HAL_OK)
+  status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2U, 20U);
+  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
+
+  if (status != HAL_OK)
   {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     return false;
   }
-  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
 
   *out = rx[1];
   return true;
@@ -54,27 +77,29 @@ bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
 static bool f413_imu_diag_write_reg(uint8_t reg, uint8_t val)
 {
   uint8_t tx[2];
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   tx[0] = (uint8_t)(reg & 0x7FU);
   tx[1] = val;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_Transmit(&hspi2, tx, 2U, 20U) != HAL_OK)
-  {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
-    return false;
-  }
+  status = HAL_SPI_Transmit(&hspi2, tx, 2U, 20U);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
 
-  return true;
+  return status == HAL_OK;
 }
 
 static bool f413_imu_diag_read_i16_le(uint8_t reg_l, int16_t* out)
 {
   uint8_t tx[3];
   uint8_t rx[3] = {0U, 0U, 0U};
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   if (out == NULL)
   {
@@ -85,15 +110,18 @@ static bool f413_imu_diag_read_i16_le(uint8_t reg_l, int16_t* out)
   tx[1] = 0x00U;
   tx[2] = 0x00U;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_TransmitReceive(&hspi2, tx, rx, 3U, 20U) != HAL_OK)
+  status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 3U, 20U);
+  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
+
+  if (status != HAL_OK)
   {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     return false;
   }
-  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
 
   *out = (int16_t)((uint16_t)rx[2] << 8U | (uint16_t)rx[1]);
   return true;
