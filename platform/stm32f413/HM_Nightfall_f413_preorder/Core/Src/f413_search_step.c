@@ -2442,9 +2442,11 @@ static f413_run_session_abort_reason_t f413_search_step_run_forward_section(
   {
     if (next_is_turn90)
     {
+      /* Match F405: complete the full-cell speed drop in the first half,
+         then use the second half at normal speed as the wall-end buffer. */
       reason = f413_search_step_drive_decel_distance_with_accel(
           (float)DIST_HALF_SEC,
-          f413_search_step_accel_dash(params),
+          2.0f * f413_search_step_accel_dash(params),
           speed_now_mm_s,
           guard,
           trace_flags);
