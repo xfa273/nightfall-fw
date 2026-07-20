@@ -1,15 +1,17 @@
 #include "shortest_run_params.h"
 #include "solver_params.h"
 
+/* F413 mini has no suction fan. Turn values remain per-mode tuning data. */
+
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 8920.0f,
+    .alpha_turn90 = 10200.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 10.0f,
-    .dist_offset_out = 14.2f,
-    .val_offset_in = 630.0f,
+    .dist_offset_in = 8.0f,
+    .dist_offset_out = 12.8f,
+    .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
     // Large 90deg
@@ -55,7 +57,7 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .dist_turn135out_in  = 0.0f,
     .dist_turn135out_out = 12.0f,
     // Fan
-    .fan_power          = 1000,
+    .fan_power          = 0,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
@@ -186,7 +188,7 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .dist_turn135out_in = 0.0f,
     .dist_turn135out_out = 26.0f,
     // Fan
-    .fan_power = 1000,
+    .fan_power = 0,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
@@ -315,7 +317,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .angle_turn135out = 135.0f,
     .dist_turn135out_in = 2.0f,
     .dist_turn135out_out = 10.0f,
-    .fan_power = 1000,
+    .fan_power = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -414,7 +416,7 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .angle_l_turn_180 = 180.0f,
     .dist_l_turn_in_180 = 0.0f,
     .dist_l_turn_out_180 = 4.0f,
-    .fan_power = 1000,
+    .fan_power = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -513,7 +515,7 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .angle_l_turn_180 = 174.3f,
     .dist_l_turn_in_180 = 5.0f,
     .dist_l_turn_out_180= 50.0f,
-    .fan_power          = 1000,
+    .fan_power          = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -609,7 +611,7 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
     .angle_l_turn_180   = 176.8f,
     .dist_l_turn_in_180 = 0.0f,
     .dist_l_turn_out_180= 169.0f,
-    .fan_power          = 200,
+    .fan_power          = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）

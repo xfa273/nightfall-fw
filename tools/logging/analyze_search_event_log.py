@@ -58,6 +58,7 @@ ABORT_REASON_NAMES = {
     2: "wall_fault",
     3: "encoder_fault",
     4: "imu_fault",
+    5: "timeout",
 }
 FRONT_MATCH_STATUS_NAMES = {
     0: "not_run",

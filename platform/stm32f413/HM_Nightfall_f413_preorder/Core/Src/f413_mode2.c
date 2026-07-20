@@ -29,14 +29,14 @@ typedef struct {
     .wall_control_enabled = true, \
     .wall_end_correction_enabled = true, \
     .front_wall_correction_enabled = false, \
-    .angle_accum_mode = true, \
+    .angle_accum_mode = false, \
     .test_mode_run = false, \
   }
 
 static const f413_mode2_case_t k_cases[9] = {
   {1U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[0]", F413_MODE2_FEATURES_FRONT_OFF_INIT},
   {2U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[1]", F413_MODE2_FEATURES_FRONT_OFF_INIT},
-  {3U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[2]", F413_MODE2_FEATURES_ALL_ON_INIT},
+  {4U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[3] (F405 case3 mapping)", F413_MODE2_FEATURES_ALL_ON_INIT},
   {4U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[3]", F413_MODE2_FEATURES_ALL_ON_INIT},
   {5U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[4]", F413_MODE2_FEATURES_ALL_ON_INIT},
   {6U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[5]", F413_MODE2_FEATURES_ALL_ON_INIT},
@@ -69,7 +69,7 @@ void f413_mode2_run_case(uint8_t op_case)
   }
 
   config.mode = 2U;
-  config.op_case = op_case;
+  config.op_case = k_cases[op_case - 1U].case_index;
   config.label = k_cases[op_case - 1U].params_ref;
   config.features = k_cases[op_case - 1U].features;
   f413_mode_shortest_run_config(&config);

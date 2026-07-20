@@ -24,6 +24,11 @@ typedef struct {
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config);
 void f413_wall_runtime_end_clear(void);
+void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
+                                               uint16_t right_low,
+                                               uint16_t left_high,
+                                               uint16_t left_low);
+void f413_wall_runtime_reset_wall_end_thresholds(void);
 void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal);
 void f413_wall_runtime_control_clear(void);
 float f413_wall_runtime_latest_error(void);

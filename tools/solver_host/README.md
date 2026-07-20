@@ -32,6 +32,14 @@ tools/solver_host/run_kerilab_samples.sh data/32MM2023HX.maze data/32_test_01.ma
 MODE=2 CASE=8 tools/solver_host/run_kerilab_samples.sh
 ```
 
+F413の大会用32x32設定と同じ配列境界で確認する場合は、`MAZE_SIZE` を
+コンパイル時に上書きします。
+
+```sh
+CPPFLAGS=-DMAZE_SIZE=32 tools/solver_host/run_solver_host.sh \
+  --maze build/solver_host/kerilab_data/32MM2023HX.maze --mode 2 --case 1
+```
+
 ## C配列形式を読む
 
 KeriLabビューアなどでC配列形式に変換したファイルも読み込めます。

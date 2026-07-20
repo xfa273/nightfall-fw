@@ -6,7 +6,10 @@ OUT_DIR="$ROOT_DIR/build/solver_host"
 OUT_BIN="$OUT_DIR/solver_host"
 
 mkdir -p "$OUT_DIR"
-cc -std=c11 -Wall -Wextra -Wpedantic -Wno-strict-prototypes \
+# Keep CPPFLAGS available for compile-time maze-size validation, for example
+# CPPFLAGS=-DMAZE_SIZE=32 tools/solver_host/run_solver_host.sh --maze ...
+# shellcheck disable=SC2086
+${CC:-cc} ${CPPFLAGS:-} -std=c11 -Wall -Wextra -Wpedantic -Wno-strict-prototypes \
   -I"$ROOT_DIR/tools/solver_host/include" \
   -I"$ROOT_DIR/platform/stm32f405/Core/Inc" \
   -I"$ROOT_DIR/params/f413_preorder" \

@@ -33,16 +33,25 @@ typedef struct {
     .test_mode_run = false, \
   }
 
+#define F413_MODE6_FEATURES_FRONT_OFF_INIT \
+  { \
+    .wall_control_enabled = true, \
+    .wall_end_correction_enabled = true, \
+    .front_wall_correction_enabled = false, \
+    .angle_accum_mode = true, \
+    .test_mode_run = false, \
+  }
+
 static const f413_mode6_case_t k_cases[9] = {
   {1U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[0]", F413_MODE6_FEATURES_FRONT_WALLEND_OFF_INIT},
   {2U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[1]", F413_MODE6_FEATURES_FRONT_WALLEND_OFF_INIT},
   {3U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[2]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {4U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[3]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {5U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[4]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {6U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[5]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {7U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[6]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {8U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[7]", F413_MODE6_FEATURES_ALL_ON_INIT},
-  {9U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[8]", F413_MODE6_FEATURES_ALL_ON_INIT},
+  {4U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[3]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
+  {5U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[4]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
+  {6U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[5]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
+  {7U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[6]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
+  {8U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[7]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
+  {9U, "shortestRunModeParams6 + shortestRunCaseParamsMode6[8]", F413_MODE6_FEATURES_FRONT_OFF_INIT},
 };
 
 static const f413_mode6_case0_sub_t k_case0_subs[10] = {
@@ -69,7 +78,7 @@ void f413_mode6_run_case(uint8_t op_case)
   }
 
   config.mode = 6U;
-  config.op_case = op_case;
+  config.op_case = k_cases[op_case - 1U].case_index;
   config.label = k_cases[op_case - 1U].params_ref;
   config.features = k_cases[op_case - 1U].features;
   f413_mode_shortest_run_config(&config);

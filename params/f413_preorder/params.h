@@ -348,11 +348,31 @@
 /*------------------------------------------------------------
     探索系
 ------------------------------------------------------------*/
+#ifndef GOAL_X
 #define GOAL_X   1
+#endif
+#ifndef GOAL_Y
 #define GOAL_Y   0
+#endif
+#ifndef MAZE_SIZE
 #define MAZE_SIZE 16
+#endif
+#ifndef START_X
 #define START_X   0
+#endif
+#ifndef START_Y
 #define START_Y   0
+#endif
+
+#if ((MAZE_SIZE != 16) && (MAZE_SIZE != 32))
+#error "F413 MAZE_SIZE must be 16 or 32"
+#endif
+#if ((START_X >= MAZE_SIZE) || (START_Y >= MAZE_SIZE))
+#error "F413 start cell is outside MAZE_SIZE"
+#endif
+#if ((GOAL_X >= MAZE_SIZE) || (GOAL_Y >= MAZE_SIZE))
+#error "F413 goal cell is outside MAZE_SIZE"
+#endif
 
 // 複数ゴール設定（3x3 = 9 セル）
 #ifndef GOAL1_X

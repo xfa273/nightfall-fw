@@ -1577,9 +1577,9 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
       }
     }
 
-    if (f413_search_step_tick() >= deadline)
+    if ((int32_t)(f413_search_step_tick() - deadline) >= 0)
     {
-      break;
+      return F413_RUN_SESSION_ABORT_TIMEOUT;
     }
 
     f413_search_step_set_mode_flags(trace_flags);
@@ -1629,17 +1629,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment(float dist
 
 static bool f413_search_step_front_wall_distance_mm(float* distance_mm)
 {
-  f413_wall_distance_snapshot_t distance;
-
-  if ((distance_mm == NULL) ||
-      !f413_wall_distance_read_snapshot(&distance) ||
-      !f413_wall_distance_front_present(&distance))
-  {
-    return false;
-  }
-
-  *distance_mm = distance.front_sum_mm_unwarped;
-  return isfinite(*distance_mm);
+  return f413_wall_distance_front_unwarped_mm(distance_mm);
 }
 
 static bool f413_search_step_front_match_too_close(
@@ -2311,6 +2301,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
   float front_target_mm;
   float target_distance;
   bool front_reached = false;
+  uint32_t deadline;
 
   if (speed_now_mm_s == NULL)
   {
@@ -2328,6 +2319,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
   }
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
+  deadline = f413_search_step_tick() + g_config.path_timeout_ms;
   f413_search_step_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
@@ -2343,6 +2335,11 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
     if (fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance))
     {
       break;
+    }
+    if ((int32_t)(f413_search_step_tick() - deadline) >= 0)
+    {
+      *speed_now_mm_s = target_velocity_mm_s;
+      return F413_RUN_SESSION_ABORT_TIMEOUT;
     }
     f413_search_step_set_mode_flags(trace_flags);
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
@@ -2366,6 +2363,11 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
       }
       if (front_distance_mm <= front_target_mm)
       {
+        break;
+      }
+      if ((int32_t)(f413_search_step_tick() - deadline) >= 0)
+      {
+        reason = F413_RUN_SESSION_ABORT_TIMEOUT;
         break;
       }
       f413_search_step_set_mode_flags(trace_flags);
@@ -2396,6 +2398,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
   float segment_start_distance;
   float target_distance;
   uint32_t segment_start_ms;
+  uint32_t deadline;
 
   if (wall_end_found != NULL)
   {
@@ -2413,6 +2416,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
 
   segment_start_distance = f413_ctrl_get_distance();
   segment_start_ms = f413_search_step_tick();
+  deadline = segment_start_ms + g_config.path_timeout_ms;
   target_distance = segment_start_distance + distance_mm;
   f413_wall_runtime_end_clear();
   f413_search_step_prepare_straight_angle_control();
@@ -2480,6 +2484,11 @@ static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
     }
     if (fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance))
     {
+      break;
+    }
+    if ((int32_t)(f413_search_step_tick() - deadline) >= 0)
+    {
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
       break;
     }
     f413_search_step_set_mode_flags(trace_flags);

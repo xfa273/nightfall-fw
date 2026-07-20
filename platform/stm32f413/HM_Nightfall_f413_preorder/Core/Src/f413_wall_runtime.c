@@ -67,6 +67,10 @@ static float g_diagonal_ctrl_omega_deg_s = 0.0f;
 static float g_diagonal_ctrl_kp_deg_per_adc = 0.0f;
 static float g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
 static bool g_diagonal_ctrl_active = false;
+static uint16_t g_wall_end_thr_r_high = WALL_END_THR_R_HIGH;
+static uint16_t g_wall_end_thr_r_low = WALL_END_THR_R_LOW;
+static uint16_t g_wall_end_thr_l_high = WALL_END_THR_L_HIGH;
+static uint16_t g_wall_end_thr_l_low = WALL_END_THR_L_LOW;
 
 static bool f413_wall_runtime_read_snapshot(f413_wall_sensor_snapshot_t* wall)
 {
@@ -136,8 +140,8 @@ static void f413_wall_runtime_end_reset_from_snapshot(const f413_wall_sensor_sna
     return;
   }
 
-  g_wall_end.right_wall = wall->r_delta > WALL_END_THR_R_HIGH;
-  g_wall_end.left_wall = wall->l_delta > WALL_END_THR_L_HIGH;
+  g_wall_end.right_wall = wall->r_delta > g_wall_end_thr_r_high;
+  g_wall_end.left_wall = wall->l_delta > g_wall_end_thr_l_high;
   g_wall_end.prev_right_wall = g_wall_end.right_wall;
   g_wall_end.prev_left_wall = g_wall_end.left_wall;
   g_wall_end.prev_r_delta = wall->r_delta;
@@ -169,24 +173,24 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
 
   if (right_wall)
   {
-    if (wall->r_delta < WALL_END_THR_R_LOW)
+    if (wall->r_delta < g_wall_end_thr_r_low)
     {
       right_wall = false;
     }
   }
-  else if (wall->r_delta > WALL_END_THR_R_HIGH)
+  else if (wall->r_delta > g_wall_end_thr_r_high)
   {
     right_wall = true;
   }
 
   if (left_wall)
   {
-    if (wall->l_delta < WALL_END_THR_L_LOW)
+    if (wall->l_delta < g_wall_end_thr_l_low)
     {
       left_wall = false;
     }
   }
-  else if (wall->l_delta > WALL_END_THR_L_HIGH)
+  else if (wall->l_delta > g_wall_end_thr_l_high)
   {
     left_wall = true;
   }
@@ -448,6 +452,35 @@ void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 void f413_wall_runtime_end_clear(void)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
+}
+
+void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
+                                               uint16_t right_low,
+                                               uint16_t left_high,
+                                               uint16_t left_low)
+{
+  g_wall_end_thr_r_high = (right_high > 0U) ? right_high : WALL_END_THR_R_HIGH;
+  g_wall_end_thr_r_low = (right_low > 0U) ? right_low : WALL_END_THR_R_LOW;
+  g_wall_end_thr_l_high = (left_high > 0U) ? left_high : WALL_END_THR_L_HIGH;
+  g_wall_end_thr_l_low = (left_low > 0U) ? left_low : WALL_END_THR_L_LOW;
+
+  if (g_wall_end_thr_r_low > g_wall_end_thr_r_high)
+  {
+    g_wall_end_thr_r_low = g_wall_end_thr_r_high;
+  }
+  if (g_wall_end_thr_l_low > g_wall_end_thr_l_high)
+  {
+    g_wall_end_thr_l_low = g_wall_end_thr_l_high;
+  }
+  f413_wall_runtime_end_clear();
+}
+
+void f413_wall_runtime_reset_wall_end_thresholds(void)
+{
+  f413_wall_runtime_set_wall_end_thresholds(WALL_END_THR_R_HIGH,
+                                            WALL_END_THR_R_LOW,
+                                            WALL_END_THR_L_HIGH,
+                                            WALL_END_THR_L_LOW);
 }
 
 void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal)

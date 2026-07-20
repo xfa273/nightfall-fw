@@ -1,5 +1,6 @@
 #include "f413_wall_distance.h"
 
+#include <math.h>
 #include <string.h>
 
 #include "nvm_params.h"
@@ -193,4 +194,20 @@ bool f413_wall_distance_side_present(const f413_wall_distance_snapshot_t* s, boo
     return false;
   }
   return right ? (s->adc.right_wall && s->right_valid) : (s->adc.left_wall && s->left_valid);
+}
+
+bool f413_wall_distance_front_unwarped_mm(float* distance_mm)
+{
+  f413_wall_distance_snapshot_t distance;
+
+  if ((distance_mm == NULL) ||
+      !f413_wall_distance_read_snapshot(&distance) ||
+      !f413_wall_distance_front_present(&distance) ||
+      !isfinite(distance.front_sum_mm_unwarped))
+  {
+    return false;
+  }
+
+  *distance_mm = distance.front_sum_mm_unwarped;
+  return true;
 }

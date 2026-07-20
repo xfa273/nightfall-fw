@@ -30,6 +30,11 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Recent refactors split F413 helpers/diagnostics/UI/run-session code out of `main.c`.
 - Recent commits verified both `Debug-stm32f413` and `Debug-stm32f405` builds.
 - Recent HIL checks verified safe boot state with motors disabled after flashing/reset.
+- F413 shortest-run path execution now covers all F405 path codes, mode/case feature
+  mappings, per-mode wall-end thresholds, large-turn chaining correction, and the
+  calibrated front-wall distance correction shared with exploration.
+- The F413 maze/path limits build for both the current 16x16 configuration and a
+  32x32 configuration by changing `MAZE_SIZE`; the path execution limit is 1024 codes.
 
 ## Active / Not Yet Finished
 
@@ -37,6 +42,8 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Real maze exploration is not finished as a trusted competition flow.
 - Wall control and wall-end behavior need more floor/maze data.
 - Shortest-run UI flow from a real explored FRAM map needs careful validation.
+- Mode 2 shortest-run floor tuning is the next step; modes 3-7 remain parameter
+  baselines and are constrained by explicit F413 straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
 - `board/mini_r2_0` does not exist yet; board separation is incomplete.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.

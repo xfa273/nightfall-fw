@@ -45,6 +45,7 @@ void f413_mode_shortest_run_config(const f413_shortest_case_config_t* config)
                  (unsigned int)config->mode,
                  (unsigned int)config->op_case);
   }
+  f413_run_features_reset();
 #else
   (void)config;
   trace_printf("[RUN-TEST] no-op: F413 real path runner disabled\r\n");
