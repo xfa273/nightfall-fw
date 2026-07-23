@@ -33,8 +33,17 @@ typedef struct {
     .test_mode_run = false, \
   }
 
+#define F413_MODE2_FEATURES_FRONT_ON_NO_ACCUM_INIT \
+  { \
+    .wall_control_enabled = true, \
+    .wall_end_correction_enabled = true, \
+    .front_wall_correction_enabled = true, \
+    .angle_accum_mode = false, \
+    .test_mode_run = false, \
+  }
+
 static const f413_mode2_case_t k_cases[9] = {
-  {1U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[0]", F413_MODE2_FEATURES_FRONT_OFF_INIT},
+  {1U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[0]", F413_MODE2_FEATURES_FRONT_ON_NO_ACCUM_INIT},
   {2U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[1]", F413_MODE2_FEATURES_FRONT_OFF_INIT},
   {4U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[3] (F405 case3 mapping)", F413_MODE2_FEATURES_ALL_ON_INIT},
   {4U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[3]", F413_MODE2_FEATURES_ALL_ON_INIT},

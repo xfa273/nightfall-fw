@@ -415,11 +415,15 @@ static f413_run_session_abort_reason_t f413_path_run_wait_ctrl_target(
     {
       f413_wall_runtime_poll_diagonal(true);
     }
+    else if (!is_angle && wall_control_gate &&
+             ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U))
+    {
+      /* Keep shortest-run wall control on the same live update path as search. */
+      (void)f413_wall_runtime_poll_wall_end(true);
+    }
     else
     {
-      f413_wall_runtime_control_apply(!is_angle &&
-          wall_control_gate &&
-          ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U));
+      f413_wall_runtime_control_apply(false);
     }
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
@@ -782,11 +786,11 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     if ((reason == F413_RUN_SESSION_ABORT_NONE) && wall_end_found &&
         (dist_wall_end_mm > 0.0f))
     {
-      reason = f413_path_run_drive_segment(dist_wall_end_mm,
-                                           turn->velocity_mm_s,
-                                           speed_now_mm_s,
-                                           guard,
-                                           straight_trace_flags);
+      reason = f413_path_run_drive_segment_no_wall(dist_wall_end_mm,
+                                                   turn->velocity_mm_s,
+                                                   speed_now_mm_s,
+                                                   guard,
+                                                   straight_trace_flags);
     }
     return reason;
   }
@@ -1029,11 +1033,12 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_code(
           : mode_params->dist_wall_end;
       if (follow_dist > 0.0f)
       {
-        return f413_path_run_drive_segment(follow_dist,
-                                           v_next,
-                                           speed_now_mm_s,
-                                           guard,
-                                           trace_flags);
+        /* A disappearing wall is not a reliable heading reference after detection. */
+        return f413_path_run_drive_segment_no_wall(follow_dist,
+                                                   v_next,
+                                                   speed_now_mm_s,
+                                                   guard,
+                                                   trace_flags);
       }
     }
     return F413_RUN_SESSION_ABORT_NONE;
