@@ -7,6 +7,7 @@
 - `serial_capture_csv.py`: シリアル受信をCSVへ保存
 - `analyze_trace_csv.py`: trace CSVをflags位相で要約（idle/forward/coast/reverse/smoke）
 - `analyze_turn_csv.py`: F413ターン調整用に角速度積分・最終角度誤差・オーバーシュート等を要約
+- `analyze_wall_end_csv.py`: F413壁切れの微分値・検出位置・次ターンまでの距離と90度ターン前後オフセットを要約
 - `analyze_front_match_csv.py`: 前壁位置合わせテストの状態遷移・距離誤差・指令追従を要約
 - `analyze_search_event_log.py`: 探索の区画判断・動作結果・壁切れ・前壁位置合わせ結果を要約
 - `export_plotjuggler_csv.py`: FRAM trace CSVをPlotJugglerで読みやすいCSVへ変換
@@ -77,6 +78,16 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle -90`
   - `python3 tools/logging/analyze_turn_csv.py tools/logging/logs --target-angle 90 --tolerance 3`
+
+## `analyze_wall_end_csv.py` の壁切れ・前後オフセット評価
+
+- `wall_trace_observe=2` のログから、F405互換窓微分、検出側、検出距離、検出時センサ値を表示します。
+- 壁切れ検出から次の角速度区間開始までの距離を `event_to_turn` として表示します。
+- 完了した90度ターンの角速度区間を速度・IMU角速度で積分し、90mm x 90mm軌道に必要な入り・出オフセット候補を表示します。
+- 現在値を指定すると、旋回本体と前後オフセットを合計した移動量も表示します。
+- 例:
+  - `python3 tools/logging/analyze_wall_end_csv.py tools/logging/logs --dist-in 3 --dist-out 5`
+  - `python3 tools/logging/analyze_wall_end_csv.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv --target-axis-mm 90`
 
 ## `analyze_front_match_csv.py` の前壁位置合わせ評価
 

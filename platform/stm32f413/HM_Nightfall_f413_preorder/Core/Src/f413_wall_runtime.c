@@ -21,6 +21,7 @@
 #define F413_WALL_RUNTIME_TRACE_END_L_FLAG      (0x0080U)
 #define F413_WALL_RUNTIME_TRACE_GATE_FLAG       (0x0100U)
 #define F413_WALL_RUNTIME_TRACE_CTRL_FLAG       (0x0200U)
+#define F413_WALL_RUNTIME_TRACE_DERIV_V2_FLAG   (0x0400U)
 #define F413_WALL_RUNTIME_TRACE_ENABLED_FLAG    (0x8000U)
 
 #ifndef NIGHTFALL_F413_DISABLE_WALL_CONTROL
@@ -49,8 +50,16 @@ typedef struct
   float dist_l_mm;
   int32_t deriv_r;
   int32_t deriv_l;
-  int32_t prev_r_delta;
-  int32_t prev_l_delta;
+  int32_t detected_deriv_r;
+  int32_t detected_deriv_l;
+  uint16_t deriv_buf_r[F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES];
+  uint16_t deriv_buf_l[F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES];
+  uint32_t deriv_sum_old_r;
+  uint32_t deriv_sum_new_r;
+  uint32_t deriv_sum_old_l;
+  uint32_t deriv_sum_new_l;
+  uint32_t deriv_last_sample_sequence;
+  uint8_t deriv_index;
   uint8_t deriv_fall_count_r;
   uint8_t deriv_fall_count_l;
   bool initialized;
@@ -132,6 +141,107 @@ static bool f413_wall_runtime_gate_on(uint16_t mode_flags)
          ((mode_flags & g_config.trace_motor_fwd_flag) != 0U);
 }
 
+static uint16_t f413_wall_runtime_end_sample_value(int32_t value)
+{
+  if (value <= 0)
+  {
+    return 0U;
+  }
+  if (value >= 65535)
+  {
+    return 65535U;
+  }
+  return (uint16_t)value;
+}
+
+static void f413_wall_runtime_end_deriv_reset(const f413_wall_sensor_snapshot_t* wall)
+{
+  uint16_t r;
+  uint16_t l;
+  uint32_t i;
+
+  if (wall == NULL)
+  {
+    return;
+  }
+
+  r = f413_wall_runtime_end_sample_value(wall->r_delta);
+  l = f413_wall_runtime_end_sample_value(wall->l_delta);
+  for (i = 0U; i < F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES; i++)
+  {
+    g_wall_end.deriv_buf_r[i] = r;
+    g_wall_end.deriv_buf_l[i] = l;
+  }
+  g_wall_end.deriv_sum_old_r =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)r;
+  g_wall_end.deriv_sum_new_r =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)r;
+  g_wall_end.deriv_sum_old_l =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)l;
+  g_wall_end.deriv_sum_new_l =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)l;
+  g_wall_end.deriv_last_sample_sequence = wall->sample_sequence;
+  g_wall_end.deriv_index = 0U;
+  g_wall_end.deriv_r = 0;
+  g_wall_end.deriv_l = 0;
+}
+
+static bool f413_wall_runtime_end_deriv_update(const f413_wall_sensor_snapshot_t* wall)
+{
+  uint8_t index;
+  uint8_t move_index;
+  uint16_t r;
+  uint16_t l;
+  uint16_t drop_r;
+  uint16_t move_r;
+  uint16_t drop_l;
+  uint16_t move_l;
+  int32_t diff_r;
+  int32_t diff_l;
+
+  if ((wall == NULL) ||
+      (wall->sample_sequence == g_wall_end.deriv_last_sample_sequence))
+  {
+    return false;
+  }
+
+  index = g_wall_end.deriv_index;
+  move_index = (uint8_t)(((uint32_t)index +
+                          F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES) %
+                         F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES);
+  r = f413_wall_runtime_end_sample_value(wall->r_delta);
+  l = f413_wall_runtime_end_sample_value(wall->l_delta);
+
+  drop_r = g_wall_end.deriv_buf_r[index];
+  move_r = g_wall_end.deriv_buf_r[move_index];
+  g_wall_end.deriv_sum_old_r =
+      g_wall_end.deriv_sum_old_r - (uint32_t)drop_r + (uint32_t)move_r;
+  g_wall_end.deriv_sum_new_r =
+      g_wall_end.deriv_sum_new_r - (uint32_t)move_r + (uint32_t)r;
+
+  drop_l = g_wall_end.deriv_buf_l[index];
+  move_l = g_wall_end.deriv_buf_l[move_index];
+  g_wall_end.deriv_sum_old_l =
+      g_wall_end.deriv_sum_old_l - (uint32_t)drop_l + (uint32_t)move_l;
+  g_wall_end.deriv_sum_new_l =
+      g_wall_end.deriv_sum_new_l - (uint32_t)move_l + (uint32_t)l;
+
+  g_wall_end.deriv_buf_r[index] = r;
+  g_wall_end.deriv_buf_l[index] = l;
+  g_wall_end.deriv_index =
+      (uint8_t)(((uint32_t)index + 1U) %
+                F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES);
+  g_wall_end.deriv_last_sample_sequence = wall->sample_sequence;
+
+  diff_r = (int32_t)g_wall_end.deriv_sum_new_r -
+           (int32_t)g_wall_end.deriv_sum_old_r;
+  diff_l = (int32_t)g_wall_end.deriv_sum_new_l -
+           (int32_t)g_wall_end.deriv_sum_old_l;
+  g_wall_end.deriv_r = diff_r / F413_WALL_RUNTIME_END_DERIV_DIVISOR;
+  g_wall_end.deriv_l = diff_l / F413_WALL_RUNTIME_END_DERIV_DIVISOR;
+  return true;
+}
+
 static void f413_wall_runtime_end_reset_from_snapshot(const f413_wall_sensor_snapshot_t* wall)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
@@ -144,8 +254,7 @@ static void f413_wall_runtime_end_reset_from_snapshot(const f413_wall_sensor_sna
   g_wall_end.left_wall = wall->l_delta > g_wall_end_thr_l_high;
   g_wall_end.prev_right_wall = g_wall_end.right_wall;
   g_wall_end.prev_left_wall = g_wall_end.left_wall;
-  g_wall_end.prev_r_delta = wall->r_delta;
-  g_wall_end.prev_l_delta = wall->l_delta;
+  f413_wall_runtime_end_deriv_reset(wall);
   g_wall_end.initialized = true;
 }
 
@@ -153,6 +262,7 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
 {
   bool right_wall;
   bool left_wall;
+  bool deriv_updated;
 
   if (wall == NULL)
   {
@@ -163,10 +273,7 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
     f413_wall_runtime_end_reset_from_snapshot(wall);
   }
 
-  g_wall_end.deriv_r = wall->r_delta - g_wall_end.prev_r_delta;
-  g_wall_end.deriv_l = wall->l_delta - g_wall_end.prev_l_delta;
-  g_wall_end.prev_r_delta = wall->r_delta;
-  g_wall_end.prev_l_delta = wall->l_delta;
+  deriv_updated = f413_wall_runtime_end_deriv_update(wall);
 
   right_wall = g_wall_end.right_wall;
   left_wall = g_wall_end.left_wall;
@@ -195,36 +302,42 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
     left_wall = true;
   }
 
-  if (right_wall && (g_wall_end.deriv_r < -(int32_t)WALL_END_DERIV_FALL_THR))
+  if (deriv_updated &&
+      right_wall &&
+      (g_wall_end.deriv_r < -(int32_t)WALL_END_DERIV_FALL_THR))
   {
     if (g_wall_end.deriv_fall_count_r < 255U)
     {
       g_wall_end.deriv_fall_count_r++;
     }
   }
-  else
+  else if (deriv_updated)
   {
     g_wall_end.deriv_fall_count_r = 0U;
   }
 
-  if (left_wall && (g_wall_end.deriv_l < -(int32_t)WALL_END_DERIV_FALL_THR))
+  if (deriv_updated &&
+      left_wall &&
+      (g_wall_end.deriv_l < -(int32_t)WALL_END_DERIV_FALL_THR))
   {
     if (g_wall_end.deriv_fall_count_l < 255U)
     {
       g_wall_end.deriv_fall_count_l++;
     }
   }
-  else
+  else if (deriv_updated)
   {
     g_wall_end.deriv_fall_count_l = 0U;
   }
 
-  if (g_wall_end.deriv_fall_count_r >= 2U)
+  if (g_wall_end.deriv_fall_count_r >=
+      F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES)
   {
     right_wall = false;
     g_wall_end.deriv_fall_count_r = 0U;
   }
-  if (g_wall_end.deriv_fall_count_l >= 2U)
+  if (g_wall_end.deriv_fall_count_l >=
+      F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES)
   {
     left_wall = false;
     g_wall_end.deriv_fall_count_l = 0U;
@@ -234,11 +347,13 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
   {
     g_wall_end.detected_r = true;
     g_wall_end.dist_r_mm = f413_ctrl_get_distance();
+    g_wall_end.detected_deriv_r = g_wall_end.deriv_r;
   }
   if (g_wall_end.prev_left_wall && !left_wall && gate_on && !g_wall_end.detected_l)
   {
     g_wall_end.detected_l = true;
     g_wall_end.dist_l_mm = f413_ctrl_get_distance();
+    g_wall_end.detected_deriv_l = g_wall_end.deriv_l;
   }
 
   g_wall_end.right_wall = right_wall;
@@ -434,10 +549,10 @@ static void f413_wall_runtime_fill_snapshot(nvm_trace_log_record_t* out,
   out->adc_fl = (uint16_t)wall->fl_delta;
   out->adc_l = (uint16_t)wall->l_delta;
   out->adc_vbat = wall->vbat_on;
-  out->reserved_i32_0 = wall->fr_delta;
-  out->reserved_i32_1 = wall->r_delta;
-  out->reserved_i32_2 = wall->fl_delta;
-  out->reserved_i32_3 = wall->l_delta;
+  out->reserved_i32_0 = g_wall_end.deriv_r;
+  out->reserved_i32_1 = g_wall_end.deriv_l;
+  out->reserved_i32_2 = g_wall_end.detected_deriv_r;
+  out->reserved_i32_3 = g_wall_end.detected_deriv_l;
   out->reserved_u16_0 = f413_wall_runtime_trace_flags_from_snapshot(wall, gate_on);
 }
 
@@ -603,7 +718,8 @@ bool f413_wall_runtime_front_wall_reached(float ad_sum_threshold)
 uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snapshot_t* wall,
                                                      bool gate_on)
 {
-  uint16_t flags = F413_WALL_RUNTIME_TRACE_ENABLED_FLAG;
+  uint16_t flags = F413_WALL_RUNTIME_TRACE_ENABLED_FLAG |
+                   F413_WALL_RUNTIME_TRACE_DERIV_V2_FLAG;
 
   if (wall == NULL)
   {

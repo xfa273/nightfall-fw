@@ -311,9 +311,15 @@ void f413_trace_sample_emit_extra_csv_meta(void)
   trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
-  trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
+  trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");
   trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
   trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
+  trace_printf("#wall_end_deriv=window=%u,total=%u,divisor=%d,fall_threshold=%u,confirm=%u\r\n",
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES,
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES,
+               F413_WALL_RUNTIME_END_DERIV_DIVISOR,
+               (unsigned int)WALL_END_DERIV_FALL_THR,
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES);
 #else
   trace_printf("#wall_trace_observe=disabled\r\n");
 #endif

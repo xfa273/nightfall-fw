@@ -184,16 +184,21 @@ typedef struct __attribute__((packed)) {
 #fw_git_dirty=...
 #fw_log_schema=0x00060000
 #search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas
-#wall_trace_observe=1
-#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l
+#wall_trace_observe=2
+#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l
 #wall_trace_reserved_u16_0=flags
 #wall_trace_reserved_u16_1=dist_q4_lr
+#wall_end_deriv=window=18,total=36,divisor=9,fall_threshold=200,confirm=2
 #mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,wall_read_fr,wall_read_r,wall_read_fl,wall_read_l,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
 ```
 
 CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 
-`#wall_trace_observe=1` の場合、`reserved_u16_0` は以下のbitを持つ。
+`#wall_trace_observe=2` の場合、`adc_fr/r/fl/l` に同時刻の壁センサ差分値を保持し、
+`reserved_i32_0..3` には順に右窓微分、左窓微分、右検出時窓微分、左検出時窓微分を格納する。
+窓微分はF405と同じく、新旧各18サンプルの移動和の差を9で除した値である。
+
+`reserved_u16_0` は以下のbitを持つ。
 
 - bit0 (`0x0001`): front wall
 - bit1 (`0x0002`): right wall
@@ -205,6 +210,7 @@ CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 - bit7 (`0x0080`): left wall-end detected
 - bit8 (`0x0100`): wall-end detection gate enabled
 - bit9 (`0x0200`): wall control active
+- bit10 (`0x0400`): F405互換窓微分とtrace observe v2フィールド配置
 - bit15 (`0x8000`): wall trace observe enabled
 
 `reserved_u16_1` は下位8bitに右壁切れ検出距離、上位8bitに左壁切れ検出距離を `distance_mm / 4` で格納する。
