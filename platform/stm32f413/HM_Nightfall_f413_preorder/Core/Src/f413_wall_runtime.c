@@ -76,6 +76,7 @@ static float g_diagonal_ctrl_omega_deg_s = 0.0f;
 static float g_diagonal_ctrl_kp_deg_per_adc = 0.0f;
 static float g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
 static bool g_diagonal_ctrl_active = false;
+static bool g_wall_end_gate_active = false;
 static uint16_t g_wall_end_thr_r_high = WALL_END_THR_R_HIGH;
 static uint16_t g_wall_end_thr_r_low = WALL_END_THR_R_LOW;
 static uint16_t g_wall_end_thr_l_high = WALL_END_THR_L_HIGH;
@@ -137,8 +138,8 @@ static int32_t f413_wall_runtime_scale_float(float value, float scale)
 
 static bool f413_wall_runtime_gate_on(uint16_t mode_flags)
 {
-  return (g_config.trace_motor_fwd_flag != 0U) &&
-         ((mode_flags & g_config.trace_motor_fwd_flag) != 0U);
+  (void)mode_flags;
+  return g_wall_end_gate_active;
 }
 
 static uint16_t f413_wall_runtime_end_sample_value(int32_t value)
@@ -567,6 +568,7 @@ void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 void f413_wall_runtime_end_clear(void)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
+  g_wall_end_gate_active = false;
 }
 
 void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
@@ -607,6 +609,7 @@ void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal)
 
 void f413_wall_runtime_control_clear(void)
 {
+  g_wall_end_gate_active = false;
   f413_wall_runtime_control_reset();
   f413_wall_runtime_diagonal_reset();
   f413_wall_runtime_apply_heading_correction(false, false);
@@ -627,6 +630,10 @@ void f413_wall_runtime_control_apply(bool straight_gate)
       !f413_run_features_wall_control_enabled() ||
       f413_run_features_test_mode_run())
   {
+    if (!straight_gate)
+    {
+      g_wall_end_gate_active = false;
+    }
     f413_wall_runtime_control_reset();
     f413_wall_runtime_diagonal_reset();
   }
@@ -638,25 +645,38 @@ void f413_wall_runtime_control_apply(bool straight_gate)
 #endif
 }
 
-bool f413_wall_runtime_poll_wall_end(bool straight_gate)
+static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
+                                                     bool wall_end_gate)
 {
   f413_wall_sensor_snapshot_t wall;
 
   if (!f413_wall_runtime_read_snapshot(&wall))
   {
+    g_wall_end_gate_active = false;
     f413_wall_runtime_control_reset();
     f413_wall_runtime_apply_heading_correction(false, false);
     return false;
   }
 
-  f413_wall_runtime_end_update(&wall, straight_gate);
+  g_wall_end_gate_active = wall_end_gate;
+  f413_wall_runtime_end_update(&wall, wall_end_gate);
   f413_wall_runtime_control_update(&wall,
-                                   straight_gate &&
+                                   wall_control_gate &&
                                    f413_run_features_wall_control_enabled() &&
                                    !f413_run_features_test_mode_run());
-  f413_wall_runtime_control_apply(straight_gate);
+  f413_wall_runtime_control_apply(wall_control_gate);
 
-  return straight_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+  return wall_end_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+}
+
+void f413_wall_runtime_poll_straight(bool wall_control_gate)
+{
+  (void)f413_wall_runtime_poll_straight_internal(wall_control_gate, false);
+}
+
+bool f413_wall_runtime_poll_wall_end(bool straight_gate)
+{
+  return f413_wall_runtime_poll_straight_internal(straight_gate, straight_gate);
 }
 
 void f413_wall_runtime_poll_diagonal(bool diagonal_gate)

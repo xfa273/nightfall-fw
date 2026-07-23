@@ -31,6 +31,8 @@ class TurnMetric:
     forward_mm: float
     lateral_mm: float
     duration_ms: int
+    capture_complete: bool
+    boundary_gap_ms: int
 
 
 def _select_path(value: str) -> Path:
@@ -108,8 +110,10 @@ def _reserved_layout(trace: TraceData) -> dict[str, str]:
     }
 
 
-def _turn_segments(rows: list[dict[str, str]]) -> list[tuple[int, int]]:
-    segments: list[tuple[int, int]] = []
+def _turn_segments(
+    rows: list[dict[str, str]],
+) -> list[tuple[int, int, bool, int]]:
+    segments: list[tuple[int, int, bool, int]] = []
     start: int | None = None
 
     for index, row in enumerate(rows):
@@ -117,15 +121,24 @@ def _turn_segments(rows: list[dict[str, str]]) -> list[tuple[int, int]]:
         if active and start is None:
             start = index
         elif not active and start is not None:
-            segments.append((start, index - 1))
+            end = index - 1
+            boundary_gap_ms = (
+                _integer(rows[index], "timestamp_ms")
+                - _integer(rows[end], "timestamp_ms")
+            )
+            segments.append((start, end, boundary_gap_ms <= 10, boundary_gap_ms))
             start = None
     if start is not None:
-        segments.append((start, len(rows) - 1))
+        segments.append((start, len(rows) - 1, False, 0))
     return segments
 
 
 def _integrate_turn(
-    rows: list[dict[str, str]], start: int, end: int
+    rows: list[dict[str, str]],
+    start: int,
+    end: int,
+    capture_complete: bool,
+    boundary_gap_ms: int,
 ) -> TurnMetric:
     x_mm = 0.0
     y_mm = 0.0
@@ -160,12 +173,14 @@ def _integrate_turn(
         start_index=start,
         end_index=end,
         angle_deg=math.degrees(heading_rad),
-        forward_mm=abs(x_mm),
+        forward_mm=x_mm,
         lateral_mm=abs(y_mm),
         duration_ms=(
             _integer(rows[end], "timestamp_ms")
             - _integer(rows[start], "timestamp_ms")
         ),
+        capture_complete=capture_complete,
+        boundary_gap_ms=boundary_gap_ms,
     )
 
 
@@ -228,17 +243,35 @@ def _print_turns(
     target_axis_mm: float,
     current_dist_in_mm: float | None,
     current_dist_out_mm: float | None,
+    current_alpha_deg_s2: float | None,
 ) -> None:
     selected: list[TurnMetric] = []
+    is_uturn = abs(target_angle_deg - 180.0) <= angle_tolerance_deg
 
     print("[TURN-OFFSET] completed turn phases:")
-    for number, (start, end) in enumerate(_turn_segments(trace.rows), 1):
-        metric = _integrate_turn(trace.rows, start, end)
-        complete = (
+    for number, (
+        start,
+        end,
+        capture_complete,
+        boundary_gap_ms,
+    ) in enumerate(_turn_segments(trace.rows), 1):
+        metric = _integrate_turn(
+            trace.rows,
+            start,
+            end,
+            capture_complete,
+            boundary_gap_ms,
+        )
+        complete = metric.capture_complete and (
             abs(abs(metric.angle_deg) - target_angle_deg)
             <= angle_tolerance_deg
         )
-        status = "selected" if complete else "ignored"
+        if complete:
+            status = "selected"
+        elif not metric.capture_complete:
+            status = f"ignored-gap({metric.boundary_gap_ms}ms)"
+        else:
+            status = "ignored-angle"
         print(
             f"  #{number:02d} seq={_integer(trace.rows[start], 'seq')}"
             f"->{_integer(trace.rows[end], 'seq')} "
@@ -255,12 +288,47 @@ def _print_turns(
 
     mean_forward = sum(item.forward_mm for item in selected) / len(selected)
     mean_lateral = sum(item.lateral_mm for item in selected) / len(selected)
-    recommended_in = max(0.0, target_axis_mm - mean_forward)
-    recommended_out = max(0.0, target_axis_mm - mean_lateral)
     print(
         f"  mean_arc={mean_forward:.2f}/{mean_lateral:.2f}mm "
         f"target_axis={target_axis_mm:.2f}mm"
     )
+
+    if is_uturn:
+        lateral_error = mean_lateral - target_axis_mm
+        print(f"  lateral_error={lateral_error:+.2f}mm")
+        if current_dist_in_mm is not None:
+            recommended_out = max(0.0, current_dist_in_mm + mean_forward)
+            print(
+                f"  recommended_dist_out={recommended_out:.2f}mm "
+                f"for dist_in={current_dist_in_mm:.2f}mm"
+            )
+        if (
+            current_alpha_deg_s2 is not None
+            and current_alpha_deg_s2 > 0.0
+            and target_axis_mm > 0.0
+        ):
+            recommended_alpha = (
+                current_alpha_deg_s2
+                * (mean_lateral / target_axis_mm) ** 2
+            )
+            print(
+                f"  recommended_alpha={recommended_alpha:.0f}deg/s^2 "
+                f"from current_alpha={current_alpha_deg_s2:.0f}deg/s^2"
+            )
+        if current_dist_in_mm is not None and current_dist_out_mm is not None:
+            current_forward = (
+                current_dist_in_mm + mean_forward - current_dist_out_mm
+            )
+            print(
+                f"  current_total_forward={current_forward:+.2f}mm "
+                f"current_lateral={mean_lateral:.2f}mm "
+                f"using dist_in/out={current_dist_in_mm:.2f}/"
+                f"{current_dist_out_mm:.2f}mm"
+            )
+        return
+
+    recommended_in = max(0.0, target_axis_mm - mean_forward)
+    recommended_out = max(0.0, target_axis_mm - mean_lateral)
     print(
         f"  recommended_dist_in={recommended_in:.2f}mm "
         f"recommended_dist_out={recommended_out:.2f}mm"
@@ -277,8 +345,8 @@ def _print_turns(
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Analyze F413 wall-end detection positions and 90-degree turn "
-            "entry/exit offsets"
+            "Analyze F413 wall-end detection positions and smooth-turn "
+            "geometry"
         )
     )
     parser.add_argument(
@@ -290,6 +358,7 @@ def main() -> int:
     parser.add_argument("--target-axis-mm", type=float, default=90.0)
     parser.add_argument("--dist-in", type=float)
     parser.add_argument("--dist-out", type=float)
+    parser.add_argument("--alpha", type=float)
     args = parser.parse_args()
 
     try:
@@ -318,7 +387,7 @@ def main() -> int:
             "capture with wall_trace_observe=2"
         )
 
-    turn_starts = [start for start, _ in _turn_segments(trace.rows)]
+    turn_starts = [start for start, _, _, _ in _turn_segments(trace.rows)]
     _print_events(trace, turn_starts)
     _print_turns(
         trace,
@@ -327,6 +396,7 @@ def main() -> int:
         target_axis_mm=args.target_axis_mm,
         current_dist_in_mm=args.dist_in,
         current_dist_out_mm=args.dist_out,
+        current_alpha_deg_s2=args.alpha,
     )
     return 0
 

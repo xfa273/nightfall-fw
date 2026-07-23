@@ -84,10 +84,12 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - `wall_trace_observe=2` のログから、F405互換窓微分、検出側、検出距離、検出時センサ値を表示します。
 - 壁切れ検出から次の角速度区間開始までの距離を `event_to_turn` として表示します。
 - 完了した90度ターンの角速度区間を速度・IMU角速度で積分し、90mm x 90mm軌道に必要な入り・出オフセット候補を表示します。
+- 180度指定では、ログ欠落のない完走区間だけからレーン間隔、入り/出オフセット差、角加速度候補を表示します。
 - 現在値を指定すると、旋回本体と前後オフセットを合計した移動量も表示します。
 - 例:
   - `python3 tools/logging/analyze_wall_end_csv.py tools/logging/logs --dist-in 3 --dist-out 5`
   - `python3 tools/logging/analyze_wall_end_csv.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv --target-axis-mm 90`
+  - `python3 tools/logging/analyze_wall_end_csv.py tools/logging/logs --target-angle 180 --dist-in 12 --dist-out 19 --alpha 4697`
 
 ## `analyze_front_match_csv.py` の前壁位置合わせ評価
 

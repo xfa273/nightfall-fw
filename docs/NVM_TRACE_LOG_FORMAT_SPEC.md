@@ -213,6 +213,8 @@ CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 - bit10 (`0x0400`): F405互換窓微分とtrace observe v2フィールド配置
 - bit15 (`0x8000`): wall trace observe enabled
 
+bit8は通常の壁制御直進では立たず、F405の`WALL_END`と同様に壁切れ補正用の検出区間だけで立つ。
+
 `reserved_u16_1` は下位8bitに右壁切れ検出距離、上位8bitに左壁切れ検出距離を `distance_mm / 4` で格納する。
 
 ---

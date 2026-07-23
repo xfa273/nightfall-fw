@@ -419,7 +419,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_ctrl_target(
              ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U))
     {
       /* Keep shortest-run wall control on the same live update path as search. */
-      (void)f413_wall_runtime_poll_wall_end(true);
+      f413_wall_runtime_poll_straight(true);
     }
     else
     {
@@ -569,7 +569,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segm
     }
     f413_trace_log_set_mode_flags(trace_flags);
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
-    f413_wall_runtime_poll_wall_end((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U);
+    f413_wall_runtime_poll_straight(
+        (trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
       *speed_now_mm_s = target_velocity_mm_s;
@@ -598,7 +599,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segm
       }
       f413_trace_log_set_mode_flags(trace_flags);
       reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
-      f413_wall_runtime_poll_wall_end((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U);
+      f413_wall_runtime_poll_straight(
+          (trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U);
       if (reason != F413_RUN_SESSION_ABORT_NONE)
       {
         break;
@@ -669,6 +671,7 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
     }
   }
 
+  f413_wall_runtime_control_apply(false);
   *speed_now_mm_s = target_velocity_mm_s;
   return reason;
 }
