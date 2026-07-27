@@ -1,0 +1,3 @@
+Reference,Quantity,Manufacturer,Manufacturer Part Number,Description,Notes
+SW1,1,E-Switch,EG1218,"SPDT On-On through-hole slide switch, 200 mA 30 VDC","Same switch as UART-Adapter"
+K1,1,Wurth Elektronik,62201021121,"WR-PHD 1.27 mm dual-row 10-pin header","Confirm mating orientation before soldering"
