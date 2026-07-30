@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-/tmp/nightfall-hfr-recordings}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=1
-expected_version_name=0.1.0
+expected_version_code=2
+expected_version_name=0.2.0
 camera_id=${HFR_CAMERA_ID:-0}
 width=${HFR_WIDTH:-1920}
 height=${HFR_HEIGHT:-1080}
@@ -24,12 +24,14 @@ duration_seconds=${HFR_DURATION_SECONDS:-5}
 bitrate=${HFR_BITRATE:-40000000}
 exposure_us=${HFR_EXPOSURE_US:-0}
 iso=${HFR_ISO:-400}
+enable_preview=${HFR_ENABLE_PREVIEW:-1}
 record_timeout=${HFR_TIMEOUT_SECONDS:-90}
 adb_command=${ADB:-}
 python_command=${PYTHON:-}
 
 for value_name in \
-  width height fps duration_seconds bitrate exposure_us iso record_timeout
+  width height fps duration_seconds bitrate exposure_us iso enable_preview \
+  record_timeout
 do
   eval "value=\${$value_name}"
   case "$value" in
@@ -39,6 +41,15 @@ do
       ;;
   esac
 done
+if [ "$enable_preview" != "0" ] && [ "$enable_preview" != "1" ]; then
+  echo "[HFR-RECORDER][ERROR] HFR_ENABLE_PREVIEW must be 0 or 1" >&2
+  exit 2
+fi
+if [ "$enable_preview" = "1" ]; then
+  enable_preview_boolean=true
+else
+  enable_preview_boolean=false
+fi
 if [ "$width" -lt 320 ] || [ "$height" -lt 240 ]; then
   echo "[HFR-RECORDER][ERROR] recording dimensions are too small" >&2
   exit 2
@@ -155,10 +166,12 @@ fi
   --ei duration_seconds "$duration_seconds" \
   --ei bitrate "$bitrate" \
   --ei exposure_us "$exposure_us" \
-  --ei iso "$iso" >/dev/null
+  --ei iso "$iso" \
+  --ez enable_preview "$enable_preview_boolean" >/dev/null
 
 echo "[HFR-RECORDER] Recording ${width}x${height}@${fps}" \
-  "for ${duration_seconds}s (exposure_us=${exposure_us}, iso=${iso})."
+  "for ${duration_seconds}s (exposure_us=${exposure_us}, iso=${iso}," \
+  "preview=${enable_preview_boolean})."
 
 report_has_expected_nonce() {
   "$python_command" - "$temporary_report" \

@@ -100,8 +100,24 @@ HFRモードは通常動画とcropが異なる場合がある。架台は高さ�
 一方、Xiaomi純正Cameraの既存`HSR_240` clipは1280×720、1,337 frameで、
 MP4の`com.android.capture.fps=240`、PTS実測239.981 fps、gap 0、隣接
 同一frame 0としてQAを通過した。この端末では当面、純正スローモーション
-を`collect_stock_slowmo.sh`で回収する方式を実用fallbackとする。正式な
-構成判断は、初期化後のPixel 8でcustom recorderを再試験してから行う。
+を`collect_stock_slowmo.sh`で回収する方式を実用fallbackとする。
+
+同日、再セットアップしたPixel 8
+（`shiba`、Android 16、API 36）を実機probeした。背面camera ID 0は
+1280×720と1920×1080で固定120/240 fpsを公開し、H.264
+1920×1080/240 hardware profile、manual sensor、REALTIME timestamp、
+rolling-shutter skew resultを持つ。
+
+custom recorderのpreview＋MediaRecorder 2面構成で、1920×1080/240、
+72 Mbps、露光1.000 ms、ISO 400、EIS/OIS offの5秒試験を完了した。
+CaptureResultは1,144個の一意sensor timestampを240.000 fps相当で返し、
+実適用露光0.999635 ms、ISO 400、rolling-shutter skew 4.542720 msを
+記録した。MP4は1,141 frame、PTS実測239.981 fps、gap 0、隣接同一・
+near-identical frame 0としてstrict QAを通過した。recording surfaceだけ
+ではCaptureResult callbackがhigh-speed burstの代表約30 Hzに間引かれたが、
+previewを加えると全frame相当を取得できた。このため、初期実用backendは
+Pixel 8のpreview＋custom 1080p/240 recorderとし、Xiaomi純正Cameraを
+fallbackとする。
 
 両端末で同じ1080p/120または240 fpsが得られる場合、1型主センサを持つ
 Xiaomi 13 Ultraは短時間露光時のS/Nで有利な可能性がある。これはセンサ
@@ -454,8 +470,9 @@ collectorが固有nonce付きでアプリをforce-startし、一致する新規r
 初回は端末をunlockし、表示されたcamera permissionを許可する。2台接続時
 もinstall、shell、collectのすべてで同じ`SERIAL`を明示する。
 
-このAPKは録画せず、静的capabilityだけを列挙する。各CaptureResultを
-JSON sidecarへ保存するrecorderは次段の実装である。
+probe APK自体は録画せず、静的capabilityだけを列挙する。別packageの
+recorderはpreviewとHFR録画を同時実行し、各CaptureResultとencoded sampleを
+JSONL sidecarへ保存する。Pixel 8ではpreview有効を既定とする。
 
 ## 7. セッション構造と現パイプライン
 

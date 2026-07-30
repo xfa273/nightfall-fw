@@ -31,6 +31,7 @@ public final class MainActivity extends Activity {
     private static final String EXTRA_BITRATE = "bitrate";
     private static final String EXTRA_EXPOSURE_US = "exposure_us";
     private static final String EXTRA_ISO = "iso";
+    private static final String EXTRA_ENABLE_PREVIEW = "enable_preview";
 
     private TextureView preview;
     private TextView status;
@@ -278,7 +279,8 @@ public final class MainActivity extends Activity {
                 intent.getIntExtra(EXTRA_DURATION_SECONDS, 5),
                 intent.getIntExtra(EXTRA_BITRATE, 40_000_000),
                 intent.getIntExtra(EXTRA_EXPOSURE_US, 0),
-                intent.getIntExtra(EXTRA_ISO, 400)
+                intent.getIntExtra(EXTRA_ISO, 400),
+                intent.getBooleanExtra(EXTRA_ENABLE_PREVIEW, true)
         );
         config.validate();
         return config;

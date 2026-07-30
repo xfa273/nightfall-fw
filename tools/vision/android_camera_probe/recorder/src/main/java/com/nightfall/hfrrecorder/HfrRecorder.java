@@ -49,7 +49,6 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 final class HfrRecorder {
-    private static final boolean ENABLE_PREVIEW_SURFACE = false;
     private static final boolean ENABLE_RECORDING_SURFACE = true;
 
     static final String REPORT_FILENAME = "hfr_report.json";
@@ -79,6 +78,7 @@ final class HfrRecorder {
         final int bitrate;
         final int exposureUs;
         final int iso;
+        final boolean enablePreview;
 
         Config(
                 String nonce,
@@ -89,7 +89,8 @@ final class HfrRecorder {
                 int durationSeconds,
                 int bitrate,
                 int exposureUs,
-                int iso
+                int iso,
+                boolean enablePreview
         ) {
             this.nonce = nonce;
             this.cameraId = cameraId;
@@ -100,6 +101,7 @@ final class HfrRecorder {
             this.bitrate = bitrate;
             this.exposureUs = exposureUs;
             this.iso = iso;
+            this.enablePreview = enablePreview;
         }
 
         void validate() {
@@ -174,7 +176,7 @@ final class HfrRecorder {
             object.put("optical_stabilization_requested", "OFF");
             object.put(
                     "preview_surface_enabled",
-                    ENABLE_PREVIEW_SURFACE
+                    enablePreview
             );
             object.put(
                     "recording_surface_enabled",
@@ -594,7 +596,7 @@ final class HfrRecorder {
     private void createCaptureSession() {
         try {
             List<Surface> outputs = new ArrayList<>();
-            if (ENABLE_PREVIEW_SURFACE) {
+            if (config.enablePreview) {
                 SurfaceTexture texture = preview.getSurfaceTexture();
                 if (texture == null) {
                     throw new IllegalStateException(

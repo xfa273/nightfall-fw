@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.1.0` of
+The collector installs version `0.2.0` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -95,15 +95,48 @@ The collector installs version `0.1.0` of
 - `hfr_report.json`
 - `ffprobe_stream.json`
 
-The recorder disables preview, EIS, and OIS for measurement use. Automatic
-exposure is the default. A manual trial can be requested only after an
-automatic trial succeeds:
+The recorder enables a simultaneous `TextureView` preview by default and
+disables EIS and OIS for measurement use. Automatic exposure is the default.
+A manual trial can be requested only after an automatic trial succeeds:
 
 ```sh
 HFR_EXPOSURE_US=1000 HFR_ISO=400 \
   tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
+
+The explicit equivalent of the default preview-enabled Pixel test is:
+
+```sh
+HFR_FPS=240 HFR_BITRATE=72000000 HFR_ENABLE_PREVIEW=1 \
+  tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+The report records whether the preview surface was enabled. A successful
+recording-only session does not prove that preview plus recording works; test
+the exact surface combination on each device. Set `HFR_ENABLE_PREVIEW=0` only
+for a recording-surface-only diagnostic.
+
+### Pixel 8 verified HFR path
+
+On the tested Pixel 8 (`shiba`, Android 16, API 36), rear camera ID 0 exposes
+fixed 120 and 240 fps at both 1280x720 and 1920x1080, a hardware H.264
+1920x1080/240 profile, manual sensor control, REALTIME sensor timestamps, and
+rolling-shutter-skew results.
+
+The preview plus MediaRecorder path completed a five-second
+1920x1080/240 test at 72 Mbps with requested 1.000 ms exposure, ISO 400, and
+EIS/OIS off. CaptureResult reported 1,144 unique sensor timestamps at measured
+240.000 fps, actual exposure 0.999635 ms, ISO 400, and 4.542720 ms rolling
+shutter skew. The MP4 contained 1,141 decoded frames at measured 239.981 fps,
+with no PTS gaps and no identical or near-identical adjacent frames; strict
+timing/content QA passed.
+
+With only the MediaRecorder surface, CaptureResult callbacks represented
+roughly one result per high-speed request batch. Adding the preview surface
+produced per-frame-rate callbacks and is therefore the selected starting point
+for live LED detection and sensor/encoded timestamp mapping.
 
 Do not interpret a static Camera2 HFR matrix as proof that a session works.
 On the tested Xiaomi 13 Ultra (`2304FPN6DG`, MIUI
@@ -119,8 +152,8 @@ On the tested Xiaomi 13 Ultra (`2304FPN6DG`, MIUI
 The device log reports a zero HAL buffer count and
 `Unsupported set of inputs/outputs provided`. This is a device/firmware
 Camera2 interoperability failure, not evidence that the advertised mode is
-usable. Keep the diagnostic report with session artifacts. Re-test the custom
-recorder on Pixel 8 before choosing the permanent capture backend.
+usable. Keep the diagnostic report with session artifacts. The verified Pixel
+8 custom-recorder path is preferred over this Xiaomi public Camera2 path.
 
 ## Xiaomi stock-camera fallback
 
