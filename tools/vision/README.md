@@ -10,18 +10,21 @@ Reusable tools in this directory are:
   8×8 test board
 - `markerless_trajectory.py`: fixed board markers plus green PCB, foreground,
   and one red cue; no vehicle marker is used
+- `desk_green_pair_probe.py`: raw-pixel feasibility probe that tracks the two
+  separated green PCB regions before a marked maze fixture is available
 - `video_timing_qa.py`: checks encoded frame PTS cadence, gaps, and identical
   192-pixel-wide grayscale fingerprints of decoded neighbors
 - `fuse_trace_video.py`: aligns video yaw rate or speed with a firmware trace
 - `board_layout.py`: validates a measured fixed-marker/grid layout in mm
-- `android_camera_probe/`: buildable debug APK that reports static Camera2 HFR
-  capabilities; it does not record video
+- `android_camera_probe/`: Camera2 capability probe, experimental HFR recorder,
+  and Xiaomi stock-camera slow-motion collector
 - `../tuning/turn_video_tune.py`: converts video endpoints to the firmware turn
   frame and prints a bounded candidate without editing source files
 
-The Android real-time HFR recorder, more-than-four-marker solver, multi-LED
-solver, session-wide QA runner, trace-phase segmentation, and whole-path
-fitter are not implemented yet.
+The experimental Android real-time HFR recorder is implemented, but the tested
+Xiaomi 13 Ultra firmware rejects all public Camera2 constrained-HFR sessions.
+The more-than-four-marker solver, multi-LED solver, session-wide QA runner,
+trace-phase segmentation, and whole-path fitter are not implemented yet.
 
 ## Host setup and timing QA
 
@@ -62,6 +65,43 @@ comparison. It cannot prove sensor capture rate or detect all duplicated,
 interpolated, or retimed frames. A production recorder must save sensor
 timestamp, frame duration, exposure, ISO, rolling-shutter skew, and the
 encoded-PTS mapping in a sidecar.
+
+For the Xiaomi stock-camera fallback, use:
+
+```sh
+tools/vision/android_camera_probe/collect_stock_slowmo.sh \
+  "$SERIAL" /path/to/session-artifacts
+```
+
+The collector waits for a new stock Camera MP4, validates the
+`com.android.capture.fps` tag, and runs the same timing/content QA. The tested
+1080p/240 Xiaomi clip contained 2,823/2,823 valid decoded frames, measured
+239.981 fps median PTS cadence, no large PTS gaps, and no identical adjacent
+decoded frames.
+
+## Unmarked desk feasibility probe
+
+Before the marked maze fixture is ready, a short hand-moved desk clip can
+check whether the green PCB remains visible:
+
+```sh
+./.venv-vision/bin/python \
+  tools/vision/desk_green_pair_probe.py /path/to/stock_hfr.mp4 \
+  --output-dir /path/to/desk-probe \
+  --render-fps 60
+```
+
+The current Nightfall body presents two separated green PCB components. The
+probe pairs them using component area, rigid separation, and motion prediction;
+their midpoint is the raw-pixel position and their line is an undirected
+heading. The desk test on Xiaomi 13 Ultra tracked all 2,823 frames even with a
+hand partly occluding the mouse. Median pair separation was 148.6 px.
+
+Outputs are `trajectory_image_px.csv`, `trajectory_image_px.png`, an optional
+annotated MP4, and `desk_green_pair_report.json`. These values have no metric
+scale, board homography, lens correction, or absolute front/back direction.
+They prove visibility only. Use fixed perimeter markers and
+`markerless_trajectory.py` for maze measurements.
 
 ## Markerless vehicle pose
 

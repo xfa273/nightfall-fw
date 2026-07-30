@@ -88,6 +88,21 @@ HFRモードは通常動画とcropが異なる場合がある。架台は高さ�
 は静的probeでは分からない。将来のrecorderで各CaptureResultを保存して
 確認する。
 
+2026-07-30にXiaomi 13 Ultra
+（`2304FPN6DG`、MIUI `V14.0.5.0.TMAMIXM`、Android 13）を
+実機probeした。背面camera ID 0はCamera2上で1080p/120・240・480 fpsを
+広告し、manual sensorとREALTIME sensor timestampを持つ。しかし実際の
+120 fps constrained sessionは、MediaCodec、MediaRecorder、previewの
+どの出力面でもvendor HALの`configureStreams`に失敗した。preview 1面
+だけでも失敗するため、当該firmwareでは一般アプリから公開Camera2 HFRを
+使用できないと判断する。広告値だけを端末選定の合格条件にしてはならない。
+
+一方、Xiaomi純正Cameraの既存`HSR_240` clipは1280×720、1,337 frameで、
+MP4の`com.android.capture.fps=240`、PTS実測239.981 fps、gap 0、隣接
+同一frame 0としてQAを通過した。この端末では当面、純正スローモーション
+を`collect_stock_slowmo.sh`で回収する方式を実用fallbackとする。正式な
+構成判断は、初期化後のPixel 8でcustom recorderを再試験してから行う。
+
 両端末で同じ1080p/120または240 fpsが得られる場合、1型主センサを持つ
 Xiaomi 13 Ultraは短時間露光時のS/Nで有利な可能性がある。これはセンサ
 寸法からの推定であり、最終判断は同じ照明・画角・露光での実測誤差に
@@ -124,11 +139,15 @@ AE/AWB/AFを静止状態で収束させてlockし、実際のCaptureResultを確
 ため、初期試験は短いclipにし、端末温度と欠落フレーム率を各試験で記録
 する。
 
-現時点のAndroidアプリはcapability probeだけで、録画機能はない。
-stock cameraのslow-motion clipは暫定入力には使えるが、再生用retiming、
-manual露光、stabilization、実sensor fpsを保証できない。後述のPTS QAを
-通ってもsensor capture timingが証明されるわけではないため、正式な
-自動調整データはrecorder実装後に取得する。
+Android側にはcapability probeに加え、Camera2 constrained HFR、
+CaptureResult JSONL、encoded sample JSONLを保存する実験用recorderを
+実装した。ただし上記Xiaomi firmwareではsession作成前にHALが拒否する。
+stock cameraのslow-motion clipはMP4の`com.android.capture.fps`と
+PTS/content QAを毎回確認した場合に暫定入力として使える。Xiaomiの確認
+clipは実時間240 fpsだったが、stock経路ではmanual露光、stabilization、
+sensor timestamp、frame durationをsidecarとして取得できない。したがって
+trace同期にはLEDなどの光学eventを併用し、正式recorderを使える端末との
+誤差比較を残す。
 
 ## 3. 固定マーカと盤面座標
 
@@ -251,6 +270,19 @@ corner noiseを減らせる場合がある。本番実装では静的校正を�
 run clipだけを使う場合は開始・終了静止を動画の大半にせず、機体が各
 画素を一時的にしか占有しないようにする。推奨構成ではカメラと露光を
 変えずに空迷路clipを先に撮り、`--background-video`で指定する。
+
+固定マーカをまだ置けない机上確認用として
+`desk_green_pair_probe.py`も用意した。現Nightfall機体では緑PCBが離れた
+2 componentとして見えるため、component面積、2点間隔、前frameからの
+移動量でpairを選び、その中点と無向長軸を画像pixelで出す。Xiaomi純正
+Cameraの1080p/240 fps机上clipでは、手による部分遮蔽を含む2,823/2,823
+frameでpairを検出し、間隔はmedian 148.6 px、p95 164.1 pxだった。
+
+この結果は「機体マーカなしでも現在の画角・画質でPCBが追える」ことを
+示す。ただし机上probeには盤面homography、mm尺度、レンズ補正、前後を
+決める有向cue、ground truthがない。画像内で約972 px移動した軌跡を
+mm精度と解釈してはならず、ターン調整には固定外周マーカを入れた本来の
+`markerless_trajectory.py`を使う。
 
 ### 4.2 推奨する次段
 

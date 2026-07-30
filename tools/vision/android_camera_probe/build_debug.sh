@@ -70,6 +70,8 @@ cd "$script_dir"
 JAVA_HOME=$java_root \
   ANDROID_HOME=$android_sdk_root \
   ANDROID_SDK_ROOT=$android_sdk_root \
-  ./gradlew --no-daemon :app:assembleDebug
+  ./gradlew --no-daemon :app:assembleDebug :recorder:assembleDebug
 
 echo "[CAMERA-PROBE] APK: $script_dir/app/build/outputs/apk/debug/app-debug.apk"
+echo "[HFR-RECORDER] APK:" \
+  "$script_dir/recorder/build/outputs/apk/debug/recorder-debug.apk"

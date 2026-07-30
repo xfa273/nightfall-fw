@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "NightfallCameraProbe"
 include(":app")
+include(":recorder")

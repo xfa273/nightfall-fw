@@ -8,9 +8,12 @@ generation time and app version. A failure for one camera is recorded in that
 camera's entry instead of discarding successful entries for the other cameras.
 The current probe release is version `0.2.0`, version code `2`.
 
-It is a static capability probe, not the final recorder. A real high-speed
-capture must still verify applied exposure, sensor timestamps, frame duration,
-rolling-shutter skew, encoder PTS, and dropped frames.
+The `app` module is the static capability probe. The separate experimental
+`recorder` module attempts a real Camera2 constrained-high-speed recording and
+writes CaptureResult and encoded-sample JSONL sidecars. A real capture must
+still verify applied exposure, sensor timestamps, frame duration, encoder PTS,
+decoded content, and dropped frames. Rolling-shutter skew is recorded only
+when the device exposes it.
 
 ## Build
 
@@ -72,3 +75,75 @@ that the JSON model and build fingerprint match the connected adb device.
 
 Run the install/collect sequence separately with each serial when both phones
 are connected. Keep collected reports with session artifacts, not in Git.
+
+## Experimental Camera2 HFR recording
+
+Build both APKs with `build_debug.sh`, then request a five-second 1080p/120
+capture:
+
+```sh
+tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+The collector installs version `0.1.0` of
+`com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
+
+- `hfr_capture.mp4`
+- `capture_results.jsonl`
+- `encoder_samples.jsonl`
+- `hfr_report.json`
+- `ffprobe_stream.json`
+
+The recorder disables preview, EIS, and OIS for measurement use. Automatic
+exposure is the default. A manual trial can be requested only after an
+automatic trial succeeds:
+
+```sh
+HFR_EXPOSURE_US=1000 HFR_ISO=400 \
+  tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+Do not interpret a static Camera2 HFR matrix as proof that a session works.
+On the tested Xiaomi 13 Ultra (`2304FPN6DG`, MIUI
+`V14.0.5.0.TMAMIXM`, Android 13), camera ID 0 advertises fixed
+1080p/120, 240, and 480 fps. The vendor HAL nevertheless rejected every
+120 fps constrained session during `configureStreams`, including:
+
+- preview plus MediaCodec recording surfaces;
+- a MediaCodec recording surface alone;
+- a MediaRecorder recording surface alone; and
+- a preview surface alone.
+
+The device log reports a zero HAL buffer count and
+`Unsupported set of inputs/outputs provided`. This is a device/firmware
+Camera2 interoperability failure, not evidence that the advertised mode is
+usable. Keep the diagnostic report with session artifacts. Re-test the custom
+recorder on Pixel 8 before choosing the permanent capture backend.
+
+## Xiaomi stock-camera fallback
+
+Xiaomi's privileged stock Camera can use the same hardware even when the
+public Camera2 HFR session is rejected. Start a collector and then operate the
+phone:
+
+```sh
+tools/vision/android_camera_probe/collect_stock_slowmo.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+Select **Slow motion**, choose 120 or 240 fps, record for several seconds, and
+stop. The collector detects the new file under `DCIM/Camera`, waits for its
+size to stabilize, pulls it, reads `com.android.capture.fps`, and runs
+`video_timing_qa.py` against that capture rate. It rejects an MP4 without a
+valid high-speed capture tag.
+
+An existing Xiaomi 13 Ultra stock clip named with `HSR_240` was independently
+checked as 1280x720 H.264 with 1,337 frames. Its MP4 declared
+`com.android.capture.fps=240`; measured median PTS cadence was 239.981 fps,
+with no PTS gaps or decoded adjacent duplicates. Thus the stock path preserves
+real-time HFR frames on this firmware rather than silently retiming them to
+30 fps. Each new session must still pass the same check. The stock path does
+not provide per-frame Camera2 CaptureResult exposure or sensor timestamps, so
+use an optical sync event when aligning it to firmware trace.
