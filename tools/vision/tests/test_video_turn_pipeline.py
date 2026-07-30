@@ -1,0 +1,530 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import csv
+import importlib.util
+import math
+import sys
+import tempfile
+import unittest
+from collections import deque
+from pathlib import Path
+from unittest import mock
+
+import numpy as np
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+VISION_ROOT = REPO_ROOT / "tools/vision"
+sys.path.insert(0, str(VISION_ROOT))
+
+
+def load_module(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+FUSE = load_module(
+    "test_fuse_trace_video",
+    REPO_ROOT / "tools/vision/fuse_trace_video.py",
+)
+TURN = load_module(
+    "test_turn_video_tune",
+    REPO_ROOT / "tools/tuning/turn_video_tune.py",
+)
+try:
+    import cv2  # noqa: F401
+except ModuleNotFoundError:
+    MARKERLESS = None
+else:
+    load_module(
+        "aruco_trajectory",
+        REPO_ROOT / "tools/vision/aruco_trajectory.py",
+    )
+    MARKERLESS = load_module(
+        "test_markerless_trajectory",
+        REPO_ROOT / "tools/vision/markerless_trajectory.py",
+    )
+
+
+class TraceVideoAlignmentTest(unittest.TestCase):
+    def test_recovers_motion_offset_and_comment_only_trace_header(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            video_path = root / "trajectory.csv"
+            trace_path = root / "trace.csv"
+            video_time = np.arange(0.0, 4.0, 1.0 / 120.0)
+            omega = (
+                700.0 * np.exp(-(((video_time - 1.1) / 0.12) ** 2))
+                - 430.0 * np.exp(-(((video_time - 2.2) / 0.18) ** 2))
+                + 280.0 * np.exp(-(((video_time - 3.0) / 0.10) ** 2))
+            )
+            yaw = np.cumsum(omega) / 120.0
+            with video_path.open("w", newline="", encoding="ascii") as stream:
+                writer = csv.DictWriter(
+                    stream,
+                    fieldnames=(
+                        "video_pts_s",
+                        "x_mm",
+                        "y_mm",
+                        "yaw_deg_unwrapped",
+                        "speed_mm_s",
+                    ),
+                )
+                writer.writeheader()
+                for index, time_s in enumerate(video_time):
+                    writer.writerow(
+                        {
+                            "video_pts_s": f"{time_s:.9f}",
+                            "x_mm": "0",
+                            "y_mm": f"{time_s * 100.0:.6f}",
+                            "yaw_deg_unwrapped": f"{yaw[index]:.9f}",
+                            "speed_mm_s": "100",
+                        }
+                    )
+
+            known_offset = 0.370
+            trace_time = np.arange(0.0, 4.8, 0.001)
+            video_query = trace_time - known_offset
+            trace_omega = np.interp(
+                video_query,
+                video_time,
+                omega,
+                left=0.0,
+                right=0.0,
+            )
+            with trace_path.open("w", newline="", encoding="ascii") as stream:
+                stream.write(
+                    "#mm_columns=timestamp_ms,real_omega_mdps,"
+                    "real_velocity_mm_s,flags\n"
+                )
+                for index, time_s in enumerate(trace_time):
+                    stream.write(
+                        "{},{},{},{}\n".format(
+                            int(round(time_s * 1000.0)),
+                            int(round(trace_omega[index] * 1000.0)),
+                            100,
+                            0,
+                        )
+                    )
+
+            video = FUSE.load_video(video_path)
+            trace, _, rows = FUSE.load_trace(trace_path)
+            self.assertEqual(len(rows), len(trace_time))
+            args = argparse.Namespace(
+                activity_padding_s=0.30,
+                estimate_drift=False,
+                maximum_drift_ppm=5000.0,
+                drift_steps=21,
+                offset_step_ms=2.0,
+                offset_search_s=1.0,
+                minimum_overlap_s=0.40,
+            )
+            alignment = FUSE.align(video, trace, "yaw", args)
+            self.assertAlmostEqual(alignment.offset_s, known_offset, delta=0.010)
+            self.assertGreater(alignment.correlation, 0.97)
+            self.assertGreater(alignment.correlation_margin, 0.02)
+            self.assertGreater(alignment.signal_gain, 0.5)
+            self.assertLess(alignment.signal_gain, 2.0)
+            self.assertEqual(alignment.sign, 1)
+
+
+class TurnCoordinateTest(unittest.TestCase):
+    def test_board_pose_is_converted_to_right_forward_frame(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "turn.csv"
+            time_s = np.linspace(0.0, 1.6, 161)
+            progress = np.clip((time_s - 0.3) / 1.0, 0.0, 1.0)
+            x = 100.0 + 10.0 * progress
+            y = 200.0 + 20.0 * progress
+            yaw = 90.0 + 90.0 * progress
+            speed = np.where(
+                (time_s >= 0.3) & (time_s <= 1.3),
+                math.hypot(10.0, 20.0),
+                0.0,
+            )
+            with path.open("w", newline="", encoding="ascii") as stream:
+                writer = csv.DictWriter(
+                    stream,
+                    fieldnames=(
+                        "video_pts_s",
+                        "x_mm",
+                        "y_mm",
+                        "yaw_deg_unwrapped",
+                        "speed_mm_s",
+                        "pose_valid",
+                    ),
+                )
+                writer.writeheader()
+                for index, value in enumerate(time_s):
+                    writer.writerow(
+                        {
+                            "video_pts_s": value,
+                            "x_mm": x[index],
+                            "y_mm": y[index],
+                            "yaw_deg_unwrapped": yaw[index],
+                            "speed_mm_s": speed[index],
+                            "pose_valid": 1,
+                        }
+                    )
+            args = argparse.Namespace(
+                cell_size_mm=None,
+                minimum_valid_fraction=0.95,
+                minimum_heading_valid_fraction=0.99,
+                anchor_right_mm=0.0,
+                anchor_forward_mm=0.0,
+                start_s=None,
+                end_s=None,
+                motion_threshold_mm_s=20.0,
+                pose_window_ms=150.0,
+                maximum_pose_window_speed_mm_s=10.0,
+                minimum_pose_window_coverage=0.8,
+            )
+            trial = TURN.analyze_trial(path, args)
+            self.assertAlmostEqual(trial.endpoint.x_right_mm, 10.0, delta=0.3)
+            self.assertAlmostEqual(
+                trial.endpoint.y_forward_mm,
+                20.0,
+                delta=0.3,
+            )
+            self.assertAlmostEqual(trial.endpoint.theta_deg, 90.0, delta=1.0)
+            self.assertEqual(trial.tracking_valid_fraction, 1.0)
+            self.assertEqual(trial.heading_valid_fraction, 1.0)
+
+
+@unittest.skipUnless(MARKERLESS is not None, "OpenCV contrib is unavailable")
+class MarkerlessSafetyGateTest(unittest.TestCase):
+    def test_invalid_ffprobe_timestamps_are_not_silently_retimed(self):
+        completed = argparse.Namespace(
+            returncode=0,
+            stdout="0.000000\n0.008333\n",
+            stderr="",
+        )
+        with (
+            mock.patch.object(
+                MARKERLESS.shutil,
+                "which",
+                return_value="/usr/bin/ffprobe",
+            ),
+            mock.patch.object(
+                MARKERLESS.subprocess,
+                "run",
+                return_value=completed,
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "2 timestamps"):
+                MARKERLESS.video_timestamps(
+                    Path("capture.mp4"),
+                    frame_count=3,
+                    fps=120.0,
+                )
+
+    def test_initial_seed_prefers_largest_component_in_gate(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[46:55, 46:55] = 255
+        mask[35:65, 68:88] = 255
+        mask[70:100, 0:30] = 255
+        seed = np.asarray((50.0, 50.0))
+        near, near_count, _ = MARKERLESS._component_near(
+            mask,
+            10,
+            1000,
+            seed,
+            maximum_distance=40.0,
+        )
+        largest, largest_count, _ = MARKERLESS._component_near(
+            mask,
+            10,
+            1000,
+            seed,
+            maximum_distance=40.0,
+            prefer_largest=True,
+        )
+        self.assertIsNotNone(near)
+        self.assertIsNotNone(largest)
+        self.assertEqual(near_count, 81)
+        self.assertEqual(largest_count, 600)
+
+    def test_cue_geometry_and_yaw_rate_reject_spurious_flip(self):
+        recent = [38.0, 39.0, 37.0, 40.0, 38.5]
+        self.assertFalse(
+            MARKERLESS._cue_distance_is_valid(
+                3.0,
+                recent,
+                10.0,
+                0.90,
+            )
+        )
+        self.assertTrue(
+            MARKERLESS._cue_distance_is_valid(
+                65.0,
+                recent,
+                10.0,
+                0.90,
+            )
+        )
+        self.assertFalse(
+            MARKERLESS._cue_distance_is_valid(
+                80.0,
+                recent,
+                10.0,
+                0.90,
+            )
+        )
+        self.assertFalse(
+            MARKERLESS._yaw_innovation_is_valid(
+                360.0,
+                180.0,
+                3000.0,
+                1.0 / 120.0,
+            )
+        )
+        self.assertTrue(
+            MARKERLESS._yaw_innovation_is_valid(
+                198.0,
+                180.0,
+                3000.0,
+                1.0 / 120.0,
+            )
+        )
+
+    def test_rejected_cue_is_not_used_as_position_or_prediction(self):
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        background = np.zeros_like(frame)
+        component = np.zeros((100, 100), dtype=np.uint8)
+        component[40:61, 40:61] = 255
+        grid = sys.modules["aruco_trajectory"].GridCalibration(
+            x_lines_px=np.asarray([10.0, 90.0]),
+            y_lines_px=np.asarray([10.0, 90.0]),
+            x_origin_px=10.0,
+            y_origin_px=10.0,
+            x_pitch_px=80.0,
+            y_pitch_px=80.0,
+            cells=1,
+            x_peak_contrast=1.0,
+            y_peak_contrast=1.0,
+        )
+        args = argparse.Namespace(
+            foreground_blur=3,
+            foreground_threshold=1,
+            morph_open=1,
+            morph_close=1,
+            tracking_radius_px=40.0,
+            minimum_green_pixels=20,
+            minimum_body_pixels=80,
+            cue_colour="red",
+            minimum_cue_pixels=1,
+            maximum_cue_pixels=100,
+            minimum_cue_lever_arm_px=10.0,
+            cue_distance_relative_tolerance=0.9,
+            cue_yaw_offset_deg=0.0,
+            initial_yaw_deg=0.0,
+            maximum_yaw_rate_deg_s=3000.0,
+            minimum_axis_anisotropy=0.5,
+            axis_yaw_offset_deg=0.0,
+            position_source="cue",
+        )
+        with (
+            mock.patch.object(
+                MARKERLESS,
+                "green_mask",
+                return_value=component,
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "red_mask",
+                return_value=component,
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_component_near",
+                side_effect=(
+                    (np.asarray([50.0, 50.0]), 441, component),
+                    (np.asarray([52.0, 50.0]), 8, component),
+                ),
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_foreground_cluster",
+                return_value=(
+                    np.asarray([50.0, 50.0]),
+                    441,
+                    component,
+                ),
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_principal_axis",
+                return_value=(0.0, 1.0),
+            ),
+        ):
+            result = MARKERLESS.detect_pose(
+                frame,
+                background,
+                grid,
+                args,
+                np.asarray([50.0, 50.0]),
+                0.0,
+                np.asarray([52.0, 50.0]),
+                deque([38.0, 39.0, 37.0, 40.0, 38.5]),
+                False,
+                1.0 / 120.0,
+            )
+        self.assertFalse(np.allclose(result[0], [52.0, 50.0]))
+        self.assertFalse(np.all(np.isfinite(result[2])))
+        self.assertEqual(result[-2], "cue_rejected_geometry")
+        self.assertNotEqual(result[-1], "cue")
+
+
+class TurnProposalSafetyGateTest(unittest.TestCase):
+    @staticmethod
+    def _proposal_args(code=501):
+        return argparse.Namespace(
+            minimum_fit_trials=3,
+            maximum_endpoint_std_mm=5.0,
+            maximum_yaw_std_deg=2.0,
+            runner="shortest",
+            mode=2,
+            code=code,
+            search_index=0,
+            side="right",
+            entry_speed=None,
+            out_speed=None,
+            maximum_turn_yaw_error_deg=30.0,
+            feedback_gain=0.5,
+            vary="dist_in,dist_out,angle",
+            maximum_velocity_step_mm_s=250.0,
+            maximum_alpha_step_deg_s2=5000.0,
+            maximum_offset_step_mm=5.0,
+            maximum_angle_step_deg=5.0,
+        )
+
+    def test_duplicate_trial_path_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trial.csv"
+            path.write_text("video_pts_s,x_mm,y_mm,yaw_deg\n", encoding="ascii")
+            with mock.patch.object(
+                sys,
+                "argv",
+                ["turn_video_tune.py", str(path), str(path)],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(ValueError, "same trajectory path"):
+                TURN.validate_args(args)
+
+    def test_nan_safety_limit_is_rejected_before_analysis(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trial.csv"
+            path.write_text(
+                "video_pts_s,x_mm,y_mm,yaw_deg\n",
+                encoding="ascii",
+            )
+            with mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "turn_video_tune.py",
+                    str(path),
+                    "--maximum-angle-step-deg",
+                    "nan",
+                ],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(
+                ValueError,
+                "--maximum-angle-step-deg must be finite",
+            ):
+                TURN.validate_args(args)
+
+    def test_copied_trial_content_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            first = root / "trial01.csv"
+            second = root / "trial02.csv"
+            content = "video_pts_s,x_mm,y_mm,yaw_deg\n"
+            first.write_text(content, encoding="ascii")
+            second.write_text(content, encoding="ascii")
+            with mock.patch.object(
+                sys,
+                "argv",
+                ["turn_video_tune.py", str(first), str(second)],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(ValueError, "duplicate trajectory content"):
+                TURN.validate_args(args)
+
+    def test_wrong_turn_sign_is_rejected_before_fit(self):
+        endpoint = {
+            "x_right_mm": {"median": 90.0, "std": 0.5},
+            "y_forward_mm": {"median": 90.0, "std": 0.5},
+            "theta_deg": {"median": 90.0, "std": 0.5},
+        }
+        aggregate = {"count": 3, "endpoint": endpoint}
+        with self.assertRaisesRegex(ValueError, "wrong sign"):
+            TURN.propose_fit(self._proposal_args(), aggregate)
+
+    def test_implausible_unwrapped_yaw_is_rejected_before_fit(self):
+        endpoint = {
+            "x_right_mm": {"median": 180.0, "std": 0.5},
+            "y_forward_mm": {"median": 220.0, "std": 0.5},
+            "theta_deg": {"median": -1792.0, "std": 0.5},
+        }
+        aggregate = {"count": 3, "endpoint": endpoint}
+        with self.assertRaisesRegex(ValueError, "differs"):
+            TURN.propose_fit(self._proposal_args(code=502), aggregate)
+
+    def test_candidate_delta_limit_rejects_large_step(self):
+        with self.assertRaisesRegex(ValueError, "angle step"):
+            TURN._validate_candidate_deltas(
+                {"angle": -12.0, "dist_in": 1.0},
+                {"angle", "dist_in"},
+                {"angle": 5.0, "dist_in": 5.0},
+            )
+
+    def test_matching_measurement_produces_bounded_noop_candidate(self):
+        args = self._proposal_args()
+        turn_tune = TURN._load_turn_tune_module()
+        parser = turn_tune.build_arg_parser()
+        sim_args = parser.parse_args(
+            [
+                "simulate",
+                "--runner",
+                "shortest",
+                "--mode",
+                "2",
+                "--code",
+                "501",
+                "--json",
+            ]
+        )
+        current = turn_tune.simulate_turn(
+            turn_tune.resolve_turn(sim_args),
+            turn_tune.load_constants(sim_args),
+            sim_args.entry_speed,
+            sim_args.out_speed,
+        ).final_pose
+        endpoint = {
+            "x_right_mm": {"median": current.x_mm, "std": 0.5},
+            "y_forward_mm": {"median": current.y_mm, "std": 0.5},
+            "theta_deg": {"median": current.theta_deg, "std": 0.5},
+        }
+        proposal = TURN.propose_fit(
+            args,
+            {"count": 3, "endpoint": endpoint},
+        )
+        for name in ("angle", "dist_in", "dist_out"):
+            self.assertAlmostEqual(
+                proposal["parameter_deltas"][name],
+                0.0,
+                delta=1e-9,
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

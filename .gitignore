@@ -65,3 +65,6 @@ docs/ai/archive/delegation-legacy/HANDOFFS/*
 !docs/ai/archive/delegation-legacy/HANDOFFS/README.md
 docs/ai/archive/codex-migration-backup-*/
 tools/logging/logs/
+# Local smartphone-video analysis environments and captures.
+/.venv-vision/
+/sessions/

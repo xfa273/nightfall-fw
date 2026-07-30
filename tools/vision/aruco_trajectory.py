@@ -333,6 +333,7 @@ def build_calibrations(
     observations: Sequence[Dict[int, np.ndarray]],
     canonical_size: int,
     marker_margin: float,
+    target_corners_override: Optional[Dict[int, np.ndarray]] = None,
 ) -> Tuple[List[FrameCalibration], Dict[int, np.ndarray]]:
     seen_ids = {
         marker_id
@@ -351,27 +352,52 @@ def build_calibrations(
             )
         )
 
-    far = float(canonical_size) - marker_margin
-    target_centers = {
-        5: (marker_margin, marker_margin),
-        7: (far, marker_margin),
-        4: (far, far),
-        6: (marker_margin, far),
-    }
-    target_marker_side = canonical_size * 0.044
-    half_side = target_marker_side / 2.0
-    corner_offsets = np.float32(
-        [
-            [-half_side, -half_side],
-            [half_side, -half_side],
-            [half_side, half_side],
-            [-half_side, half_side],
-        ]
-    )
-    target_corners = {
-        marker_id: np.float32(target_centers[marker_id]) + corner_offsets
-        for marker_id in FIXED_ORDER
-    }
+    if target_corners_override is None:
+        far = float(canonical_size) - marker_margin
+        target_centers = {
+            5: (marker_margin, marker_margin),
+            7: (far, marker_margin),
+            4: (far, far),
+            6: (marker_margin, far),
+        }
+        target_marker_side = canonical_size * 0.044
+        half_side = target_marker_side / 2.0
+        corner_offsets = np.float32(
+            [
+                [-half_side, -half_side],
+                [half_side, -half_side],
+                [half_side, half_side],
+                [-half_side, half_side],
+            ]
+        )
+        target_corners = {
+            marker_id: (
+                np.float32(target_centers[marker_id]) + corner_offsets
+            )
+            for marker_id in FIXED_ORDER
+        }
+    else:
+        target_corners = {}
+        for marker_id in FIXED_ORDER:
+            if marker_id not in target_corners_override:
+                if marker_id in HOMOGRAPHY_MARKER_IDS:
+                    raise ValueError(
+                        "target corners are missing fixed marker {}".format(
+                            marker_id
+                        )
+                    )
+                continue
+            corners = np.asarray(
+                target_corners_override[marker_id],
+                dtype=np.float32,
+            )
+            if corners.shape != (4, 2) or not np.all(np.isfinite(corners)):
+                raise ValueError(
+                    "target corners for marker {} must be finite 4x2".format(
+                        marker_id
+                    )
+                )
+            target_corners[marker_id] = corners
 
     calibrations: List[FrameCalibration] = []
     previous_homography: Optional[np.ndarray] = None
