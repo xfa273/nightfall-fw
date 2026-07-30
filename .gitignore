@@ -68,3 +68,4 @@ tools/logging/logs/
 # Local smartphone-video analysis environments and captures.
 /.venv-vision/
 /sessions/
+/output/pdf/

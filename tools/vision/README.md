@@ -12,6 +12,8 @@ Reusable tools in this directory are:
   and one red cue; no vehicle marker is used
 - `desk_green_pair_probe.py`: raw-pixel feasibility probe that tracks the two
   separated green PCB regions before a marked maze fixture is available
+- `generate_fixed_aruco_print_pack.py`: print-ready A4 PDF and vector SVG
+  generator for the four fixed maze-plane markers
 - `video_timing_qa.py`: checks encoded frame PTS cadence, gaps, and identical
   192-pixel-wide grayscale fingerprints of decoded neighbors
 - `fuse_trace_video.py`: aligns video yaw rate or speed with a firmware trace
@@ -151,6 +153,30 @@ edge, fixture edge, or required-FOV edge. The outer black marker edges reach
 `-50..770 mm`. Provide at least 7 mm of white quiet zone outside them; 10 mm is
 recommended, giving an approximately 840 mm physical visible span. Add vehicle
 travel and placement margin beyond that when selecting the camera FOV.
+
+Generate the fixed-marker print pack with:
+
+```sh
+./.venv-vision/bin/python tools/vision/generate_fixed_aruco_print_pack.py
+```
+
+The A4 PDF has a recommended 60 mm black-side page and a compact 40 mm page.
+Print exactly one page at `100%` / `Actual Size`; do not mix sizes. Verify the
+printed 100 mm scale line and measure the black outer square. The four distinct
+`DICT_4X4_50` markers are ID 5 top-left, ID 7 top-right, ID 4 bottom-right, and
+ID 6 bottom-left. Keep at least the supplied white quiet zone and place all
+four on the same plane as the maze floor.
+
+For 1080-pixel short-side video, aim for at least 40 pixels across a marker's
+black side:
+
+```text
+black_side_mm >= visible_short_span_mm * 40 / 1080
+```
+
+Thus, 60 mm is suitable up to about a 1.5 m visible short-side span. A wider
+view, such as a complete full-size 16x16 maze, needs larger markers and a
+different print layout.
 
 For a measured 4×4 setup, run:
 

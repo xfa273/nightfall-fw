@@ -165,6 +165,26 @@ trace同期にはLEDなどの光学eventを併用し、正式recorderを使え�
 - ID 6: 左下
 - dictionary: OpenCV `DICT_4X4_50`
 
+印刷データは次で生成する。
+
+```sh
+./.venv-vision/bin/python tools/vision/generate_fixed_aruco_print_pack.py
+```
+
+生成されるA4 PDFは1ページ目が黒枠一辺60 mmの推奨版、2ページ目が
+40 mmの省スペース版である。どちらか1ページだけを`100%`または
+`実際のサイズ`で印刷し、異なるサイズを混在させない。印刷後はPDF内の
+100 mm線と、白余白を含まない黒い外枠の一辺を実測する。1080画素の
+短辺方向で黒枠を最低40画素にする目安は次である。
+
+```text
+black_side_mm >= visible_short_span_mm * 40 / 1080
+```
+
+したがって60 mm版は、短辺方向の可視範囲がおよそ1.5 mまでの初期試験に
+向く。16×16全面など、それより広い範囲を一度に映す場合は、実際のFOVに
+合わせてさらに大きなマーカを用意する。
+
 homographyへ使うのは現在もID 5、4、6の3枚である。3枚が同じフレームに
 揃わないと直前homographyへfallbackし、6フレーム連続すると停止する。
 ID 7は検出数のQAだけに使い、homographyにも幾何残差にも使わない。
