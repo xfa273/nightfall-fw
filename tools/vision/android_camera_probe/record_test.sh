@@ -126,6 +126,11 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 
 echo "[HFR-RECORDER] Installing $expected_version_name on $device_model..."
+# Stop a foreground copy before package replacement.  Otherwise Android may
+# restore the old task without the recording extras while `install -r` races
+# the explicit launch below.
+"$adb_command" -s "$serial" shell am force-stop "$package_name" \
+  >/dev/null 2>&1 || true
 "$adb_command" -s "$serial" install -r "$apk" >/dev/null
 
 package_dump=$(
