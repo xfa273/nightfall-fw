@@ -146,9 +146,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--position-source",
-        choices=("cue", "body"),
+        choices=("cue", "body", "green"),
         default="cue",
-        help="track the LED centroid or the foreground centroid",
+        help=(
+            "track the LED centroid, foreground centroid, or green-PCB "
+            "centroid"
+        ),
     )
     parser.add_argument(
         "--cue-colour",
@@ -855,6 +858,8 @@ def detect_pose(
         else:
             position_xy = body_xy
             position_source = "body_fallback"
+    elif args.position_source == "green":
+        position_xy = green_xy
     else:
         position_xy = body_xy
 

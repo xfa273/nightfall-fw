@@ -203,6 +203,12 @@ to `turn_video_tune.py` has the direction **control reference to tracked
 point**, resolved along the vehicle-right and vehicle-forward axes. For a cue
 23 mm behind the control reference, use `--anchor-forward-mm -23`, not `+23`.
 
+Use `--position-source green` when the foreground silhouette touches maze
+walls and its centroid becomes biased. This tracks the green-PCB centroid and
+still uses the foreground principal axis for cue-less heading. The PCB centroid
+is not the vehicle control reference, so measure its fixed right/forward offset
+and pass the corresponding anchor correction to downstream turn analysis.
+
 The transform does not remove lens distortion or height parallax. Before using
 millimetre results for parameter changes, calibrate the exact HFR crop,
 undistort it, compensate the known cue height, and validate position/yaw across

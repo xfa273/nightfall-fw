@@ -381,6 +381,81 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         self.assertEqual(result[-2], "cue_rejected_geometry")
         self.assertNotEqual(result[-1], "cue")
 
+    def test_green_position_source_uses_green_centroid(self):
+        frame = np.zeros((100, 100, 3), dtype=np.uint8)
+        background = np.zeros_like(frame)
+        component = np.zeros((100, 100), dtype=np.uint8)
+        component[40:61, 40:61] = 255
+        grid = sys.modules["aruco_trajectory"].GridCalibration(
+            x_lines_px=np.asarray([10.0, 90.0]),
+            y_lines_px=np.asarray([10.0, 90.0]),
+            x_origin_px=10.0,
+            y_origin_px=10.0,
+            x_pitch_px=80.0,
+            y_pitch_px=80.0,
+            cells=1,
+            x_peak_contrast=1.0,
+            y_peak_contrast=1.0,
+        )
+        args = argparse.Namespace(
+            foreground_blur=3,
+            foreground_threshold=1,
+            morph_open=1,
+            morph_close=1,
+            tracking_radius_px=40.0,
+            minimum_green_pixels=20,
+            minimum_body_pixels=80,
+            cue_colour="none",
+            minimum_cue_pixels=1,
+            maximum_cue_pixels=100,
+            minimum_cue_lever_arm_px=10.0,
+            cue_distance_relative_tolerance=0.9,
+            cue_yaw_offset_deg=0.0,
+            initial_yaw_deg=0.0,
+            maximum_yaw_rate_deg_s=3000.0,
+            minimum_axis_anisotropy=0.5,
+            axis_yaw_offset_deg=0.0,
+            position_source="green",
+        )
+        green_xy = np.asarray([45.0, 55.0])
+        body_xy = np.asarray([50.0, 50.0])
+        with (
+            mock.patch.object(
+                MARKERLESS,
+                "green_mask",
+                return_value=component,
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_component_near",
+                return_value=(green_xy, 441, component),
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_foreground_cluster",
+                return_value=(body_xy, 441, component),
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "_principal_axis",
+                return_value=(0.0, 1.0),
+            ),
+        ):
+            result = MARKERLESS.detect_pose(
+                frame,
+                background,
+                grid,
+                args,
+                green_xy,
+                0.0,
+                None,
+                deque(),
+                False,
+                1.0 / 120.0,
+            )
+        np.testing.assert_allclose(result[0], green_xy)
+        self.assertEqual(result[-1], "green")
+
 
 class TurnProposalSafetyGateTest(unittest.TestCase):
     @staticmethod
