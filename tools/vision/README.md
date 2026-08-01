@@ -209,6 +209,13 @@ still uses the foreground principal axis for cue-less heading. The PCB centroid
 is not the vehicle control reference, so measure its fixed right/forward offset
 and pass the corresponding anchor correction to downstream turn analysis.
 
+For a rigidly mounted camera, a hand may briefly hide multiple board markers
+while starting the vehicle. In that case, set both
+`--maximum-consecutive-homography-fallback-frames` and
+`--maximum-homography-fallback-fraction` to explicit bounded values. The
+tracker reuses the last marker-supported transform during that interval. Keep
+the default five-frame consecutive limit when the camera can move.
+
 The transform does not remove lens distortion or height parallax. Before using
 millimetre results for parameter changes, calibrate the exact HFR crop,
 undistort it, compensate the known cue height, and validate position/yaw across

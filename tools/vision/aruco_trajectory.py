@@ -334,7 +334,12 @@ def build_calibrations(
     canonical_size: int,
     marker_margin: float,
     target_corners_override: Optional[Dict[int, np.ndarray]] = None,
+    maximum_consecutive_fallback_frames: int = 5,
 ) -> Tuple[List[FrameCalibration], Dict[int, np.ndarray]]:
+    if maximum_consecutive_fallback_frames < 0:
+        raise ValueError(
+            "maximum_consecutive_fallback_frames must be non-negative"
+        )
     seen_ids = {
         marker_id
         for frame_observations in observations
@@ -472,11 +477,12 @@ def build_calibrations(
             inlier_corner_count = 0
             inlier_marker_count = 0
             consecutive_fallbacks += 1
-            if consecutive_fallbacks > 5:
+            if consecutive_fallbacks > maximum_consecutive_fallback_frames:
                 raise RuntimeError(
                     "board transform lacks three-marker support for more "
-                    "than five consecutive frames at frame {}".format(
-                        frame_index
+                    "than {} consecutive frames at frame {}".format(
+                        maximum_consecutive_fallback_frames,
+                        frame_index,
                     )
                 )
         else:

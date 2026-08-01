@@ -70,6 +70,37 @@ class BoardLayoutTest(unittest.TestCase):
         self.assertTrue(all(item.reprojection_rmse_px < 1e-3 for item in calibrations))
         np.testing.assert_allclose(targets[5], layout.target_corners_px[5])
 
+    def test_fixed_camera_can_allow_bounded_marker_occlusion(self):
+        layout = board_layout.load(
+            VISION_ROOT / "board_layout_4x4_example.json",
+            900,
+        )
+        visible = {
+            marker_id: corners * 0.8 + np.asarray([100.0, 40.0])
+            for marker_id, corners in layout.target_corners_px.items()
+        }
+        observations = [visible, visible] + [{} for _ in range(8)] + [visible]
+
+        with self.assertRaisesRegex(RuntimeError, "more than 5 consecutive"):
+            aruco.build_calibrations(
+                observations,
+                900,
+                50.0,
+                layout.target_corners_px,
+            )
+
+        calibrations, _ = aruco.build_calibrations(
+            observations,
+            900,
+            50.0,
+            layout.target_corners_px,
+            maximum_consecutive_fallback_frames=8,
+        )
+        self.assertEqual(
+            sum(item.used_previous_homography for item in calibrations),
+            8,
+        )
+
     def test_duplicate_json_keys_are_rejected(self):
         source = (VISION_ROOT / "board_layout_4x4_example.json").read_text(
             encoding="utf-8"

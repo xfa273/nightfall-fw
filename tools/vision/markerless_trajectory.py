@@ -207,6 +207,15 @@ def parse_args() -> argparse.Namespace:
         help="maximum fraction of run frames reusing a previous homography",
     )
     parser.add_argument(
+        "--maximum-consecutive-homography-fallback-frames",
+        type=int,
+        default=5,
+        help=(
+            "maximum consecutive run frames reusing the previous homography; "
+            "increase only for a fixed camera with temporary marker occlusion"
+        ),
+    )
+    parser.add_argument(
         "--maximum-heading-invalid-fraction",
         type=float,
         default=0.01,
@@ -304,6 +313,10 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--maximum-missing-fraction must be in [0, 1)")
     if not 0 <= args.maximum_homography_fallback_fraction < 1:
         raise ValueError("--maximum-homography-fallback-fraction must be in [0, 1)")
+    if args.maximum_consecutive_homography_fallback_frames < 0:
+        raise ValueError(
+            "--maximum-consecutive-homography-fallback-frames must be non-negative"
+        )
     if not 0 <= args.maximum_heading_invalid_fraction < 1:
         raise ValueError("--maximum-heading-invalid-fraction must be in [0, 1)")
 
@@ -1268,6 +1281,7 @@ def main() -> int:
                 if measured_layout is not None
                 else None
             ),
+            args.maximum_consecutive_homography_fallback_frames,
         )
         homography_fallback_fraction = sum(
             item.used_previous_homography for item in calibrations
