@@ -23,13 +23,12 @@ ArUco、緑PCB、単一の赤LED、前景輪郭から515/515フレームを追�
 この720p/30 fpsの結果は「機体マーカなしで追跡できる可能性」の確認で
 あり、自動調整へ使える精度の証明ではない。特に、次は未実装である。
 
-- 実時間120/240 fpsとCaptureResult sidecarを保存するAndroid recorder
 - 4枚を超える任意個数の固定マーカを同時利用する盤面校正
 - カメラ内部パラメータ、レンズ歪み、LED高さ、rolling shutterの補正
 - 複数LEDを幾何拘束で追跡する姿勢推定
 - セッション全体のQAを一括で強制するrunner
 - trace位相に基づくターン区間抽出と、軌道形状・時間を使うparameter fit
-- LEDパターンによるoffsetとclock driftの二点同期
+- LED二点のfirmware tickによるoffsetとclock drift推定
 
 したがって、現在の候補生成は専用の単一ターン試験に限定し、候補を
 人が確認して次の試験へ渡す半自動工程として扱う。
@@ -400,11 +399,19 @@ signal gainをgateする。`sync_report.json`では少なくとも次を確認�
 は`sync_report.json`の`trace_metadata`へ移す。空行、key/valueでない
 comment、commentの順序は`fused.csv`へ複製しない。
 
-### 5.3 将来追加するLED同期
+### 5.3 実装済みのLED録画トリガと将来の時刻同期
 
-trace開始後、モータ始動前に既知のLEDパターンを約0.5秒表示し、停止後
-にも同じパターンを出す。firmware tickとsession IDをCSV metadataへ
-記録する。
+F413は走行前後に3個の可視status LEDを同時点灯し、
+`300 ms ON / 200 ms OFF / 300 ms ON / 200 ms OFF / 600 ms ON`の
+3パルスtokenを出す。開始tokenの前には300 msの消灯区間、後には
+300 msのmotion guardがある。Pixel recorder 0.3.0はpreview-onlyで待機し、
+同一位置の3回の立ち上がりを検出するとMediaRecorderを開始する。終了
+tokenでは既定900 msのtailを残して停止する。実走中の機体UART接続は
+不要である。
+
+現在の光学tokenは録画の開始・終了自動化までを担当する。firmware tickと
+session IDをCSV metadataへ記録し、動画内tokenの時刻からoffsetとclock
+driftを推定する処理は次段で追加する。
 
 ```text
 #video_sync_start_tick_ms=...
@@ -414,8 +421,7 @@ trace開始後、モータ始動前に既知のLEDパターンを約0.5秒表示
 ```
 
 開始・終了の二点があればoffsetとclock driftを独立に検証できる。姿勢
-推定に使うLEDを点滅する場合、その静止同期区間はpose評価から除外する。
-このfirmware変更と動画側decoderは未実装である。
+推定に使うLEDを点滅するため、その静止同期区間はpose評価から除外する。
 
 ## 6. ホスト環境とAndroid probe
 
@@ -471,8 +477,10 @@ collectorが固有nonce付きでアプリをforce-startし、一致する新規r
 もinstall、shell、collectのすべてで同じ`SERIAL`を明示する。
 
 probe APK自体は録画せず、静的capabilityだけを列挙する。別packageの
-recorderはpreviewとHFR録画を同時実行し、各CaptureResultとencoded sampleを
-JSONL sidecarへ保存する。Pixel 8ではpreview有効を既定とする。
+recorder 0.3.0はpreviewとHFR録画を同時実行し、各CaptureResultとencoded
+sampleをJSONL sidecarへ保存する。光学trigger時はpreview-onlyで待機し、
+開始token後だけencoder面を有効化する。Pixel 8ではpreview有効を既定と
+する。
 
 ## 7. セッション構造と現パイプライン
 
@@ -691,8 +699,10 @@ duration、path length、peak speedはreportへ出すが、軌道形状やtrace�
 - Codexが承認なしにfloor runを開始しない。
 - firmware、params、コマンド列、fan条件、停止方法を試験前に記録する。
 
-今回の端末なし作業では、モータ・fan・走行・flash・NVM操作を行って
-いない。
+2026-08-01の光学trigger HILでは、build済みF413 applicationをST-LINKで
+application sector 0..5だけへ書き込み、非走行UART `;`によるLED tokenだけを
+使用した。モータ・fan・走行・search・shortestは許可も実行もせず、identity、
+calibration、maze、trace formatを含むNVM書き込みも行っていない。
 
 ## 10. 端末到着後の順序
 

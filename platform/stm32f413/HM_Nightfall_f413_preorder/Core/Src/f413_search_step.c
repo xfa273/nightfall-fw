@@ -5,6 +5,7 @@
 
 #include "f413_control.h"
 #include "f413_front_match.h"
+#include "f413_hw.h"
 #include "f413_path_run.h"
 #include "f413_run_features.h"
 #include "f413_run_session.h"
@@ -3632,6 +3633,10 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
   trace_printf("\r\n");
 
+  trace_printf("[VIDEO-SYNC] optical START 3-pulse token\r\n");
+  f413_hw_emit_video_sync_pattern();
+  HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+
   f413_ctrl_start();
   f413_ctrl_reset_distance();
   f413_ctrl_reset_angle();
@@ -4101,6 +4106,8 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
 
   f413_ctrl_stop();
+  trace_printf("[VIDEO-SYNC] optical STOP 3-pulse token\r\n");
+  f413_hw_emit_video_sync_pattern();
   if (event_log_started)
   {
     f413_search_step_set_mode_flags(0U);

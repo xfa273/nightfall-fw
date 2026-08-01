@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-/tmp/nightfall-hfr-recordings}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=2
-expected_version_name=0.2.0
+expected_version_code=3
+expected_version_name=0.3.0
 camera_id=${HFR_CAMERA_ID:-0}
 width=${HFR_WIDTH:-1920}
 height=${HFR_HEIGHT:-1080}
@@ -25,13 +25,18 @@ bitrate=${HFR_BITRATE:-40000000}
 exposure_us=${HFR_EXPOSURE_US:-0}
 iso=${HFR_ISO:-400}
 enable_preview=${HFR_ENABLE_PREVIEW:-1}
+optical_trigger=${HFR_OPTICAL_TRIGGER:-0}
+optical_trigger_score=${HFR_OPTICAL_TRIGGER_SCORE:-180}
+optical_trigger_hot_pixels=${HFR_OPTICAL_TRIGGER_HOT_PIXELS:-2}
+optical_stop_tail_ms=${HFR_OPTICAL_STOP_TAIL_MS:-900}
 record_timeout=${HFR_TIMEOUT_SECONDS:-90}
 adb_command=${ADB:-}
 python_command=${PYTHON:-}
 
 for value_name in \
   width height fps duration_seconds bitrate exposure_us iso enable_preview \
-  record_timeout
+  optical_trigger optical_trigger_score optical_trigger_hot_pixels \
+  optical_stop_tail_ms record_timeout
 do
   eval "value=\${$value_name}"
   case "$value" in
@@ -45,10 +50,32 @@ if [ "$enable_preview" != "0" ] && [ "$enable_preview" != "1" ]; then
   echo "[HFR-RECORDER][ERROR] HFR_ENABLE_PREVIEW must be 0 or 1" >&2
   exit 2
 fi
+if [ "$optical_trigger" != "0" ] && [ "$optical_trigger" != "1" ]; then
+  echo "[HFR-RECORDER][ERROR] HFR_OPTICAL_TRIGGER must be 0 or 1" >&2
+  exit 2
+fi
 if [ "$enable_preview" = "1" ]; then
   enable_preview_boolean=true
 else
   enable_preview_boolean=false
+fi
+if [ "$optical_trigger" = "1" ]; then
+  optical_trigger_boolean=true
+else
+  optical_trigger_boolean=false
+fi
+if [ "$optical_trigger" = "1" ] && [ "$enable_preview" != "1" ]; then
+  echo "[HFR-RECORDER][ERROR] optical trigger requires preview" >&2
+  exit 2
+fi
+if [ "$optical_trigger_score" -lt 1 ] \
+  || [ "$optical_trigger_hot_pixels" -lt 1 ]; then
+  echo "[HFR-RECORDER][ERROR] optical trigger thresholds must be positive" >&2
+  exit 2
+fi
+if [ "$optical_stop_tail_ms" -gt 5000 ]; then
+  echo "[HFR-RECORDER][ERROR] optical stop tail must be <= 5000 ms" >&2
+  exit 2
 fi
 if [ "$width" -lt 320 ] || [ "$height" -lt 240 ]; then
   echo "[HFR-RECORDER][ERROR] recording dimensions are too small" >&2
@@ -191,11 +218,22 @@ fi
   --ei bitrate "$bitrate" \
   --ei exposure_us "$exposure_us" \
   --ei iso "$iso" \
-  --ez enable_preview "$enable_preview_boolean" >/dev/null
+  --ez enable_preview "$enable_preview_boolean" \
+  --ez optical_trigger "$optical_trigger_boolean" \
+  --ei optical_trigger_score "$optical_trigger_score" \
+  --ei optical_trigger_hot_pixels "$optical_trigger_hot_pixels" \
+  --ei optical_stop_tail_ms "$optical_stop_tail_ms" >/dev/null
 
-echo "[HFR-RECORDER] Recording ${width}x${height}@${fps}" \
-  "for ${duration_seconds}s (exposure_us=${exposure_us}, iso=${iso}," \
-  "preview=${enable_preview_boolean})."
+if [ "$optical_trigger" = "1" ]; then
+  echo "[HFR-RECORDER] Armed ${width}x${height}@${fps} for optical" \
+    "START/STOP (max_recording=${duration_seconds}s," \
+    "exposure_us=${exposure_us}, iso=${iso}, score=${optical_trigger_score}," \
+    "hot_pixels=${optical_trigger_hot_pixels})."
+else
+  echo "[HFR-RECORDER] Recording ${width}x${height}@${fps}" \
+    "for ${duration_seconds}s (exposure_us=${exposure_us}, iso=${iso}," \
+    "preview=${enable_preview_boolean})."
+fi
 
 report_has_expected_nonce() {
   "$python_command" - "$temporary_report" \

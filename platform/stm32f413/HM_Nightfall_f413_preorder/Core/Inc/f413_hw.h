@@ -12,12 +12,14 @@
 #define F413_HW_LED_REAR_RIGHT_MASK F413_HW_LED_2_MASK
 #define F413_HW_LED_REAR_LEFT_MASK  F413_HW_LED_3_MASK
 #define F413_HW_LED_BLINK_TOGGLE_MS (250U)
+#define F413_HW_VIDEO_SYNC_START_GUARD_MS (300U)
 
 void f413_hw_set_all_leds(GPIO_PinState state);
 void f413_hw_show_led_mask(uint8_t mask);
 void f413_hw_show_led_blink(uint8_t mask, uint32_t now_ms, uint32_t toggle_ms);
 void f413_hw_delay_with_led_blink(uint8_t mask, uint32_t duration_ms, uint32_t toggle_ms);
 void f413_hw_show_mode_leds(uint8_t mode);
+void f413_hw_emit_video_sync_pattern(void);
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms);
 void f413_hw_buzzer_beep_async(uint16_t period, uint16_t ms);
 void f413_hw_buzzer_tick_1ms(void);

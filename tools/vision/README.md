@@ -23,10 +23,12 @@ Reusable tools in this directory are:
 - `../tuning/turn_video_tune.py`: converts video endpoints to the firmware turn
   frame and prints a bounded candidate without editing source files
 
-The Android real-time HFR recorder is implemented. Pixel 8 has passed a
-preview plus 1080p/240 manual-exposure recording trial with per-frame-rate
-CaptureResult metadata; the tested Xiaomi 13 Ultra firmware rejects all public
-Camera2 constrained-HFR sessions.
+The Android real-time HFR recorder and F413 three-pulse optical START/STOP
+trigger are implemented. Pixel 8 has passed a preview plus 1080p/240
+manual-exposure recording trial with per-frame-rate CaptureResult metadata,
+and both optical edges passed a stationary no-motor integration trial;
+the tested Xiaomi 13 Ultra firmware rejects all public Camera2 constrained-HFR
+sessions.
 The more-than-four-marker solver, multi-LED solver, session-wide QA runner,
 trace-phase segmentation, and whole-path fitter are not implemented yet.
 

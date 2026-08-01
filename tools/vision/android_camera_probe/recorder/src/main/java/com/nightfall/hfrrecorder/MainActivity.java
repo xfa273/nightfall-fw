@@ -4,11 +4,13 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.SurfaceTexture;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
@@ -32,6 +34,17 @@ public final class MainActivity extends Activity {
     private static final String EXTRA_EXPOSURE_US = "exposure_us";
     private static final String EXTRA_ISO = "iso";
     private static final String EXTRA_ENABLE_PREVIEW = "enable_preview";
+    private static final String EXTRA_OPTICAL_TRIGGER = "optical_trigger";
+    private static final String EXTRA_OPTICAL_TRIGGER_SCORE =
+            "optical_trigger_score";
+    private static final String EXTRA_OPTICAL_TRIGGER_HOT_PIXELS =
+            "optical_trigger_hot_pixels";
+    private static final String EXTRA_OPTICAL_STOP_TAIL_MS =
+            "optical_stop_tail_ms";
+    private static final int OPTICAL_SAMPLE_WIDTH = 480;
+    private static final int OPTICAL_SAMPLE_HEIGHT = 270;
+    private static final long OPTICAL_SAMPLE_INTERVAL_NS = 25_000_000L;
+    private static final long OPTICAL_STATUS_INTERVAL_NS = 500_000_000L;
 
     private TextureView preview;
     private TextView status;
@@ -41,6 +54,13 @@ public final class MainActivity extends Activity {
     private Handler cameraHandler;
     private HfrRecorder recorder;
     private boolean autoPending;
+    private HfrRecorder.Config activeConfig;
+    private OpticalTriggerDetector opticalDetector;
+    private boolean opticalDetectionEnabled;
+    private boolean opticalWaitingForStart;
+    private long lastOpticalSampleNs;
+    private long lastOpticalStatusNs;
+    private int[] opticalPixels;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -95,6 +115,7 @@ public final class MainActivity extends Activity {
                     public void onSurfaceTextureUpdated(
                             SurfaceTexture surface
                     ) {
+                        processOpticalTriggerFrame();
                     }
                 }
         );
@@ -232,8 +253,33 @@ public final class MainActivity extends Activity {
                     }
 
                     @Override
+                    public void onArmed() {
+                        runOnUiThread(() -> {
+                            opticalWaitingForStart = true;
+                            opticalDetectionEnabled = true;
+                            lastOpticalSampleNs = 0L;
+                            lastOpticalStatusNs = 0L;
+                            if (opticalDetector != null) {
+                                opticalDetector.reset();
+                            }
+                            startButton.setEnabled(false);
+                            stopButton.setEnabled(true);
+                        });
+                    }
+
+                    @Override
                     public void onRecordingStarted() {
                         runOnUiThread(() -> {
+                            if (activeConfig != null
+                                    && activeConfig.opticalTrigger) {
+                                opticalWaitingForStart = false;
+                                opticalDetectionEnabled = true;
+                                lastOpticalSampleNs = 0L;
+                                lastOpticalStatusNs = 0L;
+                                if (opticalDetector != null) {
+                                    opticalDetector.rearm();
+                                }
+                            }
                             startButton.setEnabled(false);
                             stopButton.setEnabled(true);
                         });
@@ -242,6 +288,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onFinished(String message) {
                         runOnUiThread(() -> {
+                            opticalDetectionEnabled = false;
                             startButton.setEnabled(true);
                             stopButton.setEnabled(false);
                             setStatus(message, true);
@@ -251,6 +298,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onError(String message) {
                         runOnUiThread(() -> {
+                            opticalDetectionEnabled = false;
                             startButton.setEnabled(true);
                             stopButton.setEnabled(false);
                             setStatus("ERROR: " + message, false);
@@ -260,6 +308,16 @@ public final class MainActivity extends Activity {
         );
         startButton.setEnabled(false);
         stopButton.setEnabled(false);
+        activeConfig = config;
+        if (config.opticalTrigger) {
+            opticalDetector = new OpticalTriggerDetector(
+                    config.opticalTriggerScore,
+                    config.opticalTriggerHotPixels
+            );
+        } else {
+            opticalDetector = null;
+            opticalDetectionEnabled = false;
+        }
         recorder.start(config);
     }
 
@@ -280,7 +338,14 @@ public final class MainActivity extends Activity {
                 intent.getIntExtra(EXTRA_BITRATE, 40_000_000),
                 intent.getIntExtra(EXTRA_EXPOSURE_US, 0),
                 intent.getIntExtra(EXTRA_ISO, 400),
-                intent.getBooleanExtra(EXTRA_ENABLE_PREVIEW, true)
+                intent.getBooleanExtra(EXTRA_ENABLE_PREVIEW, true),
+                intent.getBooleanExtra(EXTRA_OPTICAL_TRIGGER, false),
+                intent.getIntExtra(EXTRA_OPTICAL_TRIGGER_SCORE, 180),
+                intent.getIntExtra(
+                        EXTRA_OPTICAL_TRIGGER_HOT_PIXELS,
+                        2
+                ),
+                intent.getIntExtra(EXTRA_OPTICAL_STOP_TAIL_MS, 900)
         );
         config.validate();
         return config;
@@ -291,8 +356,75 @@ public final class MainActivity extends Activity {
         status.setTextColor(normal ? Color.WHITE : 0xffff8080);
     }
 
+    private void processOpticalTriggerFrame() {
+        if (!opticalDetectionEnabled
+                || opticalDetector == null
+                || recorder == null
+                || activeConfig == null) {
+            return;
+        }
+        long nowNs = SystemClock.elapsedRealtimeNanos();
+        if (nowNs - lastOpticalSampleNs < OPTICAL_SAMPLE_INTERVAL_NS) {
+            return;
+        }
+        lastOpticalSampleNs = nowNs;
+        Bitmap bitmap = preview.getBitmap(
+                OPTICAL_SAMPLE_WIDTH,
+                OPTICAL_SAMPLE_HEIGHT
+        );
+        if (bitmap == null) {
+            return;
+        }
+        int pixelCount = OPTICAL_SAMPLE_WIDTH * OPTICAL_SAMPLE_HEIGHT;
+        if (opticalPixels == null || opticalPixels.length != pixelCount) {
+            opticalPixels = new int[pixelCount];
+        }
+        bitmap.getPixels(
+                opticalPixels,
+                0,
+                OPTICAL_SAMPLE_WIDTH,
+                0,
+                0,
+                OPTICAL_SAMPLE_WIDTH,
+                OPTICAL_SAMPLE_HEIGHT
+        );
+        bitmap.recycle();
+
+        OpticalTriggerDetector.Result result = opticalDetector.process(
+                opticalPixels,
+                OPTICAL_SAMPLE_WIDTH,
+                OPTICAL_SAMPLE_HEIGHT,
+                nowNs
+        );
+        if (result.triggered) {
+            opticalDetectionEnabled = false;
+            if (opticalWaitingForStart) {
+                setStatus("LED START token detected; starting recorder...", true);
+                recorder.triggerRecording(nowNs);
+            } else {
+                setStatus("LED STOP token detected; saving tail...", true);
+                recorder.triggerStop(nowNs, activeConfig.opticalStopTailMs);
+            }
+        } else if (nowNs - lastOpticalStatusNs
+                >= OPTICAL_STATUS_INTERVAL_NS) {
+            lastOpticalStatusNs = nowNs;
+            setStatus(
+                    String.format(
+                            "%s LED: phase=%s score=%d/%d hot=%d",
+                            opticalWaitingForStart ? "ARMED" : "REC",
+                            result.phase,
+                            result.score,
+                            result.threshold,
+                            result.hotPixels
+                    ),
+                    true
+            );
+        }
+    }
+
     @Override
     protected void onDestroy() {
+        opticalDetectionEnabled = false;
         if (recorder != null) {
             recorder.close();
         }

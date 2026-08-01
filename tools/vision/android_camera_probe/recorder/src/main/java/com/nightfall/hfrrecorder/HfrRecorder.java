@@ -61,6 +61,8 @@ final class HfrRecorder {
     interface Listener {
         void onStatus(String message);
 
+        void onArmed();
+
         void onRecordingStarted();
 
         void onFinished(String message);
@@ -79,6 +81,10 @@ final class HfrRecorder {
         final int exposureUs;
         final int iso;
         final boolean enablePreview;
+        final boolean opticalTrigger;
+        final int opticalTriggerScore;
+        final int opticalTriggerHotPixels;
+        final int opticalStopTailMs;
 
         Config(
                 String nonce,
@@ -90,7 +96,11 @@ final class HfrRecorder {
                 int bitrate,
                 int exposureUs,
                 int iso,
-                boolean enablePreview
+                boolean enablePreview,
+                boolean opticalTrigger,
+                int opticalTriggerScore,
+                int opticalTriggerHotPixels,
+                int opticalStopTailMs
         ) {
             this.nonce = nonce;
             this.cameraId = cameraId;
@@ -102,6 +112,10 @@ final class HfrRecorder {
             this.exposureUs = exposureUs;
             this.iso = iso;
             this.enablePreview = enablePreview;
+            this.opticalTrigger = opticalTrigger;
+            this.opticalTriggerScore = opticalTriggerScore;
+            this.opticalTriggerHotPixels = opticalTriggerHotPixels;
+            this.opticalStopTailMs = opticalStopTailMs;
         }
 
         void validate() {
@@ -150,6 +164,22 @@ final class HfrRecorder {
                         "iso must be in 50..6400"
                 );
             }
+            if (opticalTrigger && !enablePreview) {
+                throw new IllegalArgumentException(
+                        "optical trigger requires preview"
+                );
+            }
+            if (opticalTriggerScore < 1
+                    || opticalTriggerHotPixels < 1) {
+                throw new IllegalArgumentException(
+                        "optical trigger thresholds must be positive"
+                );
+            }
+            if (opticalStopTailMs < 0 || opticalStopTailMs > 5000) {
+                throw new IllegalArgumentException(
+                        "optical stop tail must be in 0..5000 ms"
+                );
+            }
         }
 
         JSONObject toJson() throws Exception {
@@ -182,6 +212,13 @@ final class HfrRecorder {
                     "recording_surface_enabled",
                     ENABLE_RECORDING_SURFACE
             );
+            object.put("optical_trigger_enabled", opticalTrigger);
+            object.put("optical_trigger_score", opticalTriggerScore);
+            object.put(
+                    "optical_trigger_hot_pixels",
+                    opticalTriggerHotPixels
+            );
+            object.put("optical_stop_tail_ms", opticalStopTailMs);
             object.put("recording_backend", "MediaRecorder");
             object.put("media_recorder_capture_rate_fps", fps);
             object.put("audio_recorded", false);
@@ -311,10 +348,13 @@ final class HfrRecorder {
     private Surface previewSurface;
     private Surface encoderSurface;
     private MediaRecorder mediaRecorder;
-    private boolean mediaRecorderStarted;
+    private volatile boolean mediaRecorderStarted;
+    private volatile boolean opticalArmed;
     private int orientationHintDeg;
     private long recordingStartElapsedNs;
     private long recordingStopElapsedNs;
+    private long opticalStartDetectedElapsedNs;
+    private long opticalStopDetectedElapsedNs;
     private int captureFailureCount;
     private File videoFile;
     private File videoTempFile;
@@ -348,8 +388,11 @@ final class HfrRecorder {
         encodedSamples.clear();
         captureFailureCount = 0;
         mediaRecorderStarted = false;
+        opticalArmed = false;
         recordingStartElapsedNs = 0;
         recordingStopElapsedNs = 0;
+        opticalStartDetectedElapsedNs = 0;
+        opticalStopDetectedElapsedNs = 0;
         prepareOutputFiles();
         listener.onStatus(
                 String.format(
@@ -380,6 +423,46 @@ final class HfrRecorder {
             closeCameraPipeline();
             finalizeAsync(null);
         });
+    }
+
+    void triggerRecording(long detectedElapsedNs) {
+        if (!active.get() || stopping.get()) {
+            return;
+        }
+        cameraHandler.post(() -> {
+            if (!opticalArmed || mediaRecorderStarted || stopping.get()) {
+                return;
+            }
+            opticalStartDetectedElapsedNs = detectedElapsedNs;
+            opticalArmed = false;
+            try {
+                /*
+                 * setRepeatingBurst() replaces the armed preview request.
+                 * Do not flush this constrained high-speed session here:
+                 * Pixel 8's camera HAL can tear down the pipeline and report
+                 * CAMERA_ERROR/Broken pipe when abortCaptures() is followed
+                 * immediately by a new high-speed burst.
+                 */
+                startEncodedRecording();
+            } catch (Exception exception) {
+                fail("unable to start optically triggered recording", exception);
+            }
+        });
+    }
+
+    void triggerStop(long detectedElapsedNs, int tailMs) {
+        if (!active.get()
+                || stopping.get()
+                || !mediaRecorderStarted
+                || opticalStopDetectedElapsedNs != 0L) {
+            return;
+        }
+        opticalStopDetectedElapsedNs = detectedElapsedNs;
+        mainHandler.postAtTime(
+                this::stop,
+                this,
+                SystemClock.uptimeMillis() + Math.max(0, tailMs)
+        );
     }
 
     void close() {
@@ -661,91 +744,111 @@ final class HfrRecorder {
 
     private void startRepeatingBurst() {
         try {
-            CaptureRequest.Builder request = camera.createCaptureRequest(
-                    CameraDevice.TEMPLATE_RECORD
-            );
-            if (previewSurface != null) {
-                request.addTarget(previewSurface);
-            }
-            if (ENABLE_RECORDING_SURFACE) {
-                request.addTarget(encoderSurface);
-            }
-            request.set(
-                    CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
-                    new Range<>(config.fps, config.fps)
-            );
-            request.set(
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
-                    CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
-            );
-            request.set(
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
-                    CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF
-            );
-            request.set(
-                    CaptureRequest.CONTROL_AF_MODE,
-                    CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO
-            );
-            request.set(
-                    CaptureRequest.CONTROL_AWB_MODE,
-                    CaptureRequest.CONTROL_AWB_MODE_AUTO
-            );
-            if (config.exposureUs > 0) {
-                request.set(
-                        CaptureRequest.CONTROL_AE_MODE,
-                        CaptureRequest.CONTROL_AE_MODE_OFF
-                );
-                request.set(
-                        CaptureRequest.SENSOR_EXPOSURE_TIME,
-                        config.exposureUs * 1000L
-                );
-                request.set(
-                        CaptureRequest.SENSOR_FRAME_DURATION,
-                        1_000_000_000L / config.fps
-                );
-                request.set(
-                        CaptureRequest.SENSOR_SENSITIVITY,
-                        config.iso
+            if (config.opticalTrigger) {
+                submitRepeatingBurst(false);
+                opticalArmed = true;
+                listener.onArmed();
+                listener.onStatus(
+                        "ARMED: waiting for F413 LED token"
                 );
             } else {
-                request.set(
-                        CaptureRequest.CONTROL_AE_MODE,
-                        CaptureRequest.CONTROL_AE_MODE_ON
-                );
+                startEncodedRecording();
             }
-            List<CaptureRequest> burst =
-                    captureSession.createHighSpeedRequestList(
-                            request.build()
-                    );
-            captureSession.setRepeatingBurst(
-                    burst,
-                    captureCallback,
-                    cameraHandler
-            );
-            if (ENABLE_RECORDING_SURFACE) {
-                mediaRecorder.start();
-                mediaRecorderStarted = true;
-            }
-            recordingStartElapsedNs = SystemClock.elapsedRealtimeNanos();
-            listener.onRecordingStarted();
-            listener.onStatus(
-                    String.format(
-                            "Recording %dx%d @ %d fps for %d s",
-                            config.width,
-                            config.height,
-                            config.fps,
-                            config.durationSeconds
-                    )
-            );
-            mainHandler.postAtTime(
-                    this::stop,
-                    this,
-                    SystemClock.uptimeMillis()
-                            + config.durationSeconds * 1000L
-            );
         } catch (Exception exception) {
             fail("unable to start high-speed burst", exception);
         }
+    }
+
+    private void startEncodedRecording() throws Exception {
+        captureMetadata.clear();
+        captureFailureCount = 0;
+        submitRepeatingBurst(true);
+        if (ENABLE_RECORDING_SURFACE) {
+            mediaRecorder.start();
+            mediaRecorderStarted = true;
+        }
+        recordingStartElapsedNs = SystemClock.elapsedRealtimeNanos();
+        listener.onRecordingStarted();
+        listener.onStatus(
+                String.format(
+                        "Recording %dx%d @ %d fps for up to %d s",
+                        config.width,
+                        config.height,
+                        config.fps,
+                        config.durationSeconds
+                )
+        );
+        mainHandler.postAtTime(
+                this::stop,
+                this,
+                SystemClock.uptimeMillis()
+                        + config.durationSeconds * 1000L
+        );
+    }
+
+    private void submitRepeatingBurst(boolean includeEncoder)
+            throws Exception {
+        CaptureRequest.Builder request = camera.createCaptureRequest(
+                CameraDevice.TEMPLATE_RECORD
+        );
+        if (previewSurface != null) {
+            request.addTarget(previewSurface);
+        }
+        if (includeEncoder && ENABLE_RECORDING_SURFACE) {
+            request.addTarget(encoderSurface);
+        }
+        request.set(
+                CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
+                new Range<>(config.fps, config.fps)
+        );
+        request.set(
+                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE_OFF
+        );
+        request.set(
+                CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE,
+                CaptureRequest.LENS_OPTICAL_STABILIZATION_MODE_OFF
+        );
+        request.set(
+                CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO
+        );
+        request.set(
+                CaptureRequest.CONTROL_AWB_MODE,
+                CaptureRequest.CONTROL_AWB_MODE_AUTO
+        );
+        if (config.exposureUs > 0) {
+            request.set(
+                    CaptureRequest.CONTROL_AE_MODE,
+                    CaptureRequest.CONTROL_AE_MODE_OFF
+            );
+            request.set(
+                    CaptureRequest.SENSOR_EXPOSURE_TIME,
+                    config.exposureUs * 1000L
+            );
+            request.set(
+                    CaptureRequest.SENSOR_FRAME_DURATION,
+                    1_000_000_000L / config.fps
+            );
+            request.set(
+                    CaptureRequest.SENSOR_SENSITIVITY,
+                    config.iso
+            );
+        } else {
+            request.set(
+                    CaptureRequest.CONTROL_AE_MODE,
+                    CaptureRequest.CONTROL_AE_MODE_ON
+            );
+        }
+        List<CaptureRequest> burst =
+                captureSession.createHighSpeedRequestList(
+                        request.build()
+                );
+        captureSession.setRepeatingBurst(
+                burst,
+                captureCallback,
+                cameraHandler
+        );
     }
 
     private final CameraCaptureSession.CaptureCallback captureCallback =
@@ -756,13 +859,15 @@ final class HfrRecorder {
                         CaptureRequest request,
                         TotalCaptureResult result
                 ) {
-                    captureMetadata.add(
-                            new CaptureMetadata(
-                                    result.getFrameNumber(),
-                                    SystemClock.elapsedRealtimeNanos(),
-                                    result
-                            )
-                    );
+                    if (mediaRecorderStarted) {
+                        captureMetadata.add(
+                                new CaptureMetadata(
+                                        result.getFrameNumber(),
+                                        SystemClock.elapsedRealtimeNanos(),
+                                        result
+                                )
+                        );
+                    }
                 }
 
                 @Override
@@ -814,6 +919,7 @@ final class HfrRecorder {
     }
 
     private void closeCameraPipeline() {
+        opticalArmed = false;
         try {
             if (captureSession != null) {
                 captureSession.stopRepeating();
@@ -1024,6 +1130,42 @@ final class HfrRecorder {
                 ) / 1_000_000_000.0
                         : JSONObject.NULL
         );
+        JSONObject opticalTrigger = new JSONObject();
+        opticalTrigger.put("enabled", config.opticalTrigger);
+        opticalTrigger.put(
+                "start_detected_elapsed_realtime_ns",
+                opticalStartDetectedElapsedNs > 0
+                        ? opticalStartDetectedElapsedNs
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "recording_start_elapsed_realtime_ns",
+                recordingStartElapsedNs > 0
+                        ? recordingStartElapsedNs
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_detection_to_recording_ms",
+                opticalStartDetectedElapsedNs > 0
+                        && recordingStartElapsedNs
+                        >= opticalStartDetectedElapsedNs
+                        ? (recordingStartElapsedNs
+                        - opticalStartDetectedElapsedNs) / 1_000_000.0
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_detected_elapsed_realtime_ns",
+                opticalStopDetectedElapsedNs > 0
+                        ? opticalStopDetectedElapsedNs
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "recording_stop_elapsed_realtime_ns",
+                recordingStopElapsedNs > 0
+                        ? recordingStopElapsedNs
+                        : JSONObject.NULL
+        );
+        report.put("optical_trigger", opticalTrigger);
         report.put(
                 "capture_results",
                 buildCaptureSummary()

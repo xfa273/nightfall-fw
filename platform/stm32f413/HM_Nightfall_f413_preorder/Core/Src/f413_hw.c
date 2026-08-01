@@ -5,6 +5,10 @@
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
 #define F413_HW_MOTOR_PWM_MAX (1000U)
+#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (300U)
+#define F413_HW_VIDEO_SYNC_ON_PULSE_MS (300U)
+#define F413_HW_VIDEO_SYNC_OFF_GAP_MS (200U)
+#define F413_HW_VIDEO_SYNC_FINAL_ON_MS (600U)
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim11;
@@ -68,6 +72,28 @@ void f413_hw_show_mode_leds(uint8_t mode)
   HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, (mode & 0x01U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, (mode & 0x02U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, (mode & 0x04U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void f413_hw_emit_video_sync_pattern(void)
+{
+  /*
+   * Three long, camera-rate-independent flashes form one optical token.
+   * The initial OFF interval also clears any OP-UI mode indication so the
+   * Pixel detector can learn a local dark baseline before the first pulse.
+   */
+  f413_hw_show_led_mask(0U);
+  HAL_Delay(F413_HW_VIDEO_SYNC_OFF_PREROLL_MS);
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(F413_HW_VIDEO_SYNC_ON_PULSE_MS);
+  f413_hw_show_led_mask(0U);
+  HAL_Delay(F413_HW_VIDEO_SYNC_OFF_GAP_MS);
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(F413_HW_VIDEO_SYNC_ON_PULSE_MS);
+  f413_hw_show_led_mask(0U);
+  HAL_Delay(F413_HW_VIDEO_SYNC_OFF_GAP_MS);
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(F413_HW_VIDEO_SYNC_FINAL_ON_MS);
+  f413_hw_show_led_mask(0U);
 }
 
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms)
