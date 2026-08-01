@@ -355,6 +355,12 @@ final class HfrRecorder {
     private long recordingStopElapsedNs;
     private long opticalStartDetectedElapsedNs;
     private long opticalStopDetectedElapsedNs;
+    private int opticalStartScore;
+    private int opticalStartHotPixels;
+    private int opticalStartThreshold;
+    private int opticalStopScore;
+    private int opticalStopHotPixels;
+    private int opticalStopThreshold;
     private int captureFailureCount;
     private File videoFile;
     private File videoTempFile;
@@ -393,6 +399,12 @@ final class HfrRecorder {
         recordingStopElapsedNs = 0;
         opticalStartDetectedElapsedNs = 0;
         opticalStopDetectedElapsedNs = 0;
+        opticalStartScore = 0;
+        opticalStartHotPixels = 0;
+        opticalStartThreshold = 0;
+        opticalStopScore = 0;
+        opticalStopHotPixels = 0;
+        opticalStopThreshold = 0;
         prepareOutputFiles();
         listener.onStatus(
                 String.format(
@@ -425,7 +437,12 @@ final class HfrRecorder {
         });
     }
 
-    void triggerRecording(long detectedElapsedNs) {
+    void triggerRecording(
+            long detectedElapsedNs,
+            int score,
+            int hotPixels,
+            int threshold
+    ) {
         if (!active.get() || stopping.get()) {
             return;
         }
@@ -434,6 +451,9 @@ final class HfrRecorder {
                 return;
             }
             opticalStartDetectedElapsedNs = detectedElapsedNs;
+            opticalStartScore = score;
+            opticalStartHotPixels = hotPixels;
+            opticalStartThreshold = threshold;
             opticalArmed = false;
             try {
                 /*
@@ -450,7 +470,13 @@ final class HfrRecorder {
         });
     }
 
-    void triggerStop(long detectedElapsedNs, int tailMs) {
+    void triggerStop(
+            long detectedElapsedNs,
+            int tailMs,
+            int score,
+            int hotPixels,
+            int threshold
+    ) {
         if (!active.get()
                 || stopping.get()
                 || !mediaRecorderStarted
@@ -458,6 +484,9 @@ final class HfrRecorder {
             return;
         }
         opticalStopDetectedElapsedNs = detectedElapsedNs;
+        opticalStopScore = score;
+        opticalStopHotPixels = hotPixels;
+        opticalStopThreshold = threshold;
         mainHandler.postAtTime(
                 this::stop,
                 this,
@@ -1154,6 +1183,24 @@ final class HfrRecorder {
                         : JSONObject.NULL
         );
         opticalTrigger.put(
+                "start_score",
+                opticalStartScore > 0
+                        ? opticalStartScore
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_hot_pixels",
+                opticalStartHotPixels > 0
+                        ? opticalStartHotPixels
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_threshold",
+                opticalStartThreshold > 0
+                        ? opticalStartThreshold
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
                 "stop_detected_elapsed_realtime_ns",
                 opticalStopDetectedElapsedNs > 0
                         ? opticalStopDetectedElapsedNs
@@ -1163,6 +1210,24 @@ final class HfrRecorder {
                 "recording_stop_elapsed_realtime_ns",
                 recordingStopElapsedNs > 0
                         ? recordingStopElapsedNs
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_score",
+                opticalStopScore > 0
+                        ? opticalStopScore
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_hot_pixels",
+                opticalStopHotPixels > 0
+                        ? opticalStopHotPixels
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_threshold",
+                opticalStopThreshold > 0
+                        ? opticalStopThreshold
                         : JSONObject.NULL
         );
         report.put("optical_trigger", opticalTrigger);

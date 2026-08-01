@@ -39,7 +39,44 @@ public final class OpticalTriggerDetectorHostTest {
         nowNs = feed(detector, frame, nowNs, true, 12, false);
         nowNs = feed(detector, frame, nowNs, false, 8, false);
         feed(detector, frame, nowNs, true, 24, true);
+
+        detector.reset();
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        nowNs = feedWhiteFlash(detector, frame, nowNs, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feedWhiteFlash(detector, frame, nowNs, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feedWhiteFlash(detector, frame, nowNs, 24, false);
         System.out.println("OpticalTriggerDetectorHostTest PASS");
+    }
+
+    private static long feedWhiteFlash(
+            OpticalTriggerDetector detector,
+            int[] frame,
+            long nowNs,
+            int frames,
+            boolean expectTrigger
+    ) {
+        boolean triggered = false;
+        for (int index = 0; index < frames; index += 1) {
+            Arrays.fill(frame, 0xffffffff);
+            OpticalTriggerDetector.Result result = detector.process(
+                    frame,
+                    WIDTH,
+                    HEIGHT,
+                    nowNs
+            );
+            triggered |= result.triggered;
+            nowNs += FRAME_NS;
+        }
+        if (triggered != expectTrigger) {
+            throw new AssertionError(
+                    "white-flash triggered=" + triggered
+                            + " expected=" + expectTrigger
+            );
+        }
+        return nowNs;
     }
 
     private static long feed(
@@ -83,7 +120,7 @@ public final class OpticalTriggerDetectorHostTest {
     private static void setLed(int[] frame, int centerX, int centerY) {
         for (int y = centerY - 1; y <= centerY + 1; y += 1) {
             for (int x = centerX - 1; x <= centerX + 1; x += 1) {
-                frame[y * WIDTH + x] = 0xffffffff;
+                frame[y * WIDTH + x] = 0xff2020ff;
             }
         }
     }

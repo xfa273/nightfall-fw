@@ -400,10 +400,21 @@ public final class MainActivity extends Activity {
             opticalDetectionEnabled = false;
             if (opticalWaitingForStart) {
                 setStatus("LED START token detected; starting recorder...", true);
-                recorder.triggerRecording(nowNs);
+                recorder.triggerRecording(
+                        nowNs,
+                        result.score,
+                        result.hotPixels,
+                        result.threshold
+                );
             } else {
                 setStatus("LED STOP token detected; saving tail...", true);
-                recorder.triggerStop(nowNs, activeConfig.opticalStopTailMs);
+                recorder.triggerStop(
+                        nowNs,
+                        activeConfig.opticalStopTailMs,
+                        result.score,
+                        result.hotPixels,
+                        result.threshold
+                );
             }
         } else if (nowNs - lastOpticalStatusNs
                 >= OPTICAL_STATUS_INTERVAL_NS) {

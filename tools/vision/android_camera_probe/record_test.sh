@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-/tmp/nightfall-hfr-recordings}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=3
-expected_version_name=0.3.0
+expected_version_code=5
+expected_version_name=0.3.2
 camera_id=${HFR_CAMERA_ID:-0}
 width=${HFR_WIDTH:-1920}
 height=${HFR_HEIGHT:-1080}
@@ -206,6 +206,11 @@ then
 fi
 
 "$adb_command" -s "$serial" shell am force-stop "$package_name"
+# Pixel's camera service may retain a just-closed constrained-HFR client for a
+# short time, especially after package replacement or an interrupted armed
+# session. Starting immediately can fail once with CameraDevice error 2
+# (maximum cameras in use), so allow the HAL to publish the disconnect first.
+sleep 2
 "$adb_command" -s "$serial" shell am start -W \
   -n "$package_name/.MainActivity" \
   --ez auto_record true \
@@ -229,6 +234,8 @@ if [ "$optical_trigger" = "1" ]; then
     "START/STOP (max_recording=${duration_seconds}s," \
     "exposure_us=${exposure_us}, iso=${iso}, score=${optical_trigger_score}," \
     "hot_pixels=${optical_trigger_hot_pixels})."
+  echo "[HFR-RECORDER] Wait about 2 seconds for WAIT_FIRST_RISE on Pixel" \
+    "before starting the mouse."
 else
   echo "[HFR-RECORDER] Recording ${width}x${height}@${fps}" \
     "for ${duration_seconds}s (exposure_us=${exposure_us}, iso=${iso}," \

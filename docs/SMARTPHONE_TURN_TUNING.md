@@ -404,8 +404,8 @@ comment、commentの順序は`fused.csv`へ複製しない。
 F413は走行前後に3個の可視status LEDを同時点灯し、
 `300 ms ON / 200 ms OFF / 300 ms ON / 200 ms OFF / 600 ms ON`の
 3パルスtokenを出す。開始tokenの前には300 msの消灯区間、後には
-300 msのmotion guardがある。Pixel recorder 0.3.0はpreview-onlyで待機し、
-同一位置の3回の立ち上がりを検出するとMediaRecorderを開始する。終了
+300 msのmotion guardがある。Pixel recorder 0.3.2はpreview-onlyで待機し、
+同一位置の青色成分の3回の立ち上がりを検出するとMediaRecorderを開始する。終了
 tokenでは既定900 msのtailを残して停止する。実走中の機体UART接続は
 不要である。
 
@@ -477,7 +477,7 @@ collectorが固有nonce付きでアプリをforce-startし、一致する新規r
 もinstall、shell、collectのすべてで同じ`SERIAL`を明示する。
 
 probe APK自体は録画せず、静的capabilityだけを列挙する。別packageの
-recorder 0.3.0はpreviewとHFR録画を同時実行し、各CaptureResultとencoded
+recorder 0.3.2はpreviewとHFR録画を同時実行し、各CaptureResultとencoded
 sampleをJSONL sidecarへ保存する。光学trigger時はpreview-onlyで待機し、
 開始token後だけencoder面を有効化する。Pixel 8ではpreview有効を既定と
 する。

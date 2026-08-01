@@ -4,10 +4,12 @@ package com.nightfall.hfrrecorder;
  * Detects the three-pulse visible-LED token emitted by the F413 firmware.
  *
  * <p>Only rising edges are decoded. Consecutive preview frames are compared,
- * then three local brightening events must occur at the same image location
- * about 500 ms apart. A short calibration period derives a threshold from
- * real preview noise. This class has no Android dependencies so its state
- * machine can be exercised by the host JDK.</p>
+ * then three local blue-chroma rising events must occur at the same image
+ * location about 500 ms apart. Restricting the signal to the mouse's blue
+ * status LEDs rejects white illumination changes and hands moving through the
+ * frame. A short calibration period derives a threshold from real preview
+ * noise. This class has no Android dependencies so its state machine can be
+ * exercised by the host JDK.</p>
  */
 final class OpticalTriggerDetector {
     private static final int TILE_SIZE = 8;
@@ -126,7 +128,7 @@ final class OpticalTriggerDetector {
             int rowOffset = y * width;
             for (int x = 0; x < width; x += 1) {
                 int index = rowOffset + x;
-                int current = brightness(pixels[index]);
+                int current = blueChroma(pixels[index]);
                 int delta = current - previous[index];
                 if (delta >= PIXEL_DELTA_THRESHOLD) {
                     int tileIndex = tileY * tileColumns + x / TILE_SIZE;
@@ -213,7 +215,7 @@ final class OpticalTriggerDetector {
         height = frameHeight;
         previous = new int[pixels.length];
         for (int index = 0; index < pixels.length; index += 1) {
-            previous[index] = brightness(pixels[index]);
+            previous[index] = blueChroma(pixels[index]);
         }
         tileColumns = (width + TILE_SIZE - 1) / TILE_SIZE;
         tileRows = (height + TILE_SIZE - 1) / TILE_SIZE;
@@ -319,10 +321,10 @@ final class OpticalTriggerDetector {
         return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
     }
 
-    private static int brightness(int argb) {
+    private static int blueChroma(int argb) {
         int red = (argb >> 16) & 0xff;
         int green = (argb >> 8) & 0xff;
         int blue = argb & 0xff;
-        return Math.max(red, Math.max(green, blue));
+        return Math.max(0, blue - Math.max(red, green));
     }
 }
