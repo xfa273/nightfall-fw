@@ -125,18 +125,37 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-echo "[HFR-RECORDER] Installing $expected_version_name on $device_model..."
-# Stop a foreground copy before package replacement.  Otherwise Android may
-# restore the old task without the recording extras while `install -r` races
-# the explicit launch below.
-"$adb_command" -s "$serial" shell am force-stop "$package_name" \
-  >/dev/null 2>&1 || true
-"$adb_command" -s "$serial" install -r "$apk" >/dev/null
-
 package_dump=$(
   "$adb_command" -s "$serial" shell dumpsys package "$package_name" \
-    | tr -d '\r'
+    2>/dev/null | tr -d '\r' || true
 )
+current_version_code=$(
+  printf '%s\n' "$package_dump" \
+    | sed -n 's/^[[:space:]]*versionCode=\([0-9][0-9]*\).*/\1/p' \
+    | head -n 1
+)
+current_version_name=$(
+  printf '%s\n' "$package_dump" \
+    | sed -n 's/^[[:space:]]*versionName=//p' \
+    | head -n 1
+)
+if [ "$current_version_code" = "$expected_version_code" ] \
+  && [ "$current_version_name" = "$expected_version_name" ]
+then
+  echo "[HFR-RECORDER] Using installed $expected_version_name on $device_model."
+else
+  echo "[HFR-RECORDER] Installing $expected_version_name on $device_model..."
+  # Stop a foreground copy before package replacement.  Otherwise Android may
+  # restore the old task without the recording extras while `install -r` races
+  # the explicit launch below.
+  "$adb_command" -s "$serial" shell am force-stop "$package_name" \
+    >/dev/null 2>&1 || true
+  "$adb_command" -s "$serial" install -r "$apk" >/dev/null
+  package_dump=$(
+    "$adb_command" -s "$serial" shell dumpsys package "$package_name" \
+      | tr -d '\r'
+  )
+fi
 installed_version_code=$(
   printf '%s\n' "$package_dump" \
     | sed -n 's/^[[:space:]]*versionCode=\([0-9][0-9]*\).*/\1/p' \
