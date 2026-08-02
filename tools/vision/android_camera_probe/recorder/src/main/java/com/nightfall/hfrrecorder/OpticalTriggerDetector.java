@@ -4,12 +4,13 @@ package com.nightfall.hfrrecorder;
  * Detects the three-pulse visible-LED token emitted by the F413 firmware.
  *
  * <p>Only rising edges are decoded. Consecutive preview frames are compared,
- * then three local blue-chroma rising events must occur at the same image
- * location about 500 ms apart. Restricting the signal to the mouse's blue
- * status LEDs rejects white illumination changes and hands moving through the
- * frame. A short calibration period derives a threshold from real preview
- * noise. This class has no Android dependencies so its state machine can be
- * exercised by the host JDK.</p>
+ * then all three spatially separated status LEDs must rise simultaneously on
+ * each of three pulses about 500 ms apart. The same LED triangle must be found
+ * in all three pulses. Restricting the signal to this blue-chroma geometry
+ * rejects white illumination changes, hands moving through the frame, and
+ * ordinary single-LED UI activity. A short calibration period derives a
+ * threshold from real preview noise. This class has no Android dependencies
+ * so its state machine can be exercised by the host JDK.</p>
  */
 final class OpticalTriggerDetector {
     private static final int TILE_SIZE = 8;
@@ -24,13 +25,28 @@ final class OpticalTriggerDetector {
     private static final long RISE_REFRACTORY_NS = 150_000_000L;
     private static final long RISE_GAP_MIN_NS = 320_000_000L;
     private static final long RISE_GAP_MAX_NS = 750_000_000L;
-    private static final int MAX_TILE_DISTANCE = 6;
+    private static final int MIN_COMPONENT_SCORE = 60;
+    private static final int MIN_COMPONENT_HOT_PIXELS = 2;
+    private static final int MAX_COMPONENTS = 12;
+    private static final int MIN_LED_SEPARATION_SQUARED = 36;
+    private static final int MAX_LED_SEPARATION_SQUARED = 10_000;
+    private static final int MIN_TRIANGLE_DOUBLE_AREA = 30;
+    private static final int MAX_LED_MATCH_DISTANCE_SQUARED = 64;
+    private static final int[][] LED_MATCH_PERMUTATIONS = {
+            {0, 1, 2},
+            {0, 2, 1},
+            {1, 0, 2},
+            {1, 2, 0},
+            {2, 0, 1},
+            {2, 1, 0}
+    };
 
     static final class Result {
         final boolean triggered;
         final int score;
         final int hotPixels;
         final int threshold;
+        final int matchedLeds;
         final String phase;
 
         Result(
@@ -38,14 +54,21 @@ final class OpticalTriggerDetector {
                 int score,
                 int hotPixels,
                 int threshold,
+                int matchedLeds,
                 String phase
         ) {
             this.triggered = triggered;
             this.score = score;
             this.hotPixels = hotPixels;
             this.threshold = threshold;
+            this.matchedLeds = matchedLeds;
             this.phase = phase;
         }
+    }
+
+    private static final class Pulse {
+        final int[] x = new int[3];
+        final int[] y = new int[3];
     }
 
     private enum Phase {
@@ -62,8 +85,13 @@ final class OpticalTriggerDetector {
     private int height;
     private int[] tileScores;
     private int[] tileHotPixels;
+    private int[] pixelDeltas;
+    private int[] componentQueue;
     private int tileColumns;
     private int tileRows;
+    private final int[] componentScores = new int[MAX_COMPONENTS];
+    private final int[] componentX = new int[MAX_COMPONENTS];
+    private final int[] componentY = new int[MAX_COMPONENTS];
     private final int[] calibrationScores =
             new int[CALIBRATION_CAPACITY];
     private int calibrationCount;
@@ -72,8 +100,8 @@ final class OpticalTriggerDetector {
     private int effectiveScoreThreshold;
     private Phase phase = Phase.CALIBRATING;
     private long lastRiseNs;
-    private int candidateTileX = -1;
-    private int candidateTileY = -1;
+    private final int[] candidateLedX = new int[3];
+    private final int[] candidateLedY = new int[3];
 
     OpticalTriggerDetector(int scoreThreshold, int hotPixelThreshold) {
         if (scoreThreshold < 1 || hotPixelThreshold < 1) {
@@ -90,6 +118,8 @@ final class OpticalTriggerDetector {
         previous = null;
         tileScores = null;
         tileHotPixels = null;
+        pixelDeltas = null;
+        componentQueue = null;
         width = 0;
         height = 0;
         tileColumns = 0;
@@ -131,9 +161,12 @@ final class OpticalTriggerDetector {
                 int current = blueChroma(pixels[index]);
                 int delta = current - previous[index];
                 if (delta >= PIXEL_DELTA_THRESHOLD) {
+                    pixelDeltas[index] = delta;
                     int tileIndex = tileY * tileColumns + x / TILE_SIZE;
                     tileScores[tileIndex] += delta;
                     tileHotPixels[tileIndex] += 1;
+                } else {
+                    pixelDeltas[index] = 0;
                 }
                 previous[index] = current;
             }
@@ -141,8 +174,6 @@ final class OpticalTriggerDetector {
 
         int bestScore = 0;
         int bestHotPixels = 0;
-        int bestTileX = 0;
-        int bestTileY = 0;
         for (int tileY = 0; tileY < tileRows; tileY += 1) {
             for (int tileX = 0; tileX < tileColumns; tileX += 1) {
                 int score = 0;
@@ -165,8 +196,6 @@ final class OpticalTriggerDetector {
                 if (score > bestScore) {
                     bestScore = score;
                     bestHotPixels = hotPixels;
-                    bestTileX = tileX;
-                    bestTileY = tileY;
                 }
             }
         }
@@ -187,17 +216,29 @@ final class OpticalTriggerDetector {
 
         boolean risingEdge = bestScore >= effectiveScoreThreshold
                 && bestHotPixels >= hotPixelThreshold;
+        Pulse pulse = null;
+        if (risingEdge) {
+            pulse = findThreeLedPulse(Math.max(
+                    MIN_COMPONENT_SCORE,
+                    effectiveScoreThreshold / 3
+            ));
+        }
         boolean triggered = false;
-        if (risingEdge
+        if (pulse != null
                 && (lastRiseNs == 0L
                 || nowNs - lastRiseNs >= RISE_REFRACTORY_NS)) {
-            triggered = acceptRise(bestTileX, bestTileY, nowNs);
+            triggered = acceptRise(pulse, nowNs);
         }
         if (phase != Phase.WAIT_FIRST_RISE
                 && nowNs - lastRiseNs > RISE_GAP_MAX_NS) {
             resetSequence();
         }
-        return result(triggered, bestScore, bestHotPixels);
+        return result(
+                triggered,
+                bestScore,
+                bestHotPixels,
+                pulse == null ? 0 : 3
+        );
     }
 
     private boolean ensureBuffers(
@@ -221,6 +262,8 @@ final class OpticalTriggerDetector {
         tileRows = (height + TILE_SIZE - 1) / TILE_SIZE;
         tileScores = new int[tileColumns * tileRows];
         tileHotPixels = new int[tileColumns * tileRows];
+        pixelDeltas = new int[pixels.length];
+        componentQueue = new int[pixels.length];
         if (calibrationStartedNs < 0L) {
             calibrationStartedNs = nowNs;
         }
@@ -257,10 +300,145 @@ final class OpticalTriggerDetector {
         );
     }
 
-    private boolean acceptRise(int tileX, int tileY, long nowNs) {
+    private Pulse findThreeLedPulse(int componentScoreThreshold) {
+        int componentCount = 0;
+        java.util.Arrays.fill(componentScores, 0);
+        for (int seed = 0; seed < pixelDeltas.length; seed += 1) {
+            if (pixelDeltas[seed] == 0) {
+                continue;
+            }
+            int queueRead = 0;
+            int queueWrite = 0;
+            int score = 0;
+            int hotPixels = 0;
+            int sumX = 0;
+            int sumY = 0;
+            pixelDeltas[seed] = -pixelDeltas[seed];
+            componentQueue[queueWrite++] = seed;
+            while (queueRead < queueWrite) {
+                int index = componentQueue[queueRead++];
+                int delta = -pixelDeltas[index];
+                if (delta <= 0) {
+                    continue;
+                }
+                pixelDeltas[index] = 0;
+                int x = index % width;
+                int y = index / width;
+                score += delta;
+                hotPixels += 1;
+                sumX += x;
+                sumY += y;
+                int minX = Math.max(0, x - 1);
+                int maxX = Math.min(width - 1, x + 1);
+                int minY = Math.max(0, y - 1);
+                int maxY = Math.min(height - 1, y + 1);
+                for (int neighborY = minY; neighborY <= maxY; neighborY += 1) {
+                    int rowOffset = neighborY * width;
+                    for (int neighborX = minX; neighborX <= maxX; neighborX += 1) {
+                        int neighbor = rowOffset + neighborX;
+                        if (pixelDeltas[neighbor] > 0) {
+                            componentQueue[queueWrite++] = neighbor;
+                            pixelDeltas[neighbor] = -pixelDeltas[neighbor];
+                        }
+                    }
+                }
+            }
+            if (score < componentScoreThreshold
+                    || hotPixels < MIN_COMPONENT_HOT_PIXELS) {
+                continue;
+            }
+            componentCount = storeComponent(
+                    componentCount,
+                    score,
+                    (sumX + hotPixels / 2) / hotPixels,
+                    (sumY + hotPixels / 2) / hotPixels
+            );
+        }
+
+        Pulse best = null;
+        int bestScore = 0;
+        for (int first = 0; first < componentCount - 2; first += 1) {
+            for (int second = first + 1; second < componentCount - 1; second += 1) {
+                for (int third = second + 1; third < componentCount; third += 1) {
+                    if (!isLedTriangle(first, second, third)) {
+                        continue;
+                    }
+                    int score = componentScores[first]
+                            + componentScores[second]
+                            + componentScores[third];
+                    if (score <= bestScore) {
+                        continue;
+                    }
+                    bestScore = score;
+                    best = new Pulse();
+                    int[] indexes = {first, second, third};
+                    for (int led = 0; led < indexes.length; led += 1) {
+                        best.x[led] = componentX[indexes[led]];
+                        best.y[led] = componentY[indexes[led]];
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    private int storeComponent(
+            int componentCount,
+            int score,
+            int x,
+            int y
+    ) {
+        if (componentCount == MAX_COMPONENTS
+                && score <= componentScores[MAX_COMPONENTS - 1]) {
+            return componentCount;
+        }
+        int insertAt = Math.min(componentCount, MAX_COMPONENTS - 1);
+        while (insertAt > 0 && componentScores[insertAt - 1] < score) {
+            if (insertAt < MAX_COMPONENTS) {
+                componentScores[insertAt] = componentScores[insertAt - 1];
+                componentX[insertAt] = componentX[insertAt - 1];
+                componentY[insertAt] = componentY[insertAt - 1];
+            }
+            insertAt -= 1;
+        }
+        if (insertAt < MAX_COMPONENTS) {
+            componentScores[insertAt] = score;
+            componentX[insertAt] = x;
+            componentY[insertAt] = y;
+        }
+        return Math.min(MAX_COMPONENTS, componentCount + 1);
+    }
+
+    private boolean isLedTriangle(int first, int second, int third) {
+        int firstSecond = distanceSquared(first, second);
+        int firstThird = distanceSquared(first, third);
+        int secondThird = distanceSquared(second, third);
+        if (firstSecond < MIN_LED_SEPARATION_SQUARED
+                || firstThird < MIN_LED_SEPARATION_SQUARED
+                || secondThird < MIN_LED_SEPARATION_SQUARED
+                || firstSecond > MAX_LED_SEPARATION_SQUARED
+                || firstThird > MAX_LED_SEPARATION_SQUARED
+                || secondThird > MAX_LED_SEPARATION_SQUARED) {
+            return false;
+        }
+        int doubleArea = Math.abs(
+                (componentX[second] - componentX[first])
+                        * (componentY[third] - componentY[first])
+                        - (componentY[second] - componentY[first])
+                        * (componentX[third] - componentX[first])
+        );
+        return doubleArea >= MIN_TRIANGLE_DOUBLE_AREA;
+    }
+
+    private int distanceSquared(int first, int second) {
+        int deltaX = componentX[first] - componentX[second];
+        int deltaY = componentY[first] - componentY[second];
+        return deltaX * deltaX + deltaY * deltaY;
+    }
+
+    private boolean acceptRise(Pulse pulse, long nowNs) {
         if (phase == Phase.WAIT_FIRST_RISE) {
-            candidateTileX = tileX;
-            candidateTileY = tileY;
+            rememberCandidate(pulse);
             lastRiseNs = nowNs;
             phase = Phase.WAIT_SECOND_RISE;
             return false;
@@ -270,15 +448,8 @@ final class OpticalTriggerDetector {
         if (gapNs < RISE_GAP_MIN_NS) {
             return false;
         }
-        if (gapNs > RISE_GAP_MAX_NS
-                || tileDistance(
-                tileX,
-                tileY,
-                candidateTileX,
-                candidateTileY
-        ) > MAX_TILE_DISTANCE) {
-            candidateTileX = tileX;
-            candidateTileY = tileY;
+        if (gapNs > RISE_GAP_MAX_NS || !matchesCandidate(pulse)) {
+            rememberCandidate(pulse);
             lastRiseNs = nowNs;
             phase = Phase.WAIT_SECOND_RISE;
             return false;
@@ -293,32 +464,57 @@ final class OpticalTriggerDetector {
         return true;
     }
 
+    private void rememberCandidate(Pulse pulse) {
+        System.arraycopy(pulse.x, 0, candidateLedX, 0, candidateLedX.length);
+        System.arraycopy(pulse.y, 0, candidateLedY, 0, candidateLedY.length);
+    }
+
+    private boolean matchesCandidate(Pulse pulse) {
+        for (int[] permutation : LED_MATCH_PERMUTATIONS) {
+            boolean matches = true;
+            for (int led = 0; led < 3; led += 1) {
+                int deltaX = candidateLedX[led] - pulse.x[permutation[led]];
+                int deltaY = candidateLedY[led] - pulse.y[permutation[led]];
+                if (deltaX * deltaX + deltaY * deltaY
+                        > MAX_LED_MATCH_DISTANCE_SQUARED) {
+                    matches = false;
+                    break;
+                }
+            }
+            if (matches) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private Result result(boolean triggered, int score, int hotPixels) {
+        return result(triggered, score, hotPixels, 0);
+    }
+
+    private Result result(
+            boolean triggered,
+            int score,
+            int hotPixels,
+            int matchedLeds
+    ) {
         return new Result(
                 triggered,
                 score,
                 hotPixels,
                 effectiveScoreThreshold,
+                matchedLeds,
                 phase.name()
         );
     }
 
     private void resetSequence() {
         lastRiseNs = 0L;
-        candidateTileX = -1;
-        candidateTileY = -1;
+        java.util.Arrays.fill(candidateLedX, -1);
+        java.util.Arrays.fill(candidateLedY, -1);
         if (phase != Phase.CALIBRATING) {
             phase = Phase.WAIT_FIRST_RISE;
         }
-    }
-
-    private static int tileDistance(
-            int x1,
-            int y1,
-            int x2,
-            int y2
-    ) {
-        return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
     }
 
     private static int blueChroma(int argb) {

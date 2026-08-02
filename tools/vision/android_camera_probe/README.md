@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.3.2` of
+The collector installs version `0.3.3` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -126,9 +126,10 @@ with a 300 ms ON, 200 ms OFF, 300 ms ON, 200 ms OFF, 600 ms ON pattern. It
 emits one token before starting the trace/motion and another after stopping.
 The Pixel compares consecutive preview frames, discards the first 0.8 seconds
 while auto exposure settles, calibrates local preview noise for 1.2 seconds,
-and requires three blue-chroma rising edges at the same location at the
-expected spacing. White illumination changes and hands moving through the
-frame are therefore not accepted as the mouse's blue status LEDs.
+and requires three spatially separated blue status LEDs to rise together on
+each pulse. The same LED triangle must repeat three times at the expected
+spacing. White illumination changes, hands moving through the frame, and
+ordinary single-LED UI activity are therefore not accepted as a token.
 
 Arm and collect one run with:
 
@@ -143,8 +144,9 @@ START/STOP pair. The start token is decoded while the preview-only request is
 running; MediaRecorder is enabled before the firmware's final LED pulse and
 300 ms guard complete. The stop token leaves a default 900 ms video tail.
 `hfr_report.json` records both optical detection times and the delay from start
-detection to MediaRecorder start. Version 0.3.2 also records the accepted
-blue-chroma score, hot-pixel count, and effective threshold for both tokens.
+detection to MediaRecorder start. Version 0.3.3 also records the accepted
+blue-chroma score, hot-pixel count, effective threshold, and matched LED count
+for both tokens.
 
 The 2026-08-01 stationary Pixel 8 integration trial completed without the
 external lamp: start detection to recording was 28.1 ms, stop detection to

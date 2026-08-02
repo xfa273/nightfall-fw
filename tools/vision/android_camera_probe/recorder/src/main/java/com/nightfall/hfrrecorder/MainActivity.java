@@ -404,7 +404,8 @@ public final class MainActivity extends Activity {
                         nowNs,
                         result.score,
                         result.hotPixels,
-                        result.threshold
+                        result.threshold,
+                        result.matchedLeds
                 );
             } else {
                 setStatus("LED STOP token detected; saving tail...", true);
@@ -413,7 +414,8 @@ public final class MainActivity extends Activity {
                         activeConfig.opticalStopTailMs,
                         result.score,
                         result.hotPixels,
-                        result.threshold
+                        result.threshold,
+                        result.matchedLeds
                 );
             }
         } else if (nowNs - lastOpticalStatusNs
@@ -421,12 +423,13 @@ public final class MainActivity extends Activity {
             lastOpticalStatusNs = nowNs;
             setStatus(
                     String.format(
-                            "%s LED: phase=%s score=%d/%d hot=%d",
+                            "%s LED: phase=%s score=%d/%d hot=%d matched=%d",
                             opticalWaitingForStart ? "ARMED" : "REC",
                             result.phase,
                             result.score,
                             result.threshold,
-                            result.hotPixels
+                            result.hotPixels,
+                            result.matchedLeds
                     ),
                     true
             );
