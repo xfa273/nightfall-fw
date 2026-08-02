@@ -16,6 +16,8 @@ extern "C" {
 #define NF_SLALOM_MAX_ACTIONS NF_ROUTE_MAX_ACTIONS
 #define NF_SLALOM_MAX_ENDPOINT_CANONICALIZATION_MM 0.001
 #define NF_SLALOM_MAX_HEADING_CANONICALIZATION_DEG 1.0e-6
+/* Do not join diagonal turns directly at a wall-centre graph node. */
+#define NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS 1U
 
 /* Clockwise, in 45 degree increments. */
 typedef enum {
@@ -185,6 +187,7 @@ typedef struct {
     NfSlalomSpeedClass end_speed_class;
 
     bool connector_is_diagonal;
+    /* Diagonal-start turn actions must satisfy the public minimum above. */
     uint16_t connector_steps;
     double connector_geometry_distance_mm;
     double connector_command_distance_mm;

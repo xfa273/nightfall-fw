@@ -297,6 +297,8 @@
 - Step31: 斜めターン調整前の机上参照実装として、入口／出口速度を持つ二段階加速時間モデルと、小回り90・大回り90/180だけを使う拡張状態Dijkstraを `common/route/` に追加した。ゴール評価を最初のG区画境界通過時刻、ゴール後直進を停止可能性だけに使う契約へ固定し、大回り中の境界交差はF413と同じraised-cosine角速度を2次元積分して算出する。最大32x32の厳格KeriLab parser、型付き動作再生validator、既存斜め`path[]`文法validatorをhostへ追加し、固定commitの過去大会24迷路、全mode 2..7 / case 1..9、ASan/UBSan単体試験で検証した。公称軌跡と論理アンカーの残差および掃引クリアランスは未解決なので、実機コードへの接続はターン再調整・斜め対応後まで保留する。
 - Step32: Step31の参照実装をhalf-grid anchor・8方位・17速度classへ拡張し、45度in/out、斜めV90、135度in/outと斜め直線を含む有限状態Dijkstraおよび型付き動作変換を追加した。評価値は引き続き最初のG区画境界通過時刻で、停止可能なtailを別に検証し、直線でGへ入った後は新しいturnを開始しない。F413 mode2をprimary、F405 mini mode2〜5をcomparisonとしてcase8/9を実parameter sourceから読む。直交turnは現調整値を時間源、PC専用exact-closure seedを幾何源とし、未調整の斜めturnは重心速度を保持したPC仮値を時間・幾何の両方に使う。全8種を固定0.001 mm closure gateで検査する。既存`convertDiagonal()`は方位とhalf-grid終点を保存するtransactional codecへ置換し、typed actionから現runnerへの変換は斜め終端と速度profile非等価を明示するgeometry gateに限定した。同一configを使うforward replay validator、別作成のprimitive期待値fixture、required-open軌跡、基板外形だけの任意turn clearance診断を追加し、固定過去大会24迷路×5profile×case8/9の240/240構成をPC上で検証した。新plannerは実機入口へ未接続であり、斜め実測調整、完成機包絡＋直進掃引、typed executorまたはlegacy runner更新、F413向け固定メモリ化を実機反映gateとする。
 
+- Step33: Step32経路の可視化で、斜め方位の`connector_steps=0`を介して45度in/out・V90・135度turnが同じ壁中心anchorから直接連結され、区画中心外に不要な折れ返しを作れることを確認した。壁中心anchor自体は正規の斜め状態として維持し、斜め方位から次turnへ入る場合だけ最低1 diagonal half-stepを要求する不変条件をplanner列挙・turn edge生成・forward validatorへ追加した。F413 mode2 case8の専用fixtureとmatrixの明示的な0件gateを追加し、固定24迷路×5profile×case8/9は240/240 validator通過、0-step斜めturn 0件、斜め厳密短縮225、直交同値15、legacy互換90、斜め終端非対応150となった。実機入口とfirmware parameterは変更していない。
+
 ### F405同等迷路走行までの残作業順序（2026-05-09）
 
 1. F413壁センサ基盤をF405相当に近づける

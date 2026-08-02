@@ -35,8 +35,22 @@
 
 速度classはSTARTと8プリミティブの左右を区別する。次のconnector時間が直前
 ターンの出口速度に依存しても、全履歴ではなく現在状態だけで辺コストが決まるため、
-前向きDijkstraを適用できる。辺は「0個以上の同一方位connector + 1 turn」の
-macro辺で、終端だけは停止可能な直線を付ける。
+前向きDijkstraを適用できる。辺は「同一方位connector + 1 turn」のmacro辺で、
+直交方位ではconnectorを0個から、斜め方位から次のturnへ入る場合は1個以上から
+列挙する。終端だけは停止可能な直線を付ける。
+
+壁中心anchor自体は45度in/out、V90、135度in/outと斜め直線に必要な正規状態である。
+一方、斜め方位でconnectorが0個のまま次turnを始めると、同じ壁中心でturnが直接
+連結され、`45-in -> V90/45-out -> ...`の短い折れ返しを時間0の直線として利用できる。
+この経路品質上の抜け道を防ぐため、planner列挙、turn edge生成、forward replay
+validatorのすべてで次の不変条件を課す。
+
+```text
+turn && diagonal(start_heading) => connector_steps >= 1
+```
+
+primitive単体の幾何検査は壁中心開始を引き続き許す。禁止対象は物理turnそのものでは
+なく、plan内で前の斜めturnから直線なしに次turnへ接続する遷移である。
 
 構造上の参考はKERI氏の `StepMapSlalom` である。同実装もセル中心の直交姿勢と
 壁中心の斜め姿勢、複数ゴール、直線macro辺を用いる。Nightfall側は既存
@@ -244,15 +258,17 @@ tools/solver_host/run_slalom_kerilab_matrix.sh
 各構成で斜めを含む全action集合と、同じplanner/configから斜め5種だけを無効にした
 直交集合を比較する。全action集合は直交集合の真の上位集合なので、
 `diagonal goal_entry_us <= orthogonal goal_entry_us`を必須不変条件とする。固定matrixは
-全構成で斜めaction採用と厳密短縮を要求し、legacy statusも`ok`または
+斜めturnの0-step接続が0件であることを必須とし、斜めaction採用と厳密短縮は
+固定結果の225件へ固定する。legacy statusも`ok`または
 `terminal-diagonal-unsupported`以外を失敗にする。結果は
 `build/solver_host/slalom_kerilab_matrix.tsv`へ保存する。
 
 2026-08-02の固定データcommit
 `762ed2b68735ea29148c6a1251a90ed0651ff26b`で240/240構成がvalidatorを通過し、
-240構成すべてで斜めactionが採用され、直交限定より厳密に短かった。短縮幅は
-344,282〜17,999,503 us（平均3,806,719.6 us）。現runnerへの論理幾何変換は81構成が
-`ok`、159構成は斜め終端のため`terminal-diagonal-unsupported`であり、後者を黙って
+0-step斜めturn接続は0件だった。225構成で斜めactionが採用されて直交限定より
+厳密に短く、15構成は直交経路と同値だった。正の短縮幅は6,179〜16,892,052 us、
+全240構成の平均短縮は2,287,136.8 usである。現runnerへの論理幾何変換は90構成が
+`ok`、150構成は斜め終端のため`terminal-diagonal-unsupported`であり、後者を黙って
 近似変換しない。
 
 matrixのTSVは実行ごとの一時ファイルへ書き、全gate通過後に同一ディレクトリ内で
