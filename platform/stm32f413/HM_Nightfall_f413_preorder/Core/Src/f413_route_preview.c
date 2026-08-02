@@ -4,8 +4,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdarg.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "f413_trace_log.h"
@@ -42,8 +40,6 @@
 #define F413_RP_EPS (1.0e-8)
 #define F413_RP_MAX_TURN_INTERVALS (384U)
 #define F413_RP_SCRATCH_MIN_BYTES (180U * 1024U)
-#define F413_RP_UART_CHUNK_BYTES (8U)
-#define F413_RP_UART_CHUNK_DELAY_MS (10U)
 #define F413_RP_BUILTIN_DATA_REV \
   "762ed2b68735ea29148c6a1251a90ed0651ff26b"
 #define F413_RP_PARENT_VALID (0x80000000UL)
@@ -66,50 +62,6 @@ _Static_assert(F413_RP_STATE_COUNT < UINT16_MAX,
                "indexed heap uses UINT16_MAX as its absent sentinel");
 _Static_assert(F413_RP_SCRATCH_MIN_BYTES <= F413_TRACE_LOG_IDLE_SCRATCH_BYTES,
                "route preview does not fit the idle trace workspace");
-
-/*
- * ST-LINK V2 VCP can lose bytes when the 921600-baud preview is emitted as
- * one continuous burst.  Pace only this diagnostic output; normal trace and
- * control-loop paths retain their existing behavior.  Host tests take the
- * unpaced branch and therefore still compare the exact complete transcript.
- */
-static int f413_rp_trace_printf(const char* format, ...)
-{
-  char buffer[512];
-  va_list args;
-  int written;
-  size_t length;
-
-  va_start(args, format);
-  written = vsnprintf(buffer, sizeof(buffer), format, args);
-  va_end(args);
-  if (written <= 0)
-  {
-    return written;
-  }
-  length = (size_t)written;
-  if (length >= sizeof(buffer))
-  {
-    length = sizeof(buffer) - 1U;
-  }
-
-#if defined(STM32F413xx)
-  for (size_t offset = 0U; offset < length;)
-  {
-    size_t chunk = length - offset;
-    if (chunk > F413_RP_UART_CHUNK_BYTES)
-    {
-      chunk = F413_RP_UART_CHUNK_BYTES;
-    }
-    trace_write(&buffer[offset], chunk);
-    offset += chunk;
-    HAL_Delay(F413_RP_UART_CHUNK_DELAY_MS);
-  }
-  return written;
-#else
-  return trace_printf("%s", buffer);
-#endif
-}
 
 typedef enum
 {
@@ -2626,7 +2578,7 @@ static bool f413_rp_print_turn_action(const f413_rp_context_t* context,
     return false;
   }
   diagonal_connector = !f413_rp_is_cardinal(start_heading);
-  f413_rp_trace_printf(
+  trace_printf(
       "[KERI-PREVIEW] A%u #%u %s-%c conn=%c%u speed=%s(%lu) "
       "H=%s->%s anchor=(%d,%d)->(%d,%d) dt=%lu.%06lu s total=%lu.%06lu s%s\r\n",
       action_index,
@@ -2683,7 +2635,7 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
     state = f413_rp_parent_previous(parent);
   }
 
-  f413_rp_trace_printf("[KERI-PREVIEW] A0 start-offset O=5.000mm speed=0->crawl(%lu) "
+  trace_printf("[KERI-PREVIEW] A0 start-offset O=5.000mm speed=0->crawl(%lu) "
                "total=%lu.%06lu s\r\n",
                (unsigned long)context->motion->speed_mm_s[F413_RP_SPEED_CRAWL],
                (unsigned long)(context->motion->start_time_us / 1000000U),
@@ -2724,7 +2676,7 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
     {
       return false;
     }
-    f413_rp_trace_printf(
+    trace_printf(
         "[KERI-PREVIEW] A%u GOAL-STOP conn=%c%u entry-step=%u "
         "speed=%s(%lu)->0 H=%s goal=G(%u,%u) "
         "entry=%lu.%06lu s stop=%lu.%06lu s\r\n",
@@ -2780,7 +2732,7 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
     {
       diagonal_actions++;
     }
-    f413_rp_trace_printf(
+    trace_printf(
         "[KERI-PREVIEW] A%u GOAL-STOP conn=%c%u speed=%s(%lu)->0 H=%s "
         "goal=G(%u,%u) entry=%lu.%06lu s stop=%lu.%06lu s\r\n",
         action_index,
@@ -2800,7 +2752,7 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
       diagonal_actions++;
     }
   }
-  f413_rp_trace_printf("[KERI-PREVIEW] OK turns=%u actions=%u diagonal-actions=%u "
+  trace_printf("[KERI-PREVIEW] OK turns=%u actions=%u diagonal-actions=%u "
                "expanded=%lu relaxed=%lu heap-peak=%u "
                "goal-entry=%lu.%06lu s stop=%lu.%06lu s\r\n",
                (unsigned int)context->goal.turn_count,
@@ -2831,20 +2783,20 @@ void f413_route_preview_run_once(void)
   const uint32_t start_ms = HAL_GetTick();
   bool ok = false;
 
-  f413_rp_trace_printf("[KERI-PREVIEW] START read-only/no-motor mode=2 case=8 "
+  trace_printf("[KERI-PREVIEW] START read-only/no-motor mode=2 case=8 "
                "patterns=#1..#5 "
                "maze-policy=FRAM-first fallback=builtin-16MM2014CX "
                "goal-source=diagnostic-center-2x2\r\n");
   if (!f413_trace_log_try_borrow_idle_scratch(&scratch, &scratch_bytes))
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL trace capture active or scratch busy\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL trace capture active or scratch busy\r\n");
     return;
   }
   arena.cursor = (uint8_t*)scratch;
   arena.end = arena.cursor + scratch_bytes;
   if (scratch_bytes < F413_RP_SCRATCH_MIN_BYTES)
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL scratch=%lu required>=%lu\r\n",
+    trace_printf("[KERI-PREVIEW] FAIL scratch=%lu required>=%lu\r\n",
                  (unsigned long)scratch_bytes,
                  (unsigned long)F413_RP_SCRATCH_MIN_BYTES);
     goto cleanup;
@@ -2873,40 +2825,40 @@ void f413_route_preview_run_once(void)
       (context.settled == NULL) || (context.heap_states == NULL) ||
       (context.heap_positions == NULL))
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL scratch layout\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL scratch layout\r\n");
     goto cleanup;
   }
   if (!f413_rp_load_maze(maze, &maze_source))
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL maze preparation or diagnostic goals\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL maze preparation or diagnostic goals\r\n");
     goto cleanup;
   }
   if (maze_source == F413_RP_MAZE_SOURCE_FRAM)
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] maze-source=FRAM fram-load=ok\r\n");
+    trace_printf("[KERI-PREVIEW] maze-source=FRAM fram-load=ok\r\n");
   }
   else
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] maze-source=builtin-16MM2014CX "
+    trace_printf("[KERI-PREVIEW] maze-source=builtin-16MM2014CX "
                  "data-rev=%s fram-load=fail\r\n",
                  F413_RP_BUILTIN_DATA_REV);
   }
-  f413_rp_trace_printf("[KERI-PREVIEW] goals goal-source=diagnostic-center-2x2 ");
+  trace_printf("[KERI-PREVIEW] goals goal-source=diagnostic-center-2x2 ");
   for (uint8_t index = 0U; index < maze->goal_count; index++)
   {
-    f413_rp_trace_printf("%sG(%u,%u)", (index == 0U) ? "" : ",",
+    trace_printf("%sG(%u,%u)", (index == 0U) ? "" : ",",
                  (unsigned int)maze->goal_x[index],
                  (unsigned int)maze->goal_y[index]);
   }
-  f413_rp_trace_printf(" wall-mismatch-normalized=%u scratch=%lu\r\n",
+  trace_printf(" wall-mismatch-normalized=%u scratch=%lu\r\n",
                (unsigned int)maze->mismatch_count,
                (unsigned long)scratch_bytes);
   if (!f413_rp_prepare_motion(motion, &arena))
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL mode2/case8 motion preparation\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL mode2/case8 motion preparation\r\n");
     goto cleanup;
   }
-  f413_rp_trace_printf("[KERI-PREVIEW] boundary-speeds nominal=%lu low=%lu crawl=%lu "
+  trace_printf("[KERI-PREVIEW] boundary-speeds nominal=%lu low=%lu crawl=%lu "
                "mm/s states=%u\r\n",
                (unsigned long)motion->speed_mm_s[F413_RP_SPEED_NOMINAL],
                (unsigned long)motion->speed_mm_s[F413_RP_SPEED_LOW],
@@ -2915,7 +2867,7 @@ void f413_route_preview_run_once(void)
   plan_status = f413_rp_plan(&context, &start_state);
   if (plan_status == F413_RP_PLAN_NO_PATH)
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] NO-PATH expanded=%lu relaxed=%lu "
+    trace_printf("[KERI-PREVIEW] NO-PATH expanded=%lu relaxed=%lu "
                  "(strict KERI guards + stoppable tail)\r\n",
                  (unsigned long)context.expanded_states,
                  (unsigned long)context.relaxed_edges);
@@ -2923,7 +2875,7 @@ void f413_route_preview_run_once(void)
   }
   if (plan_status == F413_RP_PLAN_NO_FEASIBLE_TERMINAL)
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] NO-FEASIBLE-TERMINAL expanded=%lu "
+    trace_printf("[KERI-PREVIEW] NO-FEASIBLE-TERMINAL expanded=%lu "
                  "relaxed=%lu (goal crossed, no stoppable tail)\r\n",
                  (unsigned long)context.expanded_states,
                  (unsigned long)context.relaxed_edges);
@@ -2931,7 +2883,7 @@ void f413_route_preview_run_once(void)
   }
   if (plan_status != F413_RP_PLAN_OK)
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL planner-internal expanded=%lu "
+    trace_printf("[KERI-PREVIEW] FAIL planner-internal expanded=%lu "
                  "relaxed=%lu\r\n",
                  (unsigned long)context.expanded_states,
                  (unsigned long)context.relaxed_edges);
@@ -2939,7 +2891,7 @@ void f413_route_preview_run_once(void)
   }
   if (!f413_rp_print_plan(&context, start_state))
   {
-    f413_rp_trace_printf("[KERI-PREVIEW] FAIL route reconstruction\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL route reconstruction\r\n");
     goto cleanup;
   }
   ok = true;
@@ -2950,7 +2902,7 @@ cleanup:
     scratch_used = (size_t)(arena.cursor - (uint8_t*)scratch);
   }
   f413_trace_log_release_idle_scratch(scratch);
-  f413_rp_trace_printf("[KERI-PREVIEW] END status=%s scratch=released "
+  trace_printf("[KERI-PREVIEW] END status=%s scratch=released "
                "used=%lu/%lu bytes elapsed=%lu ms motors=off "
                "nvm=read-only\r\n",
                ok ? "ok" : "fail", (unsigned long)scratch_used,
