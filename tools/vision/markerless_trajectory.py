@@ -646,6 +646,36 @@ def _yaw_innovation_is_valid(
     return abs(candidate_yaw - prior_yaw) <= maximum_rate_deg_s * frame_period_s
 
 
+def _predict_tracker_position(
+    observed_xy: Optional[np.ndarray],
+    velocity_px_per_frame: np.ndarray,
+    observed_frame: Optional[int],
+    frame_index: int,
+) -> Optional[np.ndarray]:
+    if observed_xy is None:
+        return None
+    elapsed_frames = (
+        1 if observed_frame is None else max(1, frame_index - observed_frame)
+    )
+    return observed_xy + velocity_px_per_frame * elapsed_frames
+
+
+def _update_tracker_velocity(
+    velocity_px_per_frame: np.ndarray,
+    previous_xy: np.ndarray,
+    observed_xy: np.ndarray,
+    previous_frame: int,
+    frame_index: int,
+) -> np.ndarray:
+    elapsed_frames = max(1, frame_index - previous_frame)
+    measured_velocity = (observed_xy - previous_xy) / elapsed_frames
+    return 0.65 * velocity_px_per_frame + 0.35 * np.clip(
+        measured_velocity,
+        -30.0,
+        30.0,
+    )
+
+
 def _cue_brightness(
     frame: np.ndarray,
     search_mask: np.ndarray,
@@ -1360,7 +1390,9 @@ def main() -> int:
                 dtype=float,
             )
         prior_green_is_observed = False
+        prior_green_frame: Optional[int] = None
         prior_cue: Optional[np.ndarray] = None
+        prior_cue_frame: Optional[int] = None
         tracker_velocity = np.zeros(2, dtype=float)
         prior_yaw = args.initial_yaw_deg
         cue_distances: deque[float] = deque(maxlen=120)
@@ -1374,10 +1406,18 @@ def main() -> int:
                 calibrations[frame_index].homography,
                 (args.canonical_size, args.canonical_size),
             )
-            predicted_green = (
-                None if prior_green is None else prior_green + tracker_velocity
+            predicted_green = _predict_tracker_position(
+                prior_green,
+                tracker_velocity,
+                prior_green_frame,
+                frame_index,
             )
-            predicted_cue = None if prior_cue is None else prior_cue + tracker_velocity
+            predicted_cue = _predict_tracker_position(
+                prior_cue,
+                tracker_velocity,
+                prior_cue_frame,
+                frame_index,
+            )
             (
                 position_xy,
                 body_xy,
@@ -1431,15 +1471,24 @@ def main() -> int:
                 )
             )
             if valid:
-                if prior_green is not None and prior_green_is_observed:
-                    displacement = detected_green - prior_green
-                    tracker_velocity = 0.65 * tracker_velocity + 0.35 * np.clip(
-                        displacement, -30.0, 30.0
+                if (
+                    prior_green is not None
+                    and prior_green_is_observed
+                    and prior_green_frame is not None
+                ):
+                    tracker_velocity = _update_tracker_velocity(
+                        tracker_velocity,
+                        prior_green,
+                        detected_green,
+                        prior_green_frame,
+                        frame_index,
                     )
                 prior_green = detected_green
                 prior_green_is_observed = True
+                prior_green_frame = frame_index
                 if np.all(np.isfinite(cue_xy)):
                     prior_cue = cue_xy
+                    prior_cue_frame = frame_index
                 if heading_valid:
                     prior_yaw = yaw
             frame_index += 1

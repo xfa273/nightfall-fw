@@ -345,17 +345,20 @@ def build_calibrations(
         for frame_observations in observations
         for marker_id in frame_observations
     }
-    missing_reference = [
-        marker_id
-        for marker_id in HOMOGRAPHY_MARKER_IDS
-        if marker_id not in seen_ids
-    ]
-    if missing_reference:
-        raise RuntimeError(
-            "homography marker(s) never detected: {}".format(
-                missing_reference
+    if target_corners_override is None:
+        missing_reference = [
+            marker_id
+            for marker_id in HOMOGRAPHY_MARKER_IDS
+            if marker_id not in seen_ids
+        ]
+        if missing_reference:
+            raise RuntimeError(
+                "homography marker(s) never detected: {}".format(
+                    missing_reference
+                )
             )
-        )
+    elif len(seen_ids.intersection(FIXED_ORDER)) < 3:
+        raise RuntimeError("fewer than three layout markers were ever detected")
 
     if target_corners_override is None:
         far = float(canonical_size) - marker_margin
@@ -416,9 +419,18 @@ def build_calibrations(
             for marker_id in FIXED_ORDER
             if marker_id in frame_observations
         )
+        calibration_marker_ids = tuple(
+            marker_id
+            for marker_id in (
+                FIXED_ORDER
+                if target_corners_override is not None
+                else HOMOGRAPHY_MARKER_IDS
+            )
+            if marker_id in target_corners
+        )
         homography_ids = tuple(
             marker_id
-            for marker_id in HOMOGRAPHY_MARKER_IDS
+            for marker_id in calibration_marker_ids
             if marker_id in frame_observations
         )
         for marker_id in homography_ids:
@@ -431,7 +443,7 @@ def build_calibrations(
         inlier_corner_count = 0
         inlier_marker_count = 0
         used_previous_homography = False
-        if len(homography_ids) == len(HOMOGRAPHY_MARKER_IDS):
+        if len(homography_ids) >= 3:
             source_array = np.float32(source_points)
             destination_array = np.float32(destination_points)
             candidate_homography, inlier_mask = cv2.findHomography(
@@ -464,6 +476,51 @@ def build_calibrations(
                 residuals = np.linalg.norm(projected - destination_array, axis=1)
                 residuals = residuals[inliers]
                 rmse = float(np.sqrt(np.mean(np.square(residuals))))
+
+        # A measured layout fixes the marker centers independently of the
+        # detected black-square edge.  Lens distortion and a coloured printed
+        # border can make the apparent edge scale differ by several pixels at
+        # opposite corners of a wide phone-camera view.  When that defeats the
+        # stricter corner RANSAC, four marker centers still define the maze
+        # plane without depending on the apparent marker side length.
+        if (
+            homography is None
+            and target_corners_override is not None
+            and len(calibration_marker_ids) == 4
+            and all(
+                marker_id in frame_observations
+                for marker_id in calibration_marker_ids
+            )
+        ):
+            source_centers = np.float32(
+                [
+                    np.mean(frame_observations[marker_id], axis=0)
+                    for marker_id in calibration_marker_ids
+                ]
+            )
+            destination_centers = np.float32(
+                [
+                    np.mean(target_corners[marker_id], axis=0)
+                    for marker_id in calibration_marker_ids
+                ]
+            )
+            candidate_homography = cv2.getPerspectiveTransform(
+                source_centers,
+                destination_centers,
+            )
+            if np.all(np.isfinite(candidate_homography)):
+                projected = cv2.perspectiveTransform(
+                    source_centers[np.newaxis],
+                    candidate_homography,
+                )[0]
+                residuals = np.linalg.norm(
+                    projected - destination_centers,
+                    axis=1,
+                )
+                homography = candidate_homography
+                rmse = float(np.sqrt(np.mean(np.square(residuals))))
+                inlier_corner_count = 4
+                inlier_marker_count = 4
 
         if homography is None:
             if previous_homography is None:

@@ -70,6 +70,25 @@ class BoardLayoutTest(unittest.TestCase):
         self.assertTrue(all(item.reprojection_rmse_px < 1e-3 for item in calibrations))
         np.testing.assert_allclose(targets[5], layout.target_corners_px[5])
 
+    def test_measured_layout_accepts_any_three_visible_markers(self):
+        layout = board_layout.load(
+            VISION_ROOT / "board_layout_4x4_example.json",
+            900,
+        )
+        visible = {
+            marker_id: corners * 0.8 + np.asarray([100.0, 40.0])
+            for marker_id, corners in layout.target_corners_px.items()
+            if marker_id != 5
+        }
+        calibrations, _ = aruco.build_calibrations(
+            [visible for _ in range(5)],
+            900,
+            50.0,
+            layout.target_corners_px,
+        )
+        self.assertTrue(all(not item.used_previous_homography for item in calibrations))
+        self.assertTrue(all(item.inlier_marker_count == 3 for item in calibrations))
+
     def test_fixed_camera_can_allow_bounded_marker_occlusion(self):
         layout = board_layout.load(
             VISION_ROOT / "board_layout_4x4_example.json",
@@ -100,6 +119,41 @@ class BoardLayoutTest(unittest.TestCase):
             sum(item.used_previous_homography for item in calibrations),
             8,
         )
+
+    def test_measured_layout_falls_back_to_four_marker_centers(self):
+        layout = board_layout.load(
+            VISION_ROOT / "board_layout_4x4_example.json",
+            900,
+        )
+        scale_by_id = {5: 0.65, 7: 1.20, 4: 1.45, 6: 0.85}
+        visible = {}
+        for marker_id, corners in layout.target_corners_px.items():
+            center = np.mean(corners, axis=0)
+            visible[marker_id] = center + (corners - center) * scale_by_id[marker_id]
+
+        calibrations, _ = aruco.build_calibrations(
+            [visible for _ in range(5)],
+            900,
+            50.0,
+            layout.target_corners_px,
+        )
+
+        self.assertTrue(all(not item.used_previous_homography for item in calibrations))
+        self.assertTrue(all(item.inlier_corner_count == 4 for item in calibrations))
+        source_centers = np.float32(
+            [np.mean(visible[marker_id], axis=0) for marker_id in aruco.FIXED_ORDER]
+        )
+        expected_centers = np.float32(
+            [
+                np.mean(layout.target_corners_px[marker_id], axis=0)
+                for marker_id in aruco.FIXED_ORDER
+            ]
+        )
+        projected = aruco.cv2.perspectiveTransform(
+            source_centers[np.newaxis],
+            calibrations[0].homography,
+        )[0]
+        np.testing.assert_allclose(projected, expected_centers, atol=1e-3)
 
     def test_duplicate_json_keys_are_rejected(self):
         source = (VISION_ROOT / "board_layout_4x4_example.json").read_text(

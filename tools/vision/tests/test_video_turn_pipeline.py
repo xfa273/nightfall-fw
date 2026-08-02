@@ -200,6 +200,25 @@ class TurnCoordinateTest(unittest.TestCase):
 
 @unittest.skipUnless(MARKERLESS is not None, "OpenCV contrib is unavailable")
 class MarkerlessSafetyGateTest(unittest.TestCase):
+    def test_tracker_prediction_advances_across_missing_frames(self):
+        predicted = MARKERLESS._predict_tracker_position(
+            np.asarray([100.0, 200.0]),
+            np.asarray([-3.0, 1.5]),
+            observed_frame=20,
+            frame_index=27,
+        )
+        np.testing.assert_allclose(predicted, [79.0, 210.5])
+
+    def test_tracker_velocity_uses_elapsed_observation_frames(self):
+        updated = MARKERLESS._update_tracker_velocity(
+            np.asarray([-3.0, 0.0]),
+            np.asarray([100.0, 200.0]),
+            np.asarray([82.0, 206.0]),
+            previous_frame=20,
+            frame_index=26,
+        )
+        np.testing.assert_allclose(updated, [-3.0, 0.35])
+
     def test_invalid_ffprobe_timestamps_are_not_silently_retimed(self):
         completed = argparse.Namespace(
             returncode=0,
