@@ -288,11 +288,15 @@ matrixのTSVは実行ごとの一時ファイルへ書き、全gate通過後に�
 
 ## F413非走行preview
 
-F413にはUART `K`として、保存済みFRAM迷路を読み、同じKERI #1〜#5トポロジと
-時間契約で経路を導出する非走行previewを追加した。F413で調整済みなのはmode2だけ
-なので、previewもmode2/case8固定である。ゴールは過去16x16迷路の比較用に中央2x2
-をdiagnostic専用値として使う。走行・探索用の`GOAL1..9`とは独立し、FRAMにも保存
-しない。UART出力は`goal-source=diagnostic-center-2x2`を明記する。
+F413にはUART `K`として、同じKERI #1〜#5トポロジと時間契約で経路を導出する
+非走行previewを追加した。保存済みFRAM迷路を正常に読めた場合は必ずそれを使い、
+read失敗時だけ固定revision `762ed2b68735ea29148c6a1251a90ed0651ff26b` の
+`16MM2014CX.maze` 256-cell wall nibbleをprogram Flashから使う。このfallbackはFRAMを
+seed/saveせず、UARTへ`maze-source=builtin-16MM2014CX`、`data-rev`、
+`fram-load=fail`を明記する。F413で調整済みなのはmode2だけなので、previewも
+mode2/case8固定である。ゴールは過去16x16迷路の比較用に中央2x2をdiagnostic専用値
+として使う。走行・探索用の`GOAL1..9`とは独立し、FRAMにも保存しない。UART出力は
+`goal-source=diagnostic-center-2x2`を明記する。
 
 PC版の動的メモリをそのまま持ち込まず、16x16の2944 poseと、mode2で必要な
 NOMINAL/LOW/CRAWLの3速度に限定した8832状態を固定長で扱う。auto traceが停止中に限り

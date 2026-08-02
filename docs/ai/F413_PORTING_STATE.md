@@ -25,11 +25,13 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Trace log schema is v6: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00060000`.
 - F413 reuses F405 solver/path/maze logic through `f413_solver_bridge.c`.
 - `tools/solver_host` can run solver and exploration simulation on the host.
-- UART `K` provides a read-only, non-motor mode2/case8 preview of the saved
-  FRAM maze using strict KERI shortest-turn patterns #1--#5 and a diagnostic
-  16x16 centre 2x2 goal independent of the compiled exploration goal.  It
-  reports the typed route and first-goal-entry time but is not connected to a
-  runner.
+- UART `K` provides a read-only, non-motor mode2/case8 preview using strict
+  KERI shortest-turn patterns #1--#5 and a diagnostic 16x16 centre 2x2 goal
+  independent of the compiled exploration goal.  A successfully loaded FRAM
+  maze always has priority; only when that read fails, the preview uses the
+  pinned 16MM2014CX wall-nibble fixture from program Flash without saving it
+  to FRAM.  UART identifies the selected source and reports the typed route
+  and first-goal-entry time, but the preview is not connected to a runner.
 - F413 OP UI has F405-style mode/case/sub selection and UART `P`/`E` wrappers.
 - F413 run-session helpers and safe trace sessions have been split into `f413_run_session.c`.
 - Recent refactors split F413 helpers/diagnostics/UI/run-session code out of `main.c`.
@@ -63,9 +65,11 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   - F413 run-hook trace capture service and guarded idle-scratch lease used by
     foreground-only route preview.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_preview.c`
-  - Fixed-memory strict KERI #1--#5 time-based route preview; reads FRAM maze,
-    uses a non-persistent diagnostic centre 2x2 goal, never starts
-    motor/fan/run execution, and emits the selected action list.
+  - Fixed-memory strict KERI #1--#5 time-based route preview; prefers the FRAM
+    maze and falls back after a failed read to the pinned built-in
+    16MM2014CX fixture, uses a non-persistent diagnostic centre 2x2 goal,
+    never starts motor/fan/run execution or writes NVM, and emits the selected
+    action list.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_trace_diag.c`
   - Trace dump/selftest/CSV/bin diagnostic output.
 - `nvm/nvm.c`
