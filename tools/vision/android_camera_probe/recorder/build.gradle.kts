@@ -11,8 +11,8 @@ android {
         applicationId = "com.nightfall.hfrrecorder"
         minSdk = 31
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.3.4"
+        versionCode = 9
+        versionName = "0.3.6"
     }
 
     buildTypes {

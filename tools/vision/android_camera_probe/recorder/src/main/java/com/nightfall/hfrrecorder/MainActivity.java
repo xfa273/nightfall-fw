@@ -423,13 +423,12 @@ public final class MainActivity extends Activity {
                 opticalDetector.rearm();
                 recorder.noteMotionGate(
                         nowNs,
-                        motion.displacementPx,
-                        motion.targetPixels
+                        motion.changedPixels
                 );
                 setStatus(
                         String.format(
-                                "Motion %.1fpx detected; STOP 4-pulse armed",
-                                motion.displacementPx
+                                "Motion detected (%d changed px); STOP 4-pulse armed",
+                                motion.changedPixels
                         ),
                         true
                 );
@@ -440,11 +439,10 @@ public final class MainActivity extends Activity {
                 lastOpticalStatusNs = nowNs;
                 setStatus(
                         String.format(
-                                "REC MOVE: phase=%s visible=%s px=%d d=%.1f LED=%s",
+                                "REC MOVE: phase=%s baseline=%s changed=%d LED=%s",
                                 motion.phase,
-                                motion.targetVisible ? "yes" : "no",
-                                motion.targetPixels,
-                                motion.displacementPx,
+                                motion.baselineReady ? "yes" : "no",
+                                motion.changedPixels,
                                 result.phase
                         ),
                         true

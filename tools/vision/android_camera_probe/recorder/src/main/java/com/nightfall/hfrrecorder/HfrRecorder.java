@@ -363,8 +363,7 @@ final class HfrRecorder {
     private int opticalStartCenterX;
     private int opticalStartCenterY;
     private long opticalMotionDetectedElapsedNs;
-    private double opticalMotionDisplacementPx;
-    private int opticalMotionTargetPixels;
+    private int opticalMotionChangedPixels;
     private int opticalStopScore;
     private int opticalStopHotPixels;
     private int opticalStopThreshold;
@@ -416,8 +415,7 @@ final class HfrRecorder {
         opticalStartCenterX = -1;
         opticalStartCenterY = -1;
         opticalMotionDetectedElapsedNs = 0;
-        opticalMotionDisplacementPx = 0.0;
-        opticalMotionTargetPixels = 0;
+        opticalMotionChangedPixels = 0;
         opticalStopScore = 0;
         opticalStopHotPixels = 0;
         opticalStopThreshold = 0;
@@ -498,8 +496,7 @@ final class HfrRecorder {
 
     void noteMotionGate(
             long detectedElapsedNs,
-            double displacementPx,
-            int targetPixels
+            int changedPixels
     ) {
         if (!active.get()
                 || stopping.get()
@@ -508,8 +505,7 @@ final class HfrRecorder {
             return;
         }
         opticalMotionDetectedElapsedNs = detectedElapsedNs;
-        opticalMotionDisplacementPx = displacementPx;
-        opticalMotionTargetPixels = targetPixels;
+        opticalMotionChangedPixels = changedPixels;
     }
 
     void triggerStop(
@@ -1278,14 +1274,16 @@ final class HfrRecorder {
         );
         opticalTrigger.put(
                 "motion_displacement_px",
-                opticalMotionDetectedElapsedNs > 0
-                        ? opticalMotionDisplacementPx
-                        : JSONObject.NULL
+                JSONObject.NULL
         );
         opticalTrigger.put(
                 "motion_target_pixels",
-                opticalMotionTargetPixels > 0
-                        ? opticalMotionTargetPixels
+                JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "motion_changed_pixels",
+                opticalMotionDetectedElapsedNs > 0
+                        ? opticalMotionChangedPixels
                         : JSONObject.NULL
         );
         opticalTrigger.put(

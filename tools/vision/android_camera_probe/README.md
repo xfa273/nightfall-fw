@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.3.4` of
+The collector installs version `0.3.6` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -145,12 +145,14 @@ START/STOP pair. The start token is decoded while the preview-only request is
 running; MediaRecorder is enabled before the firmware's final LED pulse and
 300 ms guard complete. The stop token leaves a default 900 ms video tail.
 `hfr_report.json` records both optical detection times and the delay from start
-detection to MediaRecorder start. Version 0.3.4 also requires the green machine
-body to move at least 6 preview pixels for three consecutive samples before it
-arms the four-pulse STOP decoder. If the body cannot be tracked, the gate fails
-closed and recording continues to the 60-second limit. The report records the
-accepted token length, LED-triangle center, body displacement, blue-chroma
-score, hot-pixel count, effective threshold, and matched LED count.
+detection to MediaRecorder start. Version 0.3.6 averages a local START-region
+baseline after the final flash settles, then requires at least 120 changed
+preview pixels for three consecutive samples before it arms the four-pulse
+STOP decoder. Blue status-LED pixels and blue-dominant changes are excluded,
+so the gate does not depend on the PCB's weak, illumination-dependent green
+saturation. A frame-wide illumination change is also rejected. The report
+records the accepted token length, LED-triangle center, changed-pixel count,
+blue-chroma score, hot-pixel count, effective threshold, and matched LED count.
 
 The 2026-08-01 stationary Pixel 8 integration trial completed without the
 external lamp: start detection to recording was 28.1 ms, stop detection to
