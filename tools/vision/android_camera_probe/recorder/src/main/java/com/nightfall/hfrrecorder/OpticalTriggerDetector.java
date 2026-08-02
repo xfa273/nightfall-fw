@@ -1,12 +1,12 @@
 package com.nightfall.hfrrecorder;
 
 /**
- * Detects the three-pulse visible-LED token emitted by the F413 firmware.
+ * Detects a configurable visible-LED token emitted by the F413 firmware.
  *
  * <p>Only rising edges are decoded. Consecutive preview frames are compared,
  * then all three spatially separated status LEDs must rise simultaneously on
- * each of three pulses about 500 ms apart. The same LED triangle must be found
- * in all three pulses. Restricting the signal to this blue-chroma geometry
+ * each pulse about 500 ms apart. The same LED triangle must be found in every
+ * pulse. Restricting the signal to this blue-chroma geometry
  * rejects white illumination changes, hands moving through the frame, and
  * ordinary single-LED UI activity. A short calibration period derives a
  * threshold from real preview noise. This class has no Android dependencies
@@ -47,6 +47,10 @@ final class OpticalTriggerDetector {
         final int hotPixels;
         final int threshold;
         final int matchedLeds;
+        final int centerX;
+        final int centerY;
+        final int acceptedRises;
+        final int requiredRises;
         final String phase;
 
         Result(
@@ -55,6 +59,10 @@ final class OpticalTriggerDetector {
                 int hotPixels,
                 int threshold,
                 int matchedLeds,
+                int centerX,
+                int centerY,
+                int acceptedRises,
+                int requiredRises,
                 String phase
         ) {
             this.triggered = triggered;
@@ -62,6 +70,10 @@ final class OpticalTriggerDetector {
             this.hotPixels = hotPixels;
             this.threshold = threshold;
             this.matchedLeds = matchedLeds;
+            this.centerX = centerX;
+            this.centerY = centerY;
+            this.acceptedRises = acceptedRises;
+            this.requiredRises = requiredRises;
             this.phase = phase;
         }
     }
@@ -71,15 +83,9 @@ final class OpticalTriggerDetector {
         final int[] y = new int[3];
     }
 
-    private enum Phase {
-        CALIBRATING,
-        WAIT_FIRST_RISE,
-        WAIT_SECOND_RISE,
-        WAIT_THIRD_RISE
-    }
-
     private final int configuredScoreThreshold;
     private final int hotPixelThreshold;
+    private int requiredRises;
     private int[] previous;
     private int width;
     private int height;
@@ -98,12 +104,20 @@ final class OpticalTriggerDetector {
     private long calibrationStartedNs = -1L;
     private boolean calibrationComplete;
     private int effectiveScoreThreshold;
-    private Phase phase = Phase.CALIBRATING;
+    private int acceptedRises;
     private long lastRiseNs;
     private final int[] candidateLedX = new int[3];
     private final int[] candidateLedY = new int[3];
 
     OpticalTriggerDetector(int scoreThreshold, int hotPixelThreshold) {
+        this(scoreThreshold, hotPixelThreshold, 3);
+    }
+
+    OpticalTriggerDetector(
+            int scoreThreshold,
+            int hotPixelThreshold,
+            int requiredRises
+    ) {
         if (scoreThreshold < 1 || hotPixelThreshold < 1) {
             throw new IllegalArgumentException(
                     "optical trigger thresholds must be positive"
@@ -112,6 +126,17 @@ final class OpticalTriggerDetector {
         configuredScoreThreshold = scoreThreshold;
         effectiveScoreThreshold = scoreThreshold;
         this.hotPixelThreshold = hotPixelThreshold;
+        setRequiredRises(requiredRises);
+    }
+
+    void setRequiredRises(int value) {
+        if (value < 2 || value > 8) {
+            throw new IllegalArgumentException(
+                    "required optical rises must be in 2..8"
+            );
+        }
+        requiredRises = value;
+        resetSequence();
     }
 
     void reset() {
@@ -128,16 +153,12 @@ final class OpticalTriggerDetector {
         calibrationStartedNs = -1L;
         calibrationComplete = false;
         effectiveScoreThreshold = configuredScoreThreshold;
-        phase = Phase.CALIBRATING;
         resetSequence();
     }
 
     void rearm() {
         previous = null;
         resetSequence();
-        phase = calibrationComplete
-                ? Phase.WAIT_FIRST_RISE
-                : Phase.CALIBRATING;
     }
 
     Result process(int[] pixels, int frameWidth, int frameHeight, long nowNs) {
@@ -200,7 +221,7 @@ final class OpticalTriggerDetector {
             }
         }
 
-        if (phase == Phase.CALIBRATING) {
+        if (!calibrationComplete) {
             long calibrationElapsedNs = nowNs - calibrationStartedNs;
             if (calibrationElapsedNs >= CALIBRATION_WARMUP_NS) {
                 addCalibrationScore(bestScore);
@@ -209,7 +230,6 @@ final class OpticalTriggerDetector {
                     >= CALIBRATION_WARMUP_NS + CALIBRATION_SAMPLE_NS) {
                 finishCalibration();
                 calibrationComplete = true;
-                phase = Phase.WAIT_FIRST_RISE;
             }
             return result(false, bestScore, bestHotPixels);
         }
@@ -229,7 +249,7 @@ final class OpticalTriggerDetector {
                 || nowNs - lastRiseNs >= RISE_REFRACTORY_NS)) {
             triggered = acceptRise(pulse, nowNs);
         }
-        if (phase != Phase.WAIT_FIRST_RISE
+        if (acceptedRises != 0
                 && nowNs - lastRiseNs > RISE_GAP_MAX_NS) {
             resetSequence();
         }
@@ -237,7 +257,7 @@ final class OpticalTriggerDetector {
                 triggered,
                 bestScore,
                 bestHotPixels,
-                pulse == null ? 0 : 3
+                pulse
         );
     }
 
@@ -437,10 +457,10 @@ final class OpticalTriggerDetector {
     }
 
     private boolean acceptRise(Pulse pulse, long nowNs) {
-        if (phase == Phase.WAIT_FIRST_RISE) {
+        if (acceptedRises == 0) {
             rememberCandidate(pulse);
             lastRiseNs = nowNs;
-            phase = Phase.WAIT_SECOND_RISE;
+            acceptedRises = 1;
             return false;
         }
 
@@ -451,13 +471,13 @@ final class OpticalTriggerDetector {
         if (gapNs > RISE_GAP_MAX_NS || !matchesCandidate(pulse)) {
             rememberCandidate(pulse);
             lastRiseNs = nowNs;
-            phase = Phase.WAIT_SECOND_RISE;
+            acceptedRises = 1;
             return false;
         }
 
         lastRiseNs = nowNs;
-        if (phase == Phase.WAIT_SECOND_RISE) {
-            phase = Phase.WAIT_THIRD_RISE;
+        acceptedRises += 1;
+        if (acceptedRises < requiredRises) {
             return false;
         }
         resetSequence();
@@ -489,32 +509,51 @@ final class OpticalTriggerDetector {
     }
 
     private Result result(boolean triggered, int score, int hotPixels) {
-        return result(triggered, score, hotPixels, 0);
+        return result(triggered, score, hotPixels, null);
     }
 
     private Result result(
             boolean triggered,
             int score,
             int hotPixels,
-            int matchedLeds
+            Pulse pulse
     ) {
+        int centerX = -1;
+        int centerY = -1;
+        if (pulse != null) {
+            centerX = (pulse.x[0] + pulse.x[1] + pulse.x[2] + 1) / 3;
+            centerY = (pulse.y[0] + pulse.y[1] + pulse.y[2] + 1) / 3;
+        }
         return new Result(
                 triggered,
                 score,
                 hotPixels,
                 effectiveScoreThreshold,
-                matchedLeds,
-                phase.name()
+                pulse == null ? 0 : 3,
+                centerX,
+                centerY,
+                acceptedRises,
+                requiredRises,
+                phaseName()
+        );
+    }
+
+    private String phaseName() {
+        if (!calibrationComplete) {
+            return "CALIBRATING";
+        }
+        return String.format(
+                "WAIT_RISE_%d_OF_%d",
+                acceptedRises + 1,
+                requiredRises
         );
     }
 
     private void resetSequence() {
         lastRiseNs = 0L;
+        acceptedRises = 0;
         java.util.Arrays.fill(candidateLedX, -1);
         java.util.Arrays.fill(candidateLedY, -1);
-        if (phase != Phase.CALIBRATING) {
-            phase = Phase.WAIT_FIRST_RISE;
-        }
     }
 
     private static int blueChroma(int argb) {

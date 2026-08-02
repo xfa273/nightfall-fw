@@ -84,6 +84,17 @@ public final class OpticalTriggerDetectorHostTest {
         nowNs = feedAtOffset(detector, frame, nowNs, true, 12, 20, false);
         nowNs = feed(detector, frame, nowNs, false, 8, false);
         feedAtOffset(detector, frame, nowNs, true, 24, 0, false);
+
+        detector = new OpticalTriggerDetector(180, 2, 4);
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feed(detector, frame, nowNs, true, 24, true);
         System.out.println("OpticalTriggerDetectorHostTest PASS");
     }
 

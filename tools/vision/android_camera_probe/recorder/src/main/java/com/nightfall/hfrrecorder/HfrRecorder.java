@@ -359,10 +359,17 @@ final class HfrRecorder {
     private int opticalStartHotPixels;
     private int opticalStartThreshold;
     private int opticalStartMatchedLeds;
+    private int opticalStartRequiredRises;
+    private int opticalStartCenterX;
+    private int opticalStartCenterY;
+    private long opticalMotionDetectedElapsedNs;
+    private double opticalMotionDisplacementPx;
+    private int opticalMotionTargetPixels;
     private int opticalStopScore;
     private int opticalStopHotPixels;
     private int opticalStopThreshold;
     private int opticalStopMatchedLeds;
+    private int opticalStopRequiredRises;
     private int captureFailureCount;
     private File videoFile;
     private File videoTempFile;
@@ -405,10 +412,17 @@ final class HfrRecorder {
         opticalStartHotPixels = 0;
         opticalStartThreshold = 0;
         opticalStartMatchedLeds = 0;
+        opticalStartRequiredRises = 0;
+        opticalStartCenterX = -1;
+        opticalStartCenterY = -1;
+        opticalMotionDetectedElapsedNs = 0;
+        opticalMotionDisplacementPx = 0.0;
+        opticalMotionTargetPixels = 0;
         opticalStopScore = 0;
         opticalStopHotPixels = 0;
         opticalStopThreshold = 0;
         opticalStopMatchedLeds = 0;
+        opticalStopRequiredRises = 0;
         prepareOutputFiles();
         listener.onStatus(
                 String.format(
@@ -446,7 +460,10 @@ final class HfrRecorder {
             int score,
             int hotPixels,
             int threshold,
-            int matchedLeds
+            int matchedLeds,
+            int requiredRises,
+            int centerX,
+            int centerY
     ) {
         if (!active.get() || stopping.get()) {
             return;
@@ -460,6 +477,9 @@ final class HfrRecorder {
             opticalStartHotPixels = hotPixels;
             opticalStartThreshold = threshold;
             opticalStartMatchedLeds = matchedLeds;
+            opticalStartRequiredRises = requiredRises;
+            opticalStartCenterX = centerX;
+            opticalStartCenterY = centerY;
             opticalArmed = false;
             try {
                 /*
@@ -476,13 +496,30 @@ final class HfrRecorder {
         });
     }
 
+    void noteMotionGate(
+            long detectedElapsedNs,
+            double displacementPx,
+            int targetPixels
+    ) {
+        if (!active.get()
+                || stopping.get()
+                || !mediaRecorderStarted
+                || opticalMotionDetectedElapsedNs != 0L) {
+            return;
+        }
+        opticalMotionDetectedElapsedNs = detectedElapsedNs;
+        opticalMotionDisplacementPx = displacementPx;
+        opticalMotionTargetPixels = targetPixels;
+    }
+
     void triggerStop(
             long detectedElapsedNs,
             int tailMs,
             int score,
             int hotPixels,
             int threshold,
-            int matchedLeds
+            int matchedLeds,
+            int requiredRises
     ) {
         if (!active.get()
                 || stopping.get()
@@ -495,6 +532,7 @@ final class HfrRecorder {
         opticalStopHotPixels = hotPixels;
         opticalStopThreshold = threshold;
         opticalStopMatchedLeds = matchedLeds;
+        opticalStopRequiredRises = requiredRises;
         mainHandler.postAtTime(
                 this::stop,
                 this,
@@ -1215,6 +1253,42 @@ final class HfrRecorder {
                         : JSONObject.NULL
         );
         opticalTrigger.put(
+                "start_required_rises",
+                opticalStartRequiredRises > 0
+                        ? opticalStartRequiredRises
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_center_x",
+                opticalStartCenterX >= 0
+                        ? opticalStartCenterX
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_center_y",
+                opticalStartCenterY >= 0
+                        ? opticalStartCenterY
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "motion_detected_elapsed_realtime_ns",
+                opticalMotionDetectedElapsedNs > 0
+                        ? opticalMotionDetectedElapsedNs
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "motion_displacement_px",
+                opticalMotionDetectedElapsedNs > 0
+                        ? opticalMotionDisplacementPx
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "motion_target_pixels",
+                opticalMotionTargetPixels > 0
+                        ? opticalMotionTargetPixels
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
                 "stop_detected_elapsed_realtime_ns",
                 opticalStopDetectedElapsedNs > 0
                         ? opticalStopDetectedElapsedNs
@@ -1248,6 +1322,12 @@ final class HfrRecorder {
                 "stop_matched_leds",
                 opticalStopMatchedLeds > 0
                         ? opticalStopMatchedLeds
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_required_rises",
+                opticalStopRequiredRises > 0
+                        ? opticalStopRequiredRises
                         : JSONObject.NULL
         );
         report.put("optical_trigger", opticalTrigger);

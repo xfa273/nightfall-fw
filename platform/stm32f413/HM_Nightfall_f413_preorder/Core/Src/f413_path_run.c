@@ -364,7 +364,7 @@ static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn(float angle_d
 static void f413_path_run_trace_on_run_start(void)
 {
   trace_printf("[VIDEO-SYNC] optical START 3-pulse token\r\n");
-  f413_hw_emit_video_sync_pattern();
+  f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
   f413_trace_log_auto_start();
@@ -375,8 +375,8 @@ static void f413_path_run_trace_on_run_stop(void)
   trace_printf("[TRACE-LOG] run-hook: stop tail=%u ms\r\n",
                (unsigned int)F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
   f413_trace_log_auto_stop_after_tail(F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
-  trace_printf("[VIDEO-SYNC] optical STOP 3-pulse token\r\n");
-  f413_hw_emit_video_sync_pattern();
+  trace_printf("[VIDEO-SYNC] optical STOP 4-pulse token\r\n");
+  f413_hw_emit_video_sync_stop_pattern();
 }
 
 static f413_run_session_abort_reason_t f413_path_run_wait_ctrl_target(

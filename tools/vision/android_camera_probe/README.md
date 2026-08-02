@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.3.3` of
+The collector installs version `0.3.4` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -121,14 +121,15 @@ for a recording-surface-only diagnostic.
 ## F413 optical-trigger capture
 
 The recorder can arm a preview-only high-speed session and wait for the F413
-mouse to emit its visible-LED token. The firmware drives all three status LEDs
-with a 300 ms ON, 200 ms OFF, 300 ms ON, 200 ms OFF, 600 ms ON pattern. It
-emits one token before starting the trace/motion and another after stopping.
+mouse to emit its visible-LED token. The START token drives all three status
+LEDs three times; STOP drives them four times. Each rise is 500 ms apart, with
+300 ms ordinary pulses and a 600 ms final pulse. Separate token lengths prevent
+a late START token from being consumed as STOP after an earlier false START.
 The Pixel compares consecutive preview frames, discards the first 0.8 seconds
 while auto exposure settles, calibrates local preview noise for 1.2 seconds,
 and requires three spatially separated blue status LEDs to rise together on
-each pulse. The same LED triangle must repeat three times at the expected
-spacing. White illumination changes, hands moving through the frame, and
+each pulse. The same LED triangle must repeat at the expected spacing. White
+illumination changes, hands moving through the frame, and
 ordinary single-LED UI activity are therefore not accepted as a token.
 
 Arm and collect one run with:
@@ -144,9 +145,12 @@ START/STOP pair. The start token is decoded while the preview-only request is
 running; MediaRecorder is enabled before the firmware's final LED pulse and
 300 ms guard complete. The stop token leaves a default 900 ms video tail.
 `hfr_report.json` records both optical detection times and the delay from start
-detection to MediaRecorder start. Version 0.3.3 also records the accepted
-blue-chroma score, hot-pixel count, effective threshold, and matched LED count
-for both tokens.
+detection to MediaRecorder start. Version 0.3.4 also requires the green machine
+body to move at least 6 preview pixels for three consecutive samples before it
+arms the four-pulse STOP decoder. If the body cannot be tracked, the gate fails
+closed and recording continues to the 60-second limit. The report records the
+accepted token length, LED-triangle center, body displacement, blue-chroma
+score, hot-pixel count, effective threshold, and matched LED count.
 
 The 2026-08-01 stationary Pixel 8 integration trial completed without the
 external lamp: start detection to recording was 28.1 ms, stop detection to
@@ -159,10 +163,12 @@ quality; illuminate the maze for moving runs and repeat this test after the
 final camera/light installation is fixed.
 
 No UART connection to the mouse is used during a floor run. While developing
-with a wired and stationary mouse, UART `;` emits one token without starting
-the motors, allowing the optical path to be tested twice for START and STOP.
+with a wired and stationary mouse, UART `;` emits START (three pulses) and UART
+`,` emits STOP (four pulses), both without starting the motors. A stationary
+test can validate token decoding, but the motion gate intentionally requires
+the mouse body to be moved by hand before the STOP decoder is armed.
 The mouse and its three visible status LEDs must be inside the Pixel frame.
-After arming, wait until the screen reports `WAIT_FIRST_RISE` before starting
+After arming, wait until the screen reports `WAIT_RISE_1_OF_3` before starting
 the mouse so the preview-noise calibration is complete.
 
 The thresholds can be overridden for a measured installation:

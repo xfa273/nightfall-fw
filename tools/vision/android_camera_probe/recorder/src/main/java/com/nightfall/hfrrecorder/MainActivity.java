@@ -56,8 +56,12 @@ public final class MainActivity extends Activity {
     private boolean autoPending;
     private HfrRecorder.Config activeConfig;
     private OpticalTriggerDetector opticalDetector;
+    private MotionGateDetector motionGateDetector;
     private boolean opticalDetectionEnabled;
     private boolean opticalWaitingForStart;
+    private boolean opticalWaitingForMotion;
+    private int opticalStartCenterX = -1;
+    private int opticalStartCenterY = -1;
     private long lastOpticalSampleNs;
     private long lastOpticalStatusNs;
     private int[] opticalPixels;
@@ -256,6 +260,9 @@ public final class MainActivity extends Activity {
                     public void onArmed() {
                         runOnUiThread(() -> {
                             opticalWaitingForStart = true;
+                            opticalWaitingForMotion = false;
+                            opticalStartCenterX = -1;
+                            opticalStartCenterY = -1;
                             opticalDetectionEnabled = true;
                             lastOpticalSampleNs = 0L;
                             lastOpticalStatusNs = 0L;
@@ -273,12 +280,19 @@ public final class MainActivity extends Activity {
                             if (activeConfig != null
                                     && activeConfig.opticalTrigger) {
                                 opticalWaitingForStart = false;
+                                opticalWaitingForMotion = true;
                                 opticalDetectionEnabled = true;
                                 lastOpticalSampleNs = 0L;
                                 lastOpticalStatusNs = 0L;
                                 if (opticalDetector != null) {
+                                    opticalDetector.setRequiredRises(4);
                                     opticalDetector.rearm();
                                 }
+                                motionGateDetector = new MotionGateDetector();
+                                motionGateDetector.arm(
+                                        opticalStartCenterX,
+                                        opticalStartCenterY
+                                );
                             }
                             startButton.setEnabled(false);
                             stopButton.setEnabled(true);
@@ -312,8 +326,10 @@ public final class MainActivity extends Activity {
         if (config.opticalTrigger) {
             opticalDetector = new OpticalTriggerDetector(
                     config.opticalTriggerScore,
-                    config.opticalTriggerHotPixels
+                    config.opticalTriggerHotPixels,
+                    3
             );
+            motionGateDetector = null;
         } else {
             opticalDetector = null;
             opticalDetectionEnabled = false;
@@ -396,16 +412,61 @@ public final class MainActivity extends Activity {
                 OPTICAL_SAMPLE_HEIGHT,
                 nowNs
         );
+        if (!opticalWaitingForStart && opticalWaitingForMotion) {
+            MotionGateDetector.Result motion = motionGateDetector.process(
+                    opticalPixels,
+                    OPTICAL_SAMPLE_WIDTH,
+                    OPTICAL_SAMPLE_HEIGHT
+            );
+            if (motion.motionDetected) {
+                opticalWaitingForMotion = false;
+                opticalDetector.rearm();
+                recorder.noteMotionGate(
+                        nowNs,
+                        motion.displacementPx,
+                        motion.targetPixels
+                );
+                setStatus(
+                        String.format(
+                                "Motion %.1fpx detected; STOP 4-pulse armed",
+                                motion.displacementPx
+                        ),
+                        true
+                );
+                return;
+            }
+            if (nowNs - lastOpticalStatusNs
+                    >= OPTICAL_STATUS_INTERVAL_NS) {
+                lastOpticalStatusNs = nowNs;
+                setStatus(
+                        String.format(
+                                "REC MOVE: phase=%s visible=%s px=%d d=%.1f LED=%s",
+                                motion.phase,
+                                motion.targetVisible ? "yes" : "no",
+                                motion.targetPixels,
+                                motion.displacementPx,
+                                result.phase
+                        ),
+                        true
+                );
+            }
+            return;
+        }
         if (result.triggered) {
             opticalDetectionEnabled = false;
             if (opticalWaitingForStart) {
+                opticalStartCenterX = result.centerX;
+                opticalStartCenterY = result.centerY;
                 setStatus("LED START token detected; starting recorder...", true);
                 recorder.triggerRecording(
                         nowNs,
                         result.score,
                         result.hotPixels,
                         result.threshold,
-                        result.matchedLeds
+                        result.matchedLeds,
+                        result.requiredRises,
+                        result.centerX,
+                        result.centerY
                 );
             } else {
                 setStatus("LED STOP token detected; saving tail...", true);
@@ -415,7 +476,8 @@ public final class MainActivity extends Activity {
                         result.score,
                         result.hotPixels,
                         result.threshold,
-                        result.matchedLeds
+                        result.matchedLeds,
+                        result.requiredRises
                 );
             }
         } else if (nowNs - lastOpticalStatusNs
@@ -423,13 +485,14 @@ public final class MainActivity extends Activity {
             lastOpticalStatusNs = nowNs;
             setStatus(
                     String.format(
-                            "%s LED: phase=%s score=%d/%d hot=%d matched=%d",
+                            "%s LED: phase=%s score=%d/%d hot=%d matched=%d token=%d",
                             opticalWaitingForStart ? "ARMED" : "REC",
                             result.phase,
                             result.score,
                             result.threshold,
                             result.hotPixels,
-                            result.matchedLeds
+                            result.matchedLeds,
+                            result.requiredRises
                     ),
                     true
             );

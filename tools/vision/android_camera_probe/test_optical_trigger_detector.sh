@@ -17,6 +17,10 @@ fi
 
 "$java_root/bin/javac" -d "$build_dir" \
   "$script_dir/recorder/src/main/java/com/nightfall/hfrrecorder/OpticalTriggerDetector.java" \
-  "$script_dir/host_tests/OpticalTriggerDetectorHostTest.java"
+  "$script_dir/recorder/src/main/java/com/nightfall/hfrrecorder/MotionGateDetector.java" \
+  "$script_dir/host_tests/OpticalTriggerDetectorHostTest.java" \
+  "$script_dir/host_tests/MotionGateDetectorHostTest.java"
 "$java_root/bin/java" -cp "$build_dir" \
   com.nightfall.hfrrecorder.OpticalTriggerDetectorHostTest
+"$java_root/bin/java" -cp "$build_dir" \
+  com.nightfall.hfrrecorder.MotionGateDetectorHostTest

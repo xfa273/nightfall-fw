@@ -1,10 +1,10 @@
 #include "f413_trace_log.h"
 
+#include "f413_trace_compact.h"
 #include "f413_trace_flags.h"
 #include "stm32f4xx_hal.h"
 #include "trace.h"
 
-#define F413_TRACE_LOG_AUTO_BUFFER_RECORDS (2048U)
 #define F413_TRACE_LOG_AUTO_FLUSH_RECORDS_PER_STEP (8U)
 #define F413_TRACE_LOG_AUTO_HEADER_COMMIT_RECORDS (8U)
 #define F413_TRACE_LOG_AUTO_FLAG (0x8000U)
@@ -13,12 +13,16 @@ static volatile uint8_t g_trace_log_auto_enabled = 0U;
 static uint32_t g_trace_log_auto_period_ms = 1U;
 static volatile uint32_t g_trace_log_auto_last_sample_ms = 0U;
 static volatile uint8_t g_trace_log_auto_last_sample_valid = 0U;
-static volatile uint32_t g_trace_log_auto_seq = 0U;
 static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
-static nvm_trace_log_record_t g_trace_log_auto_buffer[F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
+static f413_trace_compact_fast_t
+    g_trace_log_auto_fast_buffer[F413_TRACE_COMPACT_FAST_RECORDS];
+static f413_trace_compact_slow_t
+    g_trace_log_auto_slow_buffer[F413_TRACE_COMPACT_SLOW_RECORDS];
 static volatile uint32_t g_trace_log_auto_buffer_head = 0U;
 static volatile uint32_t g_trace_log_auto_buffer_tail = 0U;
 static volatile uint8_t g_trace_log_auto_buffer_overflow = 0U;
+static volatile uint32_t g_trace_log_auto_buffer_overflow_count = 0U;
+static volatile uint32_t g_trace_log_auto_compact_clipped_count = 0U;
 static nvm_trace_log_header_t g_trace_log_auto_nvm_header;
 static uint8_t g_trace_log_auto_nvm_header_valid = 0U;
 static uint32_t g_trace_log_auto_uncommitted_records = 0U;
@@ -28,6 +32,20 @@ static nvm_status_t g_trace_log_auto_nvm_status = NVM_STATUS_OK;
 static f413_trace_log_fill_control_sample_fn g_fill_control_sample = 0;
 static f413_trace_log_void_callback_t g_update_observe_cache = 0;
 static f413_trace_log_void_callback_t g_reset_observe_state = 0;
+
+static void f413_trace_log_auto_expand_record(uint32_t index,
+                                               nvm_trace_log_record_t* out)
+{
+  const f413_trace_compact_fast_t* fast =
+      &g_trace_log_auto_fast_buffer[index % F413_TRACE_COMPACT_FAST_RECORDS];
+  const f413_trace_compact_slow_t* slow =
+      &g_trace_log_auto_slow_buffer[
+          (index / F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS) %
+          F413_TRACE_COMPACT_SLOW_RECORDS];
+
+  /* Auto-sample sequence is identical to its monotonic staging index. */
+  f413_trace_compact_expand(fast, slow, index, out);
+}
 
 static bool f413_trace_log_auto_defer_nvm_flush(void)
 {
@@ -49,12 +67,12 @@ static nvm_status_t f413_trace_log_auto_flush_buffer(void)
 
   while (g_trace_log_auto_buffer_tail != g_trace_log_auto_buffer_head)
   {
-    nvm_trace_log_record_t* rec =
-        &g_trace_log_auto_buffer[g_trace_log_auto_buffer_tail % F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
+    nvm_trace_log_record_t rec;
     uint8_t commit_header =
         (g_trace_log_auto_uncommitted_records + 1U >= F413_TRACE_LOG_AUTO_HEADER_COMMIT_RECORDS) ? 1U : 0U;
 
-    st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, rec, commit_header);
+    f413_trace_log_auto_expand_record(g_trace_log_auto_buffer_tail, &rec);
+    st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, &rec, commit_header);
     if (st != NVM_STATUS_OK)
     {
       g_trace_log_auto_nvm_status = st;
@@ -86,7 +104,7 @@ static nvm_status_t f413_trace_log_auto_flush_buffer(void)
 
 static nvm_status_t f413_trace_log_auto_flush_step(void)
 {
-  nvm_trace_log_record_t* rec;
+  nvm_trace_log_record_t rec;
   nvm_status_t st;
   uint8_t commit_header;
 
@@ -101,10 +119,10 @@ static nvm_status_t f413_trace_log_auto_flush_step(void)
     return NVM_STATUS_INTEGRITY_ERROR;
   }
 
-  rec = &g_trace_log_auto_buffer[g_trace_log_auto_buffer_tail % F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
+  f413_trace_log_auto_expand_record(g_trace_log_auto_buffer_tail, &rec);
   commit_header =
       (g_trace_log_auto_uncommitted_records + 1U >= F413_TRACE_LOG_AUTO_HEADER_COMMIT_RECORDS) ? 1U : 0U;
-  st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, rec, commit_header);
+  st = nvm_trace_log_append_cached(&g_trace_log_auto_nvm_header, &rec, commit_header);
   if (st != NVM_STATUS_OK)
   {
     g_trace_log_auto_nvm_status = st;
@@ -189,11 +207,12 @@ void f413_trace_log_auto_start(void)
     return;
   }
 
-  g_trace_log_auto_seq = 0U;
   g_trace_log_auto_mode_flags = 0U;
   g_trace_log_auto_buffer_head = 0U;
   g_trace_log_auto_buffer_tail = 0U;
   g_trace_log_auto_buffer_overflow = 0U;
+  g_trace_log_auto_buffer_overflow_count = 0U;
+  g_trace_log_auto_compact_clipped_count = 0U;
   g_trace_log_auto_last_sample_ms = 0U;
   g_trace_log_auto_last_sample_valid = 0U;
   g_trace_log_auto_nvm_header_valid = 1U;
@@ -210,9 +229,13 @@ void f413_trace_log_auto_start(void)
     g_update_observe_cache();
   }
   g_trace_log_auto_enabled = 1U;
-  trace_printf("[TRACE-LOG] auto: START period=%lu ms cap=%lu rec (streaming FRAM)\r\n",
+  trace_printf("[TRACE-LOG] auto: START period=%lu ms cap=%lu rec staging=%u fast/%u slow@%ums\r\n",
                (unsigned long)g_trace_log_auto_period_ms,
-               (unsigned long)g_trace_log_auto_nvm_header.record_capacity);
+               (unsigned long)g_trace_log_auto_nvm_header.record_capacity,
+               (unsigned int)F413_TRACE_COMPACT_USABLE_RECORDS,
+               (unsigned int)F413_TRACE_COMPACT_SLOW_RECORDS,
+               (unsigned int)(F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS *
+                              g_trace_log_auto_period_ms));
 }
 
 void f413_trace_log_auto_stop(void)
@@ -254,13 +277,15 @@ void f413_trace_log_auto_stop(void)
     return;
   }
 
-  trace_printf("[TRACE-LOG] auto: STOP total=%lu stored=%lu pending_start=%lu flushed_start=%lu flushed_total=%lu overflow=%u nvm_error=%u\r\n",
+  trace_printf("[TRACE-LOG] auto: STOP total=%lu stored=%lu pending_start=%lu flushed_start=%lu flushed_total=%lu overflow=%u dropped=%lu compact_clipped=%lu nvm_error=%u\r\n",
                (unsigned long)header.total_records,
                (unsigned long)((header.total_records > header.record_capacity) ? header.record_capacity : header.total_records),
                (unsigned long)buffered,
                (unsigned long)flushed,
                (unsigned long)g_trace_log_auto_flushed_records,
                (unsigned int)overflow,
+               (unsigned long)g_trace_log_auto_buffer_overflow_count,
+               (unsigned long)g_trace_log_auto_compact_clipped_count,
                (unsigned int)nvm_error);
 }
 
@@ -318,10 +343,11 @@ void f413_trace_log_auto_step(void)
 
 void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms)
 {
-  nvm_trace_log_record_t* rec;
+  nvm_trace_log_record_t rec;
+  f413_trace_compact_fast_t* fast;
+  f413_trace_compact_slow_t* slow;
   uint32_t head;
   uint32_t tail;
-  uint32_t seq;
 
   if (g_trace_log_auto_enabled == 0U)
   {
@@ -341,16 +367,26 @@ void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms)
 
   head = g_trace_log_auto_buffer_head;
   tail = g_trace_log_auto_buffer_tail;
-  if ((head - tail) >= F413_TRACE_LOG_AUTO_BUFFER_RECORDS)
+  if ((head - tail) >= F413_TRACE_COMPACT_USABLE_RECORDS)
   {
     g_trace_log_auto_buffer_overflow = 1U;
+    g_trace_log_auto_buffer_overflow_count += 1U;
     return;
   }
 
-  seq = g_trace_log_auto_seq;
-  rec = &g_trace_log_auto_buffer[head % F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
-  g_fill_control_sample(rec, seq, timestamp_ms, g_trace_log_auto_mode_flags);
-  rec->flags |= (uint16_t)(F413_TRACE_LOG_AUTO_FLAG | g_trace_log_auto_mode_flags);
-  g_trace_log_auto_seq = seq + 1U;
+  g_fill_control_sample(&rec, head, timestamp_ms, g_trace_log_auto_mode_flags);
+  rec.flags |= (uint16_t)(F413_TRACE_LOG_AUTO_FLAG | g_trace_log_auto_mode_flags);
+  fast = &g_trace_log_auto_fast_buffer[head % F413_TRACE_COMPACT_FAST_RECORDS];
+  if (!f413_trace_compact_pack_fast(&rec, fast))
+  {
+    g_trace_log_auto_compact_clipped_count += 1U;
+  }
+  if ((head % F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS) == 0U)
+  {
+    slow = &g_trace_log_auto_slow_buffer[
+        (head / F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS) %
+        F413_TRACE_COMPACT_SLOW_RECORDS];
+    f413_trace_compact_pack_slow(&rec, slow);
+  }
   g_trace_log_auto_buffer_head = head + 1U;
 }
