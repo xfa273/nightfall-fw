@@ -50,7 +50,7 @@ for maze in $MAZES; do
   fi
 done
 
-printf 'profile\tcase\tmaze\tgoal_entry_us\torthogonal_goal_entry_us\timprovement_us\tactions\tdiagonal_actions\tzero_step_diagonal_turns\tlegacy_geometry\n' >"$RESULT_TMP"
+printf 'profile\tcase\tmaze\tstatus\tgoal_entry_us\torthogonal_goal_entry_us\timprovement_us\tactions\tdiagonal_actions\tzero_step_diagonal_turns\treduced_turns\tlow_turns\tcrawl_turns\tsmall90_actions\tlegacy_geometry\n' >"$RESULT_TMP"
 
 configurations=0
 failures=0
@@ -60,6 +60,11 @@ diagonal_routes=0
 legacy_compatible=0
 legacy_terminal_diagonal=0
 zero_step_diagonal_turns=0
+reduced_turns=0
+low_turns=0
+crawl_turns=0
+small90_actions=0
+no_feasible_terminal=0
 completed=0
 
 for profile in $PROFILES; do
@@ -77,8 +82,16 @@ for profile in $PROFILES; do
       status=$?
       set -e
       if [ "$status" -ne 0 ]; then
-        echo "$summary" >&2
-        failures=$((failures + 1))
+        if [ "$maze" = "32MM2009HX.maze" ] &&
+           printf '%s\n' "$summary" |
+             grep -q 'planner=no-feasible-terminal'; then
+          no_feasible_terminal=$((no_feasible_terminal + 1))
+          printf '%s\t%s\t%s\tno-feasible-terminal\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n' \
+            "$profile" "$case_index" "$maze" >>"$RESULT_TMP"
+        else
+          echo "$summary" >&2
+          failures=$((failures + 1))
+        fi
         continue
       fi
 
@@ -88,10 +101,16 @@ for profile in $PROFILES; do
       actions=$(printf '%s\n' "$summary" | sed -n 's/.* actions=\([0-9][0-9]*\).*/\1/p')
       diagonal_actions=$(printf '%s\n' "$summary" | sed -n 's/.* diagonal_actions=\([0-9][0-9]*\).*/\1/p')
       zero_step_turns=$(printf '%s\n' "$summary" | sed -n 's/.* zero_step_diagonal_turns=\([0-9][0-9]*\).*/\1/p')
+      reduced=$(printf '%s\n' "$summary" | sed -n 's/.* reduced_turns=\([0-9][0-9]*\).*/\1/p')
+      low=$(printf '%s\n' "$summary" | sed -n 's/.* low_turns=\([0-9][0-9]*\).*/\1/p')
+      crawl=$(printf '%s\n' "$summary" | sed -n 's/.* crawl_turns=\([0-9][0-9]*\).*/\1/p')
+      small90=$(printf '%s\n' "$summary" | sed -n 's/.* small90_actions=\([0-9][0-9]*\).*/\1/p')
       legacy_geometry=$(printf '%s\n' "$summary" | sed -n 's/.* legacy_geometry=\([^ ]*\).*/\1/p')
       if [ -z "$goal_entry" ] || [ -z "$orthogonal_entry" ] ||
          [ -z "$improvement" ] || [ -z "$actions" ] ||
          [ -z "$diagonal_actions" ] || [ -z "$zero_step_turns" ] ||
+         [ -z "$reduced" ] || [ -z "$low" ] || [ -z "$crawl" ] ||
+         [ -z "$small90" ] ||
          [ -z "$legacy_geometry" ]; then
         echo "failed to parse: $summary" >&2
         failures=$((failures + 1))
@@ -107,6 +126,10 @@ for profile in $PROFILES; do
         diagonal_routes=$((diagonal_routes + 1))
       fi
       zero_step_diagonal_turns=$((zero_step_diagonal_turns + zero_step_turns))
+      reduced_turns=$((reduced_turns + reduced))
+      low_turns=$((low_turns + low))
+      crawl_turns=$((crawl_turns + crawl))
+      small90_actions=$((small90_actions + small90))
       if [ "$legacy_geometry" = "ok" ]; then
         legacy_compatible=$((legacy_compatible + 1))
       elif [ "$legacy_geometry" = "terminal-diagonal-unsupported" ]; then
@@ -116,10 +139,11 @@ for profile in $PROFILES; do
         failures=$((failures + 1))
         continue
       fi
-      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+      printf '%s\t%s\t%s\tok\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
         "$profile" "$case_index" "$maze" "$goal_entry" \
         "$orthogonal_entry" "$improvement" "$actions" \
-        "$diagonal_actions" "$zero_step_turns" "$legacy_geometry" >>"$RESULT_TMP"
+        "$diagonal_actions" "$zero_step_turns" "$reduced" "$low" \
+        "$crawl" "$small90" "$legacy_geometry" >>"$RESULT_TMP"
     done
   done
 done
@@ -132,12 +156,22 @@ fi
 # Pin the complete fixed matrix exactly. Diagnostic subsets have clustered
 # ties, so their adoption minima default to zero unless explicitly supplied.
 if [ "$matrix_selection_overridden" -eq 0 ]; then
-  default_min_diagonal=225
-  default_max_diagonal=225
-  default_min_legacy_compatible=90
-  default_max_legacy_compatible=90
-  default_min_legacy_terminal=150
-  default_max_legacy_terminal=150
+  default_min_diagonal=230
+  default_max_diagonal=230
+  default_min_legacy_compatible=65
+  default_max_legacy_compatible=65
+  default_min_legacy_terminal=165
+  default_max_legacy_terminal=165
+  default_min_no_feasible_terminal=10
+  default_max_no_feasible_terminal=10
+  default_min_zero_step=1303
+  default_max_zero_step=1303
+  default_min_reduced=268
+  default_max_reduced=268
+  default_min_low=219
+  default_max_low=219
+  default_min_crawl=49
+  default_max_crawl=49
 else
   default_min_diagonal=0
   default_max_diagonal=$configurations
@@ -145,6 +179,16 @@ else
   default_max_legacy_compatible=$configurations
   default_min_legacy_terminal=0
   default_max_legacy_terminal=$configurations
+  default_min_no_feasible_terminal=0
+  default_max_no_feasible_terminal=$configurations
+  default_min_zero_step=0
+  default_max_zero_step=65535
+  default_min_reduced=0
+  default_max_reduced=65535
+  default_min_low=0
+  default_max_low=65535
+  default_min_crawl=0
+  default_max_crawl=65535
 fi
 min_diagonal_routes=${MIN_DIAGONAL_ROUTES:-$default_min_diagonal}
 min_strict_improvements=${MIN_STRICT_IMPROVEMENTS:-$default_min_diagonal}
@@ -154,24 +198,44 @@ min_legacy_compatible=${MIN_LEGACY_COMPATIBLE:-$default_min_legacy_compatible}
 max_legacy_compatible=${MAX_LEGACY_COMPATIBLE:-$default_max_legacy_compatible}
 min_legacy_terminal_diagonal=${MIN_LEGACY_TERMINAL_DIAGONAL:-$default_min_legacy_terminal}
 max_legacy_terminal_diagonal=${MAX_LEGACY_TERMINAL_DIAGONAL:-$default_max_legacy_terminal}
-if [ "$completed" -ne "$configurations" ] ||
-   [ "$not_slower" -ne "$configurations" ] ||
+min_no_feasible_terminal=${MIN_NO_FEASIBLE_TERMINAL:-$default_min_no_feasible_terminal}
+max_no_feasible_terminal=${MAX_NO_FEASIBLE_TERMINAL:-$default_max_no_feasible_terminal}
+min_zero_step=${MIN_ZERO_STEP_DIAGONAL_TURNS:-$default_min_zero_step}
+max_zero_step=${MAX_ZERO_STEP_DIAGONAL_TURNS:-$default_max_zero_step}
+min_reduced=${MIN_REDUCED_TURNS:-$default_min_reduced}
+max_reduced=${MAX_REDUCED_TURNS:-$default_max_reduced}
+min_low=${MIN_LOW_TURNS:-$default_min_low}
+max_low=${MAX_LOW_TURNS:-$default_max_low}
+min_crawl=${MIN_CRAWL_TURNS:-$default_min_crawl}
+max_crawl=${MAX_CRAWL_TURNS:-$default_max_crawl}
+if [ $((completed + no_feasible_terminal)) -ne "$configurations" ] ||
+   [ "$not_slower" -ne "$completed" ] ||
    [ "$diagonal_routes" -lt "$min_diagonal_routes" ] ||
    [ "$diagonal_routes" -gt "$max_diagonal_routes" ] ||
    [ "$strict_improvements" -lt "$min_strict_improvements" ] ||
    [ "$strict_improvements" -gt "$max_strict_improvements" ] ||
-   [ "$zero_step_diagonal_turns" -ne 0 ] ||
-   [ $((legacy_compatible + legacy_terminal_diagonal)) -ne "$configurations" ] ||
+   [ "$zero_step_diagonal_turns" -lt "$min_zero_step" ] ||
+   [ "$zero_step_diagonal_turns" -gt "$max_zero_step" ] ||
+   [ "$reduced_turns" -lt "$min_reduced" ] ||
+   [ "$reduced_turns" -gt "$max_reduced" ] ||
+   [ "$low_turns" -lt "$min_low" ] ||
+   [ "$low_turns" -gt "$max_low" ] ||
+   [ "$crawl_turns" -lt "$min_crawl" ] ||
+   [ "$crawl_turns" -gt "$max_crawl" ] ||
+   [ "$small90_actions" -ne 0 ] ||
+   [ "$no_feasible_terminal" -lt "$min_no_feasible_terminal" ] ||
+   [ "$no_feasible_terminal" -gt "$max_no_feasible_terminal" ] ||
+   [ $((legacy_compatible + legacy_terminal_diagonal)) -ne "$completed" ] ||
    [ "$legacy_compatible" -lt "$min_legacy_compatible" ] ||
    [ "$legacy_compatible" -gt "$max_legacy_compatible" ] ||
    [ "$legacy_terminal_diagonal" -lt "$min_legacy_terminal_diagonal" ] ||
    [ "$legacy_terminal_diagonal" -gt "$max_legacy_terminal_diagonal" ]; then
-  echo "[matrix-summary] regression-threshold-failed configurations=$configurations completed=$completed diagonal_not_slower=$not_slower strict_improvements=$strict_improvements minimum_strict=$min_strict_improvements maximum_strict=$max_strict_improvements diagonal_routes=$diagonal_routes minimum_diagonal=$min_diagonal_routes maximum_diagonal=$max_diagonal_routes zero_step_diagonal_turns=$zero_step_diagonal_turns legacy_compatible=$legacy_compatible minimum_legacy_compatible=$min_legacy_compatible maximum_legacy_compatible=$max_legacy_compatible legacy_terminal_diagonal=$legacy_terminal_diagonal minimum_legacy_terminal_diagonal=$min_legacy_terminal_diagonal maximum_legacy_terminal_diagonal=$max_legacy_terminal_diagonal data_rev=$DATA_REV" >&2
+  echo "[matrix-summary] regression-threshold-failed configurations=$configurations completed=$completed no_feasible_terminal=$no_feasible_terminal minimum_no_feasible_terminal=$min_no_feasible_terminal maximum_no_feasible_terminal=$max_no_feasible_terminal diagonal_not_slower=$not_slower strict_improvements=$strict_improvements minimum_strict=$min_strict_improvements maximum_strict=$max_strict_improvements diagonal_routes=$diagonal_routes minimum_diagonal=$min_diagonal_routes maximum_diagonal=$max_diagonal_routes zero_step_diagonal_turns=$zero_step_diagonal_turns minimum_zero_step=$min_zero_step maximum_zero_step=$max_zero_step reduced_turns=$reduced_turns minimum_reduced=$min_reduced maximum_reduced=$max_reduced low_turns=$low_turns minimum_low=$min_low maximum_low=$max_low crawl_turns=$crawl_turns minimum_crawl=$min_crawl maximum_crawl=$max_crawl small90_actions=$small90_actions legacy_compatible=$legacy_compatible minimum_legacy_compatible=$min_legacy_compatible maximum_legacy_compatible=$max_legacy_compatible legacy_terminal_diagonal=$legacy_terminal_diagonal minimum_legacy_terminal_diagonal=$min_legacy_terminal_diagonal maximum_legacy_terminal_diagonal=$max_legacy_terminal_diagonal data_rev=$DATA_REV" >&2
   exit 1
 fi
 
 mv "$RESULT_TMP" "$RESULT_TSV"
 RESULT_TMP=
 
-echo "[matrix-summary] configurations=$configurations failed=0 diagonal_not_slower=$not_slower strict_improvements=$strict_improvements diagonal_routes=$diagonal_routes zero_step_diagonal_turns=$zero_step_diagonal_turns legacy_compatible=$legacy_compatible legacy_terminal_diagonal=$legacy_terminal_diagonal data_rev=$DATA_REV"
+echo "[matrix-summary] configurations=$configurations completed=$completed no_feasible_terminal=$no_feasible_terminal failed=0 diagonal_not_slower=$not_slower strict_improvements=$strict_improvements diagonal_routes=$diagonal_routes zero_step_diagonal_turns=$zero_step_diagonal_turns reduced_turns=$reduced_turns low_turns=$low_turns crawl_turns=$crawl_turns small90_actions=$small90_actions legacy_compatible=$legacy_compatible legacy_terminal_diagonal=$legacy_terminal_diagonal data_rev=$DATA_REV"
 echo "[matrix-summary] results=$RESULT_TSV"

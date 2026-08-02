@@ -16,8 +16,6 @@ extern "C" {
 #define NF_SLALOM_MAX_ACTIONS NF_ROUTE_MAX_ACTIONS
 #define NF_SLALOM_MAX_ENDPOINT_CANONICALIZATION_MM 0.001
 #define NF_SLALOM_MAX_HEADING_CANONICALIZATION_DEG 1.0e-6
-/* Do not join diagonal turns directly at a wall-centre graph node. */
-#define NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS 1U
 
 /* Clockwise, in 45 degree increments. */
 typedef enum {
@@ -55,33 +53,48 @@ enum {
     NF_SLALOM_ENABLE_135_IN = 1U << NF_SLALOM_ACTION_135_IN,
     NF_SLALOM_ENABLE_135_OUT = 1U << NF_SLALOM_ACTION_135_OUT,
     NF_SLALOM_ENABLE_ALL = (1U << NF_SLALOM_ACTION_START_OFFSET) - 1U,
+    /*
+     * KERI's Lab shortest-run patterns #1 through #5.  #1 and #3 each
+     * have an IN and OUT action because the graph is directed; #0 SMALL_90
+     * is intentionally excluded.
+     */
+    NF_SLALOM_ENABLE_SHORTEST_1_TO_5 =
+        NF_SLALOM_ENABLE_LARGE_90 |
+        NF_SLALOM_ENABLE_LARGE_180 |
+        NF_SLALOM_ENABLE_45_IN |
+        NF_SLALOM_ENABLE_45_OUT |
+        NF_SLALOM_ENABLE_V90 |
+        NF_SLALOM_ENABLE_135_IN |
+        NF_SLALOM_ENABLE_135_OUT,
 };
 
 /*
- * The class is deliberately finite.  It records the primitive that supplied
- * the current boundary velocity, so every outgoing edge cost depends only on
- * the current graph state rather than on the complete route history.
+ * The class is deliberately finite.  Left and right variants of one primitive
+ * share a velocity in NfSlalomPlannerConfig, so side is not part of the state.
+ * LOW is the optional geometrically identical, time-scaled realization of
+ * shortest-run patterns #1 through #5.
  */
 typedef enum {
     NF_SLALOM_SPEED_START = 0,
-    NF_SLALOM_SPEED_SMALL_90_RIGHT,
-    NF_SLALOM_SPEED_SMALL_90_LEFT,
-    NF_SLALOM_SPEED_LARGE_90_RIGHT,
-    NF_SLALOM_SPEED_LARGE_90_LEFT,
-    NF_SLALOM_SPEED_LARGE_180_RIGHT,
-    NF_SLALOM_SPEED_LARGE_180_LEFT,
-    NF_SLALOM_SPEED_45_IN_RIGHT,
-    NF_SLALOM_SPEED_45_IN_LEFT,
-    NF_SLALOM_SPEED_45_OUT_RIGHT,
-    NF_SLALOM_SPEED_45_OUT_LEFT,
-    NF_SLALOM_SPEED_V90_RIGHT,
-    NF_SLALOM_SPEED_V90_LEFT,
-    NF_SLALOM_SPEED_135_IN_RIGHT,
-    NF_SLALOM_SPEED_135_IN_LEFT,
-    NF_SLALOM_SPEED_135_OUT_RIGHT,
-    NF_SLALOM_SPEED_135_OUT_LEFT,
+    NF_SLALOM_SPEED_SMALL_90,
+    NF_SLALOM_SPEED_LARGE_90,
+    NF_SLALOM_SPEED_LARGE_180,
+    NF_SLALOM_SPEED_45_IN,
+    NF_SLALOM_SPEED_45_OUT,
+    NF_SLALOM_SPEED_V90,
+    NF_SLALOM_SPEED_135_IN,
+    NF_SLALOM_SPEED_135_OUT,
+    NF_SLALOM_SPEED_LOW,
+    NF_SLALOM_SPEED_CRAWL,
     NF_SLALOM_SPEED_CLASS_COUNT,
 } NfSlalomSpeedClass;
+
+typedef enum {
+    NF_SLALOM_TURN_SPEED_NOMINAL = 0,
+    NF_SLALOM_TURN_SPEED_LOW,
+    NF_SLALOM_TURN_SPEED_CRAWL,
+    NF_SLALOM_TURN_SPEED_MODE_COUNT,
+} NfSlalomTurnSpeedMode;
 
 typedef enum {
     NF_SLALOM_GOAL_NONE = 0,
@@ -96,6 +109,8 @@ typedef enum {
     NF_SLALOM_PLAN_INVALID_CONFIG,
     NF_SLALOM_PLAN_UNSUPPORTED_SAFETY,
     NF_SLALOM_PLAN_NO_PATH,
+    /* A goal can be crossed, but no enabled-pattern stopping tail is valid. */
+    NF_SLALOM_PLAN_NO_FEASIBLE_TERMINAL,
     NF_SLALOM_PLAN_CAPACITY,
     NF_SLALOM_PLAN_OVERFLOW,
 } NfSlalomPlanStatus;
@@ -128,6 +143,15 @@ typedef struct {
     NfTurnSpec v_90;
     NfTurnSpec turn_135_in;
     NfTurnSpec turn_135_out;
+
+    /*
+     * Optional common low boundary velocity for #1--#5.  When it is positive
+     * and below a primitive's nominal velocity, the planner may use the same
+     * centre-line with velocity scaled by s and angular acceleration by s^2.
+     * This preserves geometry while making short run-up sections feasible.
+     * A value of zero disables the alternate realization.
+     */
+    double low_speed_turn_velocity_mm_s;
 
     /*
      * PC-only centre-line models that close on the logical half-grid anchors.
@@ -187,7 +211,6 @@ typedef struct {
     NfSlalomSpeedClass end_speed_class;
 
     bool connector_is_diagonal;
-    /* Diagonal-start turn actions must satisfy the public minimum above. */
     uint16_t connector_steps;
     double connector_geometry_distance_mm;
     double connector_command_distance_mm;
@@ -195,6 +218,7 @@ typedef struct {
     /* Configured command/boundary velocity at both ends of the turn. */
     double turn_velocity_mm_s;
     double exit_velocity_mm_s;
+    NfSlalomTurnSpeedMode turn_speed_mode;
     uint64_t connector_time_us;
     uint64_t turn_time_us;
     uint64_t duration_us;

@@ -88,6 +88,9 @@ static void test_profile_case_mapping(void)
             CHECK_TRUE(close_value(config.small_90.velocity_mm_s,
                                    expected->current[NF_PRIMITIVE_SMALL_90]
                                        .velocity_mm_s));
+            CHECK_TRUE(close_value(config.low_speed_turn_velocity_mm_s,
+                                   expected->current[NF_PRIMITIVE_SMALL_90]
+                                       .velocity_mm_s));
             CHECK_TRUE(close_value(config.turn_45_in.velocity_mm_s,
                                    expected->seeds[NF_PRIMITIVE_45_IN]
                                        .velocity_mm_s));
@@ -127,7 +130,29 @@ static void test_invalid_selection(void)
         error, sizeof(error)));
 }
 
-static void test_diagonal_turn_requires_straight_connector(void)
+static void test_shortest_pattern_mask(void)
+{
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_SMALL_90) == 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_LARGE_90) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_LARGE_180) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_45_IN) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_45_OUT) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_V90) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_135_IN) != 0U);
+    CHECK_TRUE((NF_SLALOM_ENABLE_SHORTEST_1_TO_5 &
+                NF_SLALOM_ENABLE_135_OUT) != 0U);
+    CHECK_TRUE(NF_SLALOM_ENABLE_SHORTEST_1_TO_5 ==
+               (NF_SLALOM_ENABLE_ALL & ~NF_SLALOM_ENABLE_SMALL_90));
+}
+
+static void test_shortest_pattern_route_excludes_small_90(void)
 {
     NfRouteMaze maze;
     NfSlalomPlannerConfig config;
@@ -136,16 +161,15 @@ static void test_diagonal_turn_requires_straight_connector(void)
         0U, 0U, NF_SLALOM_HEADING_NORTH,
     };
     NfSlalomRoutePlan plan;
-    NfSlalomRoutePlan tampered;
     NfSlalomValidation validation;
-    size_t diagonal_turn_index = SIZE_MAX;
+    size_t turn_count = 0U;
     char error[128];
 
     REQUIRE_TRUE(nf_route_maze_init(&maze, 10U, 10U));
     REQUIRE_TRUE(nf_route_maze_add_boundaries(&maze));
     maze.goals[4][3] = true;
     REQUIRE_TRUE(nf_host_slalom_make_config(
-        "f413-preorder-mode2", 8U, NF_SLALOM_ENABLE_ALL,
+        "f413-preorder-mode2", 8U, NF_SLALOM_ENABLE_SHORTEST_1_TO_5,
         &config, &profile, error, sizeof(error)));
     REQUIRE_TRUE(profile != NULL);
     REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
@@ -155,31 +179,22 @@ static void test_diagonal_turn_requires_straight_connector(void)
     for (size_t i = 1U; i < plan.action_count; i++) {
         const NfSlalomAction *action = &plan.actions[i];
         if ((unsigned int)action->kind <
-                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
-            (((unsigned int)action->start_heading & 1U) != 0U)) {
-            diagonal_turn_index = i;
-            break;
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET) {
+            turn_count++;
         }
+        CHECK_TRUE(action->kind != NF_SLALOM_ACTION_SMALL_90);
     }
-    REQUIRE_TRUE(diagonal_turn_index != SIZE_MAX);
-    CHECK_TRUE(plan.actions[diagonal_turn_index].connector_steps >=
-               NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS);
-
-    tampered = plan;
-    tampered.actions[diagonal_turn_index].connector_steps = 0U;
-    CHECK_TRUE(!nf_slalom_route_validate(
-        &maze, &config, &request, &tampered, &validation));
-    CHECK_TRUE(!validation.valid);
-    CHECK_TRUE(validation.action_index == diagonal_turn_index);
-    CHECK_TRUE(strcmp(validation.message,
-                      "diagonal action lacks a straight connector") == 0);
+    CHECK_TRUE(turn_count > 0U);
+    CHECK_TRUE(nf_slalom_route_validate(
+        &maze, &config, &request, &plan, &validation));
 }
 
 int main(void)
 {
     test_profile_case_mapping();
     test_invalid_selection();
-    test_diagonal_turn_requires_straight_connector();
+    test_shortest_pattern_mask();
+    test_shortest_pattern_route_excludes_small_90();
     if (g_failures != 0U) {
         fprintf(stderr,
                 "slalom_time_plan_host_tests: %u/%u checks failed\n",
