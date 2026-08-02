@@ -109,7 +109,7 @@ class FakePixelHandler(BaseHTTPRequestHandler):
             "schema": wifi.SCHEMA,
             "device_id": "12345678-abcd-0000-0000-123456789abc",
             "model": "Pixel 8",
-            "app_version": "0.4.0",
+            "app_version": "0.4.1",
             "http_port": self.server.server_port,
             "paired": True,
             "saved_runs": 1,

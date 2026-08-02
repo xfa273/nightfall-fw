@@ -507,17 +507,18 @@ public final class MainActivity extends Activity {
             );
             return;
         }
-        if (wifiTransferServer != null
-                && !wifiTransferServer.tryBeginCapture()) {
-            manualContinuousStandby = false;
-            resetControlsAfterRun();
-            setStatus(
-                    "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
-                    false
-            );
-            return;
+        if (wifiTransferServer != null && !wifiCaptureSlotOwned) {
+            if (!wifiTransferServer.tryBeginCapture()) {
+                manualContinuousStandby = false;
+                resetControlsAfterRun();
+                setStatus(
+                        "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
+                        false
+                );
+                return;
+            }
+            wifiCaptureSlotOwned = true;
         }
-        wifiCaptureSlotOwned = wifiTransferServer != null;
         recorder = new HfrRecorder(
                 this,
                 preview,

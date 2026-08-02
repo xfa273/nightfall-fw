@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.4.0` of
+The collector installs version `0.4.1` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -154,7 +154,7 @@ saturation. A frame-wide illumination change is also rejected. The report
 records the accepted token length, LED-triangle center, changed-pixel count,
 blue-chroma score, hot-pixel count, effective threshold, and matched LED count.
 
-Version 0.4.0 can also be operated entirely from the Pixel. Open **Nightfall
+Version 0.4.1 can also be operated entirely from the Pixel. Open **Nightfall
 HFR Recorder** from the launcher and tap **連続撮影スタンバイ (240 fps)**.
 This uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
 60-second per-run limit, and a 900 ms STOP tail). After each complete
@@ -180,14 +180,17 @@ armed standby before START does not create a saved run.
 
 ## ADB-free daily Wi-Fi collection
 
-Recorder version 0.4.0 keeps ADB installation and collection available for
+Recorder version 0.4.1 keeps ADB installation and collection available for
 development, but routine operation no longer needs ADB. While the activity is
 open it provides an authenticated HTTP service on TCP port 46052 and responds
 to Nightfall discovery broadcasts on UDP port 46051. The video is always
 completed in Pixel internal storage before it is offered to the network.
 Artifact downloads are deliberately rejected while a recording or optical
 standby is active, avoiding storage, CPU, and thermal contention with the
-240fps camera path.
+240fps camera path. Completing one run does not end continuous standby or
+start a transfer: the recorder keeps the camera lease across its two-second
+re-arm interval. End continuous standby explicitly on the Pixel before
+collecting the completed batch.
 
 Connect the Pixel and Mac to the same trusted Wi-Fi network, open **Nightfall
 HFR Recorder**, and read the six-digit code in the top status bar. Pair the Mac
