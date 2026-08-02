@@ -1733,6 +1733,11 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
         return NF_SLALOM_PLAN_INVALID_ARGUMENT;
     }
     memset(out, 0, sizeof(*out));
+    if (nf_slalom_is_diagonal(start_heading) &&
+        connector_steps <
+            NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
+        return NF_SLALOM_PLAN_OK;
+    }
     memset(&connector_goal, 0, sizeof(connector_goal));
     connector_end = source;
     if (!nf_slalom_anchor_region(context->maze, source, start_heading,
@@ -2269,7 +2274,10 @@ NfSlalomPlanStatus nf_slalom_time_plan(
                     NF_ROUTE_SIDE_LEFT,
                 };
 
-                if ((config->enabled_actions & (1U << kind_index)) == 0U ||
+                if ((nf_slalom_is_diagonal(heading) &&
+                     connector_steps <
+                         NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) ||
+                    (config->enabled_actions & (1U << kind_index)) == 0U ||
                     !nf_slalom_turn_source_valid(maze, connector_anchor,
                                                   heading, kind)) {
                     continue;
@@ -2554,6 +2562,16 @@ bool nf_slalom_route_validate(
             nf_slalom_free_turn_trajectories(&context);
             return nf_slalom_validation_fail(validation, index,
                                               "action does not join replay state");
+        }
+        if ((unsigned int)action->kind <
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+            nf_slalom_is_diagonal(current_heading) &&
+            action->connector_steps <
+                NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
+            nf_slalom_free_turn_trajectories(&context);
+            return nf_slalom_validation_fail(
+                validation, index,
+                "diagonal action lacks a straight connector");
         }
         for (uint16_t step = 1U; step <= action->connector_steps; step++) {
             NfSlalomAnchor next;

@@ -215,6 +215,12 @@ static void check_plan_contract(const NfRouteMaze *maze,
         uint64_t elapsed_us = 0U;
         for (size_t i = 0U; i < plan->action_count; i++) {
             const NfSlalomAction *action = &plan->actions[i];
+            if ((unsigned int)action->kind <
+                    (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+                (((unsigned int)action->start_heading & 1U) != 0U)) {
+                CHECK_TRUE(action->connector_steps >=
+                           NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS);
+            }
             if (action->has_goal_cross) {
                 goal_actions++;
                 CHECK_TRUE(action->goal_cross_time_us <= action->duration_us);
@@ -730,6 +736,50 @@ static void test_diagonal_is_adopted(void)
     CHECK_TRUE(plan_has_diagonal(&plan));
 }
 
+static void test_diagonal_turn_requires_straight_connector(void)
+{
+    NfRouteMaze maze;
+    NfSlalomPlannerConfig config;
+    const NfSlalomPlannerRequest request = {
+        0U, 0U, NF_SLALOM_HEADING_NORTH,
+    };
+    NfSlalomRoutePlan plan;
+    NfSlalomRoutePlan tampered;
+    NfSlalomValidation validation;
+    size_t diagonal_turn_index = SIZE_MAX;
+
+    REQUIRE_TRUE(make_open_maze(&maze, 10U, 10U));
+    maze.goals[3][4] = true;
+    REQUIRE_TRUE(make_config(&config));
+    config.enabled_actions =
+        NF_SLALOM_ENABLE_45_IN | NF_SLALOM_ENABLE_45_OUT;
+    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                 NF_SLALOM_PLAN_OK);
+    check_plan_contract(&maze, &config, &request, &plan);
+
+    for (size_t i = 1U; i < plan.action_count; i++) {
+        const NfSlalomAction *action = &plan.actions[i];
+        if ((unsigned int)action->kind <
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+            (((unsigned int)action->start_heading & 1U) != 0U)) {
+            diagonal_turn_index = i;
+            break;
+        }
+    }
+    REQUIRE_TRUE(diagonal_turn_index != SIZE_MAX);
+    CHECK_TRUE(plan.actions[diagonal_turn_index].connector_steps >=
+               NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS);
+
+    tampered = plan;
+    tampered.actions[diagonal_turn_index].connector_steps = 0U;
+    CHECK_TRUE(!nf_slalom_route_validate(&maze, &config, &request,
+                                          &tampered, &validation));
+    CHECK_TRUE(!validation.valid);
+    CHECK_TRUE(validation.action_index == diagonal_turn_index);
+    CHECK_TRUE(strcmp(validation.message,
+                      "diagonal action lacks a straight connector") == 0);
+}
+
 static void make_l_corridor(NfRouteMaze *maze, bool mirror)
 {
     (void)make_open_maze(maze, 5U, 5U);
@@ -1064,6 +1114,7 @@ int main(void)
     test_turn_goal_uses_nominal_trace_and_shortest_tail();
     test_turn_goal_interior_speed_profile();
     test_diagonal_is_adopted();
+    test_diagonal_turn_requires_straight_connector();
     test_walls_forbid_diagonal_and_mirror();
     test_turn_route_oracle_and_validator_tamper();
     test_rotation_symmetry();

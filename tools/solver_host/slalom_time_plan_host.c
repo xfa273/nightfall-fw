@@ -229,6 +229,23 @@ static size_t nf_host_slalom_diagonal_action_count(
     return count;
 }
 
+static size_t nf_host_slalom_zero_step_diagonal_turn_count(
+    const NfSlalomRoutePlan *plan)
+{
+    size_t count = 0U;
+    for (size_t i = 0U; i < plan->action_count; i++) {
+        const NfSlalomAction *action = &plan->actions[i];
+        if ((unsigned int)action->kind <
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+            (((unsigned int)action->start_heading & 1U) != 0U) &&
+            action->connector_steps <
+                NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
+            count++;
+        }
+    }
+    return count;
+}
+
 static void nf_host_slalom_print_action(size_t index,
                                         const NfSlalomAction *action)
 {
@@ -429,6 +446,7 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
            "goal_entry_us=%" PRIu64 " stop_us=%" PRIu64
            " orthogonal_goal_entry_us=%" PRIu64
            " improvement_us=%" PRIu64 " actions=%zu diagonal_actions=%zu "
+           "zero_step_diagonal_turns=%zu "
            "legacy_geometry=%s legacy_time_equivalent=no "
            "validation=ok deterministic=%s objective=first-goal-entry\n",
            profile->name, (unsigned int)profile->shortest_run_mode,
@@ -437,6 +455,7 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
            orthogonal_available ? orthogonal_goal_entry_us - plan.goal_entry_us
                                 : 0U,
            plan.action_count, nf_host_slalom_diagonal_action_count(&plan),
+           nf_host_slalom_zero_step_diagonal_turn_count(&plan),
            nf_slalom_legacy_status_name(legacy_result.status),
            assert_valid ? "checked" : "not-checked");
     return 0;

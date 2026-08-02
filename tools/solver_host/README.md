@@ -69,7 +69,8 @@ tools/solver_host/run_solver_host.sh \
 `--compare-orthogonal` は同じconfigの斜め5種だけを無効にした候補と比較し、斜めを
 許した結果が遅くならないことを検査します。評価値は従来と同じく最初のG区画への
 進入時刻です。斜めturnはPC専用exact-closure仮値であり、firmware parameterは
-変更しません。
+変更しません。斜め方位から次のturnへ入る前には最低1 diagonal half-stepを要求し、
+壁中心でturnを直接つなぐ0-step接続をplannerとvalidatorの両方で拒否します。
 
 過去大会24迷路×5profile×case 8/9の240構成を一括確認する場合:
 
@@ -84,8 +85,9 @@ tools/solver_host/run_slalom_kerilab_matrix.sh
 ことを示します。現runnerは直線codeごとに速度を再計画するため、互換経路でも
 `legacy_time_equivalent=no`です。
 
-固定データcommitでの基準結果は240/240成功、斜め採用240、直交限定に対する
-厳密短縮240、`legacy_geometry=ok` 81、斜め終端非対応159です。
+固定データcommitでの基準結果は240/240成功、0-step斜めturn接続0、斜め採用かつ
+直交限定に対する厳密短縮225、直交同値15、`legacy_geometry=ok` 90、
+斜め終端非対応150です。
 
 ## KeriLab過去大会迷路を取得して一括確認
 
