@@ -55,6 +55,8 @@ _Static_assert(F413_RP_POSE_COUNT == 2944U,
                "compact KERI pose count changed");
 _Static_assert(F413_RP_STATE_COUNT < (1U << 14U),
                "packed parent state field is too small");
+_Static_assert(F413_RP_STATE_COUNT < UINT16_MAX,
+               "indexed heap uses UINT16_MAX as its absent sentinel");
 _Static_assert(F413_RP_SCRATCH_MIN_BYTES <= F413_TRACE_LOG_IDLE_SCRATCH_BYTES,
                "route preview does not fit the idle trace workspace");
 
@@ -175,6 +177,10 @@ typedef struct
   uint16_t* turn_counts;
   uint32_t* parents;
   uint8_t* settled;
+  uint16_t* heap_states;
+  uint16_t* heap_positions;
+  uint16_t heap_size;
+  uint16_t heap_peak;
   uint32_t expanded_states;
   uint32_t relaxed_edges;
   bool goal_cross_reachable;
@@ -1729,6 +1735,139 @@ static void f413_rp_set_settled(f413_rp_context_t* context, uint16_t state)
   context->settled[state >> 3U] |= (uint8_t)(1U << (state & 7U));
 }
 
+static bool f413_rp_heap_less(const f413_rp_context_t* context,
+                              uint16_t left,
+                              uint16_t right)
+{
+  if (context->distances[left] != context->distances[right])
+  {
+    return context->distances[left] < context->distances[right];
+  }
+  if (context->turn_counts[left] != context->turn_counts[right])
+  {
+    return context->turn_counts[left] < context->turn_counts[right];
+  }
+  return left < right;
+}
+
+static void f413_rp_heap_swap(f413_rp_context_t* context,
+                               uint16_t left_position,
+                               uint16_t right_position)
+{
+  const uint16_t left_state = context->heap_states[left_position];
+  const uint16_t right_state = context->heap_states[right_position];
+  context->heap_states[left_position] = right_state;
+  context->heap_states[right_position] = left_state;
+  context->heap_positions[left_state] = right_position;
+  context->heap_positions[right_state] = left_position;
+}
+
+static bool f413_rp_heap_push_or_decrease(f413_rp_context_t* context,
+                                           uint16_t state)
+{
+  uint16_t position;
+
+  if ((context == NULL) || (state >= F413_RP_STATE_COUNT) ||
+      (context->heap_states == NULL) || (context->heap_positions == NULL))
+  {
+    return false;
+  }
+  position = context->heap_positions[state];
+  if (position == UINT16_MAX)
+  {
+    if (context->heap_size >= F413_RP_STATE_COUNT)
+    {
+      return false;
+    }
+    position = context->heap_size;
+    context->heap_states[position] = state;
+    context->heap_positions[state] = position;
+    context->heap_size++;
+    if (context->heap_size > context->heap_peak)
+    {
+      context->heap_peak = context->heap_size;
+    }
+  }
+  else if ((position >= context->heap_size) ||
+           (context->heap_states[position] != state))
+  {
+    return false;
+  }
+
+  while (position != 0U)
+  {
+    const uint16_t parent = (uint16_t)((position - 1U) / 2U);
+    if (!f413_rp_heap_less(context, state,
+                           context->heap_states[parent]))
+    {
+      break;
+    }
+    f413_rp_heap_swap(context, position, parent);
+    position = parent;
+  }
+  return true;
+}
+
+static bool f413_rp_heap_peek(const f413_rp_context_t* context,
+                              uint16_t* out_state)
+{
+  if ((context == NULL) || (out_state == NULL) ||
+      (context->heap_size == 0U) || (context->heap_states == NULL) ||
+      (context->heap_positions == NULL) ||
+      (context->heap_positions[context->heap_states[0]] != 0U))
+  {
+    return false;
+  }
+  *out_state = context->heap_states[0];
+  return true;
+}
+
+static bool f413_rp_heap_pop(f413_rp_context_t* context, uint16_t* out_state)
+{
+  uint16_t root;
+  uint16_t position = 0U;
+
+  if (!f413_rp_heap_peek(context, &root))
+  {
+    return false;
+  }
+  context->heap_size--;
+  context->heap_positions[root] = UINT16_MAX;
+  if (context->heap_size != 0U)
+  {
+    const uint16_t moved = context->heap_states[context->heap_size];
+    context->heap_states[0] = moved;
+    context->heap_positions[moved] = 0U;
+    while (true)
+    {
+      const uint32_t left_candidate = ((uint32_t)position * 2U) + 1U;
+      uint16_t child;
+      uint16_t right;
+      if (left_candidate >= context->heap_size)
+      {
+        break;
+      }
+      child = (uint16_t)left_candidate;
+      right = (uint16_t)(left_candidate + 1U);
+      if ((right < context->heap_size) &&
+          f413_rp_heap_less(context, context->heap_states[right],
+                            context->heap_states[child]))
+      {
+        child = right;
+      }
+      if (!f413_rp_heap_less(context, context->heap_states[child],
+                             context->heap_states[position]))
+      {
+        break;
+      }
+      f413_rp_heap_swap(context, position, child);
+      position = child;
+    }
+  }
+  *out_state = root;
+  return true;
+}
+
 static uint32_t f413_rp_pack_parent(uint16_t previous_state,
                                     uint16_t connector_steps,
                                     f413_rp_kind_t kind,
@@ -1964,9 +2103,11 @@ static bool f413_rp_relax(f413_rp_context_t* context,
 {
   uint32_t distance;
   uint16_t turn_count;
+  /* Every edge has positive duration, so an improving shortest label is
+   * cycle-free and uses fewer than F413_RP_STATE_COUNT edges. */
   if (!f413_rp_u32_add(context->distances[source_state], duration_us,
                        &distance) ||
-      (context->turn_counts[source_state] == UINT16_MAX))
+      (context->turn_counts[source_state] >= F413_RP_STATE_COUNT))
   {
     return false;
   }
@@ -1977,12 +2118,17 @@ static bool f413_rp_relax(f413_rp_context_t* context,
   {
     return true;
   }
+  if (f413_rp_is_settled(context, destination_state))
+  {
+    /* A better label for a settled state violates Dijkstra's invariant. */
+    return false;
+  }
   context->distances[destination_state] = distance;
   context->turn_counts[destination_state] = turn_count;
   context->parents[destination_state] = f413_rp_pack_parent(
       source_state, connector_steps, kind, side, speed);
   context->relaxed_edges++;
-  return true;
+  return f413_rp_heap_push_or_decrease(context, destination_state);
 }
 
 static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
@@ -2182,6 +2328,12 @@ static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
       start_anchor, F413_RP_HEADING_NORTH, F413_RP_SPEED_CRAWL);
 
   if ((context == NULL) || (out_start_state == NULL) ||
+      (context->maze == NULL) || (context->motion == NULL) ||
+      (context->distances == NULL) || (context->turn_counts == NULL) ||
+      (context->parents == NULL) || (context->settled == NULL) ||
+      (context->heap_states == NULL) ||
+      (context->heap_positions == NULL) ||
+      (start_state >= F413_RP_STATE_COUNT) ||
       !f413_rp_state_pose_valid(context->maze, start_anchor,
                                  F413_RP_HEADING_NORTH))
   {
@@ -2194,45 +2346,44 @@ static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
   memset(context->parents, 0,
          F413_RP_STATE_COUNT * sizeof(context->parents[0]));
   memset(context->settled, 0, F413_RP_SETTLED_BYTES);
+  memset(context->heap_positions, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(context->heap_positions[0]));
   memset(&context->goal, 0, sizeof(context->goal));
+  context->heap_size = 0U;
+  context->heap_peak = 0U;
   context->expanded_states = 0U;
   context->relaxed_edges = 0U;
   context->goal_cross_reachable = false;
   context->distances[start_state] = context->motion->start_time_us;
   context->turn_counts[start_state] = 0U;
   *out_start_state = start_state;
-
-  for (uint32_t iteration = 0U; iteration < F413_RP_STATE_COUNT; iteration++)
+  if (!f413_rp_heap_push_or_decrease(context, start_state))
   {
-    uint16_t best_state = UINT16_MAX;
-    uint32_t best_distance = UINT32_MAX;
-    uint16_t best_turns = UINT16_MAX;
+    return F413_RP_PLAN_ERROR;
+  }
 
-    for (uint16_t state = 0U; state < F413_RP_STATE_COUNT; state++)
+  while (context->heap_size != 0U)
+  {
+    uint16_t best_state;
+    uint16_t popped_state;
+    uint32_t best_distance;
+
+    if (!f413_rp_heap_peek(context, &best_state))
     {
-      if (f413_rp_is_settled(context, state) ||
-          (context->distances[state] == F413_RP_INF))
-      {
-        continue;
-      }
-      if ((context->distances[state] < best_distance) ||
-          ((context->distances[state] == best_distance) &&
-           ((context->turn_counts[state] < best_turns) ||
-            ((context->turn_counts[state] == best_turns) &&
-             (state < best_state)))))
-      {
-        best_state = state;
-        best_distance = context->distances[state];
-        best_turns = context->turn_counts[state];
-      }
+      return F413_RP_PLAN_ERROR;
     }
-    if (best_state == UINT16_MAX)
-    {
-      break;
-    }
+    best_distance = context->distances[best_state];
     if (context->goal.valid && (best_distance > context->goal.goal_entry_us))
     {
       break;
+    }
+    if ((best_distance == F413_RP_INF) ||
+        (context->expanded_states >= F413_RP_STATE_COUNT) ||
+        !f413_rp_heap_pop(context, &popped_state) ||
+        (popped_state != best_state) ||
+        f413_rp_is_settled(context, best_state))
+    {
+      return F413_RP_PLAN_ERROR;
     }
     f413_rp_set_settled(context, best_state);
     context->expanded_states++;
@@ -2388,11 +2539,10 @@ static bool f413_rp_print_turn_action(const f413_rp_context_t* context,
 }
 
 static bool f413_rp_print_plan(const f413_rp_context_t* context,
-                               f413_rp_arena_t* arena,
                                uint16_t start_state)
 {
-  uint16_t* chain = (uint16_t*)f413_rp_arena_alloc(
-      arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  /* Planning is complete, so the heap storage becomes the parent chain. */
+  uint16_t* chain = context->heap_states;
   size_t chain_count = 0U;
   uint16_t state = context->goal.source_state;
   unsigned int action_index = 1U;
@@ -2540,11 +2690,13 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
     }
   }
   trace_printf("[KERI-PREVIEW] OK turns=%u diagonal-actions=%u expanded=%lu "
-               "relaxed=%lu goal-entry=%lu.%06lu s stop=%lu.%06lu s\r\n",
+               "relaxed=%lu heap-peak=%u goal-entry=%lu.%06lu s "
+               "stop=%lu.%06lu s\r\n",
                (unsigned int)context->goal.turn_count,
                diagonal_actions,
                (unsigned long)context->expanded_states,
                (unsigned long)context->relaxed_edges,
+               (unsigned int)context->heap_peak,
                (unsigned long)(context->goal.goal_entry_us / 1000000U),
                (unsigned long)(context->goal.goal_entry_us % 1000000U),
                (unsigned long)(context->goal.stop_us / 1000000U),
@@ -2598,9 +2750,14 @@ void f413_route_preview_run_once(void)
       &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
   context.settled = (uint8_t*)f413_rp_arena_alloc(
       &arena, F413_RP_SETTLED_BYTES, 1U);
+  context.heap_states = (uint16_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.heap_positions = (uint16_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
   if ((maze == NULL) || (motion == NULL) || (context.distances == NULL) ||
       (context.turn_counts == NULL) || (context.parents == NULL) ||
-      (context.settled == NULL))
+      (context.settled == NULL) || (context.heap_states == NULL) ||
+      (context.heap_positions == NULL))
   {
     trace_printf("[KERI-PREVIEW] FAIL scratch layout\r\n");
     goto cleanup;
@@ -2656,7 +2813,7 @@ void f413_route_preview_run_once(void)
                  (unsigned long)context.relaxed_edges);
     goto cleanup;
   }
-  if (!f413_rp_print_plan(&context, &arena, start_state))
+  if (!f413_rp_print_plan(&context, start_state))
   {
     trace_printf("[KERI-PREVIEW] FAIL route reconstruction\r\n");
     goto cleanup;
