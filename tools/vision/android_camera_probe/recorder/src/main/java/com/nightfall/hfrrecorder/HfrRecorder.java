@@ -65,6 +65,8 @@ final class HfrRecorder {
 
         void onRecordingStarted();
 
+        void onCancelled(String message);
+
         void onFinished(String message);
 
         void onError(String message);
@@ -350,6 +352,7 @@ final class HfrRecorder {
     private MediaRecorder mediaRecorder;
     private volatile boolean mediaRecorderStarted;
     private volatile boolean opticalArmed;
+    private volatile boolean cancelledBeforeRecording;
     private int orientationHintDeg;
     private long recordingStartElapsedNs;
     private long recordingStopElapsedNs;
@@ -403,6 +406,7 @@ final class HfrRecorder {
         captureFailureCount = 0;
         mediaRecorderStarted = false;
         opticalArmed = false;
+        cancelledBeforeRecording = false;
         recordingStartElapsedNs = 0;
         recordingStopElapsedNs = 0;
         opticalStartDetectedElapsedNs = 0;
@@ -445,6 +449,21 @@ final class HfrRecorder {
         if (!active.get() || !stopping.compareAndSet(false, true)) {
             return;
         }
+        mainHandler.removeCallbacksAndMessages(this);
+        cameraHandler.post(() -> {
+            recordingStopElapsedNs = SystemClock.elapsedRealtimeNanos();
+            closeCameraPipeline();
+            finalizeAsync(null);
+        });
+    }
+
+    void cancelArmed() {
+        if (!active.get()
+                || mediaRecorderStarted
+                || !stopping.compareAndSet(false, true)) {
+            return;
+        }
+        cancelledBeforeRecording = true;
         mainHandler.removeCallbacksAndMessages(this);
         cameraHandler.post(() -> {
             recordingStopElapsedNs = SystemClock.elapsedRealtimeNanos();
@@ -1032,6 +1051,7 @@ final class HfrRecorder {
     private void finalizeAsync(String startError) {
         new Thread(() -> {
             String error = startError;
+            boolean cancelled = cancelledBeforeRecording;
             try {
                 if (mediaRecorderStarted && mediaRecorder != null) {
                     mediaRecorder.stop();
@@ -1057,12 +1077,13 @@ final class HfrRecorder {
                 }
                 encoderSurface = null;
             }
-            if (error == null
+            if (!cancelled
+                    && error == null
                     && (!videoTempFile.isFile()
                     || videoTempFile.length() == 0)) {
                 error = "MediaRecorder produced no MP4 data";
             }
-            if (error == null) {
+            if (!cancelled && error == null) {
                 try {
                     readEncodedSamples(videoTempFile);
                 } catch (Exception exception) {
@@ -1071,7 +1092,7 @@ final class HfrRecorder {
                 }
             }
             try {
-                if (error == null) {
+                if (!cancelled && error == null) {
                     moveReplace(videoTempFile, videoFile);
                 }
                 writeSidecars();
@@ -1089,7 +1110,9 @@ final class HfrRecorder {
             active.set(false);
             stopping.set(false);
             final String finalError = error;
-            if (finalError == null) {
+            if (cancelled && finalError == null) {
+                listener.onCancelled("Standby cancelled");
+            } else if (finalError == null) {
                 listener.onFinished(
                         "Complete: " + encodedSamples.size()
                                 + " encoded samples"
@@ -1186,7 +1209,12 @@ final class HfrRecorder {
         report.put("schema", "nightfall_android_hfr_recording_v1");
         report.put("generated_at_utc", Instant.now().toString());
         report.put("record_nonce", config.nonce);
-        report.put("status", error == null ? "complete" : "error");
+        report.put(
+                "status",
+                cancelledBeforeRecording
+                        ? "cancelled"
+                        : (error == null ? "complete" : "error")
+        );
         report.put("error", error == null ? JSONObject.NULL : error);
         report.put("device", buildDevice());
         report.put("config", config.toJson());

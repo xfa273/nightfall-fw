@@ -45,6 +45,16 @@ public final class MainActivity extends Activity {
     private static final int OPTICAL_SAMPLE_HEIGHT = 270;
     private static final long OPTICAL_SAMPLE_INTERVAL_NS = 25_000_000L;
     private static final long OPTICAL_STATUS_INTERVAL_NS = 500_000_000L;
+    private static final int MANUAL_WIDTH = 1920;
+    private static final int MANUAL_HEIGHT = 1080;
+    private static final int MANUAL_FPS = 240;
+    private static final int MANUAL_DURATION_SECONDS = 60;
+    private static final int MANUAL_BITRATE = 72_000_000;
+    private static final int MANUAL_EXPOSURE_US = 1000;
+    private static final int MANUAL_ISO = 800;
+    private static final int MANUAL_OPTICAL_TRIGGER_SCORE = 180;
+    private static final int MANUAL_OPTICAL_TRIGGER_HOT_PIXELS = 2;
+    private static final int MANUAL_OPTICAL_STOP_TAIL_MS = 900;
 
     private TextureView preview;
     private TextView status;
@@ -138,22 +148,31 @@ public final class MainActivity extends Activity {
         controls.setBackgroundColor(0xcc000000);
 
         startButton = new Button(this);
-        startButton.setText("Record 1080p120");
-        startButton.setOnClickListener(view -> startRecording());
+        startButton.setText("撮影スタンバイ (240 fps)");
+        startButton.setOnClickListener(view -> startRecording(false));
         controls.addView(startButton);
 
         stopButton = new Button(this);
-        stopButton.setText("Stop");
+        stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
         stopButton.setOnClickListener(view -> {
             if (recorder != null) {
-                recorder.stop();
+                if (opticalWaitingForStart) {
+                    opticalDetectionEnabled = false;
+                    stopButton.setEnabled(false);
+                    setStatus("撮影スタンバイを終了しています...", true);
+                    recorder.cancelArmed();
+                } else {
+                    stopButton.setEnabled(false);
+                    setStatus("録画を停止しています...", true);
+                    recorder.stop();
+                }
             }
         });
         controls.addView(stopButton);
 
         status = new TextView(this);
-        status.setText("Waiting for camera...");
+        status.setText("「撮影スタンバイ」を押してください");
         status.setTextColor(Color.WHITE);
         status.setTextSize(14.0f);
         status.setPadding(dp(12), 0, 0, 0);
@@ -228,10 +247,10 @@ public final class MainActivity extends Activity {
             return;
         }
         autoPending = false;
-        startRecording();
+        startRecording(true);
     }
 
-    private void startRecording() {
+    private void startRecording(boolean useIntentConfig) {
         if (recorder != null && recorder.isActive()) {
             return;
         }
@@ -241,7 +260,9 @@ public final class MainActivity extends Activity {
         }
         HfrRecorder.Config config;
         try {
-            config = readConfig(getIntent());
+            config = useIntentConfig
+                    ? readConfig(getIntent())
+                    : createManualOpticalConfig();
         } catch (IllegalArgumentException exception) {
             setStatus(exception.getMessage(), false);
             return;
@@ -270,6 +291,7 @@ public final class MainActivity extends Activity {
                                 opticalDetector.reset();
                             }
                             startButton.setEnabled(false);
+                            stopButton.setText("待機をキャンセル");
                             stopButton.setEnabled(true);
                         });
                     }
@@ -295,16 +317,23 @@ public final class MainActivity extends Activity {
                                 );
                             }
                             startButton.setEnabled(false);
+                            stopButton.setText("録画を停止");
                             stopButton.setEnabled(true);
+                        });
+                    }
+
+                    @Override
+                    public void onCancelled(String message) {
+                        runOnUiThread(() -> {
+                            resetControlsAfterRun();
+                            setStatus("撮影スタンバイを終了しました", true);
                         });
                     }
 
                     @Override
                     public void onFinished(String message) {
                         runOnUiThread(() -> {
-                            opticalDetectionEnabled = false;
-                            startButton.setEnabled(true);
-                            stopButton.setEnabled(false);
+                            resetControlsAfterRun();
                             setStatus(message, true);
                         });
                     }
@@ -312,9 +341,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onError(String message) {
                         runOnUiThread(() -> {
-                            opticalDetectionEnabled = false;
-                            startButton.setEnabled(true);
-                            stopButton.setEnabled(false);
+                            resetControlsAfterRun();
                             setStatus("ERROR: " + message, false);
                         });
                     }
@@ -335,6 +362,36 @@ public final class MainActivity extends Activity {
             opticalDetectionEnabled = false;
         }
         recorder.start(config);
+    }
+
+    private HfrRecorder.Config createManualOpticalConfig() {
+        HfrRecorder.Config config = new HfrRecorder.Config(
+                "manual-" + System.currentTimeMillis(),
+                "0",
+                MANUAL_WIDTH,
+                MANUAL_HEIGHT,
+                MANUAL_FPS,
+                MANUAL_DURATION_SECONDS,
+                MANUAL_BITRATE,
+                MANUAL_EXPOSURE_US,
+                MANUAL_ISO,
+                true,
+                true,
+                MANUAL_OPTICAL_TRIGGER_SCORE,
+                MANUAL_OPTICAL_TRIGGER_HOT_PIXELS,
+                MANUAL_OPTICAL_STOP_TAIL_MS
+        );
+        config.validate();
+        return config;
+    }
+
+    private void resetControlsAfterRun() {
+        opticalDetectionEnabled = false;
+        opticalWaitingForStart = false;
+        opticalWaitingForMotion = false;
+        startButton.setEnabled(true);
+        stopButton.setText("待機をキャンセル");
+        stopButton.setEnabled(false);
     }
 
     private HfrRecorder.Config readConfig(Intent intent) {

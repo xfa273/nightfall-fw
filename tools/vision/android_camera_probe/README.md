@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.3.6` of
+The collector installs version `0.3.7` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -153,6 +153,14 @@ so the gate does not depend on the PCB's weak, illumination-dependent green
 saturation. A frame-wide illumination change is also rejected. The report
 records the accepted token length, LED-triangle center, changed-pixel count,
 blue-chroma score, hot-pixel count, effective threshold, and matched LED count.
+
+Version 0.3.7 can also be operated entirely from the Pixel. Open **Nightfall
+HFR Recorder** from the launcher and tap **撮影スタンバイ (240 fps)**. This
+uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
+60-second limit, and a 900 ms STOP tail). While waiting for the three-pulse
+START token, the second button cancels standby; after recording starts, it
+changes to a manual recording stop. Mac-launched sessions keep using the
+configuration supplied by `record_test.sh` or `capture_optical_run.sh`.
 
 The 2026-08-01 stationary Pixel 8 integration trial completed without the
 external lamp: start detection to recording was 28.1 ms, stop detection to

@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-/tmp/nightfall-hfr-recordings}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=9
-expected_version_name=0.3.6
+expected_version_code=10
+expected_version_name=0.3.7
 camera_id=${HFR_CAMERA_ID:-0}
 width=${HFR_WIDTH:-1920}
 height=${HFR_HEIGHT:-1080}
@@ -293,8 +293,11 @@ import sys
 report = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 print(report.get("status", "missing"))
 if report.get("status") != "complete":
+    detail = report.get("error")
+    if report.get("status") == "cancelled":
+        detail = "standby was cancelled from the Pixel"
     print(
-        f"[HFR-RECORDER][ERROR] {report.get('error')}",
+        f"[HFR-RECORDER][ERROR] {detail}",
         file=sys.stderr,
     )
 PY
