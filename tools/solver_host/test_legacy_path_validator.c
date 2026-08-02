@@ -36,7 +36,7 @@ static void test_valid_paths(void) {
         201U, 299U, 300U, 400U, 501U, 502U, 601U, 602U,
         701U, 1001U, 801U, 1002U, 703U,
         702U, 802U, 704U,
-        901U, 65535U, 903U,
+        901U, 1099U, 903U,
         902U, 1001U, 904U,
         0U,
     };
@@ -54,7 +54,7 @@ static void test_valid_paths(void) {
 static void test_unknown_codes(void) {
     static const uint16_t unknown_codes[] = {
         1U, 200U, 301U, 499U, 500U, 503U, 599U, 600U, 603U,
-        700U, 705U, 800U, 803U, 900U, 905U, 1000U,
+        700U, 705U, 800U, 803U, 900U, 905U, 1000U, 1100U, 65535U,
     };
     static const uint16_t zero_length_diagonal[] = {701U, 1000U, 0U};
 

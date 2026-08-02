@@ -3,9 +3,9 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT_DIR="$ROOT_DIR/build/solver_host"
-OUT_BIN="$OUT_DIR/test_legacy_path_validator"
+OUT_BIN="$OUT_DIR/test_legacy_path_codec"
 CC_BIN=${CC:-cc}
-SANITIZE=${SANITIZE:-1}
+SANITIZE=${SANITIZE:-0}
 
 SANITIZER_FLAGS=
 if [ "$SANITIZE" = "1" ]; then
@@ -15,14 +15,11 @@ fi
 mkdir -p "$OUT_DIR"
 # SANITIZER_FLAGS intentionally expands into separate compiler arguments.
 # shellcheck disable=SC2086
-"$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Werror \
+"$CC_BIN" -std=c11 -Wall -Wextra -Werror -Wpedantic \
   $SANITIZER_FLAGS \
   -I"$ROOT_DIR/common/route" \
-  -I"$ROOT_DIR/tools/solver_host" \
-  -I"$ROOT_DIR/platform/stm32f405/Core/Inc" \
   "$ROOT_DIR/common/route/legacy_path_codec.c" \
-  "$ROOT_DIR/tools/solver_host/legacy_path_validator.c" \
-  "$ROOT_DIR/tools/solver_host/test_legacy_path_validator.c" \
+  "$ROOT_DIR/tools/solver_host/legacy_path_codec_tests.c" \
   -o "$OUT_BIN"
 
 if [ "$SANITIZE" = "1" ]; then

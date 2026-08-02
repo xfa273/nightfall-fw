@@ -6,6 +6,8 @@
 #include <string.h>
 
 #define NF_MOTION_EPS 1.0e-9
+#define NF_MOTION_DISTANCE_SNAP_MM 1.0e-4
+#define NF_MOTION_ACCEL_SNAP_RELATIVE 1.0e-6
 #define NF_MOTION_PI 3.14159265358979323846264338327950288
 #define NF_TURN_INTEGRATION_STEPS 4096U
 
@@ -18,6 +20,13 @@ typedef enum {
 static bool nf_finite_nonnegative(double value)
 {
     return isfinite(value) && value >= 0.0;
+}
+
+static bool nf_motion_nearly_equal(double actual, double expected)
+{
+    const double scale = fmax(1.0, fmax(fabs(actual), fabs(expected)));
+    return isfinite(actual) && isfinite(expected) &&
+           fabs(actual - expected) <= (1.0e-9 * scale);
 }
 
 static NfMotionStatus nf_accel_layout(const NfLinearLimits *limits,
@@ -246,6 +255,8 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
                                      double exit_velocity_mm_s,
                                      NfLinearPlan *out)
 {
+    NfLinearLimits snapped_limits;
+    const NfLinearLimits *plan_limits = limits;
     NfAccelLayout layout;
     NfMotionStatus status;
     double direct_distance;
@@ -285,18 +296,61 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
                                      fmin(entry_velocity_mm_s, exit_velocity_mm_s),
                                      fmax(entry_velocity_mm_s, exit_velocity_mm_s),
                                      &direct_distance, &ignored_time);
-    if (status != NF_MOTION_OK || direct_distance > distance_mm + NF_MOTION_EPS) {
+    if (status != NF_MOTION_OK) {
+        return status;
+    }
+    if (direct_distance > distance_mm + NF_MOTION_EPS) {
+        const double excess_mm = direct_distance - distance_mm;
+        const double acceleration_scale = direct_distance / distance_mm;
+
+        /*
+         * Several firmware tables intentionally describe exact half-cell
+         * braking (for example 800 mm/s in 45 mm) with decimal float
+         * accelerations.  Their binary/decimal rounding can miss the exact
+         * distance by a few nanometres.  Admit only that representation
+         * error, and make the returned phases kinematically self-consistent
+         * by applying the corresponding sub-ppm acceleration correction.
+         */
+        if (!isfinite(acceleration_scale) ||
+            excess_mm > NF_MOTION_DISTANCE_SNAP_MM ||
+            acceleration_scale > 1.0 + NF_MOTION_ACCEL_SNAP_RELATIVE) {
+            return NF_MOTION_INFEASIBLE;
+        }
+        snapped_limits = *limits;
+        if (snapped_limits.accel_low_mm_s2 > 0.0) {
+            snapped_limits.accel_low_mm_s2 *= acceleration_scale;
+        }
+        if (snapped_limits.accel_high_mm_s2 > 0.0) {
+            snapped_limits.accel_high_mm_s2 *= acceleration_scale;
+        }
+        status = nf_accel_layout(&snapped_limits, &layout);
+        if (status != NF_MOTION_OK) {
+            return status;
+        }
+        plan_limits = &snapped_limits;
+        status = nf_speed_change_metrics(
+            plan_limits, layout,
+            fmin(entry_velocity_mm_s, exit_velocity_mm_s),
+            fmax(entry_velocity_mm_s, exit_velocity_mm_s),
+            &direct_distance, &ignored_time);
+        if (status != NF_MOTION_OK ||
+            direct_distance > distance_mm + NF_MOTION_EPS) {
+            return (status != NF_MOTION_OK) ? status : NF_MOTION_INFEASIBLE;
+        }
+    }
+
+    if (direct_distance > distance_mm + NF_MOTION_EPS) {
         return NF_MOTION_INFEASIBLE;
     }
 
-    peak_velocity = limits->vmax_mm_s;
-    status = nf_speed_change_metrics(limits, layout, entry_velocity_mm_s,
+    peak_velocity = plan_limits->vmax_mm_s;
+    status = nf_speed_change_metrics(plan_limits, layout, entry_velocity_mm_s,
                                      peak_velocity, &accel_distance,
                                      &ignored_time);
     if (status != NF_MOTION_OK) {
         return status;
     }
-    status = nf_speed_change_metrics(limits, layout, exit_velocity_mm_s,
+    status = nf_speed_change_metrics(plan_limits, layout, exit_velocity_mm_s,
                                      peak_velocity, &decel_distance,
                                      &ignored_time);
     if (status != NF_MOTION_OK) {
@@ -305,18 +359,18 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
 
     if (accel_distance + decel_distance > distance_mm + NF_MOTION_EPS) {
         double low = fmax(entry_velocity_mm_s, exit_velocity_mm_s);
-        double high = limits->vmax_mm_s;
+        double high = plan_limits->vmax_mm_s;
         for (unsigned int iteration = 0U; iteration < 80U; iteration++) {
             const double mid = low + (0.5 * (high - low));
             double d0;
             double d1;
-            status = nf_speed_change_metrics(limits, layout,
+            status = nf_speed_change_metrics(plan_limits, layout,
                                              entry_velocity_mm_s, mid,
                                              &d0, &ignored_time);
             if (status != NF_MOTION_OK) {
                 return status;
             }
-            status = nf_speed_change_metrics(limits, layout,
+            status = nf_speed_change_metrics(plan_limits, layout,
                                              exit_velocity_mm_s, mid,
                                              &d1, &ignored_time);
             if (status != NF_MOTION_OK) {
@@ -329,13 +383,15 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
             }
         }
         peak_velocity = low;
-        status = nf_speed_change_metrics(limits, layout, entry_velocity_mm_s,
+        status = nf_speed_change_metrics(plan_limits, layout,
+                                         entry_velocity_mm_s,
                                          peak_velocity, &accel_distance,
                                          &ignored_time);
         if (status != NF_MOTION_OK) {
             return status;
         }
-        status = nf_speed_change_metrics(limits, layout, exit_velocity_mm_s,
+        status = nf_speed_change_metrics(plan_limits, layout,
+                                         exit_velocity_mm_s,
                                          peak_velocity, &decel_distance,
                                          &ignored_time);
         if (status != NF_MOTION_OK) {
@@ -356,7 +412,7 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
     out->exit_velocity_mm_s = exit_velocity_mm_s;
     out->peak_velocity_mm_s = peak_velocity;
 
-    status = nf_add_accel_phases(limits, layout, entry_velocity_mm_s,
+    status = nf_add_accel_phases(plan_limits, layout, entry_velocity_mm_s,
                                  peak_velocity, out);
     if (status != NF_MOTION_OK) {
         return status;
@@ -380,7 +436,7 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
         }
         out->total_time_s += phase->duration_s;
     }
-    status = nf_add_decel_phases(limits, layout, peak_velocity,
+    status = nf_add_decel_phases(plan_limits, layout, peak_velocity,
                                  exit_velocity_mm_s, out);
     if (status != NF_MOTION_OK) {
         return status;
@@ -586,22 +642,23 @@ static void nf_turn_integrate_projection_interval(
         (sin(start_angle) + (4.0 * sin(middle_angle)) + sin(end_angle));
 }
 
-static void nf_turn_integrate_projection(const NfTurnSpec *turn,
-                                         const NfTurnPlan *plan,
-                                         double start_time_s,
-                                         double end_time_s,
-                                         double axis_heading_deg,
-                                         double *out_parallel_mm,
-                                         double *out_lateral_mm)
+static void nf_turn_integrate_projection_steps(const NfTurnSpec *turn,
+                                               const NfTurnPlan *plan,
+                                               double start_time_s,
+                                               double end_time_s,
+                                               double axis_heading_deg,
+                                               unsigned int steps,
+                                               double *out_parallel_mm,
+                                               double *out_lateral_mm)
 {
     double parallel_mm = 0.0;
     double lateral_mm = 0.0;
     double interval_start = start_time_s;
 
-    for (unsigned int i = 0U; i < NF_TURN_INTEGRATION_STEPS; i++) {
+    for (unsigned int i = 0U; i < steps; i++) {
         const double interval_end = start_time_s +
             ((end_time_s - start_time_s) * (double)(i + 1U) /
-             (double)NF_TURN_INTEGRATION_STEPS);
+             (double)steps);
         double interval_parallel;
         double interval_lateral;
         nf_turn_integrate_projection_interval(turn, plan,
@@ -615,6 +672,19 @@ static void nf_turn_integrate_projection(const NfTurnSpec *turn,
     }
     *out_parallel_mm = parallel_mm;
     *out_lateral_mm = lateral_mm;
+}
+
+static void nf_turn_integrate_projection(const NfTurnSpec *turn,
+                                         const NfTurnPlan *plan,
+                                         double start_time_s,
+                                         double end_time_s,
+                                         double axis_heading_deg,
+                                         double *out_parallel_mm,
+                                         double *out_lateral_mm)
+{
+    nf_turn_integrate_projection_steps(
+        turn, plan, start_time_s, end_time_s, axis_heading_deg,
+        NF_TURN_INTEGRATION_STEPS, out_parallel_mm, out_lateral_mm);
 }
 
 static double nf_turn_time_at_heading(const NfTurnSpec *turn,
@@ -740,6 +810,192 @@ NfMotionStatus nf_motion_turn_plan(const NfTurnSpec *turn,
         }
     }
     *out = plan;
+    return NF_MOTION_OK;
+}
+
+NfMotionStatus nf_motion_turn_pose_at_time(const NfTurnSpec *turn,
+                                           const NfTurnPlan *plan,
+                                           double elapsed_s,
+                                           NfTurnPose *out)
+{
+    double angular_start_s;
+    double angular_end_s;
+    double angle_rad;
+    double expected_angular_time_s;
+    double expected_total_time_s;
+    double expected_travel_distance_mm;
+
+    if (turn == NULL || plan == NULL || out == NULL ||
+        !isfinite(elapsed_s) || elapsed_s < -NF_MOTION_EPS ||
+        elapsed_s > plan->total_time_s + NF_MOTION_EPS ||
+        !isfinite(turn->velocity_mm_s) || turn->velocity_mm_s <= 0.0 ||
+        !isfinite(turn->alpha_deg_s2) || turn->alpha_deg_s2 <= 0.0 ||
+        !nf_finite_nonnegative(turn->dist_in_mm) ||
+        !nf_finite_nonnegative(turn->dist_out_mm) ||
+        !isfinite(turn->angle_deg) || turn->angle_deg <= 0.0 ||
+        !isfinite(plan->omega_peak_deg_s) || plan->omega_peak_deg_s <= 0.0 ||
+        !isfinite(plan->accel_time_s) || plan->accel_time_s <= 0.0 ||
+        !nf_finite_nonnegative(plan->cruise_time_s) ||
+        !isfinite(plan->angular_time_s) || plan->angular_time_s <= 0.0 ||
+        !isfinite(plan->total_time_s) || plan->total_time_s <= 0.0 ||
+        !isfinite(plan->travel_distance_mm) ||
+        plan->travel_distance_mm <= 0.0 ||
+        !isfinite(plan->displacement_forward_mm) ||
+        !isfinite(plan->displacement_lateral_mm)) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+
+    expected_angular_time_s =
+        (2.0 * plan->accel_time_s) + plan->cruise_time_s;
+    expected_total_time_s =
+        (turn->dist_in_mm / turn->velocity_mm_s) +
+        expected_angular_time_s +
+        (turn->dist_out_mm / turn->velocity_mm_s);
+    expected_travel_distance_mm =
+        turn->dist_in_mm + turn->dist_out_mm +
+        (turn->velocity_mm_s * expected_angular_time_s);
+    if (!nf_motion_nearly_equal(plan->angular_time_s,
+                                expected_angular_time_s) ||
+        !nf_motion_nearly_equal(plan->total_time_s,
+                                expected_total_time_s) ||
+        !nf_motion_nearly_equal(plan->travel_distance_mm,
+                                expected_travel_distance_mm) ||
+        !nf_motion_nearly_equal(
+            turn->angle_deg,
+            plan->omega_peak_deg_s *
+                (plan->accel_time_s + plan->cruise_time_s))) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+
+    if (elapsed_s < 0.0) {
+        elapsed_s = 0.0;
+    }
+    if (elapsed_s > plan->total_time_s) {
+        elapsed_s = plan->total_time_s;
+    }
+    memset(out, 0, sizeof(*out));
+
+    angular_start_s = turn->dist_in_mm / turn->velocity_mm_s;
+    angular_end_s = angular_start_s + plan->angular_time_s;
+    if (elapsed_s <= angular_start_s) {
+        out->forward_mm = turn->velocity_mm_s * elapsed_s;
+        return NF_MOTION_OK;
+    }
+
+    {
+        const double angular_elapsed_s =
+            fmin(elapsed_s - angular_start_s, plan->angular_time_s);
+        double angular_forward_mm;
+        double angular_lateral_mm;
+        nf_turn_integrate_projection(turn, plan, 0.0, angular_elapsed_s,
+                                     0.0, &angular_forward_mm,
+                                     &angular_lateral_mm);
+        out->forward_mm = turn->dist_in_mm + angular_forward_mm;
+        out->lateral_mm = angular_lateral_mm;
+        out->heading_deg = nf_turn_heading_deg_at_time(
+            turn, plan, angular_elapsed_s);
+    }
+
+    if (elapsed_s <= angular_end_s) {
+        return NF_MOTION_OK;
+    }
+
+    angle_rad = turn->angle_deg * (NF_MOTION_PI / 180.0);
+    {
+        const double exit_distance_mm =
+            turn->velocity_mm_s * (elapsed_s - angular_end_s);
+        out->forward_mm += exit_distance_mm * cos(angle_rad);
+        out->lateral_mm += exit_distance_mm * sin(angle_rad);
+        out->heading_deg = turn->angle_deg;
+    }
+    return NF_MOTION_OK;
+}
+
+NfMotionStatus nf_motion_turn_pose_uniform(const NfTurnSpec *turn,
+                                           const NfTurnPlan *plan,
+                                           size_t interval_count,
+                                           NfTurnPose *poses,
+                                           size_t pose_capacity)
+{
+    NfTurnPose validation_pose;
+    double angular_start_s;
+    double angular_end_s;
+    double forward_mm = 0.0;
+    double lateral_mm = 0.0;
+    double previous_time_s = 0.0;
+
+    if (turn == NULL || plan == NULL || poses == NULL ||
+        interval_count == 0U || interval_count == SIZE_MAX ||
+        pose_capacity < interval_count + 1U) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+    angular_start_s = turn->dist_in_mm / turn->velocity_mm_s;
+    angular_end_s = angular_start_s + plan->angular_time_s;
+    if (nf_motion_turn_pose_at_time(turn, plan, 0.0, &validation_pose) !=
+        NF_MOTION_OK) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+    poses[0] = validation_pose;
+
+    for (size_t i = 1U; i <= interval_count; i++) {
+        const double elapsed_s =
+            plan->total_time_s * (double)i / (double)interval_count;
+        double cursor_s = previous_time_s;
+
+        if (cursor_s < angular_start_s) {
+            const double straight_end_s = fmin(elapsed_s, angular_start_s);
+            if (straight_end_s > cursor_s) {
+                forward_mm += turn->velocity_mm_s *
+                              (straight_end_s - cursor_s);
+                cursor_s = straight_end_s;
+            }
+        }
+        if (cursor_s < elapsed_s && cursor_s < angular_end_s &&
+            elapsed_s > angular_start_s) {
+            const double overlap_start_s = fmax(cursor_s, angular_start_s);
+            const double overlap_end_s = fmin(elapsed_s, angular_end_s);
+            if (overlap_end_s > overlap_start_s) {
+                const double local_start_s =
+                    overlap_start_s - angular_start_s;
+                const double local_end_s = overlap_end_s - angular_start_s;
+                const double fraction =
+                    (local_end_s - local_start_s) / plan->angular_time_s;
+                unsigned int steps = (unsigned int)ceil(
+                    fraction * (double)NF_TURN_INTEGRATION_STEPS);
+                double delta_forward_mm;
+                double delta_lateral_mm;
+                if (steps == 0U) {
+                    steps = 1U;
+                }
+                nf_turn_integrate_projection_steps(
+                    turn, plan, local_start_s, local_end_s, 0.0, steps,
+                    &delta_forward_mm, &delta_lateral_mm);
+                forward_mm += delta_forward_mm;
+                lateral_mm += delta_lateral_mm;
+                cursor_s = overlap_end_s;
+            }
+        }
+        if (cursor_s < elapsed_s) {
+            const double exit_distance_mm =
+                turn->velocity_mm_s * (elapsed_s - cursor_s);
+            const double angle_rad =
+                turn->angle_deg * (NF_MOTION_PI / 180.0);
+            forward_mm += exit_distance_mm * cos(angle_rad);
+            lateral_mm += exit_distance_mm * sin(angle_rad);
+        }
+
+        poses[i].forward_mm = forward_mm;
+        poses[i].lateral_mm = lateral_mm;
+        if (elapsed_s <= angular_start_s) {
+            poses[i].heading_deg = 0.0;
+        } else if (elapsed_s >= angular_end_s) {
+            poses[i].heading_deg = turn->angle_deg;
+        } else {
+            poses[i].heading_deg = nf_turn_heading_deg_at_time(
+                turn, plan, elapsed_s - angular_start_s);
+        }
+        previous_time_s = elapsed_s;
+    }
     return NF_MOTION_OK;
 }
 

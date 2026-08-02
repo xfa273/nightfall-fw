@@ -45,6 +45,48 @@ tools/solver_host/run_solver_host.sh --maze path/to/maze.maze \
 時間プランナの `.maze` readerはファイルのSと全Gを使用し、最大32x32まで読む
 厳格版です。未知壁 `.` は壁ありへ読み替えずエラーにします。
 
+## 斜め対応・時間最短経路を確認する
+
+`--slalom-time-plan` は直交3種に45度in/out、V90、135度in/outを加えた
+時間最短経路を導出し、half-grid anchor・8方位・境界速度classを持つ型付き動作列へ
+変換します。F413は調整済みのmode2をprimaryとし、F405 mini mode2〜5を比較に
+使用します。caseは斜め直線値を持つ8または9だけを受理します。
+
+```sh
+tools/solver_host/run_solver_host.sh \
+  --maze path/to/maze.maze \
+  --slalom-time-plan \
+  --slalom-profile f413-preorder-mode2 \
+  --case 8 --compare-orthogonal --assert-valid
+
+tools/solver_host/run_solver_host.sh \
+  --maze path/to/maze.maze \
+  --slalom-time-plan \
+  --slalom-profile f405-mini-mode4 \
+  --case 9 --compare-orthogonal --assert-valid --summary-only
+```
+
+`--compare-orthogonal` は同じconfigの斜め5種だけを無効にした候補と比較し、斜めを
+許した結果が遅くならないことを検査します。評価値は従来と同じく最初のG区画への
+進入時刻です。斜めturnはPC専用exact-closure仮値であり、firmware parameterは
+変更しません。
+
+過去大会24迷路×5profile×case 8/9の240構成を一括確認する場合:
+
+```sh
+tools/solver_host/run_slalom_kerilab_matrix.sh
+```
+
+結果は実行ごとの一時ファイルを経て、全gate通過時だけ
+`build/solver_host/slalom_kerilab_matrix.tsv` へ原子的に保存されます。
+`legacy_geometry` は現runnerへ論理距離を写せるかのgateで、
+`terminal-diagonal-unsupported` は現runnerの固定直交停止では斜め終端を表せない
+ことを示します。現runnerは直線codeごとに速度を再計画するため、互換経路でも
+`legacy_time_equivalent=no`です。
+
+固定データcommitでの基準結果は240/240成功、斜め採用240、直交限定に対する
+厳密短縮240、`legacy_geometry=ok` 81、斜め終端非対応159です。
+
 ## KeriLab過去大会迷路を取得して一括確認
 
 過去大会迷路は
@@ -88,12 +130,20 @@ MODE=2 CASE=8 TURN_SET=all tools/solver_host/run_kerilab_samples.sh
 ```sh
 tools/solver_host/run_route_motion_tests.sh
 tools/solver_host/run_route_planner_tests.sh
+tools/solver_host/run_route_clearance_tests.sh
+tools/solver_host/run_slalom_profile_audit.sh
+tools/solver_host/run_slalom_time_planner_tests.sh
+tools/solver_host/run_legacy_path_codec_tests.sh
+tools/solver_host/run_path_pipeline_tests.sh
+tools/solver_host/run_slalom_plan_legacy_codec_tests.sh
+tools/solver_host/run_slalom_time_plan_host_tests.sh
 tools/solver_host/run_legacy_path_validator_tests.sh
 tools/solver_host/run_solver_host_cli_tests.sh
 ```
 
-既存の斜め経路→動作変換も `--assert-valid` で直交／斜め状態遷移を検証できます。
-内蔵迷路のmode 2 / case 8では、既知の不正終端 `[201, 901, 0]` を検出します。
+既存の斜め経路→動作変換は共通のtransactional codecへ置換され、
+`--assert-valid` で直交／斜め状態遷移を検証します。不完全な小回り列は無理に
+斜め入りへ変換せず、論理方位とhalf-grid終点が一致する完全な列だけを変換します。
 
 ```sh
 tools/solver_host/run_solver_host.sh --mode 2 --case 8 --assert-valid
@@ -101,6 +151,8 @@ tools/solver_host/run_solver_host.sh --mode 2 --case 8 --assert-valid
 
 設計と距離所有規則は
 [`docs/ai/ORTHOGONAL_TIME_PLANNER.md`](../../docs/ai/ORTHOGONAL_TIME_PLANNER.md)
+および
+[`docs/ai/SLALOM_TIME_PLANNER.md`](../../docs/ai/SLALOM_TIME_PLANNER.md)
 を参照してください。
 
 ## C配列形式を読む
