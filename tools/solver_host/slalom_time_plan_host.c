@@ -201,6 +201,13 @@ bool nf_host_slalom_make_config(
         }
     }
 
+    /*
+     * #0 is not emitted by the diagonal planner, but its calibrated boundary
+     * speed is a conservative common low-speed realization of #1--#5.
+     */
+    out_config->low_speed_turn_velocity_mm_s =
+        out_config->small_90.velocity_mm_s;
+
     *out_profile = profile;
     nf_host_slalom_error(error, error_size, "ok");
     return true;
@@ -238,8 +245,51 @@ static size_t nf_host_slalom_zero_step_diagonal_turn_count(
         if ((unsigned int)action->kind <
                 (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
             (((unsigned int)action->start_heading & 1U) != 0U) &&
-            action->connector_steps <
-                NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
+            action->connector_steps == 0U) {
+            count++;
+        }
+    }
+    return count;
+}
+
+
+static size_t nf_host_slalom_reduced_turn_count(
+    const NfSlalomRoutePlan *plan)
+{
+    size_t count = 0U;
+    for (size_t i = 0U; i < plan->action_count; i++) {
+        if ((unsigned int)plan->actions[i].kind <
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+            plan->actions[i].turn_speed_mode !=
+                NF_SLALOM_TURN_SPEED_NOMINAL) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static size_t nf_host_slalom_turn_speed_mode_count(
+    const NfSlalomRoutePlan *plan,
+    NfSlalomTurnSpeedMode mode)
+{
+    size_t count = 0U;
+    for (size_t i = 0U; i < plan->action_count; i++) {
+        if ((unsigned int)plan->actions[i].kind <
+                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
+            plan->actions[i].turn_speed_mode == mode) {
+            count++;
+        }
+    }
+    return count;
+}
+
+static size_t nf_host_slalom_action_kind_count(
+    const NfSlalomRoutePlan *plan,
+    NfSlalomActionKind kind)
+{
+    size_t count = 0U;
+    for (size_t i = 0U; i < plan->action_count; i++) {
+        if (plan->actions[i].kind == kind) {
             count++;
         }
     }
@@ -267,6 +317,11 @@ static void nf_host_slalom_print_action(size_t index,
            action->connector_command_distance_mm,
            action->entry_velocity_mm_s, action->turn_velocity_mm_s,
            action->exit_velocity_mm_s, action->duration_us);
+    if (action->turn_speed_mode == NF_SLALOM_TURN_SPEED_LOW) {
+        printf(" turn_speed=low");
+    } else if (action->turn_speed_mode == NF_SLALOM_TURN_SPEED_CRAWL) {
+        printf(" turn_speed=crawl");
+    }
     if (action->has_goal_cross) {
         printf(" goal_cross=(%u,%u,%s) phase=%s at_action_us=%" PRIu64,
                (unsigned int)action->goal_x,
@@ -303,7 +358,7 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
     char error[192];
     uint64_t orthogonal_goal_entry_us = 0U;
     bool orthogonal_available = false;
-    const uint32_t full_mask = NF_SLALOM_ENABLE_ALL;
+    const uint32_t full_mask = NF_SLALOM_ENABLE_SHORTEST_1_TO_5;
 
     if (maze_path == NULL) {
         fprintf(stderr,
@@ -399,7 +454,8 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
         orthogonal_goal_entry_us = orthogonal.goal_entry_us;
         if (plan.goal_entry_us > orthogonal_goal_entry_us) {
             fprintf(stderr,
-                    "[slalom-plan] result=failed reason=diagonal-superset-slower "
+                    "[slalom-plan] result=failed "
+                    "reason=patterns-1-to-5-slower-than-orthogonal-baseline "
                     "diagonal_us=%" PRIu64 " orthogonal_us=%" PRIu64 "\n",
                     plan.goal_entry_us, orthogonal_goal_entry_us);
             return 1;
@@ -412,10 +468,12 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
                info.goal_count);
         printf("[slalom-plan] profile=%s role=%s mode=%u case=%u "
                "start_offset_mm=%.3f diagonal_turns=PC_PROVISIONAL "
+               "patterns=KERI-1-to-5 low_speed_turn_mm_s=%.3f "
                "objective=first-goal-entry\n",
                profile->name, profile->primary ? "primary" : "comparison",
                (unsigned int)profile->shortest_run_mode,
-               (unsigned int)case_index, profile->start_offset_mm);
+               (unsigned int)case_index, profile->start_offset_mm,
+               config.low_speed_turn_velocity_mm_s);
         printf("[slalom-plan] selected_goal=(%u,%u,%s) goal_entry_us=%" PRIu64
                " stop_us=%" PRIu64 " goal_entry_velocity_mm_s=%.3f "
                "expanded_states=%" PRIu32 " relaxed_edges=%" PRIu32 "\n",
@@ -446,7 +504,8 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
            "goal_entry_us=%" PRIu64 " stop_us=%" PRIu64
            " orthogonal_goal_entry_us=%" PRIu64
            " improvement_us=%" PRIu64 " actions=%zu diagonal_actions=%zu "
-           "zero_step_diagonal_turns=%zu "
+           "zero_step_diagonal_turns=%zu reduced_turns=%zu "
+           "low_turns=%zu crawl_turns=%zu small90_actions=%zu "
            "legacy_geometry=%s legacy_time_equivalent=no "
            "validation=ok deterministic=%s objective=first-goal-entry\n",
            profile->name, (unsigned int)profile->shortest_run_mode,
@@ -456,6 +515,13 @@ int nf_host_run_slalom_time_plan(const char *maze_path,
                                 : 0U,
            plan.action_count, nf_host_slalom_diagonal_action_count(&plan),
            nf_host_slalom_zero_step_diagonal_turn_count(&plan),
+           nf_host_slalom_reduced_turn_count(&plan),
+           nf_host_slalom_turn_speed_mode_count(
+               &plan, NF_SLALOM_TURN_SPEED_LOW),
+           nf_host_slalom_turn_speed_mode_count(
+               &plan, NF_SLALOM_TURN_SPEED_CRAWL),
+           nf_host_slalom_action_kind_count(
+               &plan, NF_SLALOM_ACTION_SMALL_90),
            nf_slalom_legacy_status_name(legacy_result.status),
            assert_valid ? "checked" : "not-checked");
     return 0;

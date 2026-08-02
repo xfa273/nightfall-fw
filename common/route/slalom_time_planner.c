@@ -13,6 +13,12 @@
 #define NF_SLALOM_INF UINT64_MAX
 #define NF_SLALOM_TURN_COUNT ((size_t)NF_SLALOM_ACTION_START_OFFSET)
 
+typedef NfSlalomTurnSpeedMode NfSlalomTurnVariant;
+#define NF_SLALOM_TURN_NOMINAL NF_SLALOM_TURN_SPEED_NOMINAL
+#define NF_SLALOM_TURN_LOW NF_SLALOM_TURN_SPEED_LOW
+#define NF_SLALOM_TURN_CRAWL NF_SLALOM_TURN_SPEED_CRAWL
+#define NF_SLALOM_TURN_VARIANT_COUNT NF_SLALOM_TURN_SPEED_MODE_COUNT
+
 typedef struct {
     uint64_t distance_us;
     uint16_t turn_count;
@@ -24,6 +30,7 @@ typedef struct {
     size_t previous_state;
     uint16_t connector_steps;
     NfSlalomActionKind kind;
+    NfSlalomTurnVariant variant;
     NfRouteSide side;
 } NfSlalomParent;
 
@@ -90,10 +97,17 @@ typedef struct {
     const NfRouteMaze *maze;
     const NfSlalomPlannerConfig *config;
     /* Calibrated/provisional source of edge duration and boundary velocity. */
-    NfTurnPlan turn_plans[NF_SLALOM_TURN_COUNT];
+    NfTurnSpec turn_specs[NF_SLALOM_TURN_VARIANT_COUNT]
+                             [NF_SLALOM_TURN_COUNT];
+    NfTurnPlan turn_plans[NF_SLALOM_TURN_VARIANT_COUNT]
+                             [NF_SLALOM_TURN_COUNT];
     /* Exact-closing PC centre-line used for every spatial operation. */
-    NfTurnPlan geometry_turn_plans[NF_SLALOM_TURN_COUNT];
-    NfTurnTrajectoryCache turn_trajectories[NF_SLALOM_TURN_COUNT];
+    NfTurnSpec geometry_specs[NF_SLALOM_TURN_VARIANT_COUNT]
+                                 [NF_SLALOM_TURN_COUNT];
+    NfTurnPlan geometry_turn_plans[NF_SLALOM_TURN_VARIANT_COUNT]
+                                      [NF_SLALOM_TURN_COUNT];
+    NfTurnTrajectoryCache turn_trajectories[NF_SLALOM_TURN_VARIANT_COUNT]
+                                             [NF_SLALOM_TURN_COUNT];
     NfLinearPlan start_plan;
     uint64_t start_time_us;
     double start_boundary_velocity_mm_s;
@@ -103,6 +117,7 @@ typedef struct {
     size_t state_count;
     NfSlalomHeap heap;
     NfGoalRecord goal;
+    bool goal_cross_reachable;
     uint32_t expanded_states;
     uint32_t relaxed_edges;
 } NfSlalomContext;
@@ -200,12 +215,15 @@ static bool nf_slalom_finite_positive(double value)
 
 static void nf_slalom_free_turn_trajectories(NfSlalomContext *context)
 {
-    for (size_t i = 0U; i < NF_SLALOM_TURN_COUNT; i++) {
-        free(context->turn_trajectories[i].poses);
-        free(context->turn_trajectories[i].elapsed_s);
-        context->turn_trajectories[i].poses = NULL;
-        context->turn_trajectories[i].elapsed_s = NULL;
-        context->turn_trajectories[i].intervals = 0U;
+    for (size_t variant = 0U;
+         variant < (size_t)NF_SLALOM_TURN_VARIANT_COUNT; variant++) {
+        for (size_t i = 0U; i < NF_SLALOM_TURN_COUNT; i++) {
+            free(context->turn_trajectories[variant][i].poses);
+            free(context->turn_trajectories[variant][i].elapsed_s);
+            context->turn_trajectories[variant][i].poses = NULL;
+            context->turn_trajectories[variant][i].elapsed_s = NULL;
+            context->turn_trajectories[variant][i].intervals = 0U;
+        }
     }
 }
 
@@ -218,6 +236,8 @@ const char *nf_slalom_plan_status_name(NfSlalomPlanStatus status)
     case NF_SLALOM_PLAN_INVALID_CONFIG: return "invalid-config";
     case NF_SLALOM_PLAN_UNSUPPORTED_SAFETY: return "unsupported-safety";
     case NF_SLALOM_PLAN_NO_PATH: return "no-path";
+    case NF_SLALOM_PLAN_NO_FEASIBLE_TERMINAL:
+        return "no-feasible-terminal";
     case NF_SLALOM_PLAN_CAPACITY: return "capacity";
     case NF_SLALOM_PLAN_OVERFLOW: return "overflow";
     default: return "unknown";
@@ -604,24 +624,77 @@ static const NfTurnSpec *nf_slalom_geometry_turn_spec(
     return &config->geometry_turns[(size_t)kind];
 }
 
-static NfSlalomSpeedClass nf_slalom_speed_class(NfSlalomActionKind kind,
-                                                NfRouteSide side)
+static bool nf_slalom_turn_variant_available(
+    const NfSlalomContext *context,
+    NfSlalomActionKind kind,
+    NfSlalomTurnVariant variant)
 {
-    const unsigned int side_offset =
-        (side == NF_ROUTE_SIDE_LEFT) ? 1U : 0U;
-    return (NfSlalomSpeedClass)(1U + (2U * (unsigned int)kind) + side_offset);
+    const NfTurnSpec *nominal;
+    double velocity;
+
+    if (context == NULL ||
+        (unsigned int)kind >= NF_SLALOM_ACTION_START_OFFSET ||
+        (unsigned int)variant >= NF_SLALOM_TURN_VARIANT_COUNT) {
+        return false;
+    }
+    if (variant == NF_SLALOM_TURN_NOMINAL) {
+        return true;
+    }
+    nominal = nf_slalom_turn_spec(context->config, kind);
+    if (kind == NF_SLALOM_ACTION_SMALL_90 || nominal == NULL ||
+        context->config->low_speed_turn_velocity_mm_s <= 0.0) {
+        return false;
+    }
+    velocity = (variant == NF_SLALOM_TURN_LOW) ?
+        context->config->low_speed_turn_velocity_mm_s :
+        context->start_boundary_velocity_mm_s;
+    return nf_slalom_finite_positive(velocity) &&
+           velocity < nominal->velocity_mm_s - NF_SLALOM_EPS &&
+           (variant != NF_SLALOM_TURN_CRAWL ||
+            fabs(velocity - context->config->low_speed_turn_velocity_mm_s) >
+                NF_SLALOM_EPS);
+}
+
+static double nf_slalom_turn_variant_velocity(
+    const NfSlalomContext *context,
+    NfSlalomTurnVariant variant)
+{
+    if (variant == NF_SLALOM_TURN_LOW) {
+        return context->config->low_speed_turn_velocity_mm_s;
+    }
+    if (variant == NF_SLALOM_TURN_CRAWL) {
+        return context->start_boundary_velocity_mm_s;
+    }
+    return -1.0;
+}
+
+static NfSlalomSpeedClass nf_slalom_speed_class(
+    NfSlalomActionKind kind,
+    NfSlalomTurnVariant variant)
+{
+    if (variant == NF_SLALOM_TURN_LOW) {
+        return NF_SLALOM_SPEED_LOW;
+    }
+    if (variant == NF_SLALOM_TURN_CRAWL) {
+        return NF_SLALOM_SPEED_CRAWL;
+    }
+    return (NfSlalomSpeedClass)(1U + (unsigned int)kind);
 }
 
 static double nf_slalom_class_velocity(const NfSlalomContext *context,
                                        NfSlalomSpeedClass speed_class)
 {
-    unsigned int value;
     NfSlalomActionKind kind;
     if (speed_class == NF_SLALOM_SPEED_START) {
         return context->start_boundary_velocity_mm_s;
     }
-    value = (unsigned int)speed_class - 1U;
-    kind = (NfSlalomActionKind)(value / 2U);
+    if (speed_class == NF_SLALOM_SPEED_LOW) {
+        return context->config->low_speed_turn_velocity_mm_s;
+    }
+    if (speed_class == NF_SLALOM_SPEED_CRAWL) {
+        return context->start_boundary_velocity_mm_s;
+    }
+    kind = (NfSlalomActionKind)((unsigned int)speed_class - 1U);
     if ((unsigned int)kind >= NF_SLALOM_ACTION_START_OFFSET) {
         return -1.0;
     }
@@ -677,15 +750,16 @@ static void nf_slalom_expected_closure(const NfSlalomPlannerConfig *config,
  */
 static bool nf_slalom_turn_time_map(const NfSlalomContext *context,
                                     NfSlalomActionKind kind,
+                                    NfSlalomTurnVariant variant,
                                     double geometry_fraction,
                                     double *out_elapsed_s)
 {
     const NfTurnSpec *timing_spec =
-        nf_slalom_turn_spec(context->config, kind);
+        &context->turn_specs[(size_t)variant][(size_t)kind];
     const NfTurnPlan *timing_plan =
-        &context->turn_plans[(size_t)kind];
+        &context->turn_plans[(size_t)variant][(size_t)kind];
     const NfTurnPlan *geometry_plan =
-        &context->geometry_turn_plans[(size_t)kind];
+        &context->geometry_turn_plans[(size_t)variant][(size_t)kind];
     const double duration_s = timing_plan->total_time_s;
     const double boundary_velocity = timing_spec->velocity_mm_s;
     const double average_velocity =
@@ -733,14 +807,15 @@ static bool nf_slalom_turn_time_map(const NfSlalomContext *context,
 static double nf_slalom_turn_velocity_at_time(
     const NfSlalomContext *context,
     NfSlalomActionKind kind,
+    NfSlalomTurnVariant variant,
     double elapsed_s)
 {
     const NfTurnSpec *timing_spec =
-        nf_slalom_turn_spec(context->config, kind);
+        &context->turn_specs[(size_t)variant][(size_t)kind];
     const NfTurnPlan *timing_plan =
-        &context->turn_plans[(size_t)kind];
+        &context->turn_plans[(size_t)variant][(size_t)kind];
     const NfTurnPlan *geometry_plan =
-        &context->geometry_turn_plans[(size_t)kind];
+        &context->geometry_turn_plans[(size_t)variant][(size_t)kind];
     const double fraction = fmin(1.0, fmax(0.0,
         elapsed_s / timing_plan->total_time_s));
     const double average_velocity = geometry_plan->travel_distance_mm /
@@ -753,6 +828,15 @@ static double nf_slalom_turn_velocity_at_time(
         return timing_spec->velocity_mm_s +
                (amplitude * wave * wave);
     }
+}
+
+static NfTurnSpec nf_slalom_scaled_turn_spec(const NfTurnSpec *source,
+                                             double scale)
+{
+    NfTurnSpec result = *source;
+    result.velocity_mm_s *= scale;
+    result.alpha_deg_s2 *= scale * scale;
+    return result;
 }
 
 static NfSlalomPlanStatus nf_slalom_prepare_config(NfSlalomContext *context)
@@ -768,6 +852,8 @@ static NfSlalomPlanStatus nf_slalom_prepare_config(NfSlalomContext *context)
             context->config->half_cell_mm + NF_SLALOM_EPS ||
         !isfinite(context->config->start_velocity_mm_s) ||
         context->config->start_velocity_mm_s < 0.0 ||
+        !isfinite(context->config->low_speed_turn_velocity_mm_s) ||
+        context->config->low_speed_turn_velocity_mm_s < 0.0 ||
         !isfinite(context->config->orthogonal_anchor_closure_tolerance_mm) ||
         context->config->orthogonal_anchor_closure_tolerance_mm < 0.0 ||
         context->config->orthogonal_anchor_closure_tolerance_mm >
@@ -823,140 +909,182 @@ static NfSlalomPlanStatus nf_slalom_prepare_config(NfSlalomContext *context)
 
     for (size_t i = 0U; i < NF_SLALOM_TURN_COUNT; i++) {
         const NfSlalomActionKind kind = (NfSlalomActionKind)i;
-        const NfTurnSpec *timing_spec =
+        const NfTurnSpec *nominal_timing =
             nf_slalom_turn_spec(context->config, kind);
-        const NfTurnSpec *geometry_spec =
+        const NfTurnSpec *nominal_geometry =
             nf_slalom_geometry_turn_spec(context->config, kind);
-        double expected_forward;
-        double expected_lateral;
-        double expected_angle;
-        double residual;
 
-        memset(&context->turn_plans[i], 0, sizeof(context->turn_plans[i]));
-        memset(&context->geometry_turn_plans[i], 0,
-               sizeof(context->geometry_turn_plans[i]));
         if ((context->config->enabled_actions & (1U << i)) == 0U) {
             continue;
         }
-        if (timing_spec == NULL || geometry_spec == NULL ||
-            !timing_spec->enabled || !geometry_spec->enabled ||
-            !isfinite(timing_spec->velocity_mm_s) ||
-            !isfinite(geometry_spec->velocity_mm_s) ||
-            fabs(timing_spec->velocity_mm_s - geometry_spec->velocity_mm_s) >
-                NF_SLALOM_EPS) {
+        if (nominal_timing == NULL || nominal_geometry == NULL ||
+            !nominal_timing->enabled || !nominal_geometry->enabled ||
+            !nf_slalom_finite_positive(nominal_timing->velocity_mm_s) ||
+            !nf_slalom_finite_positive(nominal_geometry->velocity_mm_s) ||
+            fabs(nominal_timing->velocity_mm_s -
+                 nominal_geometry->velocity_mm_s) > NF_SLALOM_EPS) {
             return NF_SLALOM_PLAN_INVALID_CONFIG;
         }
-        if (nf_motion_turn_plan(timing_spec,
-                                &context->config->turn_environment,
-                                &context->turn_plans[i]) != NF_MOTION_OK) {
-            return NF_SLALOM_PLAN_INVALID_CONFIG;
-        }
-        if (nf_motion_turn_plan(geometry_spec,
-                                &context->config->turn_environment,
-                                &context->geometry_turn_plans[i]) !=
-            NF_MOTION_OK) {
-            return NF_SLALOM_PLAN_INVALID_CONFIG;
-        }
-        nf_slalom_expected_closure(context->config, kind,
-                                   &expected_forward, &expected_lateral,
-                                   &expected_angle);
-        residual = hypot(
-            context->geometry_turn_plans[i].displacement_forward_mm -
-                expected_forward,
-            context->geometry_turn_plans[i].displacement_lateral_mm -
-                expected_lateral);
-        if (!isfinite(residual) ||
-            residual >
-                (((kind == NF_SLALOM_ACTION_SMALL_90 ||
-                   kind == NF_SLALOM_ACTION_LARGE_90 ||
-                   kind == NF_SLALOM_ACTION_LARGE_180) ?
-                      context->config->orthogonal_anchor_closure_tolerance_mm :
-                      context->config->diagonal_anchor_closure_tolerance_mm) +
-                 NF_SLALOM_EPS) ||
-            fabs(timing_spec->angle_deg - expected_angle) >
-                context->config->heading_closure_tolerance_deg +
-                    NF_SLALOM_EPS ||
-            fabs(geometry_spec->angle_deg - expected_angle) >
-                context->config->heading_closure_tolerance_deg +
-                    NF_SLALOM_EPS) {
-            return NF_SLALOM_PLAN_INVALID_CONFIG;
+
+        for (size_t variant_index = 0U;
+             variant_index < (size_t)NF_SLALOM_TURN_VARIANT_COUNT;
+             variant_index++) {
+            const NfSlalomTurnVariant variant =
+                (NfSlalomTurnVariant)variant_index;
+            NfTurnEnvironment environment =
+                context->config->turn_environment;
+            const NfTurnSpec *timing_spec;
+            const NfTurnSpec *geometry_spec;
+            double expected_forward;
+            double expected_lateral;
+            double expected_angle;
+            double residual;
+            double scale = 1.0;
+
+            if (!nf_slalom_turn_variant_available(context, kind, variant)) {
+                continue;
+            }
+            if (variant != NF_SLALOM_TURN_NOMINAL) {
+                scale = nf_slalom_turn_variant_velocity(context, variant) /
+                        nominal_timing->velocity_mm_s;
+                if (!nf_slalom_finite_positive(scale) || scale >= 1.0) {
+                    return NF_SLALOM_PLAN_INVALID_CONFIG;
+                }
+                context->turn_specs[variant_index][i] =
+                    nf_slalom_scaled_turn_spec(nominal_timing, scale);
+                context->geometry_specs[variant_index][i] =
+                    nf_slalom_scaled_turn_spec(nominal_geometry, scale);
+                if (environment.omega_cap_deg_s > 0.0) {
+                    environment.omega_cap_deg_s *= scale;
+                }
+            } else {
+                context->turn_specs[variant_index][i] = *nominal_timing;
+                context->geometry_specs[variant_index][i] = *nominal_geometry;
+            }
+            timing_spec = &context->turn_specs[variant_index][i];
+            geometry_spec = &context->geometry_specs[variant_index][i];
+            if (nf_motion_turn_plan(
+                    timing_spec, &environment,
+                    &context->turn_plans[variant_index][i]) != NF_MOTION_OK ||
+                nf_motion_turn_plan(
+                    geometry_spec, &environment,
+                    &context->geometry_turn_plans[variant_index][i]) !=
+                    NF_MOTION_OK) {
+                return NF_SLALOM_PLAN_INVALID_CONFIG;
+            }
+            nf_slalom_expected_closure(context->config, kind,
+                                       &expected_forward, &expected_lateral,
+                                       &expected_angle);
+            residual = hypot(
+                context->geometry_turn_plans[variant_index][i]
+                        .displacement_forward_mm - expected_forward,
+                context->geometry_turn_plans[variant_index][i]
+                        .displacement_lateral_mm - expected_lateral);
+            if (!isfinite(residual) ||
+                residual >
+                    (((kind == NF_SLALOM_ACTION_SMALL_90 ||
+                       kind == NF_SLALOM_ACTION_LARGE_90 ||
+                       kind == NF_SLALOM_ACTION_LARGE_180) ?
+                          context->config
+                              ->orthogonal_anchor_closure_tolerance_mm :
+                          context->config
+                              ->diagonal_anchor_closure_tolerance_mm) +
+                     NF_SLALOM_EPS) ||
+                fabs(timing_spec->angle_deg - expected_angle) >
+                    context->config->heading_closure_tolerance_deg +
+                        NF_SLALOM_EPS ||
+                fabs(geometry_spec->angle_deg - expected_angle) >
+                    context->config->heading_closure_tolerance_deg +
+                        NF_SLALOM_EPS) {
+                return NF_SLALOM_PLAN_INVALID_CONFIG;
+            }
         }
     }
     for (size_t i = 0U; i < NF_SLALOM_TURN_COUNT; i++) {
         const NfSlalomActionKind kind = (NfSlalomActionKind)i;
-        const NfTurnSpec *geometry_spec =
-            nf_slalom_geometry_turn_spec(context->config, kind);
-        double expected_forward;
-        double expected_lateral;
-        double expected_angle;
-        double required_intervals;
-        uint32_t intervals;
-        NfTurnPose *poses;
-        double *elapsed_s;
 
         if ((context->config->enabled_actions & (1U << i)) == 0U) {
             continue;
         }
-        nf_slalom_expected_closure(context->config, kind,
-                                   &expected_forward, &expected_lateral,
-                                   &expected_angle);
-        (void)expected_forward;
-        (void)expected_lateral;
-        required_intervals = fmax(
-            context->geometry_turn_plans[i].travel_distance_mm /
-                context->config->max_turn_sample_step_mm,
-            expected_angle / 2.0);
-        if (!isfinite(required_intervals) || required_intervals > 16384.0) {
-            nf_slalom_free_turn_trajectories(context);
-            return NF_SLALOM_PLAN_OVERFLOW;
-        }
-        intervals = (uint32_t)ceil(required_intervals);
-        if (intervals < 2U) {
-            intervals = 2U;
-        }
-        if ((size_t)intervals + 1U > SIZE_MAX / sizeof(*poses) ||
-            (size_t)intervals + 1U > SIZE_MAX / sizeof(*elapsed_s)) {
-            nf_slalom_free_turn_trajectories(context);
-            return NF_SLALOM_PLAN_OVERFLOW;
-        }
-        poses = (NfTurnPose *)malloc(
-            ((size_t)intervals + 1U) * sizeof(*poses));
-        elapsed_s = (double *)malloc(
-            ((size_t)intervals + 1U) * sizeof(*elapsed_s));
-        if (poses == NULL || elapsed_s == NULL) {
-            free(poses);
-            free(elapsed_s);
-            nf_slalom_free_turn_trajectories(context);
-            return NF_SLALOM_PLAN_CAPACITY;
-        }
-        if (nf_motion_turn_pose_uniform(
-                                        geometry_spec,
-                                        &context->geometry_turn_plans[i],
-                                        intervals, poses,
-                                        (size_t)intervals + 1U) !=
-            NF_MOTION_OK) {
-            free(poses);
-            free(elapsed_s);
-            nf_slalom_free_turn_trajectories(context);
-            return NF_SLALOM_PLAN_INVALID_CONFIG;
-        }
-        for (uint32_t sample = 0U; sample <= intervals; sample++) {
-            if (!nf_slalom_turn_time_map(
-                    context, kind, (double)sample / (double)intervals,
-                    &elapsed_s[sample])) {
+        for (size_t variant_index = 0U;
+             variant_index < (size_t)NF_SLALOM_TURN_VARIANT_COUNT;
+             variant_index++) {
+            const NfSlalomTurnVariant variant =
+                (NfSlalomTurnVariant)variant_index;
+            const NfTurnSpec *geometry_spec;
+            double expected_forward;
+            double expected_lateral;
+            double expected_angle;
+            double required_intervals;
+            uint32_t intervals;
+            NfTurnPose *poses;
+            double *elapsed_s;
+
+            if (!nf_slalom_turn_variant_available(context, kind, variant)) {
+                continue;
+            }
+            geometry_spec = &context->geometry_specs[variant_index][i];
+            nf_slalom_expected_closure(context->config, kind,
+                                       &expected_forward, &expected_lateral,
+                                       &expected_angle);
+            required_intervals = fmax(
+                context->geometry_turn_plans[variant_index][i]
+                        .travel_distance_mm /
+                    context->config->max_turn_sample_step_mm,
+                expected_angle / 2.0);
+            if (!isfinite(required_intervals) ||
+                required_intervals > 16384.0) {
+                nf_slalom_free_turn_trajectories(context);
+                return NF_SLALOM_PLAN_OVERFLOW;
+            }
+            intervals = (uint32_t)ceil(required_intervals);
+            if (intervals < 2U) {
+                intervals = 2U;
+            }
+            if ((size_t)intervals + 1U > SIZE_MAX / sizeof(*poses) ||
+                (size_t)intervals + 1U > SIZE_MAX / sizeof(*elapsed_s)) {
+                nf_slalom_free_turn_trajectories(context);
+                return NF_SLALOM_PLAN_OVERFLOW;
+            }
+            poses = (NfTurnPose *)malloc(
+                ((size_t)intervals + 1U) * sizeof(*poses));
+            elapsed_s = (double *)malloc(
+                ((size_t)intervals + 1U) * sizeof(*elapsed_s));
+            if (poses == NULL || elapsed_s == NULL) {
+                free(poses);
+                free(elapsed_s);
+                nf_slalom_free_turn_trajectories(context);
+                return NF_SLALOM_PLAN_CAPACITY;
+            }
+            if (nf_motion_turn_pose_uniform(
+                    geometry_spec,
+                    &context->geometry_turn_plans[variant_index][i],
+                    intervals, poses, (size_t)intervals + 1U) !=
+                NF_MOTION_OK) {
                 free(poses);
                 free(elapsed_s);
                 nf_slalom_free_turn_trajectories(context);
                 return NF_SLALOM_PLAN_INVALID_CONFIG;
             }
+            for (uint32_t sample = 0U; sample <= intervals; sample++) {
+                if (!nf_slalom_turn_time_map(
+                        context, kind, variant,
+                        (double)sample / (double)intervals,
+                        &elapsed_s[sample])) {
+                    free(poses);
+                    free(elapsed_s);
+                    nf_slalom_free_turn_trajectories(context);
+                    return NF_SLALOM_PLAN_INVALID_CONFIG;
+                }
+            }
+            /* Canonicalize only the already-gated sub-0.001 mm endpoint. */
+            poses[intervals].forward_mm = expected_forward;
+            poses[intervals].lateral_mm = expected_lateral;
+            poses[intervals].heading_deg = expected_angle;
+            context->turn_trajectories[variant_index][i].poses = poses;
+            context->turn_trajectories[variant_index][i].elapsed_s = elapsed_s;
+            context->turn_trajectories[variant_index][i].intervals = intervals;
         }
-        /* Canonicalize only the already-gated sub-0.001 mm endpoint. */
-        poses[intervals].forward_mm = expected_forward;
-        poses[intervals].lateral_mm = expected_lateral;
-        poses[intervals].heading_deg = expected_angle;
-        context->turn_trajectories[i].poses = poses;
-        context->turn_trajectories[i].elapsed_s = elapsed_s;
-        context->turn_trajectories[i].intervals = intervals;
     }
     return NF_SLALOM_PLAN_OK;
 }
@@ -1075,6 +1203,282 @@ static bool nf_slalom_turn_source_valid(const NfRouteMaze *maze,
     }
 }
 
+typedef struct {
+    NfSlalomAnchor anchor;
+    NfSlalomHeading8 heading;
+} NfSlalomKeriPose;
+
+static NfSlalomKeriPose nf_slalom_keri_opposite(NfSlalomKeriPose pose)
+{
+    pose.heading = nf_slalom_heading_add(pose.heading, 4);
+    return pose;
+}
+
+static bool nf_slalom_keri_same_pose(NfSlalomKeriPose left,
+                                     NfSlalomKeriPose right)
+{
+    return left.anchor.half_x == right.anchor.half_x &&
+           left.anchor.half_y == right.anchor.half_y &&
+           left.heading == right.heading;
+}
+
+/*
+ * Port of KERI StepMapSlalom::Index::next() into Nightfall half-grid
+ * coordinates.  It is intentionally separate from connector advancement:
+ * this helper enumerates the guard poses used by the reference turn graph.
+ */
+static NfSlalomKeriPose nf_slalom_keri_next(
+    NfSlalomKeriPose current,
+    NfSlalomHeading8 next_heading)
+{
+    NfSlalomKeriPose next = {current.anchor, next_heading};
+
+    if (nf_slalom_is_cardinal(current.heading)) {
+        if (nf_slalom_is_cardinal(next_heading)) {
+            next.anchor.half_x = (int16_t)(next.anchor.half_x +
+                (2 * k_heading_dx[(unsigned int)next_heading]));
+            next.anchor.half_y = (int16_t)(next.anchor.half_y +
+                (2 * k_heading_dy[(unsigned int)next_heading]));
+        } else {
+            next.anchor.half_x = (int16_t)(next.anchor.half_x +
+                k_heading_dx[(unsigned int)current.heading] +
+                k_heading_dx[(unsigned int)next_heading]);
+            next.anchor.half_y = (int16_t)(next.anchor.half_y +
+                k_heading_dy[(unsigned int)current.heading] +
+                k_heading_dy[(unsigned int)next_heading]);
+        }
+        return next;
+    }
+
+    if (nf_slalom_is_diagonal(next_heading)) {
+        next.anchor.half_x = (int16_t)(next.anchor.half_x +
+            k_heading_dx[(unsigned int)next_heading]);
+        next.anchor.half_y = (int16_t)(next.anchor.half_y +
+            k_heading_dy[(unsigned int)next_heading]);
+        return next;
+    }
+
+    {
+        const bool vertical_wall = (current.anchor.half_x & 1) == 0;
+        const int wall_x = vertical_wall ?
+            (current.anchor.half_x / 2) - 1 :
+            (current.anchor.half_x - 1) / 2;
+        const int wall_y = vertical_wall ?
+            (current.anchor.half_y - 1) / 2 :
+            (current.anchor.half_y / 2) - 1;
+        int cell_x = wall_x;
+        int cell_y = wall_y;
+
+        switch (current.heading) {
+        case NF_SLALOM_HEADING_NORTH_EAST:
+            if (next_heading == NF_SLALOM_HEADING_EAST ||
+                next_heading == NF_SLALOM_HEADING_NORTH) {
+                cell_x++; cell_y++;
+            } else if (next_heading == NF_SLALOM_HEADING_WEST) {
+                cell_y++;
+            } else {
+                cell_x++;
+            }
+            break;
+        case NF_SLALOM_HEADING_NORTH_WEST:
+            if (next_heading == NF_SLALOM_HEADING_EAST) {
+                cell_x++; cell_y++;
+            } else if (next_heading == NF_SLALOM_HEADING_NORTH) {
+                cell_y++;
+            } else if (next_heading == NF_SLALOM_HEADING_WEST) {
+                cell_x--; cell_y++;
+            } else {
+                cell_x--;
+            }
+            break;
+        case NF_SLALOM_HEADING_SOUTH_WEST:
+            if (next_heading == NF_SLALOM_HEADING_EAST) {
+                cell_x++; cell_y--;
+            } else if (next_heading == NF_SLALOM_HEADING_NORTH) {
+                cell_x--; cell_y++;
+            } else if (next_heading == NF_SLALOM_HEADING_WEST) {
+                cell_x--;
+            } else {
+                cell_y--;
+            }
+            break;
+        case NF_SLALOM_HEADING_SOUTH_EAST:
+            if (next_heading == NF_SLALOM_HEADING_EAST) {
+                cell_x++;
+            } else if (next_heading == NF_SLALOM_HEADING_NORTH) {
+                cell_x++; cell_y++;
+            } else if (next_heading == NF_SLALOM_HEADING_WEST) {
+                cell_y--;
+            } else {
+                cell_x++; cell_y--;
+            }
+            break;
+        default:
+            break;
+        }
+        next.anchor.half_x = (int16_t)((2 * cell_x) + 1);
+        next.anchor.half_y = (int16_t)((2 * cell_y) + 1);
+    }
+    return next;
+}
+
+static bool nf_slalom_keri_can_go(const NfRouteMaze *maze,
+                                  NfSlalomKeriPose pose)
+{
+    NfSlalomAnchor wall = pose.anchor;
+
+    if (nf_slalom_is_cardinal(pose.heading)) {
+        if (!nf_slalom_anchor_is_center(pose.anchor)) {
+            return false;
+        }
+        wall.half_x = (int16_t)(wall.half_x +
+            k_heading_dx[(unsigned int)pose.heading]);
+        wall.half_y = (int16_t)(wall.half_y +
+            k_heading_dy[(unsigned int)pose.heading]);
+    } else if (nf_slalom_anchor_is_center(pose.anchor)) {
+        return false;
+    }
+    return nf_slalom_anchor_open(maze, wall);
+}
+
+static int nf_slalom_keri_diag_to_cardinal_delta(NfSlalomKeriPose pose)
+{
+    const bool vertical_wall = (pose.anchor.half_x & 1) == 0;
+
+    if (pose.heading == NF_SLALOM_HEADING_NORTH_EAST ||
+        pose.heading == NF_SLALOM_HEADING_SOUTH_WEST) {
+        return vertical_wall ? -1 : 1;
+    }
+    return vertical_wall ? 1 : -1;
+}
+
+/*
+ * Exact topology/guard contract of KERI StepMapSlalom at commit 3170f7d.
+ * The reference expands costs from goal to start, so a forward turn is
+ * checked by expanding once from its reversed destination and matching the
+ * reversed source.  SMALL_90 is pattern #0 and keeps its separate contract.
+ */
+static bool nf_slalom_keri_turn_guard(
+    const NfRouteMaze *maze,
+    NfSlalomAnchor source,
+    NfSlalomHeading8 start_heading,
+    NfSlalomActionKind kind,
+    NfSlalomAnchor destination,
+    NfSlalomHeading8 end_heading)
+{
+    const NfSlalomKeriPose focus = nf_slalom_keri_opposite(
+        (NfSlalomKeriPose){destination, end_heading});
+    const NfSlalomKeriPose wanted = nf_slalom_keri_opposite(
+        (NfSlalomKeriPose){source, start_heading});
+
+    if (kind == NF_SLALOM_ACTION_SMALL_90) {
+        return true;
+    }
+    if (nf_slalom_is_cardinal(focus.heading)) {
+        static const int deltas[2] = {-1, 1};
+        if (!nf_slalom_keri_can_go(maze, focus)) {
+            return false;
+        }
+        for (size_t index = 0U; index < 2U; index++) {
+            const int delta = deltas[index];
+            const NfSlalomHeading8 d45 =
+                nf_slalom_heading_add(focus.heading, delta);
+            const NfSlalomHeading8 d90 =
+                nf_slalom_heading_add(focus.heading, 2 * delta);
+            const NfSlalomHeading8 d135 =
+                nf_slalom_heading_add(focus.heading, 3 * delta);
+            const NfSlalomHeading8 d180 =
+                nf_slalom_heading_add(focus.heading, 4 * delta);
+            const NfSlalomKeriPose i45 =
+                nf_slalom_keri_next(focus, d45);
+            NfSlalomKeriPose v90;
+            NfSlalomKeriPose i135;
+
+            if (!nf_slalom_keri_can_go(maze, i45)) {
+                continue;
+            }
+            if ((kind == NF_SLALOM_ACTION_45_IN ||
+                 kind == NF_SLALOM_ACTION_45_OUT) &&
+                nf_slalom_keri_can_go(
+                    maze, nf_slalom_keri_next(i45, i45.heading)) &&
+                nf_slalom_keri_same_pose(i45, wanted)) {
+                return true;
+            }
+            v90 = (NfSlalomKeriPose){focus.anchor, d90};
+            v90.anchor.half_x = (int16_t)(v90.anchor.half_x +
+                (2 * k_heading_dx[(unsigned int)focus.heading]) +
+                (2 * k_heading_dx[(unsigned int)d90]));
+            v90.anchor.half_y = (int16_t)(v90.anchor.half_y +
+                (2 * k_heading_dy[(unsigned int)focus.heading]) +
+                (2 * k_heading_dy[(unsigned int)d90]));
+            if (kind == NF_SLALOM_ACTION_LARGE_90 &&
+                nf_slalom_keri_same_pose(v90, wanted)) {
+                return true;
+            }
+            i135 = nf_slalom_keri_next(i45, d135);
+            if (!nf_slalom_keri_can_go(maze, i135)) {
+                continue;
+            }
+            if ((kind == NF_SLALOM_ACTION_135_IN ||
+                 kind == NF_SLALOM_ACTION_135_OUT) &&
+                nf_slalom_keri_can_go(
+                    maze, nf_slalom_keri_next(i135, i135.heading)) &&
+                nf_slalom_keri_same_pose(i135, wanted)) {
+                return true;
+            }
+            if (kind == NF_SLALOM_ACTION_LARGE_180) {
+                NfSlalomKeriPose v180 = v90;
+                v180.heading = d180;
+                v180.anchor.half_x = (int16_t)(v180.anchor.half_x +
+                    (2 * k_heading_dx[(unsigned int)d180]));
+                v180.anchor.half_y = (int16_t)(v180.anchor.half_y +
+                    (2 * k_heading_dy[(unsigned int)d180]));
+                if (nf_slalom_keri_same_pose(v180, wanted)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    {
+        const NfSlalomKeriPose i_f =
+            nf_slalom_keri_next(focus, focus.heading);
+        const int delta = nf_slalom_keri_diag_to_cardinal_delta(focus);
+        const NfSlalomHeading8 d45 =
+            nf_slalom_heading_add(focus.heading, delta);
+        const NfSlalomHeading8 d90 =
+            nf_slalom_heading_add(focus.heading, 2 * delta);
+        const NfSlalomHeading8 d135 =
+            nf_slalom_heading_add(focus.heading, 3 * delta);
+        NfSlalomKeriPose i90;
+
+        if (!nf_slalom_keri_can_go(maze, i_f)) {
+            return false;
+        }
+        if ((kind == NF_SLALOM_ACTION_45_IN ||
+             kind == NF_SLALOM_ACTION_45_OUT) &&
+            nf_slalom_keri_same_pose(
+                nf_slalom_keri_next(focus, d45), wanted)) {
+            return true;
+        }
+        i90 = nf_slalom_keri_next(i_f, d90);
+        if (!nf_slalom_keri_can_go(maze, i90)) {
+            return false;
+        }
+        if (kind == NF_SLALOM_ACTION_V90 &&
+            nf_slalom_keri_can_go(
+                maze, nf_slalom_keri_next(i90, i90.heading)) &&
+            nf_slalom_keri_same_pose(i90, wanted)) {
+            return true;
+        }
+        return (kind == NF_SLALOM_ACTION_135_IN ||
+                kind == NF_SLALOM_ACTION_135_OUT) &&
+               nf_slalom_keri_same_pose(
+                   nf_slalom_keri_next(focus, d135), wanted);
+    }
+}
+
 static bool nf_slalom_turn_destination(const NfRouteMaze *maze,
                                        NfSlalomAnchor source,
                                        NfSlalomHeading8 start_heading,
@@ -1154,7 +1558,9 @@ static bool nf_slalom_turn_destination(const NfRouteMaze *maze,
     out_anchor->half_x = (int16_t)(source.half_x + dx);
     out_anchor->half_y = (int16_t)(source.half_y + dy);
     *out_heading = end_heading;
-    return nf_slalom_pose_valid(maze, *out_anchor, *out_heading);
+    return nf_slalom_pose_valid(maze, *out_anchor, *out_heading) &&
+           nf_slalom_keri_turn_guard(maze, source, start_heading, kind,
+                                     *out_anchor, *out_heading);
 }
 
 static void nf_slalom_sort_events(NfBoundaryEvent *events, size_t count)
@@ -1292,15 +1698,16 @@ static NfSlalomPlanStatus nf_slalom_trace_turn(
     NfSlalomAnchor source,
     NfSlalomHeading8 start_heading,
     NfSlalomActionKind kind,
+    NfSlalomTurnVariant variant,
     NfRouteSide side,
     NfSlalomAnchor destination,
     NfSlalomHeading8 end_heading,
     NfTurnTrace *out)
 {
     const NfTurnSpec *geometry_spec =
-        nf_slalom_geometry_turn_spec(context->config, kind);
+        &context->geometry_specs[(size_t)variant][(size_t)kind];
     const NfTurnTrajectoryCache *trajectory =
-        &context->turn_trajectories[(size_t)kind];
+        &context->turn_trajectories[(size_t)variant][(size_t)kind];
     const double start_x = source.half_x * context->config->half_cell_mm;
     const double start_y = source.half_y * context->config->half_cell_mm;
     const double start_heading_deg =
@@ -1326,7 +1733,7 @@ static NfSlalomPlanStatus nf_slalom_trace_turn(
         out->goal_y = (uint8_t)current_y;
         out->goal_heading = start_heading;
         out->goal_velocity_mm_s =
-            nf_slalom_turn_velocity_at_time(context, kind, 0.0);
+            nf_slalom_turn_velocity_at_time(context, kind, variant, 0.0);
     }
 
     intervals = trajectory->intervals;
@@ -1370,7 +1777,7 @@ static NfSlalomPlanStatus nf_slalom_trace_turn(
         }
         if (!had_goal && out->has_goal) {
             out->goal_velocity_mm_s = nf_slalom_turn_velocity_at_time(
-                context, kind, out->goal_time_s);
+                context, kind, variant, out->goal_time_s);
         }
         previous_x = x;
         previous_y = y;
@@ -1624,6 +2031,8 @@ static NfSlalomPlanStatus nf_slalom_consider_direct_goal(
     if (!nf_slalom_scan_ray(context, source, heading, &ray)) {
         return NF_SLALOM_PLAN_INVALID_ARGUMENT;
     }
+    context->goal_cross_reachable =
+        context->goal_cross_reachable || ray.first_goal.present;
     if (!ray.first_goal.present || ray.stop_steps == 0U ||
         ray.stop_steps < ray.first_goal.step ||
         (uint16_t)(ray.stop_steps - ray.first_goal.step) <
@@ -1702,6 +2111,7 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
     size_t source_state,
     uint16_t connector_steps,
     NfSlalomActionKind kind,
+    NfSlalomTurnVariant variant,
     NfRouteSide side,
     NfBuiltEdge *out)
 {
@@ -1727,17 +2137,13 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
     NfSlalomPlanStatus status;
 
     if (out == NULL || (unsigned int)kind >= NF_SLALOM_ACTION_START_OFFSET ||
+        !nf_slalom_turn_variant_available(context, kind, variant) ||
         (side != NF_ROUTE_SIDE_RIGHT && side != NF_ROUTE_SIDE_LEFT) ||
         !nf_slalom_state_decode(context, source_state, &source,
                                 &start_heading, &source_class)) {
         return NF_SLALOM_PLAN_INVALID_ARGUMENT;
     }
     memset(out, 0, sizeof(*out));
-    if (nf_slalom_is_diagonal(start_heading) &&
-        connector_steps <
-            NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
-        return NF_SLALOM_PLAN_OK;
-    }
     memset(&connector_goal, 0, sizeof(connector_goal));
     connector_end = source;
     if (!nf_slalom_anchor_region(context->maze, source, start_heading,
@@ -1787,7 +2193,7 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
                                     &destination, &end_heading)) {
         return NF_SLALOM_PLAN_OK;
     }
-    turn = nf_slalom_turn_spec(context->config, kind);
+    turn = &context->turn_specs[(size_t)variant][(size_t)kind];
     limits = nf_slalom_connector_limits(context->config, start_heading);
     entry_velocity = nf_slalom_class_velocity(context, source_class);
     connector_distance = connector_steps *
@@ -1805,15 +2211,16 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
         return status;
     }
     status = nf_slalom_seconds_to_us(
-        context->turn_plans[(size_t)kind].total_time_s, &turn_us);
+        context->turn_plans[(size_t)variant][(size_t)kind].total_time_s,
+        &turn_us);
     if (status != NF_SLALOM_PLAN_OK ||
         !nf_slalom_u64_add(connector_us, turn_us, &duration_us)) {
         return (status != NF_SLALOM_PLAN_OK) ? status :
             NF_SLALOM_PLAN_OVERFLOW;
     }
     status = nf_slalom_trace_turn(context, connector_end, start_heading,
-                                  kind, side, destination, end_heading,
-                                  &turn_trace);
+                                  kind, variant, side, destination,
+                                  end_heading, &turn_trace);
     if (status != NF_SLALOM_PLAN_OK) {
         return status;
     }
@@ -1821,7 +2228,7 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
         return NF_SLALOM_PLAN_OK;
     }
 
-    destination_class = nf_slalom_speed_class(kind, side);
+    destination_class = nf_slalom_speed_class(kind, variant);
     memset(&out->action, 0, sizeof(out->action));
     out->action.kind = kind;
     out->action.side = side;
@@ -1841,6 +2248,7 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
     out->action.entry_velocity_mm_s = entry_velocity;
     out->action.turn_velocity_mm_s = turn->velocity_mm_s;
     out->action.exit_velocity_mm_s = turn->velocity_mm_s;
+    out->action.turn_speed_mode = variant;
     out->action.connector_time_us = connector_us;
     out->action.turn_time_us = turn_us;
     out->action.duration_us = duration_us;
@@ -1870,6 +2278,7 @@ static NfSlalomPlanStatus nf_slalom_build_turn_edge(
         out->action.goal_y = turn_trace.goal_y;
         out->action.goal_cross_heading = turn_trace.goal_heading;
         out->goal_entry_velocity_mm_s = turn_trace.goal_velocity_mm_s;
+        context->goal_cross_reachable = true;
     }
 
     if (out->action.has_goal_cross) {
@@ -1961,6 +2370,7 @@ static NfSlalomPlanStatus nf_slalom_relax_edge(
         source_state,
         edge->action.connector_steps,
         edge->action.kind,
+        (NfSlalomTurnVariant)edge->action.turn_speed_mode,
         edge->action.side,
     };
     context->relaxed_edges++;
@@ -2059,7 +2469,7 @@ static NfSlalomPlanStatus nf_slalom_reconstruct(
         NfBuiltEdge edge;
         const NfSlalomPlanStatus status = nf_slalom_build_turn_edge(
             context, parent->previous_state, parent->connector_steps,
-            parent->kind, parent->side, &edge);
+            parent->kind, parent->variant, parent->side, &edge);
         if (status != NF_SLALOM_PLAN_OK || !edge.feasible ||
             edge.action.has_goal_cross || edge.destination_state != child) {
             free(chain);
@@ -2111,8 +2521,18 @@ static NfSlalomPlanStatus nf_slalom_postcheck_clearance(
         if ((unsigned int)action->kind >= NF_SLALOM_ACTION_START_OFFSET) {
             continue;
         }
-        turn = nf_slalom_geometry_turn_spec(context->config, action->kind);
-        turn_plan = &context->geometry_turn_plans[(size_t)action->kind];
+        if ((unsigned int)action->turn_speed_mode >=
+            (unsigned int)NF_SLALOM_TURN_VARIANT_COUNT) {
+            return NF_SLALOM_PLAN_INVALID_ARGUMENT;
+        }
+        {
+            const NfSlalomTurnVariant variant =
+                (NfSlalomTurnVariant)action->turn_speed_mode;
+            turn = &context->geometry_specs[(size_t)variant]
+                                           [(size_t)action->kind];
+            turn_plan = &context->geometry_turn_plans[(size_t)variant]
+                                                     [(size_t)action->kind];
+        }
         status = nf_route_turn_clearance(
             context->maze, &context->config->clearance, turn, turn_plan,
             action->turn_start_x_mm, action->turn_start_y_mm,
@@ -2274,34 +2694,43 @@ NfSlalomPlanStatus nf_slalom_time_plan(
                     NF_ROUTE_SIDE_LEFT,
                 };
 
-                if ((nf_slalom_is_diagonal(heading) &&
-                     connector_steps <
-                         NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) ||
-                    (config->enabled_actions & (1U << kind_index)) == 0U ||
+                if ((config->enabled_actions & (1U << kind_index)) == 0U ||
                     !nf_slalom_turn_source_valid(maze, connector_anchor,
                                                   heading, kind)) {
                     continue;
                 }
-                for (size_t side_index = 0U; side_index < 2U; side_index++) {
-                    NfBuiltEdge edge;
-                    result = nf_slalom_build_turn_edge(
-                        &context, state, connector_steps, kind,
-                        sides[side_index], &edge);
-                    if (result != NF_SLALOM_PLAN_OK) {
-                        goto cleanup;
-                    }
-                    if (!edge.feasible) {
+                for (size_t variant_index = 0U;
+                     variant_index <
+                         (size_t)NF_SLALOM_TURN_VARIANT_COUNT;
+                     variant_index++) {
+                    const NfSlalomTurnVariant variant =
+                        (NfSlalomTurnVariant)variant_index;
+                    if (!nf_slalom_turn_variant_available(
+                            &context, kind, variant)) {
                         continue;
                     }
-                    if (edge.action.has_goal_cross) {
-                        result = nf_slalom_consider_goal_edge(
-                            &context, state, &edge);
-                    } else {
-                        result = nf_slalom_relax_edge(
-                            &context, state, &edge);
-                    }
-                    if (result != NF_SLALOM_PLAN_OK) {
-                        goto cleanup;
+                    for (size_t side_index = 0U;
+                         side_index < 2U; side_index++) {
+                        NfBuiltEdge edge;
+                        result = nf_slalom_build_turn_edge(
+                            &context, state, connector_steps, kind, variant,
+                            sides[side_index], &edge);
+                        if (result != NF_SLALOM_PLAN_OK) {
+                            goto cleanup;
+                        }
+                        if (!edge.feasible) {
+                            continue;
+                        }
+                        if (edge.action.has_goal_cross) {
+                            result = nf_slalom_consider_goal_edge(
+                                &context, state, &edge);
+                        } else {
+                            result = nf_slalom_relax_edge(
+                                &context, state, &edge);
+                        }
+                        if (result != NF_SLALOM_PLAN_OK) {
+                            goto cleanup;
+                        }
                     }
                 }
             }
@@ -2315,7 +2744,8 @@ NfSlalomPlanStatus nf_slalom_time_plan(
     }
 
     if (!context.goal.valid) {
-        result = NF_SLALOM_PLAN_NO_PATH;
+        result = context.goal_cross_reachable ?
+            NF_SLALOM_PLAN_NO_FEASIBLE_TERMINAL : NF_SLALOM_PLAN_NO_PATH;
         goto cleanup;
     }
     result = nf_slalom_reconstruct(&context, start_state, request, out);
@@ -2370,12 +2800,15 @@ NfSlalomPlanStatus nf_slalom_primitive_check(
         nf_slalom_free_turn_trajectories(&context);
         return NF_SLALOM_PLAN_OK;
     }
-    status = nf_slalom_trace_turn(&context, source, start_heading, kind, side,
-                                  destination, end_heading, &trace);
+    status = nf_slalom_trace_turn(
+        &context, source, start_heading, kind, NF_SLALOM_TURN_NOMINAL, side,
+        destination, end_heading, &trace);
     if (status == NF_SLALOM_PLAN_OK && trace.feasible) {
         uint64_t turn_us;
         status = nf_slalom_seconds_to_us(
-            context.turn_plans[(size_t)kind].total_time_s, &turn_us);
+            context.turn_plans[NF_SLALOM_TURN_NOMINAL][(size_t)kind]
+                .total_time_s,
+            &turn_us);
         if (status == NF_SLALOM_PLAN_OK) {
             out->feasible = true;
             out->destination_anchor = destination;
@@ -2528,6 +2961,7 @@ bool nf_slalom_route_validate(
             !nf_slalom_close_double(start->turn_velocity_mm_s, 0.0) ||
             !nf_slalom_close_double(start->exit_velocity_mm_s,
                                      current_velocity) ||
+            start->turn_speed_mode != NF_SLALOM_TURN_NOMINAL ||
             !nf_slalom_close_double(start->turn_start_x_mm,
                                      physical_start_x_mm) ||
             !nf_slalom_close_double(start->turn_start_y_mm,
@@ -2562,16 +2996,6 @@ bool nf_slalom_route_validate(
             nf_slalom_free_turn_trajectories(&context);
             return nf_slalom_validation_fail(validation, index,
                                               "action does not join replay state");
-        }
-        if ((unsigned int)action->kind <
-                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
-            nf_slalom_is_diagonal(current_heading) &&
-            action->connector_steps <
-                NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS) {
-            nf_slalom_free_turn_trajectories(&context);
-            return nf_slalom_validation_fail(
-                validation, index,
-                "diagonal action lacks a straight connector");
         }
         for (uint16_t step = 1U; step <= action->connector_steps; step++) {
             NfSlalomAnchor next;
@@ -2615,7 +3039,9 @@ bool nf_slalom_route_validate(
         }
 
         if ((unsigned int)action->kind < NF_SLALOM_ACTION_START_OFFSET) {
-            const NfTurnSpec *turn = nf_slalom_turn_spec(config, action->kind);
+            const NfSlalomTurnVariant variant =
+                (NfSlalomTurnVariant)action->turn_speed_mode;
+            const NfTurnSpec *turn;
             const NfLinearLimits *limits =
                 nf_slalom_connector_limits(config, current_heading);
             NfLinearPlan connector_plan;
@@ -2633,9 +3059,19 @@ bool nf_slalom_route_validate(
             uint8_t cross_y = 0U;
             NfSlalomHeading8 cross_heading = current_heading;
 
+            if ((unsigned int)variant >=
+                    (unsigned int)NF_SLALOM_TURN_VARIANT_COUNT) {
+                nf_slalom_free_turn_trajectories(&context);
+                return nf_slalom_validation_fail(
+                    validation, index, "invalid turn speed mode");
+            }
+            turn = &context.turn_specs[(size_t)variant]
+                                      [(size_t)action->kind];
             if (connector_goal.present ||
                 (config->enabled_actions &
                  (1U << (unsigned int)action->kind)) == 0U ||
+                !nf_slalom_turn_variant_available(
+                    &context, action->kind, variant) ||
                 !nf_slalom_turn_destination(maze, connector_end,
                                             current_heading, action->kind,
                                             action->side, &destination,
@@ -2647,12 +3083,13 @@ bool nf_slalom_route_validate(
                 nf_slalom_seconds_to_us(connector_plan.total_time_s,
                                          &connector_us) != NF_SLALOM_PLAN_OK ||
                 nf_slalom_seconds_to_us(
-                    context.turn_plans[(size_t)action->kind].total_time_s,
+                    context.turn_plans[(size_t)variant]
+                                      [(size_t)action->kind].total_time_s,
                     &turn_us) != NF_SLALOM_PLAN_OK ||
                 !nf_slalom_u64_add(connector_us, turn_us, &duration_us) ||
                 nf_slalom_trace_turn(&context, connector_end, current_heading,
-                                     action->kind, action->side, destination,
-                                     end_heading, &trace) !=
+                                     action->kind, variant, action->side,
+                                     destination, end_heading, &trace) !=
                     NF_SLALOM_PLAN_OK ||
                 !trace.feasible) {
                 nf_slalom_free_turn_trajectories(&context);
@@ -2680,7 +3117,7 @@ bool nf_slalom_route_validate(
             if (!nf_slalom_same_anchor(action->end_anchor, destination) ||
                 action->end_heading != end_heading ||
                 action->end_speed_class !=
-                    nf_slalom_speed_class(action->kind, action->side) ||
+                    nf_slalom_speed_class(action->kind, variant) ||
                 action->connector_time_us != connector_us ||
                 action->turn_time_us != turn_us ||
                 action->duration_us != duration_us ||
@@ -2732,7 +3169,7 @@ bool nf_slalom_route_validate(
             }
             current_anchor = destination;
             current_heading = end_heading;
-            current_class = nf_slalom_speed_class(action->kind, action->side);
+            current_class = nf_slalom_speed_class(action->kind, variant);
             current_velocity = turn->velocity_mm_s;
         } else if (action->kind == NF_SLALOM_ACTION_GOAL_STOP) {
             const NfLinearLimits *limits =
@@ -2749,6 +3186,7 @@ bool nf_slalom_route_validate(
                  !nf_slalom_anchor_is_center(connector_end)) ||
                 !nf_slalom_close_double(action->turn_velocity_mm_s, 0.0) ||
                 !nf_slalom_close_double(action->exit_velocity_mm_s, 0.0) ||
+                action->turn_speed_mode != NF_SLALOM_TURN_NOMINAL ||
                 nf_motion_linear_plan(
                     limits, action->connector_command_distance_mm,
                     current_velocity, 0.0, &terminal) != NF_MOTION_OK ||
@@ -2848,10 +3286,21 @@ bool nf_slalom_route_validate(
             }
             if ((unsigned int)action->kind < NF_SLALOM_ACTION_START_OFFSET) {
                 NfClearanceResult clearance;
-                const NfClearanceStatus status = nf_route_turn_clearance(
+                const NfSlalomTurnVariant variant =
+                    (NfSlalomTurnVariant)action->turn_speed_mode;
+                NfClearanceStatus status;
+                if ((unsigned int)variant >=
+                    (unsigned int)NF_SLALOM_TURN_VARIANT_COUNT) {
+                    nf_slalom_free_turn_trajectories(&context);
+                    return nf_slalom_validation_fail(
+                        validation, i, "invalid clearance turn speed mode");
+                }
+                status = nf_route_turn_clearance(
                     maze, &config->clearance,
-                    nf_slalom_geometry_turn_spec(config, action->kind),
-                    &context.geometry_turn_plans[(size_t)action->kind],
+                    &context.geometry_specs[(size_t)variant]
+                                           [(size_t)action->kind],
+                    &context.geometry_turn_plans[(size_t)variant]
+                                                     [(size_t)action->kind],
                     action->turn_start_x_mm, action->turn_start_y_mm,
                     action->turn_start_heading_deg,
                     action->side == NF_ROUTE_SIDE_LEFT, &clearance);

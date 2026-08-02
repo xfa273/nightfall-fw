@@ -114,6 +114,38 @@ static bool make_open_maze(NfRouteMaze *maze, uint8_t width, uint8_t height)
            nf_route_maze_add_boundaries(maze);
 }
 
+static bool make_wall_mask_maze(NfRouteMaze *maze,
+                                uint8_t width,
+                                uint8_t height,
+                                const char *const *rows)
+{
+    if (maze == NULL || rows == NULL ||
+        !nf_route_maze_init(maze, width, height)) {
+        return false;
+    }
+    for (uint8_t y = 0U; y < height; y++) {
+        if (rows[y] == NULL || strlen(rows[y]) != width) {
+            return false;
+        }
+        for (uint8_t x = 0U; x < width; x++) {
+            const char digit = rows[y][x];
+            uint8_t value;
+
+            if (digit >= '0' && digit <= '9') {
+                value = (uint8_t)(digit - '0');
+            } else if (digit >= 'a' && digit <= 'f') {
+                value = (uint8_t)(10 + digit - 'a');
+            } else {
+                return false;
+            }
+            maze->walls[y][x] = value;
+        }
+    }
+    /* primitive_check validates that the fixture contains at least one goal. */
+    maze->goals[0][0] = true;
+    return true;
+}
+
 static void close_all_internal_walls(NfRouteMaze *maze)
 {
     for (uint8_t y = 0U; y < maze->height; y++) {
@@ -215,12 +247,6 @@ static void check_plan_contract(const NfRouteMaze *maze,
         uint64_t elapsed_us = 0U;
         for (size_t i = 0U; i < plan->action_count; i++) {
             const NfSlalomAction *action = &plan->actions[i];
-            if ((unsigned int)action->kind <
-                    (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
-                (((unsigned int)action->start_heading & 1U) != 0U)) {
-                CHECK_TRUE(action->connector_steps >=
-                           NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS);
-            }
             if (action->has_goal_cross) {
                 goal_actions++;
                 CHECK_TRUE(action->goal_cross_time_us <= action->duration_us);
@@ -480,6 +506,211 @@ static void test_all_primitive_transitions_and_wall_rejection(void)
     }
 }
 
+static void test_keri_guard_historical_route_fixtures(void)
+{
+    /*
+     * N/E/S/W wall nibbles from kerikun11/micromouse-maze-data revision
+     * 762ed2b68735ea29148c6a1251a90ed0651ff26b.
+     */
+    static const char *const maze_16mm2013[] = {
+        "7322aaaaaaaaa2a6",
+        "55dd73a63aa265b4",
+        "553618e9c32c5165",
+        "51c9c363a4965d55",
+        "51aa6598ac349655",
+        "59a69c3636d5b455",
+        "53ac32c9c9696555",
+        "59a6596363c34555",
+        "53ac53c1c96d5555",
+        "51a2c5b0a653c555",
+        "592c3cb0e9c53c55",
+        "5b0e96b0e3655b45",
+        "5b0a65b0e59c1ac5",
+        "1e9659a8acb2c365",
+        "1a698aaaaaac7555",
+        "9e9aaaaaaaaa8c9c",
+    };
+    static const char *const maze_16mm2014[] = {
+        "7322e3aaaaaaa636",
+        "55592c3a67363455",
+        "5557db0e90c14555",
+        "55512e92e92c9455",
+        "555512e92e963c55",
+        "5555d92e92e90e55",
+        "55553692e92e92c5",
+        "555559616792ed3c",
+        "5559cb4984792a0e",
+        "5553aa0269479286",
+        "55592e5d96947165",
+        "555b0e53acb84d14",
+        "555b0e59aaaac3cd",
+        "555b0e9aaaaaac36",
+        "551e9aaaaaaaaac5",
+        "9c9aaaaaaaaaaaac",
+    };
+    static const char *const maze_16mm2016[] = {
+        "73aaaaaa2aaaaaa6",
+        "1c3aaaa6d3a2aa65",
+        "53c3a269a8a8a694",
+        "51a86d9aaaaaacbc",
+        "553a863636363636",
+        "555369c9c9c9c9c5",
+        "5555573aaaaaaa2c",
+        "555551c367777386",
+        "55555969800000e5",
+        "559c9ac3edddd9a4",
+        "5163636163636365",
+        "551c9c9c949c1455",
+        "559aaaa671265d55",
+        "59a6363c94555b8c",
+        "5369c59634559aa6",
+        "9c9aa8e9c9c9aaac",
+    };
+    static const char *const maze_32mm2014[] = {
+        "73aaaaaaaaaaaaaa2aaaaaaaaaaaaaa6",
+        "553aaaaaaaaaaaa6d3aaaaaaaaaaaa65",
+        "5553aaa63aaaaa69ac3aaaaaaaaaaac5",
+        "55553a6553a6369aaac363632a2a2a65",
+        "555906555969c1aaa26514149a0282c5",
+        "559ac55553c3ac3a6555514532492865",
+        "59aaac559c3c3ac759c51c9c104382c5",
+        "9aaaaac5f3c3c3a49aac532698c9a865",
+        "3aaaaaac3c3c3cf53aaac10063aaaac5",
+        "573222e3c3c38a659aaa610045baaa65",
+        "55100c3c3c753659aaaa410045363a45",
+        "5510c3c3cbc51453a2a2c10045559655",
+        "551c3c38aaac1459282861004559ac55",
+        "55d382c3222204538a8ac988c59aa655",
+        "553c3c7100000418aaaaa2aaac3aac94",
+        "1c1ac3410000049aaaaa6126369aaa65",
+        "53c3ac5988888c3aaaaac559c9a6b2c5",
+        "51ac3ac363636343a2a2a88aaaa4b0e5",
+        "51aa8aac9c9c9cd96965363aaaacb0e5",
+        "553aaaaaaaaaaa6b869c59c3aaaaa0e5",
+        "559aa63aaaaaa69a692e1a65326ba865",
+        "51aaac53aaaa653acb8692c51043aac5",
+        "553aaac53226559aa679696510453675",
+        "5553aaac1004553aac16969c10455514",
+        "55553222000455532ac9692e10455555",
+        "555510000004555516361696984559c5",
+        "5555100000045555d9c9c5b82e559a65",
+        "555510000004555963aaac3696d1aa45",
+        "559c9888888c559ac573634169692e55",
+        "59aaaaaaaaaac53a2c14141416969655",
+        "53aaaaaaaaaaac575341414141696555",
+        "98aaaaaaaaaaaa888c9c9c9c9c9a8c9c",
+    };
+    enum {
+        MAZE_16MM2013,
+        MAZE_16MM2014,
+        MAZE_16MM2016,
+        MAZE_32MM2014,
+    };
+    typedef struct {
+        const char *name;
+        unsigned int maze_id;
+        NfSlalomAnchor source;
+        NfSlalomHeading8 heading;
+        NfSlalomActionKind kind;
+        NfRouteSide side;
+        bool feasible;
+        NfSlalomAnchor destination;
+        NfSlalomHeading8 destination_heading;
+    } KeriGuardFixture;
+    static const KeriGuardFixture fixtures[] = {
+        {"a-45-in-before", MAZE_16MM2016, {21, 3},
+         NF_SLALOM_HEADING_WEST, NF_SLALOM_ACTION_45_IN,
+         NF_ROUTE_SIDE_RIGHT, true, {19, 4},
+         NF_SLALOM_HEADING_NORTH_WEST},
+        {"a-illegal-v90", MAZE_16MM2016, {18, 5},
+         NF_SLALOM_HEADING_NORTH_WEST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_LEFT, false, {0, 0}, NF_SLALOM_HEADING_NORTH},
+        {"a-45-out-after", MAZE_16MM2016, {15, 4},
+         NF_SLALOM_HEADING_SOUTH_WEST, NF_SLALOM_ACTION_45_OUT,
+         NF_ROUTE_SIDE_RIGHT, true, {13, 3}, NF_SLALOM_HEADING_WEST},
+        {"b-illegal-v90-first", MAZE_16MM2014, {16, 3},
+         NF_SLALOM_HEADING_SOUTH_WEST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_RIGHT, false, {0, 0}, NF_SLALOM_HEADING_NORTH},
+        {"b-illegal-v90-second", MAZE_16MM2014, {13, 4},
+         NF_SLALOM_HEADING_NORTH_WEST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_RIGHT, false, {0, 0}, NF_SLALOM_HEADING_NORTH},
+        {"c-45-in-before", MAZE_16MM2014, {5, 1},
+         NF_SLALOM_HEADING_EAST, NF_SLALOM_ACTION_45_IN,
+         NF_ROUTE_SIDE_LEFT, true, {7, 2}, NF_SLALOM_HEADING_NORTH_EAST},
+        {"c-illegal-v90", MAZE_16MM2014, {8, 3},
+         NF_SLALOM_HEADING_NORTH_EAST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_RIGHT, false, {0, 0}, NF_SLALOM_HEADING_NORTH},
+        {"c-45-out-after", MAZE_16MM2014, {11, 2},
+         NF_SLALOM_HEADING_SOUTH_EAST, NF_SLALOM_ACTION_45_OUT,
+         NF_ROUTE_SIDE_LEFT, true, {13, 1}, NF_SLALOM_HEADING_EAST},
+        {"d-large90-entry", MAZE_16MM2013, {1, 27},
+         NF_SLALOM_HEADING_NORTH, NF_SLALOM_ACTION_LARGE_90,
+         NF_ROUTE_SIDE_RIGHT, true, {3, 29}, NF_SLALOM_HEADING_EAST},
+        {"d-zero-step-45-in", MAZE_16MM2013, {3, 29},
+         NF_SLALOM_HEADING_EAST, NF_SLALOM_ACTION_45_IN,
+         NF_ROUTE_SIDE_LEFT, true, {5, 30},
+         NF_SLALOM_HEADING_NORTH_EAST},
+        {"d-zero-step-45-out", MAZE_16MM2013, {5, 30},
+         NF_SLALOM_HEADING_NORTH_EAST, NF_SLALOM_ACTION_45_OUT,
+         NF_ROUTE_SIDE_RIGHT, true, {7, 31}, NF_SLALOM_HEADING_EAST},
+        {"d-large90-exit", MAZE_16MM2013, {25, 31},
+         NF_SLALOM_HEADING_EAST, NF_SLALOM_ACTION_LARGE_90,
+         NF_ROUTE_SIDE_RIGHT, true, {27, 29}, NF_SLALOM_HEADING_SOUTH},
+        {"legal-zero-step-v90-first", MAZE_32MM2014, {35, 62},
+         NF_SLALOM_HEADING_SOUTH_EAST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_LEFT, true, {37, 62},
+         NF_SLALOM_HEADING_NORTH_EAST},
+        {"legal-zero-step-v90-second", MAZE_32MM2014, {37, 62},
+         NF_SLALOM_HEADING_NORTH_EAST, NF_SLALOM_ACTION_V90,
+         NF_ROUTE_SIDE_RIGHT, true, {39, 62},
+         NF_SLALOM_HEADING_SOUTH_EAST},
+    };
+    NfSlalomPlannerConfig config;
+
+    REQUIRE_TRUE(make_config(&config));
+    config.enabled_actions = NF_SLALOM_ENABLE_SHORTEST_1_TO_5;
+    for (size_t i = 0U; i < sizeof(fixtures) / sizeof(fixtures[0]); i++) {
+        const KeriGuardFixture *fixture = &fixtures[i];
+        const char *const *rows;
+        uint8_t width;
+        uint8_t height;
+        NfRouteMaze maze;
+        NfSlalomPrimitiveCheck check;
+
+        switch (fixture->maze_id) {
+        case MAZE_16MM2013:
+            rows = maze_16mm2013; width = 16U; height = 16U; break;
+        case MAZE_16MM2014:
+            rows = maze_16mm2014; width = 16U; height = 16U; break;
+        case MAZE_16MM2016:
+            rows = maze_16mm2016; width = 16U; height = 16U; break;
+        case MAZE_32MM2014:
+            rows = maze_32mm2014; width = 32U; height = 32U; break;
+        default:
+            REQUIRE_TRUE(false);
+        }
+        REQUIRE_TRUE(make_wall_mask_maze(&maze, width, height, rows));
+        REQUIRE_TRUE(nf_slalom_primitive_check(
+                         &maze, &config, fixture->source, fixture->heading,
+                         fixture->kind, fixture->side,
+                         &check) == NF_SLALOM_PLAN_OK);
+        if (check.feasible != fixture->feasible) {
+            fprintf(stderr, "KERI guard fixture failed: %s\n",
+                    fixture->name);
+        }
+        CHECK_TRUE(check.feasible == fixture->feasible);
+        if (fixture->feasible) {
+            CHECK_TRUE(check.required_open_checked);
+            CHECK_TRUE(check.destination_anchor.half_x ==
+                       fixture->destination.half_x);
+            CHECK_TRUE(check.destination_anchor.half_y ==
+                       fixture->destination.half_y);
+            CHECK_TRUE(check.destination_heading ==
+                       fixture->destination_heading);
+        }
+    }
+}
+
 /*
  * Independent exhaustive oracle: enumerate every centre anchor at which the
  * machine can stop beyond the first goal boundary, then compare the minimum
@@ -734,50 +965,6 @@ static void test_diagonal_is_adopted(void)
     check_plan_contract(&maze, &config, &request, &plan);
     CHECK_TRUE(plan.goal_x == 8U && plan.goal_y == 8U);
     CHECK_TRUE(plan_has_diagonal(&plan));
-}
-
-static void test_diagonal_turn_requires_straight_connector(void)
-{
-    NfRouteMaze maze;
-    NfSlalomPlannerConfig config;
-    const NfSlalomPlannerRequest request = {
-        0U, 0U, NF_SLALOM_HEADING_NORTH,
-    };
-    NfSlalomRoutePlan plan;
-    NfSlalomRoutePlan tampered;
-    NfSlalomValidation validation;
-    size_t diagonal_turn_index = SIZE_MAX;
-
-    REQUIRE_TRUE(make_open_maze(&maze, 10U, 10U));
-    maze.goals[3][4] = true;
-    REQUIRE_TRUE(make_config(&config));
-    config.enabled_actions =
-        NF_SLALOM_ENABLE_45_IN | NF_SLALOM_ENABLE_45_OUT;
-    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
-                 NF_SLALOM_PLAN_OK);
-    check_plan_contract(&maze, &config, &request, &plan);
-
-    for (size_t i = 1U; i < plan.action_count; i++) {
-        const NfSlalomAction *action = &plan.actions[i];
-        if ((unsigned int)action->kind <
-                (unsigned int)NF_SLALOM_ACTION_START_OFFSET &&
-            (((unsigned int)action->start_heading & 1U) != 0U)) {
-            diagonal_turn_index = i;
-            break;
-        }
-    }
-    REQUIRE_TRUE(diagonal_turn_index != SIZE_MAX);
-    CHECK_TRUE(plan.actions[diagonal_turn_index].connector_steps >=
-               NF_SLALOM_MIN_DIAGONAL_TURN_CONNECTOR_STEPS);
-
-    tampered = plan;
-    tampered.actions[diagonal_turn_index].connector_steps = 0U;
-    CHECK_TRUE(!nf_slalom_route_validate(&maze, &config, &request,
-                                          &tampered, &validation));
-    CHECK_TRUE(!validation.valid);
-    CHECK_TRUE(validation.action_index == diagonal_turn_index);
-    CHECK_TRUE(strcmp(validation.message,
-                      "diagonal action lacks a straight connector") == 0);
 }
 
 static void make_l_corridor(NfRouteMaze *maze, bool mirror)
@@ -1067,6 +1254,260 @@ static void test_optional_swept_clearance_gate(void)
                NF_SLALOM_PLAN_UNSUPPORTED_SAFETY);
 }
 
+static void test_reduced_turn_similarity_and_validator_tamper(void)
+{
+    static const double start_offsets_mm[] = {25.0, 9.0, 1.0};
+    static const NfSlalomTurnSpeedMode expected_modes[] = {
+        NF_SLALOM_TURN_SPEED_NOMINAL,
+        NF_SLALOM_TURN_SPEED_LOW,
+        NF_SLALOM_TURN_SPEED_CRAWL,
+    };
+    NfRouteMaze maze;
+    NfSlalomPlannerConfig configs[3];
+    NfSlalomRoutePlan plans[3];
+    const NfSlalomPlannerRequest request = {
+        0U, 0U, NF_SLALOM_HEADING_NORTH,
+    };
+    NfSlalomValidation validation;
+
+    REQUIRE_TRUE(make_open_maze(&maze, 3U, 2U));
+    maze.goals[1][1] = true;
+    for (size_t i = 0U; i < 3U; i++) {
+        const NfSlalomAction *turn;
+
+        REQUIRE_TRUE(make_config(&configs[i]));
+        configs[i].enabled_actions = NF_SLALOM_ENABLE_LARGE_90;
+        configs[i].low_speed_turn_velocity_mm_s = 300.0;
+        configs[i].start_offset_mm = start_offsets_mm[i];
+        REQUIRE_TRUE(nf_slalom_time_plan(
+                         &maze, &configs[i], &request, &plans[i]) ==
+                     NF_SLALOM_PLAN_OK);
+        check_plan_contract(&maze, &configs[i], &request, &plans[i]);
+        REQUIRE_TRUE(plans[i].action_count == 3U);
+        turn = &plans[i].actions[1];
+        CHECK_TRUE(turn->kind == NF_SLALOM_ACTION_LARGE_90);
+        CHECK_TRUE(turn->side == NF_ROUTE_SIDE_RIGHT);
+        CHECK_TRUE(turn->connector_steps == 0U);
+        CHECK_TRUE(turn->turn_speed_mode == expected_modes[i]);
+        CHECK_TRUE(turn->has_goal_cross);
+    }
+
+    CHECK_TRUE(fabs(plans[0].actions[1].turn_velocity_mm_s - 500.0) <
+               1.0e-6);
+    CHECK_TRUE(fabs(plans[1].actions[1].turn_velocity_mm_s - 300.0) <
+               1.0e-6);
+    CHECK_TRUE(fabs(plans[2].actions[1].turn_velocity_mm_s - 100.0) <
+               1.0e-6);
+
+    for (size_t i = 1U; i < 3U; i++) {
+        const NfSlalomAction *nominal = &plans[0].actions[1];
+        const NfSlalomAction *reduced = &plans[i].actions[1];
+        const double scale = reduced->turn_velocity_mm_s /
+                             nominal->turn_velocity_mm_s;
+        NfTurnEnvironment scaled_environment = configs[0].turn_environment;
+        NfTurnSpec scaled_timing = configs[0].large_90;
+        NfTurnSpec scaled_geometry =
+            configs[0].geometry_turns[NF_SLALOM_ACTION_LARGE_90];
+        NfTurnPlan nominal_geometry_plan;
+        NfTurnPlan reduced_geometry_plan;
+        NfTurnPlan reduced_timing_plan;
+        uint64_t expected_turn_us;
+
+        CHECK_TRUE(reduced->end_anchor.half_x == nominal->end_anchor.half_x);
+        CHECK_TRUE(reduced->end_anchor.half_y == nominal->end_anchor.half_y);
+        CHECK_TRUE(reduced->end_heading == nominal->end_heading);
+        CHECK_TRUE(reduced->goal_x == nominal->goal_x);
+        CHECK_TRUE(reduced->goal_y == nominal->goal_y);
+        CHECK_TRUE(reduced->goal_phase == nominal->goal_phase);
+        CHECK_TRUE(reduced->goal_cross_heading ==
+                   nominal->goal_cross_heading);
+        CHECK_TRUE(fabs(((double)reduced->turn_time_us * scale) -
+                        (double)nominal->turn_time_us) <= 2.0);
+        CHECK_TRUE(fabs(((double)reduced->goal_cross_time_us * scale) -
+                        (double)nominal->goal_cross_time_us) <= 2.0);
+
+        scaled_timing.velocity_mm_s *= scale;
+        scaled_timing.alpha_deg_s2 *= scale * scale;
+        scaled_geometry.velocity_mm_s *= scale;
+        scaled_geometry.alpha_deg_s2 *= scale * scale;
+        if (scaled_environment.omega_cap_deg_s > 0.0) {
+            scaled_environment.omega_cap_deg_s *= scale;
+        }
+        REQUIRE_TRUE(nf_motion_turn_plan(
+                         &configs[0].geometry_turns[
+                             NF_SLALOM_ACTION_LARGE_90],
+                         &configs[0].turn_environment,
+                         &nominal_geometry_plan) == NF_MOTION_OK);
+        REQUIRE_TRUE(nf_motion_turn_plan(
+                         &scaled_geometry, &scaled_environment,
+                         &reduced_geometry_plan) == NF_MOTION_OK);
+        CHECK_TRUE(fabs(reduced_geometry_plan.displacement_forward_mm -
+                        nominal_geometry_plan.displacement_forward_mm) <
+                   1.0e-6);
+        CHECK_TRUE(fabs(reduced_geometry_plan.displacement_lateral_mm -
+                        nominal_geometry_plan.displacement_lateral_mm) <
+                   1.0e-6);
+        CHECK_TRUE(fabs(reduced_geometry_plan.travel_distance_mm -
+                        nominal_geometry_plan.travel_distance_mm) < 1.0e-6);
+        CHECK_TRUE(fabs((reduced_geometry_plan.total_time_s * scale) -
+                        nominal_geometry_plan.total_time_s) < 1.0e-9);
+        REQUIRE_TRUE(nf_motion_turn_plan(
+                         &scaled_timing, &scaled_environment,
+                         &reduced_timing_plan) == NF_MOTION_OK);
+        REQUIRE_TRUE(nf_motion_seconds_to_us(
+                         reduced_timing_plan.total_time_s,
+                         &expected_turn_us) == NF_MOTION_OK);
+        CHECK_TRUE(reduced->turn_time_us == expected_turn_us);
+    }
+
+    {
+        NfSlalomRoutePlan tampered = plans[2];
+        tampered.actions[1].turn_speed_mode = NF_SLALOM_TURN_SPEED_LOW;
+        CHECK_TRUE(!nf_slalom_route_validate(
+            &maze, &configs[2], &request, &tampered, &validation));
+        CHECK_TRUE(!validation.valid);
+    }
+    {
+        NfSlalomRoutePlan tampered = plans[2];
+        tampered.actions[1].turn_velocity_mm_s += 1.0;
+        CHECK_TRUE(!nf_slalom_route_validate(
+            &maze, &configs[2], &request, &tampered, &validation));
+        CHECK_TRUE(!validation.valid);
+    }
+    {
+        NfSlalomRoutePlan tampered = plans[2];
+        tampered.actions[1].duration_us++;
+        CHECK_TRUE(!nf_slalom_route_validate(
+            &maze, &configs[2], &request, &tampered, &validation));
+        CHECK_TRUE(!validation.valid);
+    }
+}
+
+static void test_reduced_turn_variant_deduplication(void)
+{
+    NfRouteMaze maze;
+    NfSlalomPlannerConfig config;
+    const NfSlalomPlannerRequest request = {
+        0U, 0U, NF_SLALOM_HEADING_NORTH,
+    };
+    NfSlalomRoutePlan plan;
+
+    REQUIRE_TRUE(make_open_maze(&maze, 3U, 2U));
+    maze.goals[1][1] = true;
+
+    /* LOW is the sole reduced class when it equals the START boundary. */
+    REQUIRE_TRUE(make_config(&config));
+    config.enabled_actions = NF_SLALOM_ENABLE_LARGE_90;
+    config.start_offset_mm = 1.0;
+    config.low_speed_turn_velocity_mm_s = 100.0;
+    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                 NF_SLALOM_PLAN_OK);
+    REQUIRE_TRUE(plan.action_count == 3U);
+    CHECK_TRUE(plan.actions[1].turn_speed_mode == NF_SLALOM_TURN_SPEED_LOW);
+
+    /* A zero LOW setting disables both optional reduced realizations. */
+    config.low_speed_turn_velocity_mm_s = 0.0;
+    CHECK_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+               NF_SLALOM_PLAN_NO_PATH);
+
+    /* LOW duplicates NOMINAL, but distinct CRAWL remains available. */
+    config.low_speed_turn_velocity_mm_s = config.large_90.velocity_mm_s;
+    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                 NF_SLALOM_PLAN_OK);
+    REQUIRE_TRUE(plan.action_count == 3U);
+    CHECK_TRUE(plan.actions[1].turn_speed_mode ==
+               NF_SLALOM_TURN_SPEED_CRAWL);
+
+    /* CRAWL duplicates NOMINAL at this boundary and is not selected. */
+    config.start_offset_mm = 25.0;
+    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                 NF_SLALOM_PLAN_OK);
+    REQUIRE_TRUE(plan.action_count == 3U);
+    CHECK_TRUE(plan.actions[1].turn_speed_mode ==
+               NF_SLALOM_TURN_SPEED_NOMINAL);
+}
+
+static void test_zero_step_reduced_turn_chain(void)
+{
+    static const NfSlalomTurnSpeedMode expected_modes[] = {
+        NF_SLALOM_TURN_SPEED_LOW,
+        NF_SLALOM_TURN_SPEED_CRAWL,
+    };
+    NfRouteMaze maze;
+    const NfSlalomPlannerRequest request = {
+        0U, 1U, NF_SLALOM_HEADING_NORTH,
+    };
+
+    REQUIRE_TRUE(make_open_maze(&maze, 3U, 3U));
+    maze.goals[1][2] = true;
+    for (size_t i = 0U; i < 2U; i++) {
+        NfSlalomPlannerConfig config;
+        NfSlalomRoutePlan plan;
+
+        REQUIRE_TRUE(make_config(&config));
+        config.enabled_actions = NF_SLALOM_ENABLE_LARGE_90;
+        config.low_speed_turn_velocity_mm_s = 300.0;
+        if (expected_modes[i] == NF_SLALOM_TURN_SPEED_LOW) {
+            config.start_offset_mm = 9.0;
+        } else {
+            config.orthogonal.accel_low_mm_s2 = 1000.0;
+            config.start_offset_mm = 5.0;
+        }
+        REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                     NF_SLALOM_PLAN_OK);
+        check_plan_contract(&maze, &config, &request, &plan);
+        REQUIRE_TRUE(plan.action_count == 4U);
+        for (size_t action_index = 1U; action_index <= 2U;
+             action_index++) {
+            const NfSlalomAction *turn = &plan.actions[action_index];
+            CHECK_TRUE(turn->kind == NF_SLALOM_ACTION_LARGE_90);
+            CHECK_TRUE(turn->side == NF_ROUTE_SIDE_RIGHT);
+            CHECK_TRUE(turn->connector_steps == 0U);
+            CHECK_TRUE(turn->turn_speed_mode == expected_modes[i]);
+        }
+        CHECK_TRUE(plan.actions[1].end_anchor.half_x ==
+                   plan.actions[2].start_anchor.half_x);
+        CHECK_TRUE(plan.actions[1].end_anchor.half_y ==
+                   plan.actions[2].start_anchor.half_y);
+        CHECK_TRUE(plan.actions[1].end_heading ==
+                   plan.actions[2].start_heading);
+        CHECK_TRUE(plan.actions[1].end_speed_class ==
+                   plan.actions[2].start_speed_class);
+        CHECK_TRUE(fabs(plan.actions[1].exit_velocity_mm_s -
+                        plan.actions[2].entry_velocity_mm_s) < 1.0e-6);
+        CHECK_TRUE(!plan.actions[1].has_goal_cross);
+        CHECK_TRUE(plan.actions[2].has_goal_cross);
+        CHECK_TRUE(plan.actions[3].kind == NF_SLALOM_ACTION_GOAL_STOP);
+    }
+}
+
+static void test_no_feasible_terminal_is_distinct_from_no_path(void)
+{
+    NfRouteMaze terminal_maze;
+    NfRouteMaze disconnected_maze;
+    NfSlalomPlannerConfig config;
+    const NfSlalomPlannerRequest request = {
+        0U, 0U, NF_SLALOM_HEADING_NORTH,
+    };
+    NfSlalomRoutePlan plan;
+
+    REQUIRE_TRUE(make_open_maze(&terminal_maze, 2U, 2U));
+    terminal_maze.goals[1][1] = true;
+    REQUIRE_TRUE(make_config(&config));
+    config.enabled_actions = NF_SLALOM_ENABLE_LARGE_90;
+    config.start_offset_mm = 25.0;
+    CHECK_TRUE(nf_slalom_time_plan(
+                   &terminal_maze, &config, &request, &plan) ==
+               NF_SLALOM_PLAN_NO_FEASIBLE_TERMINAL);
+
+    REQUIRE_TRUE(make_open_maze(&disconnected_maze, 2U, 2U));
+    close_all_internal_walls(&disconnected_maze);
+    disconnected_maze.goals[1][1] = true;
+    CHECK_TRUE(nf_slalom_time_plan(
+                   &disconnected_maze, &config, &request, &plan) ==
+               NF_SLALOM_PLAN_NO_PATH);
+}
+
 static void test_determinism(void)
 {
     NfRouteMaze maze;
@@ -1109,16 +1550,20 @@ int main(void)
     test_fine_turn_sampling_is_topology_stable();
     test_maze_bits_and_start_goal_contract();
     test_all_primitive_transitions_and_wall_rejection();
+    test_keri_guard_historical_route_fixtures();
     test_exhaustive_straight_oracle();
     test_multiple_goals_first_entry();
     test_turn_goal_uses_nominal_trace_and_shortest_tail();
     test_turn_goal_interior_speed_profile();
     test_diagonal_is_adopted();
-    test_diagonal_turn_requires_straight_connector();
     test_walls_forbid_diagonal_and_mirror();
     test_turn_route_oracle_and_validator_tamper();
     test_rotation_symmetry();
     test_optional_swept_clearance_gate();
+    test_reduced_turn_similarity_and_validator_tamper();
+    test_reduced_turn_variant_deduplication();
+    test_zero_step_reduced_turn_chain();
+    test_no_feasible_terminal_is_distinct_from_no_path();
     test_determinism();
 
     if (g_failures != 0U) {

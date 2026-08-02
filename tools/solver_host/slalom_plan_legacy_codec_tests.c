@@ -33,7 +33,8 @@ static bool make_config(NfSlalomPlannerConfig *config)
     const NfAuditProfile *profile = NULL;
     char error[128];
     return nf_host_slalom_make_config(
-        "f413-preorder-mode2", 8U, NF_SLALOM_ENABLE_ALL, config,
+        "f413-preorder-mode2", 8U,
+        NF_SLALOM_ENABLE_SHORTEST_1_TO_5, config,
         &profile, error, sizeof(error));
 }
 
