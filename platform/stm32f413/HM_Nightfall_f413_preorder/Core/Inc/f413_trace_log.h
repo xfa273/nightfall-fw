@@ -2,10 +2,18 @@
 #define F413_TRACE_LOG_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
+#include "f413_trace_compact.h"
 #include "nvm.h"
 #include "nvm_trace_log.h"
+
+#define F413_TRACE_LOG_IDLE_SCRATCH_BYTES \
+  (((size_t)F413_TRACE_COMPACT_FAST_RECORDS * \
+    sizeof(f413_trace_compact_fast_t)) + \
+   ((size_t)F413_TRACE_COMPACT_SLOW_RECORDS * \
+    sizeof(f413_trace_compact_slow_t)))
 
 typedef void (*f413_trace_log_fill_control_sample_fn)(nvm_trace_log_record_t* out,
                                                      uint32_t seq,
@@ -28,5 +36,14 @@ void f413_trace_log_auto_stop(void);
 void f413_trace_log_auto_stop_after_tail(uint32_t tail_ms);
 void f413_trace_log_auto_step(void);
 void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms);
+
+/*
+ * The large auto-trace staging buffer may be used as temporary workspace by
+ * non-motor, foreground-only diagnostics while automatic capture is stopped.
+ * A successful borrower must release the lease on every return path.  The
+ * storage contents are disposable and never represent persistent FRAM data.
+ */
+bool f413_trace_log_try_borrow_idle_scratch(void** out, size_t* out_bytes);
+void f413_trace_log_release_idle_scratch(void* scratch);
 
 #endif

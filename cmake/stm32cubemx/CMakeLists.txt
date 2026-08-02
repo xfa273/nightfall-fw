@@ -82,6 +82,7 @@ set(NIGHTFALL_F413_UART_BAUD_RATE "921600" CACHE STRING "USART1 baud rate for ST
 set_property(CACHE NIGHTFALL_F413_UART_BAUD_RATE PROPERTY STRINGS "115200" "460800" "921600" "1000000")
 set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/common/route/legacy_path_codec.c
+    ${CMAKE_SOURCE_DIR}/common/route/motion_time.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_identity.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_params.c
@@ -113,6 +114,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode_shortest.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_nvm_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_route_preview.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_path_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_features.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
