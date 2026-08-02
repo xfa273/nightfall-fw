@@ -2,6 +2,7 @@ package com.nightfall.hfrrecorder;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -68,8 +69,11 @@ public final class MainActivity extends Activity {
 
     private TextureView preview;
     private TextView status;
+    private TextView wifiStatus;
     private Button startButton;
     private Button stopButton;
+    private Button wifiPairButton;
+    private Button wifiDeleteButton;
     private HandlerThread cameraThread;
     private Handler cameraHandler;
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
@@ -91,6 +95,8 @@ public final class MainActivity extends Activity {
     private String manualSessionNonce;
     private int manualRunSequence;
     private int manualCompletedRuns;
+    private WifiTransferServer wifiTransferServer;
+    private boolean wifiCaptureSlotOwned;
     private final Runnable manualRearmRunnable = () -> {
         if (!manualContinuousStandby || isFinishing() || isDestroyed()) {
             return;
@@ -111,6 +117,13 @@ public final class MainActivity extends Activity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         startCameraThread();
         setContentView(createContentView());
+        wifiTransferServer = new WifiTransferServer(
+                this,
+                snapshot -> runOnUiThread(
+                        () -> updateWifiStatus(snapshot)
+                )
+        );
+        wifiTransferServer.start();
         autoPending = getIntent().getBooleanExtra(EXTRA_AUTO_RECORD, false);
         preparePermissionAndMaybeStart();
     }
@@ -170,6 +183,49 @@ public final class MainActivity extends Activity {
                 )
         );
 
+        LinearLayout wifiControls = new LinearLayout(this);
+        wifiControls.setOrientation(LinearLayout.HORIZONTAL);
+        wifiControls.setGravity(Gravity.CENTER_VERTICAL);
+        wifiControls.setPadding(dp(12), dp(5), dp(12), dp(5));
+        wifiControls.setBackgroundColor(0xcc000000);
+
+        wifiPairButton = new Button(this);
+        wifiPairButton.setText("ペアコード更新");
+        wifiPairButton.setOnClickListener(view -> {
+            if (wifiTransferServer != null) {
+                wifiTransferServer.issuePairingCode();
+            }
+        });
+        wifiControls.addView(wifiPairButton);
+
+        wifiDeleteButton = new Button(this);
+        wifiDeleteButton.setText("転送済みを削除");
+        wifiDeleteButton.setOnClickListener(
+                view -> confirmDeleteAcknowledgedRuns()
+        );
+        wifiControls.addView(wifiDeleteButton);
+
+        wifiStatus = new TextView(this);
+        wifiStatus.setText("Wi-Fi転送を初期化しています...");
+        wifiStatus.setTextColor(Color.WHITE);
+        wifiStatus.setTextSize(13.0f);
+        wifiStatus.setPadding(dp(12), 0, 0, 0);
+        wifiControls.addView(
+                wifiStatus,
+                new LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1.0f
+                )
+        );
+
+        FrameLayout.LayoutParams wifiLayout = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP
+        );
+        root.addView(wifiControls, wifiLayout);
+
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.setGravity(Gravity.CENTER_VERTICAL);
@@ -216,6 +272,104 @@ public final class MainActivity extends Activity {
         return Math.round(
                 value * getResources().getDisplayMetrics().density
         );
+    }
+
+    private void updateWifiStatus(WifiTransferServer.Snapshot snapshot) {
+        if (wifiStatus == null) {
+            return;
+        }
+        String endpoint = snapshot.addresses.isEmpty()
+                ? "Wi-Fi未接続"
+                : snapshot.addresses.get(0)
+                + ":"
+                + WifiTransferProtocol.HTTP_PORT;
+        String pairing = snapshot.pairingCode == null
+                ? "ペア済み（再設定はコード更新）"
+                : String.format(
+                "ペアコード %s（残り%d分）",
+                snapshot.pairingCode,
+                Math.max(1L, (snapshot.pairingSecondsRemaining + 59L) / 60L)
+        );
+        String activity;
+        if (snapshot.activeTransfers > 0) {
+            activity = " / 転送中";
+        } else if (snapshot.captureBusy) {
+            activity = " / 撮影優先（転送停止中）";
+        } else {
+            activity = " / 転送可能";
+        }
+        String message = String.format(
+                "Wi-Fi %s / %s / 保存%d・転送済み%d%s",
+                endpoint,
+                pairing,
+                snapshot.savedRuns,
+                snapshot.acknowledgedRuns,
+                activity
+        );
+        if (snapshot.error != null) {
+            message += " / ERROR: " + snapshot.error;
+        }
+        wifiStatus.setText(message);
+        wifiStatus.setTextColor(
+                snapshot.error == null ? Color.WHITE : 0xffff8080
+        );
+        wifiDeleteButton.setEnabled(
+                snapshot.acknowledgedRuns > 0
+                        && !snapshot.captureBusy
+                        && snapshot.activeTransfers == 0
+        );
+    }
+
+    private void confirmDeleteAcknowledgedRuns() {
+        if (wifiTransferServer == null) {
+            return;
+        }
+        WifiTransferServer.Snapshot snapshot = wifiTransferServer.snapshot();
+        if (snapshot.acknowledgedRuns <= 0) {
+            setStatus("Macで検証済みの動画はありません", true);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("転送済み動画を削除")
+                .setMessage(String.format(
+                        "Macが受領・検証済みと通知した%d本をPixelから削除します。"
+                                + " 未転送の動画は削除しません。",
+                        snapshot.acknowledgedRuns
+                ))
+                .setNegativeButton("キャンセル", null)
+                .setPositiveButton("削除", (dialog, which) -> {
+                    wifiDeleteButton.setEnabled(false);
+                    Thread worker = new Thread(() -> {
+                        WifiTransferServer.DeleteResult result =
+                                wifiTransferServer.deleteAcknowledgedRuns();
+                        runOnUiThread(() -> {
+                            if (result.error != null) {
+                                setStatus(result.error, false);
+                            } else {
+                                setStatus(
+                                        String.format(
+                                                "転送済み%d本（%s）をPixelから削除しました",
+                                                result.runs,
+                                                formatBytes(result.bytes)
+                                        ),
+                                        true
+                                );
+                            }
+                        });
+                    }, "nightfall-hfr-delete");
+                    worker.start();
+                })
+                .show();
+    }
+
+    private static String formatBytes(long bytes) {
+        if (bytes >= 1024L * 1024L * 1024L) {
+            return String.format(
+                    "%.2f GiB",
+                    bytes / (1024.0 * 1024.0 * 1024.0)
+            );
+        }
+        return String.format("%.1f MiB", bytes / (1024.0 * 1024.0));
     }
 
     private void startCameraThread() {
@@ -271,6 +425,14 @@ public final class MainActivity extends Activity {
     private void startManualContinuousStandby() {
         if (manualContinuousStandby
                 || (recorder != null && recorder.isActive())) {
+            return;
+        }
+        if (wifiTransferServer != null
+                && wifiTransferServer.isTransferActive()) {
+            setStatus(
+                    "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
+                    false
+            );
             return;
         }
         manualContinuousStandby = true;
@@ -345,6 +507,17 @@ public final class MainActivity extends Activity {
             );
             return;
         }
+        if (wifiTransferServer != null
+                && !wifiTransferServer.tryBeginCapture()) {
+            manualContinuousStandby = false;
+            resetControlsAfterRun();
+            setStatus(
+                    "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
+                    false
+            );
+            return;
+        }
+        wifiCaptureSlotOwned = wifiTransferServer != null;
         recorder = new HfrRecorder(
                 this,
                 preview,
@@ -412,6 +585,9 @@ public final class MainActivity extends Activity {
                     public void onCancelled(String message) {
                         runOnUiThread(() -> {
                             resetControlsAfterRun();
+                            if (wifiTransferServer != null) {
+                                wifiTransferServer.notifyRunsChanged();
+                            }
                             setStatus(
                                     config.retainRunOutput
                                             ? String.format(
@@ -457,6 +633,9 @@ public final class MainActivity extends Activity {
                                         true
                                 );
                             }
+                            if (wifiTransferServer != null) {
+                                wifiTransferServer.notifyRunsChanged();
+                            }
                         });
                     }
 
@@ -466,6 +645,9 @@ public final class MainActivity extends Activity {
                             manualContinuousStandby = false;
                             uiHandler.removeCallbacks(manualRearmRunnable);
                             resetControlsAfterRun();
+                            if (wifiTransferServer != null) {
+                                wifiTransferServer.notifyRunsChanged();
+                            }
                             setStatus("ERROR: " + message, false);
                         });
                     }
@@ -536,6 +718,10 @@ public final class MainActivity extends Activity {
         startButton.setText("連続撮影スタンバイ (240 fps)");
         stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
+        if (wifiTransferServer != null && wifiCaptureSlotOwned) {
+            wifiCaptureSlotOwned = false;
+            wifiTransferServer.endCapture();
+        }
     }
 
     private void prepareControlsForRearm() {
@@ -715,6 +901,9 @@ public final class MainActivity extends Activity {
         opticalDetectionEnabled = false;
         if (recorder != null) {
             recorder.close();
+        }
+        if (wifiTransferServer != null) {
+            wifiTransferServer.close();
         }
         if (cameraThread != null) {
             cameraThread.quitSafely();
