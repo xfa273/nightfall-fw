@@ -4,9 +4,13 @@
 #include "maze_grid.h"
 #include "solver.h"
 
+#include "legacy_path_validator.h"
+#include "time_plan_host.h"
+
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <math.h>
 #include <string.h>
 #include <unistd.h>
@@ -321,7 +325,7 @@ static bool load_maze_text_file(const char *path_name)
     }
 
     char *p = buf;
-    while (*p != '\0' && line_count < (sizeof(lines) / sizeof(lines[0]))) {
+    while (*p != '\0') {
         char *line = p;
         char *end = strpbrk(p, "\r\n");
         if (end != NULL) {
@@ -334,6 +338,15 @@ static bool load_maze_text_file(const char *path_name)
             p += strlen(p);
         }
         if (line[0] != '\0') {
+            if (line_count >= (sizeof(lines) / sizeof(lines[0]))) {
+                fprintf(stderr,
+                        "maze text has more than %zu non-empty lines; "
+                        "legacy solver supports at most %u x %u\n",
+                        sizeof(lines) / sizeof(lines[0]),
+                        (unsigned int)MAZE_SIZE, (unsigned int)MAZE_SIZE);
+                free(buf);
+                return false;
+            }
             lines[line_count++] = line;
         }
     }
@@ -721,7 +734,33 @@ static void print_path_summary(void)
 
 static void print_usage(const char *argv0)
 {
-    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] [--search-dump FILE] [--origin top-left|bottom-left] [--mode N] [--case N] [--verbose-solver] [--explore-sim] [--explore-verbose] [--max-steps N]\n", argv0);
+    printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] "
+           "[--search-dump FILE] [--origin top-left|bottom-left] "
+           "[--mode N] [--case N] [--time-plan] "
+           "[--turn-set profile|small|all] [--assert-valid] "
+           "[--verbose-solver] [--explore-sim] [--explore-verbose] "
+           "[--max-steps N]\n", argv0);
+}
+
+static bool parse_unsigned_argument(const char *text,
+                                    unsigned int minimum,
+                                    unsigned int maximum,
+                                    unsigned int *out)
+{
+    char *end = NULL;
+    unsigned long value;
+
+    if (text == NULL || out == NULL || text[0] == '\0' || text[0] == '-') {
+        return false;
+    }
+    errno = 0;
+    value = strtoul(text, &end, 0);
+    if (errno == ERANGE || end == text || *end != '\0' ||
+        value < minimum || value > maximum) {
+        return false;
+    }
+    *out = (unsigned int)value;
+    return true;
 }
 
 static bool run_solver_quiet(uint8_t mode, uint8_t case_index)
@@ -759,6 +798,12 @@ int main(int argc, char **argv)
     bool verbose_solver = false;
     bool explore_sim = false;
     bool explore_verbose = false;
+    bool time_plan = false;
+    bool assert_valid = false;
+    bool origin_set = false;
+    bool turn_set_set = false;
+    bool max_steps_set = false;
+    NfHostTurnSet turn_set = NF_HOST_TURN_SET_PROFILE;
     unsigned int max_steps = 2048U;
     uint8_t mode = 2U;
     uint8_t case_index = 1U;
@@ -772,6 +817,7 @@ int main(int argc, char **argv)
             search_dump_file = argv[++i];
         } else if (strcmp(argv[i], "--origin") == 0 && (i + 1) < argc) {
             const char *origin = argv[++i];
+            origin_set = true;
             if (strcmp(origin, "top-left") == 0) {
                 top_left_origin = true;
             } else if (strcmp(origin, "bottom-left") == 0) {
@@ -781,9 +827,36 @@ int main(int argc, char **argv)
                 return 2;
             }
         } else if (strcmp(argv[i], "--mode") == 0 && (i + 1) < argc) {
-            mode = (uint8_t)strtoul(argv[++i], NULL, 0);
+            unsigned int value;
+            if (!parse_unsigned_argument(argv[++i], 2U, 7U, &value)) {
+                fprintf(stderr, "--mode must be an integer from 2 through 7\n");
+                return 2;
+            }
+            mode = (uint8_t)value;
         } else if (strcmp(argv[i], "--case") == 0 && (i + 1) < argc) {
-            case_index = (uint8_t)strtoul(argv[++i], NULL, 0);
+            unsigned int value;
+            if (!parse_unsigned_argument(argv[++i], 1U, 9U, &value)) {
+                fprintf(stderr, "--case must be an integer from 1 through 9\n");
+                return 2;
+            }
+            case_index = (uint8_t)value;
+        } else if (strcmp(argv[i], "--time-plan") == 0) {
+            time_plan = true;
+        } else if (strcmp(argv[i], "--turn-set") == 0 && (i + 1) < argc) {
+            const char *value = argv[++i];
+            turn_set_set = true;
+            if (strcmp(value, "profile") == 0) {
+                turn_set = NF_HOST_TURN_SET_PROFILE;
+            } else if (strcmp(value, "small") == 0) {
+                turn_set = NF_HOST_TURN_SET_SMALL;
+            } else if (strcmp(value, "all") == 0) {
+                turn_set = NF_HOST_TURN_SET_ALL;
+            } else {
+                print_usage(argv[0]);
+                return 2;
+            }
+        } else if (strcmp(argv[i], "--assert-valid") == 0) {
+            assert_valid = true;
         } else if (strcmp(argv[i], "--verbose-solver") == 0) {
             verbose_solver = true;
         } else if (strcmp(argv[i], "--explore-sim") == 0) {
@@ -791,7 +864,11 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "--explore-verbose") == 0) {
             explore_verbose = true;
         } else if (strcmp(argv[i], "--max-steps") == 0 && (i + 1) < argc) {
-            max_steps = (unsigned int)strtoul(argv[++i], NULL, 0);
+            max_steps_set = true;
+            if (!parse_unsigned_argument(argv[++i], 0U, UINT_MAX, &max_steps)) {
+                fprintf(stderr, "--max-steps must be a non-negative integer\n");
+                return 2;
+            }
         } else if (strcmp(argv[i], "--help") == 0) {
             print_usage(argv[0]);
             return 0;
@@ -801,11 +878,41 @@ int main(int argc, char **argv)
         }
     }
 
-    if (search_dump_file != NULL) {
-        if (maze_text_file != NULL || maze_file != NULL) {
-            print_usage(argv[0]);
+    if (((maze_file != NULL) ? 1U : 0U) +
+        ((maze_text_file != NULL) ? 1U : 0U) +
+        ((search_dump_file != NULL) ? 1U : 0U) > 1U) {
+        fprintf(stderr, "select only one maze input source\n");
+        return 2;
+    }
+
+    if (time_plan) {
+        if (maze_file != NULL || search_dump_file != NULL || explore_sim ||
+            verbose_solver || explore_verbose || origin_set || max_steps_set) {
+            fprintf(stderr, "--time-plan accepts only a KeriLab --maze file "
+                    "or the internal sample\n");
             return 2;
         }
+        return nf_host_run_time_plan(maze_text_file, mode, case_index,
+                                     turn_set, assert_valid);
+    }
+    if (turn_set_set) {
+        fprintf(stderr, "--turn-set requires --time-plan\n");
+        return 2;
+    }
+    if (origin_set && maze_file == NULL) {
+        fprintf(stderr, "--origin requires --maze-c-array\n");
+        return 2;
+    }
+    if (max_steps_set && !explore_sim) {
+        fprintf(stderr, "--max-steps requires --explore-sim\n");
+        return 2;
+    }
+    if (explore_verbose && !explore_sim) {
+        fprintf(stderr, "--explore-verbose requires --explore-sim\n");
+        return 2;
+    }
+
+    if (search_dump_file != NULL) {
         if (!load_search_dump_file(search_dump_file)) {
             return 1;
         }
@@ -847,5 +954,17 @@ int main(int argc, char **argv)
         return 1;
     }
     print_path_summary();
+    if (assert_valid) {
+        const legacy_path_validation_result_t validation =
+            legacy_path_validate(path, ROUTE_MAX_LEN);
+        printf("[host] path_validation=%s index=%zu code=%u state=%s\n",
+               legacy_path_validation_error_string(validation.error),
+               validation.index, (unsigned int)validation.code,
+               validation.state == LEGACY_PATH_STATE_DIAGONAL ?
+                   "diagonal" : "orthogonal");
+        if (validation.error != LEGACY_PATH_VALIDATION_OK) {
+            return 1;
+        }
+    }
     return 0;
 }
