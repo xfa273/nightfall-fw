@@ -79,6 +79,12 @@ typedef struct {
 } NfTurnPlan;
 
 typedef struct {
+    double forward_mm;
+    double lateral_mm;
+    double heading_deg;
+} NfTurnPose;
+
+typedef struct {
     NfLinearPlan full_plan;
     double pre_cross_mm;
     double post_cross_mm;
@@ -108,6 +114,27 @@ NfMotionStatus nf_motion_linear_time_at_distance(const NfLinearPlan *plan,
 NfMotionStatus nf_motion_turn_plan(const NfTurnSpec *turn,
                                    const NfTurnEnvironment *environment,
                                    NfTurnPlan *out);
+
+/*
+ * Return the nominal centre-line pose at elapsed time, expressed in the
+ * turn's local frame.  Positive lateral displacement and heading represent
+ * a left turn; callers mirror both values for a right turn.
+ */
+NfMotionStatus nf_motion_turn_pose_at_time(const NfTurnSpec *turn,
+                                           const NfTurnPlan *plan,
+                                           double elapsed_s,
+                                           NfTurnPose *out);
+
+/*
+ * Sample interval_count+1 equally spaced poses, including both endpoints.
+ * Unlike repeated pose_at_time calls, the angular projection is integrated
+ * incrementally, so the total integration work stays close to one turn plan.
+ */
+NfMotionStatus nf_motion_turn_pose_uniform(const NfTurnSpec *turn,
+                                           const NfTurnPlan *plan,
+                                           size_t interval_count,
+                                           NfTurnPose *poses,
+                                           size_t pose_capacity);
 
 NfMotionStatus nf_motion_turn_time_before_end_distance(const NfTurnSpec *turn,
                                                        const NfTurnPlan *plan,

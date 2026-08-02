@@ -362,6 +362,124 @@ static void test_turn_boundary_cross(void)
                  NF_MOTION_INFEASIBLE);
 }
 
+static void test_turn_pose_sampling(void)
+{
+    const NfTurnEnvironment environment = {
+        .omega_cap_deg_s = 2200.0,
+        .rounding_scale = 1.2,
+    };
+    const NfTurnSpec turn = {
+        .enabled = true,
+        .velocity_mm_s = 500.0,
+        .alpha_deg_s2 = 4700.0,
+        .angle_deg = 90.0,
+        .dist_in_mm = 5.0,
+        .dist_out_mm = 15.0,
+    };
+    NfTurnPlan plan;
+    NfTurnPose pose;
+    const double angular_start_s = turn.dist_in_mm / turn.velocity_mm_s;
+
+    check_status("turn pose plan",
+                 nf_motion_turn_plan(&turn, &environment, &plan),
+                 NF_MOTION_OK);
+    check_status("turn pose start",
+                 nf_motion_turn_pose_at_time(&turn, &plan, 0.0, &pose),
+                 NF_MOTION_OK);
+    check_near("turn pose start forward", pose.forward_mm, 0.0, 0.0);
+    check_near("turn pose start lateral", pose.lateral_mm, 0.0, 0.0);
+    check_near("turn pose start heading", pose.heading_deg, 0.0, 0.0);
+
+    check_status("turn pose entry end",
+                 nf_motion_turn_pose_at_time(&turn, &plan, angular_start_s,
+                                             &pose),
+                 NF_MOTION_OK);
+    check_near("turn pose entry forward", pose.forward_mm,
+               turn.dist_in_mm, 1.0e-12);
+    check_near("turn pose entry lateral", pose.lateral_mm, 0.0, 1.0e-12);
+    check_near("turn pose entry heading", pose.heading_deg, 0.0, 1.0e-12);
+
+    check_status("turn pose angular midpoint",
+                 nf_motion_turn_pose_at_time(
+                     &turn, &plan,
+                     angular_start_s + (0.5 * plan.angular_time_s), &pose),
+                 NF_MOTION_OK);
+    check_near("turn pose midpoint heading", pose.heading_deg, 45.0, 1.0e-9);
+    CHECK_TRUE(pose.forward_mm > turn.dist_in_mm);
+    CHECK_TRUE(pose.lateral_mm > 0.0);
+
+    check_status("turn pose end",
+                 nf_motion_turn_pose_at_time(&turn, &plan, plan.total_time_s,
+                                             &pose),
+                 NF_MOTION_OK);
+    check_near("turn pose end forward", pose.forward_mm,
+               plan.displacement_forward_mm, 1.0e-9);
+    check_near("turn pose end lateral", pose.lateral_mm,
+               plan.displacement_lateral_mm, 1.0e-9);
+    check_near("turn pose end heading", pose.heading_deg,
+               turn.angle_deg, 1.0e-12);
+
+    check_status("turn pose after end rejected",
+                 nf_motion_turn_pose_at_time(
+                     &turn, &plan, nextafter(plan.total_time_s, INFINITY) + 1.0e-6,
+                     &pose),
+                 NF_MOTION_INVALID_ARGUMENT);
+
+    {
+        NfTurnPlan inconsistent = plan;
+        inconsistent.angular_time_s += 0.01;
+        check_status("turn pose rejects inconsistent angular time",
+                     nf_motion_turn_pose_at_time(
+                         &turn, &inconsistent, 0.0, &pose),
+                     NF_MOTION_INVALID_ARGUMENT);
+        inconsistent = plan;
+        inconsistent.omega_peak_deg_s *= 0.5;
+        check_status("turn pose rejects inconsistent angular area",
+                     nf_motion_turn_pose_at_time(
+                         &turn, &inconsistent, 0.0, &pose),
+                     NF_MOTION_INVALID_ARGUMENT);
+        inconsistent = plan;
+        inconsistent.travel_distance_mm += 1.0;
+        check_status("turn pose rejects inconsistent travel distance",
+                     nf_motion_turn_pose_at_time(
+                         &turn, &inconsistent, 0.0, &pose),
+                     NF_MOTION_INVALID_ARGUMENT);
+    }
+
+    {
+        NfTurnPose samples[258];
+        check_status("uniform turn pose samples",
+                     nf_motion_turn_pose_uniform(
+                         &turn, &plan, 257U, samples,
+                         sizeof(samples) / sizeof(samples[0])),
+                     NF_MOTION_OK);
+        for (size_t i = 0U; i <= 257U; i++) {
+            NfTurnPose reference;
+            const double elapsed_s =
+                plan.total_time_s * (double)i / 257.0;
+            check_status("uniform pose reference",
+                         nf_motion_turn_pose_at_time(
+                             &turn, &plan, elapsed_s, &reference),
+                         NF_MOTION_OK);
+            check_near("uniform pose forward", samples[i].forward_mm,
+                       reference.forward_mm, 2.0e-8);
+            check_near("uniform pose lateral", samples[i].lateral_mm,
+                       reference.lateral_mm, 2.0e-8);
+            check_near("uniform pose heading", samples[i].heading_deg,
+                       reference.heading_deg, 1.0e-10);
+        }
+        check_status("uniform pose rejects zero intervals",
+                     nf_motion_turn_pose_uniform(
+                         &turn, &plan, 0U, samples,
+                         sizeof(samples) / sizeof(samples[0])),
+                     NF_MOTION_INVALID_ARGUMENT);
+        check_status("uniform pose rejects short output",
+                     nf_motion_turn_pose_uniform(
+                         &turn, &plan, 257U, samples, 257U),
+                     NF_MOTION_INVALID_ARGUMENT);
+    }
+}
+
 static void test_goal_terminal(void)
 {
     const NfLinearLimits limits = {
@@ -527,6 +645,40 @@ static void test_exact_end_sample(void)
     CHECK_TRUE(sampled_velocity_mm_s == plan.exit_velocity_mm_s);
 }
 
+static void test_float_rounded_exact_braking(void)
+{
+    const NfLinearLimits limits = {
+        .vmax_mm_s = 2000.0,
+        .switch_velocity_mm_s = 1500.0,
+        .accel_low_mm_s2 = (double)7111.11f,
+        .accel_high_mm_s2 = 12000.0,
+    };
+    NfLinearPlan plan;
+    double sampled_time_s;
+    double sampled_velocity_mm_s;
+
+    check_status("float-rounded half-cell brake",
+                 nf_motion_linear_plan(&limits, 45.0, 800.0, 0.0, &plan),
+                 NF_MOTION_OK);
+    CHECK_TRUE(plan.phase_count == 1U);
+    check_near("snapped brake phase distance", plan.phases[0].distance_mm,
+               45.0, 1.0e-9);
+    check_near("snapped brake acceleration",
+               plan.phases[0].acceleration_mm_s2,
+               -(800.0 * 800.0 / (2.0 * 45.0)), 1.0e-9);
+    check_status("snapped brake endpoint",
+                 nf_motion_linear_time_at_distance(&plan, 45.0,
+                                                   &sampled_time_s,
+                                                   &sampled_velocity_mm_s),
+                 NF_MOTION_OK);
+    check_near("snapped brake endpoint velocity", sampled_velocity_mm_s,
+               0.0, 0.0);
+
+    check_status("materially short half-cell brake",
+                 nf_motion_linear_plan(&limits, 44.9998, 800.0, 0.0, &plan),
+                 NF_MOTION_INFEASIBLE);
+}
+
 int main(void)
 {
     test_single_stage_straight();
@@ -535,9 +687,11 @@ int main(void)
     test_accelerating_exit_velocity();
     test_mode2_turns();
     test_turn_boundary_cross();
+    test_turn_pose_sampling();
     test_goal_terminal();
     test_invalid_inputs();
     test_exact_end_sample();
+    test_float_rounded_exact_braking();
 
     if (g_failures != 0U) {
         fprintf(stderr, "route_motion_tests: %u/%u checks failed\n",

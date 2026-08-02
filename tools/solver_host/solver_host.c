@@ -5,6 +5,7 @@
 #include "solver.h"
 
 #include "legacy_path_validator.h"
+#include "slalom_time_plan_host.h"
 #include "time_plan_host.h"
 
 #include <ctype.h>
@@ -736,8 +737,10 @@ static void print_usage(const char *argv0)
 {
     printf("usage: %s [--maze FILE.maze] [--maze-c-array FILE] "
            "[--search-dump FILE] [--origin top-left|bottom-left] "
-           "[--mode N] [--case N] [--time-plan] "
+           "[--mode N] [--case N] [--time-plan|--slalom-time-plan] "
            "[--turn-set profile|small|all] [--assert-valid] "
+           "[--slalom-profile NAME] [--compare-orthogonal] "
+           "[--summary-only] [--check-turn-clearance] "
            "[--verbose-solver] [--explore-sim] [--explore-verbose] "
            "[--max-steps N]\n", argv0);
 }
@@ -799,10 +802,18 @@ int main(int argc, char **argv)
     bool explore_sim = false;
     bool explore_verbose = false;
     bool time_plan = false;
+    bool slalom_time_plan = false;
     bool assert_valid = false;
     bool origin_set = false;
     bool turn_set_set = false;
     bool max_steps_set = false;
+    bool mode_set = false;
+    bool case_set = false;
+    bool slalom_profile_set = false;
+    bool compare_orthogonal = false;
+    bool summary_only = false;
+    bool check_turn_clearance = false;
+    const char *slalom_profile = "f413-preorder-mode2";
     NfHostTurnSet turn_set = NF_HOST_TURN_SET_PROFILE;
     unsigned int max_steps = 2048U;
     uint8_t mode = 2U;
@@ -828,6 +839,7 @@ int main(int argc, char **argv)
             }
         } else if (strcmp(argv[i], "--mode") == 0 && (i + 1) < argc) {
             unsigned int value;
+            mode_set = true;
             if (!parse_unsigned_argument(argv[++i], 2U, 7U, &value)) {
                 fprintf(stderr, "--mode must be an integer from 2 through 7\n");
                 return 2;
@@ -835,6 +847,7 @@ int main(int argc, char **argv)
             mode = (uint8_t)value;
         } else if (strcmp(argv[i], "--case") == 0 && (i + 1) < argc) {
             unsigned int value;
+            case_set = true;
             if (!parse_unsigned_argument(argv[++i], 1U, 9U, &value)) {
                 fprintf(stderr, "--case must be an integer from 1 through 9\n");
                 return 2;
@@ -842,6 +855,18 @@ int main(int argc, char **argv)
             case_index = (uint8_t)value;
         } else if (strcmp(argv[i], "--time-plan") == 0) {
             time_plan = true;
+        } else if (strcmp(argv[i], "--slalom-time-plan") == 0) {
+            slalom_time_plan = true;
+        } else if (strcmp(argv[i], "--slalom-profile") == 0 &&
+                   (i + 1) < argc) {
+            slalom_profile = argv[++i];
+            slalom_profile_set = true;
+        } else if (strcmp(argv[i], "--compare-orthogonal") == 0) {
+            compare_orthogonal = true;
+        } else if (strcmp(argv[i], "--summary-only") == 0) {
+            summary_only = true;
+        } else if (strcmp(argv[i], "--check-turn-clearance") == 0) {
+            check_turn_clearance = true;
         } else if (strcmp(argv[i], "--turn-set") == 0 && (i + 1) < argc) {
             const char *value = argv[++i];
             turn_set_set = true;
@@ -885,6 +910,33 @@ int main(int argc, char **argv)
         return 2;
     }
 
+    if (time_plan && slalom_time_plan) {
+        fprintf(stderr, "select only one time planner\n");
+        return 2;
+    }
+    if (slalom_time_plan) {
+        if (maze_text_file == NULL || maze_file != NULL ||
+            search_dump_file != NULL || explore_sim || verbose_solver ||
+            explore_verbose || origin_set || max_steps_set || mode_set ||
+            turn_set_set) {
+            fprintf(stderr,
+                    "--slalom-time-plan requires one KeriLab --maze file and "
+                    "does not accept legacy solver/mode options\n");
+            return 2;
+        }
+        if (!case_set) {
+            case_index = 8U;
+        }
+        return nf_host_run_slalom_time_plan(
+            maze_text_file, slalom_profile, case_index, compare_orthogonal,
+            assert_valid, summary_only, check_turn_clearance);
+    }
+    if (slalom_profile_set || compare_orthogonal || summary_only ||
+        check_turn_clearance) {
+        fprintf(stderr,
+                "slalom profile/comparison options require --slalom-time-plan\n");
+        return 2;
+    }
     if (time_plan) {
         if (maze_file != NULL || search_dump_file != NULL || explore_sim ||
             verbose_solver || explore_verbose || origin_set || max_steps_set) {

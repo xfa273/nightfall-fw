@@ -26,11 +26,17 @@ mkdir -p "$OUT_DIR"
   -I"$ROOT_DIR/platform/stm32f405/Core/Inc" \
   -I"$ROOT_DIR/params/f413_preorder" \
   "$ROOT_DIR/tools/solver_host/solver_host.c" \
+  "$ROOT_DIR/tools/solver_host/slalom_time_plan_host.c" \
+  "$ROOT_DIR/tools/solver_host/slalom_profile_baseline.c" \
   "$ROOT_DIR/tools/solver_host/time_plan_host.c" \
   "$ROOT_DIR/tools/solver_host/maze_ascii.c" \
   "$ROOT_DIR/tools/solver_host/legacy_path_validator.c" \
+  "$ROOT_DIR/common/route/legacy_path_codec.c" \
+  "$ROOT_DIR/common/route/slalom_plan_legacy_codec.c" \
   "$ROOT_DIR/common/route/motion_time.c" \
   "$ROOT_DIR/common/route/orthogonal_time_planner.c" \
+  "$ROOT_DIR/common/route/route_clearance.c" \
+  "$ROOT_DIR/common/route/slalom_time_planner.c" \
   "$ROOT_DIR/platform/stm32f405/Core/Src/solver.c" \
   "$ROOT_DIR/platform/stm32f405/Core/Src/path.c" \
   "$ROOT_DIR/platform/stm32f405/Core/Src/maze_grid.c" \
