@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.3.7` of
+The collector installs version `0.3.8` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -154,13 +154,29 @@ saturation. A frame-wide illumination change is also rejected. The report
 records the accepted token length, LED-triangle center, changed-pixel count,
 blue-chroma score, hot-pixel count, effective threshold, and matched LED count.
 
-Version 0.3.7 can also be operated entirely from the Pixel. Open **Nightfall
-HFR Recorder** from the launcher and tap **撮影スタンバイ (240 fps)**. This
-uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
-60-second limit, and a 900 ms STOP tail). While waiting for the three-pulse
-START token, the second button cancels standby; after recording starts, it
-changes to a manual recording stop. Mac-launched sessions keep using the
-configuration supplied by `record_test.sh` or `capture_optical_run.sh`.
+Version 0.3.8 can also be operated entirely from the Pixel. Open **Nightfall
+HFR Recorder** from the launcher and tap **連続撮影スタンバイ (240 fps)**.
+This uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
+60-second per-run limit, and a 900 ms STOP tail). After each complete
+START/motion/STOP sequence, the run is retained in its own internal directory
+and the app automatically returns to optical standby after two seconds. Tap
+**連続待機を終了** to stop the loop; if a run is currently recording, its
+partial final video is saved before the loop ends. The app refuses to start a
+new retained run below 1 GiB of free internal storage. Mac-launched sessions
+keep their one-shot behavior and use the configuration supplied by
+`record_test.sh` or `capture_optical_run.sh`.
+
+Collect all Pixel-started runs without deleting them from the phone:
+
+```sh
+tools/vision/android_camera_probe/collect_manual_runs.sh \
+  "$SERIAL" sessions/hfr-tests/pixel8/manual-runs
+```
+
+The collector is idempotent: a run whose matching report already exists in
+the output directory is skipped. Completed runs receive an ffprobe report;
+failed attempts retain their diagnostic report but have no MP4. Ending an
+armed standby before START does not create a saved run.
 
 The 2026-08-01 stationary Pixel 8 integration trial completed without the
 external lamp: start detection to recording was 28.1 ms, stop detection to

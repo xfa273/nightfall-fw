@@ -87,6 +87,7 @@ final class HfrRecorder {
         final int opticalTriggerScore;
         final int opticalTriggerHotPixels;
         final int opticalStopTailMs;
+        final boolean retainRunOutput;
 
         Config(
                 String nonce,
@@ -102,7 +103,8 @@ final class HfrRecorder {
                 boolean opticalTrigger,
                 int opticalTriggerScore,
                 int opticalTriggerHotPixels,
-                int opticalStopTailMs
+                int opticalStopTailMs,
+                boolean retainRunOutput
         ) {
             this.nonce = nonce;
             this.cameraId = cameraId;
@@ -118,6 +120,7 @@ final class HfrRecorder {
             this.opticalTriggerScore = opticalTriggerScore;
             this.opticalTriggerHotPixels = opticalTriggerHotPixels;
             this.opticalStopTailMs = opticalStopTailMs;
+            this.retainRunOutput = retainRunOutput;
         }
 
         void validate() {
@@ -221,6 +224,7 @@ final class HfrRecorder {
                     opticalTriggerHotPixels
             );
             object.put("optical_stop_tail_ms", opticalStopTailMs);
+            object.put("retained_run_output", retainRunOutput);
             object.put("recording_backend", "MediaRecorder");
             object.put("media_recorder_capture_rate_fps", fps);
             object.put("audio_recorded", false);
@@ -378,6 +382,7 @@ final class HfrRecorder {
     private File reportFile;
     private File captureSidecarFile;
     private File encoderSidecarFile;
+    private String outputRelativeDirectory;
 
     HfrRecorder(
             Activity activity,
@@ -557,7 +562,11 @@ final class HfrRecorder {
 
     void close() {
         if (active.get()) {
-            stop();
+            if (mediaRecorderStarted) {
+                stop();
+            } else {
+                cancelArmed();
+            }
         } else {
             closeCameraPipeline();
         }
@@ -565,6 +574,22 @@ final class HfrRecorder {
 
     private void prepareOutputFiles() {
         File root = activity.getFilesDir();
+        outputRelativeDirectory = "";
+        if (config.retainRunOutput) {
+            if (!config.nonce.matches("[A-Za-z0-9._-]+")) {
+                throw new IllegalArgumentException(
+                        "retained record_nonce contains unsafe characters"
+                );
+            }
+            File retainedRoot = new File(root, "manual_runs");
+            root = new File(retainedRoot, config.nonce);
+            if (root.exists() || !root.mkdirs()) {
+                throw new IllegalStateException(
+                        "unable to create retained run directory: " + root
+                );
+            }
+            outputRelativeDirectory = "manual_runs/" + config.nonce;
+        }
         videoFile = new File(root, VIDEO_FILENAME);
         videoTempFile = new File(root, VIDEO_FILENAME + ".tmp");
         reportFile = new File(root, REPORT_FILENAME);
@@ -1077,6 +1102,9 @@ final class HfrRecorder {
                 }
                 encoderSurface = null;
             }
+            if (cancelled && videoTempFile.isFile()) {
+                videoTempFile.delete();
+            }
             if (!cancelled
                     && error == null
                     && (!videoTempFile.isFile()
@@ -1092,11 +1120,15 @@ final class HfrRecorder {
                 }
             }
             try {
-                if (!cancelled && error == null) {
-                    moveReplace(videoTempFile, videoFile);
+                if (cancelled && config.retainRunOutput) {
+                    removeCancelledRetainedOutput();
+                } else {
+                    if (!cancelled && error == null) {
+                        moveReplace(videoTempFile, videoFile);
+                    }
+                    writeSidecars();
+                    writeReport(error);
                 }
-                writeSidecars();
-                writeReport(error);
             } catch (Exception exception) {
                 error = combineErrors(
                         error,
@@ -1121,6 +1153,31 @@ final class HfrRecorder {
                 listener.onError(finalError);
             }
         }, "nightfall-hfr-finalize").start();
+    }
+
+    private void removeCancelledRetainedOutput() throws IOException {
+        File directory = reportFile.getParentFile();
+        for (File file : Arrays.asList(
+                videoFile,
+                videoTempFile,
+                reportFile,
+                new File(directory, REPORT_FILENAME + ".tmp"),
+                captureSidecarFile,
+                new File(directory, CAPTURE_SIDECAR_FILENAME + ".tmp"),
+                encoderSidecarFile,
+                new File(directory, ENCODER_SIDECAR_FILENAME + ".tmp")
+        )) {
+            if (file.exists() && !file.delete()) {
+                throw new IOException(
+                        "unable to remove cancelled output: " + file
+                );
+            }
+        }
+        if (directory.exists() && !directory.delete()) {
+            throw new IOException(
+                    "unable to remove cancelled run directory: " + directory
+            );
+        }
     }
 
     private static String combineErrors(
@@ -1363,6 +1420,7 @@ final class HfrRecorder {
         );
         report.put("encoded_video", buildEncoderSummary(error));
         JSONObject outputs = new JSONObject();
+        outputs.put("directory", outputRelativeDirectory);
         outputs.put("video", VIDEO_FILENAME);
         outputs.put(
                 "capture_results_jsonl",

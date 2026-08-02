@@ -10,6 +10,7 @@ import android.graphics.SurfaceTexture;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.Surface;
@@ -41,6 +42,12 @@ public final class MainActivity extends Activity {
             "optical_trigger_hot_pixels";
     private static final String EXTRA_OPTICAL_STOP_TAIL_MS =
             "optical_stop_tail_ms";
+    // HIL-only overrides let the repeat state machine be exercised quickly
+    // without an LED token or any command to the mouse.
+    private static final String EXTRA_MANUAL_DURATION_SECONDS =
+            "manual_duration_seconds";
+    private static final String EXTRA_MANUAL_OPTICAL_TRIGGER =
+            "manual_optical_trigger";
     private static final int OPTICAL_SAMPLE_WIDTH = 480;
     private static final int OPTICAL_SAMPLE_HEIGHT = 270;
     private static final long OPTICAL_SAMPLE_INTERVAL_NS = 25_000_000L;
@@ -55,6 +62,9 @@ public final class MainActivity extends Activity {
     private static final int MANUAL_OPTICAL_TRIGGER_SCORE = 180;
     private static final int MANUAL_OPTICAL_TRIGGER_HOT_PIXELS = 2;
     private static final int MANUAL_OPTICAL_STOP_TAIL_MS = 900;
+    private static final long MANUAL_REARM_DELAY_MS = 2000L;
+    private static final long MINIMUM_FREE_STORAGE_BYTES =
+            1024L * 1024L * 1024L;
 
     private TextureView preview;
     private TextView status;
@@ -62,6 +72,7 @@ public final class MainActivity extends Activity {
     private Button stopButton;
     private HandlerThread cameraThread;
     private Handler cameraHandler;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private HfrRecorder recorder;
     private boolean autoPending;
     private HfrRecorder.Config activeConfig;
@@ -75,6 +86,24 @@ public final class MainActivity extends Activity {
     private long lastOpticalSampleNs;
     private long lastOpticalStatusNs;
     private int[] opticalPixels;
+    private boolean manualContinuousStandby;
+    private boolean manualStopRequested;
+    private String manualSessionNonce;
+    private int manualRunSequence;
+    private int manualCompletedRuns;
+    private final Runnable manualRearmRunnable = () -> {
+        if (!manualContinuousStandby || isFinishing() || isDestroyed()) {
+            return;
+        }
+        setStatus(
+                String.format(
+                        "%d本保存済み。次の走行を待機します...",
+                        manualCompletedRuns
+                ),
+                true
+        );
+        startRecording(false);
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -148,31 +177,20 @@ public final class MainActivity extends Activity {
         controls.setBackgroundColor(0xcc000000);
 
         startButton = new Button(this);
-        startButton.setText("撮影スタンバイ (240 fps)");
-        startButton.setOnClickListener(view -> startRecording(false));
+        startButton.setText("連続撮影スタンバイ (240 fps)");
+        startButton.setOnClickListener(
+                view -> startManualContinuousStandby()
+        );
         controls.addView(startButton);
 
         stopButton = new Button(this);
         stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
-        stopButton.setOnClickListener(view -> {
-            if (recorder != null) {
-                if (opticalWaitingForStart) {
-                    opticalDetectionEnabled = false;
-                    stopButton.setEnabled(false);
-                    setStatus("撮影スタンバイを終了しています...", true);
-                    recorder.cancelArmed();
-                } else {
-                    stopButton.setEnabled(false);
-                    setStatus("録画を停止しています...", true);
-                    recorder.stop();
-                }
-            }
-        });
+        stopButton.setOnClickListener(view -> stopFromPixel());
         controls.addView(stopButton);
 
         status = new TextView(this);
-        status.setText("「撮影スタンバイ」を押してください");
+        status.setText("「連続撮影スタンバイ」を押してください");
         status.setTextColor(Color.WHITE);
         status.setTextSize(14.0f);
         status.setPadding(dp(12), 0, 0, 0);
@@ -250,6 +268,55 @@ public final class MainActivity extends Activity {
         startRecording(true);
     }
 
+    private void startManualContinuousStandby() {
+        if (manualContinuousStandby
+                || (recorder != null && recorder.isActive())) {
+            return;
+        }
+        manualContinuousStandby = true;
+        manualStopRequested = false;
+        manualSessionNonce = "manual-" + System.currentTimeMillis();
+        manualRunSequence = 0;
+        manualCompletedRuns = 0;
+        startRecording(false);
+    }
+
+    private void stopFromPixel() {
+        boolean stoppingContinuous = manualContinuousStandby;
+        if (stoppingContinuous) {
+            manualContinuousStandby = false;
+            manualStopRequested = true;
+            uiHandler.removeCallbacks(manualRearmRunnable);
+        }
+        if (recorder == null || !recorder.isActive()) {
+            resetControlsAfterRun();
+            setStatus(
+                    stoppingContinuous
+                            ? String.format(
+                            "連続撮影を終了しました（%d本保存）",
+                            manualCompletedRuns
+                    )
+                            : "撮影を停止しました",
+                    true
+            );
+            return;
+        }
+        opticalDetectionEnabled = false;
+        stopButton.setEnabled(false);
+        if (opticalWaitingForStart) {
+            setStatus("撮影スタンバイを終了しています...", true);
+            recorder.cancelArmed();
+        } else {
+            setStatus(
+                    stoppingContinuous
+                            ? "連続撮影を終了し、動画を保存しています..."
+                            : "録画を停止しています...",
+                    true
+            );
+            recorder.stop();
+        }
+    }
+
     private void startRecording(boolean useIntentConfig) {
         if (recorder != null && recorder.isActive()) {
             return;
@@ -265,6 +332,17 @@ public final class MainActivity extends Activity {
                     : createManualOpticalConfig();
         } catch (IllegalArgumentException exception) {
             setStatus(exception.getMessage(), false);
+            return;
+        }
+        if (config.retainRunOutput
+                && getFilesDir().getUsableSpace()
+                < MINIMUM_FREE_STORAGE_BYTES) {
+            manualContinuousStandby = false;
+            resetControlsAfterRun();
+            setStatus(
+                    "空き容量が1 GiB未満のため連続撮影を開始できません",
+                    false
+            );
             return;
         }
         recorder = new HfrRecorder(
@@ -291,7 +369,11 @@ public final class MainActivity extends Activity {
                                 opticalDetector.reset();
                             }
                             startButton.setEnabled(false);
-                            stopButton.setText("待機をキャンセル");
+                            stopButton.setText(
+                                    config.retainRunOutput
+                                            ? "連続待機を終了"
+                                            : "待機をキャンセル"
+                            );
                             stopButton.setEnabled(true);
                         });
                     }
@@ -317,7 +399,11 @@ public final class MainActivity extends Activity {
                                 );
                             }
                             startButton.setEnabled(false);
-                            stopButton.setText("録画を停止");
+                            stopButton.setText(
+                                    config.retainRunOutput
+                                            ? "連続待機を終了"
+                                            : "録画を停止"
+                            );
                             stopButton.setEnabled(true);
                         });
                     }
@@ -326,21 +412,59 @@ public final class MainActivity extends Activity {
                     public void onCancelled(String message) {
                         runOnUiThread(() -> {
                             resetControlsAfterRun();
-                            setStatus("撮影スタンバイを終了しました", true);
+                            setStatus(
+                                    config.retainRunOutput
+                                            ? String.format(
+                                            "連続撮影を終了しました（%d本保存）",
+                                            manualCompletedRuns
+                                    )
+                                            : "撮影スタンバイを終了しました",
+                                    true
+                            );
                         });
                     }
 
                     @Override
                     public void onFinished(String message) {
                         runOnUiThread(() -> {
-                            resetControlsAfterRun();
-                            setStatus(message, true);
+                            if (config.retainRunOutput) {
+                                manualCompletedRuns += 1;
+                            }
+                            if (config.retainRunOutput
+                                    && manualContinuousStandby) {
+                                prepareControlsForRearm();
+                                setStatus(
+                                        String.format(
+                                                "%d本目を保存しました。2秒後に再待機します...",
+                                                manualCompletedRuns
+                                        ),
+                                        true
+                                );
+                                uiHandler.postDelayed(
+                                        manualRearmRunnable,
+                                        MANUAL_REARM_DELAY_MS
+                                );
+                            } else {
+                                resetControlsAfterRun();
+                                setStatus(
+                                        config.retainRunOutput
+                                                && manualStopRequested
+                                                ? String.format(
+                                                "連続撮影を終了しました（%d本保存）",
+                                                manualCompletedRuns
+                                        )
+                                                : message,
+                                        true
+                                );
+                            }
                         });
                     }
 
                     @Override
                     public void onError(String message) {
                         runOnUiThread(() -> {
+                            manualContinuousStandby = false;
+                            uiHandler.removeCallbacks(manualRearmRunnable);
                             resetControlsAfterRun();
                             setStatus("ERROR: " + message, false);
                         });
@@ -349,6 +473,9 @@ public final class MainActivity extends Activity {
         );
         startButton.setEnabled(false);
         stopButton.setEnabled(false);
+        if (config.retainRunOutput) {
+            stopButton.setText("連続待機を終了");
+        }
         activeConfig = config;
         if (config.opticalTrigger) {
             opticalDetector = new OpticalTriggerDetector(
@@ -365,21 +492,35 @@ public final class MainActivity extends Activity {
     }
 
     private HfrRecorder.Config createManualOpticalConfig() {
+        manualRunSequence += 1;
+        int durationSeconds = getIntent().getIntExtra(
+                EXTRA_MANUAL_DURATION_SECONDS,
+                MANUAL_DURATION_SECONDS
+        );
+        boolean opticalTrigger = getIntent().getBooleanExtra(
+                EXTRA_MANUAL_OPTICAL_TRIGGER,
+                true
+        );
         HfrRecorder.Config config = new HfrRecorder.Config(
-                "manual-" + System.currentTimeMillis(),
+                String.format(
+                        "%s-run%04d",
+                        manualSessionNonce,
+                        manualRunSequence
+                ),
                 "0",
                 MANUAL_WIDTH,
                 MANUAL_HEIGHT,
                 MANUAL_FPS,
-                MANUAL_DURATION_SECONDS,
+                durationSeconds,
                 MANUAL_BITRATE,
                 MANUAL_EXPOSURE_US,
                 MANUAL_ISO,
                 true,
-                true,
+                opticalTrigger,
                 MANUAL_OPTICAL_TRIGGER_SCORE,
                 MANUAL_OPTICAL_TRIGGER_HOT_PIXELS,
-                MANUAL_OPTICAL_STOP_TAIL_MS
+                MANUAL_OPTICAL_STOP_TAIL_MS,
+                true
         );
         config.validate();
         return config;
@@ -389,9 +530,21 @@ public final class MainActivity extends Activity {
         opticalDetectionEnabled = false;
         opticalWaitingForStart = false;
         opticalWaitingForMotion = false;
+        manualContinuousStandby = false;
+        uiHandler.removeCallbacks(manualRearmRunnable);
         startButton.setEnabled(true);
+        startButton.setText("連続撮影スタンバイ (240 fps)");
         stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
+    }
+
+    private void prepareControlsForRearm() {
+        opticalDetectionEnabled = false;
+        opticalWaitingForStart = false;
+        opticalWaitingForMotion = false;
+        startButton.setEnabled(false);
+        stopButton.setText("連続待機を終了");
+        stopButton.setEnabled(true);
     }
 
     private HfrRecorder.Config readConfig(Intent intent) {
@@ -418,7 +571,8 @@ public final class MainActivity extends Activity {
                         EXTRA_OPTICAL_TRIGGER_HOT_PIXELS,
                         2
                 ),
-                intent.getIntExtra(EXTRA_OPTICAL_STOP_TAIL_MS, 900)
+                intent.getIntExtra(EXTRA_OPTICAL_STOP_TAIL_MS, 900),
+                false
         );
         config.validate();
         return config;
@@ -556,6 +710,8 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        manualContinuousStandby = false;
+        uiHandler.removeCallbacks(manualRearmRunnable);
         opticalDetectionEnabled = false;
         if (recorder != null) {
             recorder.close();
