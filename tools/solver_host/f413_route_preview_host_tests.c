@@ -1,0 +1,527 @@
+#include "f413_trace_log.h"
+#include "maze_ascii.h"
+#include "slalom_time_plan_host.h"
+
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+/* Keep the production source's only HAL/NVM dependencies as host stubs. */
+#define NIGHTFALL_NVM_PARAMS_H_
+bool nvm_maze_load_map(uint16_t* cells, uint32_t count);
+uint32_t HAL_GetTick(void);
+
+#include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_preview.c"
+
+static uint8_t g_scratch[F413_TRACE_LOG_IDLE_SCRATCH_BYTES];
+static NfRouteMaze g_host_maze;
+static unsigned int g_checks;
+static unsigned int g_failures;
+static char g_trace_output[32768U];
+static size_t g_trace_output_length;
+static bool g_lease_available = true;
+static bool g_nvm_load_available = true;
+static size_t g_reported_scratch_bytes = sizeof(g_scratch);
+static unsigned int g_release_count;
+
+#define CHECK(condition)                                                        \
+  do                                                                            \
+  {                                                                             \
+    g_checks++;                                                                 \
+    if (!(condition))                                                           \
+    {                                                                           \
+      g_failures++;                                                             \
+      fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #condition);     \
+    }                                                                           \
+  } while (0)
+
+#define REQUIRE(condition)                                                      \
+  do                                                                            \
+  {                                                                             \
+    CHECK(condition);                                                           \
+    if (!(condition))                                                           \
+    {                                                                           \
+      return false;                                                             \
+    }                                                                           \
+  } while (0)
+
+bool f413_trace_log_try_borrow_idle_scratch(void** out, size_t* out_bytes)
+{
+  if ((out == NULL) || (out_bytes == NULL))
+  {
+    return false;
+  }
+  if (!g_lease_available)
+  {
+    *out = NULL;
+    *out_bytes = 0U;
+    return false;
+  }
+  *out = g_scratch;
+  *out_bytes = g_reported_scratch_bytes;
+  return true;
+}
+
+void f413_trace_log_release_idle_scratch(void* scratch)
+{
+  CHECK(scratch == g_scratch);
+  g_release_count++;
+}
+
+bool nvm_maze_load_map(uint16_t* cells, uint32_t count)
+{
+  if (!g_nvm_load_available || (cells == NULL) ||
+      (count != F413_RP_CELL_COUNT))
+  {
+    return false;
+  }
+  for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
+  {
+    for (uint8_t x = 0U; x < F413_RP_WIDTH; x++)
+    {
+      cells[(size_t)y * F413_RP_WIDTH + x] =
+          (uint16_t)((g_host_maze.walls[y][x] & 0x0FU) << 4U);
+    }
+  }
+  return true;
+}
+
+uint32_t HAL_GetTick(void)
+{
+  return 0U;
+}
+
+int trace_printf(const char* format, ...)
+{
+  int written;
+  va_list args;
+  const size_t remaining = sizeof(g_trace_output) - g_trace_output_length;
+
+  if (remaining == 0U)
+  {
+    return 0;
+  }
+  va_start(args, format);
+  written = vsnprintf(&g_trace_output[g_trace_output_length], remaining,
+                      format, args);
+  va_end(args);
+  if (written < 0)
+  {
+    return written;
+  }
+  if ((size_t)written >= remaining)
+  {
+    g_trace_output_length = sizeof(g_trace_output) - 1U;
+  }
+  else
+  {
+    g_trace_output_length += (size_t)written;
+  }
+  return written;
+}
+
+static unsigned int f413_test_common_diagonal_actions(
+    const NfSlalomRoutePlan* plan)
+{
+  unsigned int count = 0U;
+  for (size_t index = 0U; index < plan->action_count; index++)
+  {
+    const NfSlalomAction* action = &plan->actions[index];
+    if (action->connector_is_diagonal ||
+        (action->kind == NF_SLALOM_ACTION_45_IN) ||
+        (action->kind == NF_SLALOM_ACTION_45_OUT) ||
+        (action->kind == NF_SLALOM_ACTION_V90) ||
+        (action->kind == NF_SLALOM_ACTION_135_IN) ||
+        (action->kind == NF_SLALOM_ACTION_135_OUT))
+    {
+      count++;
+    }
+  }
+  return count;
+}
+
+static void f413_test_reset_trace_capture(void)
+{
+  memset(g_trace_output, 0, sizeof(g_trace_output));
+  g_trace_output_length = 0U;
+}
+
+static NfSlalomActionKind f413_test_common_kind(f413_rp_kind_t kind)
+{
+  static const NfSlalomActionKind kinds[F413_RP_KIND_COUNT] = {
+      NF_SLALOM_ACTION_LARGE_90,
+      NF_SLALOM_ACTION_LARGE_180,
+      NF_SLALOM_ACTION_45_IN,
+      NF_SLALOM_ACTION_45_OUT,
+      NF_SLALOM_ACTION_V90,
+      NF_SLALOM_ACTION_135_IN,
+      NF_SLALOM_ACTION_135_OUT,
+  };
+  return kinds[(unsigned int)kind];
+}
+
+static NfSlalomTurnSpeedMode f413_test_common_speed(f413_rp_speed_t speed)
+{
+  static const NfSlalomTurnSpeedMode speeds[F413_RP_SPEED_COUNT] = {
+      NF_SLALOM_TURN_SPEED_NOMINAL,
+      NF_SLALOM_TURN_SPEED_LOW,
+      NF_SLALOM_TURN_SPEED_CRAWL,
+  };
+  return speeds[(unsigned int)speed];
+}
+
+static bool f413_test_copy_fixture_goals(f413_rp_maze_t* maze)
+{
+  memset(maze->goal_bits, 0, sizeof(maze->goal_bits));
+  maze->goal_count = 0U;
+  for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
+  {
+    for (uint8_t x = 0U; x < F413_RP_WIDTH; x++)
+    {
+      if (g_host_maze.goals[y][x] && !f413_rp_add_goal(maze, x, y))
+      {
+        return false;
+      }
+    }
+  }
+  return maze->goal_count != 0U;
+}
+
+static bool f413_test_action_parity(const f413_rp_context_t* compact,
+                                    uint16_t start_state,
+                                    f413_rp_arena_t* arena,
+                                    const NfSlalomRoutePlan* common)
+{
+  uint16_t* chain = f413_rp_arena_alloc(
+      arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  size_t chain_count = 0U;
+  uint16_t state = compact->goal.source_state;
+  size_t common_index = 1U;
+
+  REQUIRE(chain != NULL);
+  while (true)
+  {
+    REQUIRE(chain_count < F413_RP_STATE_COUNT);
+    chain[chain_count++] = state;
+    if (state == start_state)
+    {
+      break;
+    }
+    REQUIRE((compact->parents[state] & F413_RP_PARENT_VALID) != 0U);
+    state = f413_rp_parent_previous(compact->parents[state]);
+  }
+
+  REQUIRE(common->action_count == chain_count + 1U);
+  CHECK(common->actions[0].kind == NF_SLALOM_ACTION_START_OFFSET);
+  CHECK(common->actions[0].duration_us == compact->motion->start_time_us);
+  CHECK(compact->distances[start_state] == compact->motion->start_time_us);
+
+  for (size_t cursor = chain_count; cursor > 1U; cursor--, common_index++)
+  {
+    const uint16_t destination_state = chain[cursor - 2U];
+    const uint32_t parent = compact->parents[destination_state];
+    const uint16_t source_state = f413_rp_parent_previous(parent);
+    const f413_rp_kind_t kind = f413_rp_parent_kind(parent);
+    const f413_rp_side_t side = f413_rp_parent_side(parent);
+    const f413_rp_speed_t turn_speed = f413_rp_parent_speed(parent);
+    const uint16_t connector_steps = f413_rp_parent_connector(parent);
+    const NfSlalomAction* action = &common->actions[common_index];
+    f413_rp_anchor_t source;
+    f413_rp_anchor_t connector_end;
+    f413_rp_anchor_t destination;
+    f413_rp_heading_t start_heading;
+    f413_rp_heading_t end_heading;
+    f413_rp_speed_t source_speed;
+    NfLinearPlan connector;
+    uint32_t connector_us;
+    uint32_t turn_us;
+
+    REQUIRE(source_state == chain[cursor - 1U]);
+    REQUIRE(f413_rp_state_decode(source_state, &source, &start_heading,
+                                  &source_speed));
+    REQUIRE(f413_rp_advance_steps(compact->maze, source, start_heading,
+                                   connector_steps, &connector_end));
+    REQUIRE(f413_rp_turn_destination(compact->maze, connector_end,
+                                      start_heading, kind, side,
+                                      &destination, &end_heading));
+    REQUIRE(nf_motion_linear_plan(
+                f413_rp_connector_limits(compact->motion, start_heading),
+                connector_steps * f413_rp_connector_unit(start_heading),
+                compact->motion->speed_mm_s[source_speed],
+                compact->motion->speed_mm_s[turn_speed],
+                &connector) == NF_MOTION_OK);
+    REQUIRE(f413_rp_seconds_to_us(connector.total_time_s, &connector_us));
+    REQUIRE(f413_rp_seconds_to_us(
+                compact->motion->timing_plan[turn_speed][kind].total_time_s,
+                &turn_us));
+
+    CHECK(action->kind == f413_test_common_kind(kind));
+    CHECK(action->side == ((side == F413_RP_SIDE_LEFT) ?
+                           NF_ROUTE_SIDE_LEFT : NF_ROUTE_SIDE_RIGHT));
+    CHECK(action->turn_speed_mode == f413_test_common_speed(turn_speed));
+    CHECK(action->connector_steps == connector_steps);
+    CHECK(action->connector_is_diagonal ==
+          !f413_rp_is_cardinal(start_heading));
+    CHECK(action->start_anchor.half_x == source.half_x);
+    CHECK(action->start_anchor.half_y == source.half_y);
+    CHECK(action->connector_end_anchor.half_x == connector_end.half_x);
+    CHECK(action->connector_end_anchor.half_y == connector_end.half_y);
+    CHECK(action->end_anchor.half_x == destination.half_x);
+    CHECK(action->end_anchor.half_y == destination.half_y);
+    CHECK((unsigned int)action->start_heading ==
+          (unsigned int)start_heading);
+    CHECK((unsigned int)action->end_heading == (unsigned int)end_heading);
+    CHECK(action->connector_time_us == connector_us);
+    CHECK(action->turn_time_us == turn_us);
+    CHECK(action->duration_us == (uint64_t)connector_us + turn_us);
+    CHECK(compact->distances[destination_state] ==
+          compact->distances[source_state] + connector_us + turn_us);
+  }
+
+  {
+    const NfSlalomAction* terminal = &common->actions[common_index];
+    f413_rp_anchor_t source;
+    f413_rp_heading_t heading;
+    f413_rp_speed_t speed;
+
+    REQUIRE(compact->goal.direct_connector);
+    REQUIRE(f413_rp_state_decode(compact->goal.source_state, &source,
+                                  &heading, &speed));
+    CHECK(terminal->kind == NF_SLALOM_ACTION_GOAL_STOP);
+    CHECK(terminal->connector_steps == compact->goal.connector_steps);
+    CHECK(terminal->connector_is_diagonal ==
+          !f413_rp_is_cardinal(heading));
+    CHECK(terminal->start_anchor.half_x == source.half_x);
+    CHECK(terminal->start_anchor.half_y == source.half_y);
+    CHECK(terminal->connector_time_us == compact->goal.connector_us);
+    CHECK(terminal->duration_us == compact->goal.connector_us);
+    CHECK(terminal->has_goal_cross);
+    CHECK(terminal->goal_phase == NF_SLALOM_GOAL_CONNECTOR);
+    CHECK(terminal->goal_cross_time_us == compact->goal.goal_cross_edge_us);
+    CHECK(terminal->goal_x == compact->goal.goal_x);
+    CHECK(terminal->goal_y == compact->goal.goal_y);
+  }
+  return true;
+}
+
+static bool f413_test_kerilab_2014_parity(const char* maze_path)
+{
+  NfMazeAsciiInfo info;
+  char error[192];
+  NfSlalomPlannerConfig config;
+  const NfAuditProfile* profile;
+  const NfSlalomPlannerRequest request = {
+      0U, 0U, NF_SLALOM_HEADING_NORTH,
+  };
+  NfSlalomRoutePlan common;
+  NfSlalomValidation validation;
+  f413_rp_arena_t arena = {g_scratch, g_scratch + sizeof(g_scratch)};
+  f413_rp_context_t compact = {0};
+  f413_rp_maze_t* compact_maze;
+  f413_rp_motion_t* motion;
+  uint16_t start_state;
+  uint8_t* reconstruction_mark;
+  const char* diagonal_text;
+  unsigned int reported_diagonal_actions = 0U;
+
+  REQUIRE(nf_maze_ascii_load(maze_path, &g_host_maze, &info, error,
+                              sizeof(error)) == NF_MAZE_ASCII_OK);
+  REQUIRE(g_host_maze.width == F413_RP_WIDTH);
+  REQUIRE(g_host_maze.height == F413_RP_HEIGHT);
+  REQUIRE(info.start_x == START_X);
+  REQUIRE(info.start_y == START_Y);
+  REQUIRE(nf_host_slalom_make_config(
+      "f413-preorder-mode2", 8U, NF_SLALOM_ENABLE_SHORTEST_1_TO_5,
+      &config, &profile, error, sizeof(error)));
+  (void)profile;
+  REQUIRE(nf_slalom_time_plan(&g_host_maze, &config, &request, &common) ==
+          NF_SLALOM_PLAN_OK);
+  REQUIRE(nf_slalom_route_validate(&g_host_maze, &config, &request, &common,
+                                    &validation));
+
+  compact_maze = f413_rp_arena_alloc(&arena, sizeof(*compact_maze), 8U);
+  motion = f413_rp_arena_alloc(&arena, sizeof(*motion), 8U);
+  compact.maze = compact_maze;
+  compact.motion = motion;
+  compact.distances = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  compact.turn_counts = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  compact.parents = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  compact.settled = f413_rp_arena_alloc(
+      &arena, F413_RP_SETTLED_BYTES, 1U);
+  REQUIRE(compact_maze != NULL);
+  REQUIRE(motion != NULL);
+  REQUIRE(compact.distances != NULL);
+  REQUIRE(compact.turn_counts != NULL);
+  REQUIRE(compact.parents != NULL);
+  REQUIRE(compact.settled != NULL);
+  REQUIRE(f413_rp_load_maze(compact_maze));
+  CHECK(compact_maze->goal_count == 4U);
+  for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
+  {
+    for (uint8_t x = 0U; x < F413_RP_WIDTH; x++)
+    {
+      CHECK(f413_rp_goal_at(compact_maze, x, y) ==
+            g_host_maze.goals[y][x]);
+    }
+  }
+  REQUIRE(f413_rp_prepare_motion(motion, &arena));
+  REQUIRE(f413_rp_plan(&compact, &start_state) == F413_RP_PLAN_OK);
+
+  CHECK(compact.goal.goal_x == common.goal_x);
+  CHECK(compact.goal.goal_y == common.goal_y);
+  CHECK(compact.goal.goal_entry_us == common.goal_entry_us);
+  CHECK(compact.goal.stop_us == common.stop_us);
+  CHECK(common.goal_x == 8U);
+  CHECK(common.goal_y == 8U);
+  CHECK(common.goal_entry_us == 13223795ULL);
+  CHECK(common.stop_us == 13742911ULL);
+  CHECK(common.action_count == 15U);
+  CHECK(f413_test_common_diagonal_actions(&common) == 8U);
+  reconstruction_mark = arena.cursor;
+  REQUIRE(f413_test_action_parity(&compact, start_state, &arena, &common));
+  arena.cursor = reconstruction_mark;
+  f413_test_reset_trace_capture();
+  REQUIRE(f413_rp_print_plan(&compact, &arena, start_state));
+  diagonal_text = strstr(g_trace_output, "diagonal-actions=");
+  REQUIRE(diagonal_text != NULL);
+  REQUIRE(sscanf(diagonal_text, "diagonal-actions=%u",
+                 &reported_diagonal_actions) == 1);
+  CHECK(reported_diagonal_actions ==
+        f413_test_common_diagonal_actions(&common));
+  CHECK((size_t)(arena.cursor - g_scratch) <= sizeof(g_scratch));
+  return true;
+}
+
+static bool f413_test_public_cleanup_and_metadata(const char* maze_path)
+{
+  NfMazeAsciiInfo info;
+  char error[192];
+
+  REQUIRE(nf_maze_ascii_load(maze_path, &g_host_maze, &info, error,
+                              sizeof(error)) == NF_MAZE_ASCII_OK);
+  g_lease_available = true;
+  g_nvm_load_available = true;
+  g_reported_scratch_bytes = sizeof(g_scratch);
+  g_release_count = 0U;
+  f413_test_reset_trace_capture();
+  f413_route_preview_run_once();
+  CHECK(g_release_count == 1U);
+  CHECK(strstr(g_trace_output,
+               "START read-only/no-motor mode=2 case=8") != NULL);
+  CHECK(strstr(g_trace_output,
+               "goal-source=diagnostic-center-2x2") != NULL);
+  CHECK(strstr(g_trace_output, "[KERI-PREVIEW] OK ") != NULL);
+  CHECK(strstr(g_trace_output,
+               "END status=ok scratch=released used=") != NULL);
+  CHECK(strstr(g_trace_output, "elapsed=0 ms motors=off nvm=read-only") !=
+        NULL);
+
+  g_nvm_load_available = false;
+  g_release_count = 0U;
+  f413_test_reset_trace_capture();
+  f413_route_preview_run_once();
+  CHECK(g_release_count == 1U);
+  CHECK(strstr(g_trace_output, "FAIL FRAM maze load") != NULL);
+  CHECK(strstr(g_trace_output, "END status=fail scratch=released") != NULL);
+  g_nvm_load_available = true;
+
+  g_reported_scratch_bytes = F413_RP_SCRATCH_MIN_BYTES - 1U;
+  g_release_count = 0U;
+  f413_test_reset_trace_capture();
+  f413_route_preview_run_once();
+  CHECK(g_release_count == 1U);
+  CHECK(strstr(g_trace_output, "FAIL scratch=") != NULL);
+  CHECK(strstr(g_trace_output, "END status=fail scratch=released") != NULL);
+  g_reported_scratch_bytes = sizeof(g_scratch);
+
+  g_lease_available = false;
+  g_release_count = 0U;
+  f413_test_reset_trace_capture();
+  f413_route_preview_run_once();
+  CHECK(g_release_count == 0U);
+  CHECK(strstr(g_trace_output,
+               "FAIL trace capture active or scratch busy") != NULL);
+  g_lease_available = true;
+  return true;
+}
+
+static bool f413_test_expect_status(f413_rp_plan_status_t expected)
+{
+  f413_rp_arena_t arena = {g_scratch, g_scratch + sizeof(g_scratch)};
+  f413_rp_context_t context = {0};
+  f413_rp_maze_t* maze = f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_maze_t), 8U);
+  f413_rp_motion_t* motion = f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_motion_t), 8U);
+  uint16_t start_state;
+
+  context.maze = maze;
+  context.motion = motion;
+  context.distances = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.turn_counts = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.parents = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.settled = f413_rp_arena_alloc(
+      &arena, F413_RP_SETTLED_BYTES, 1U);
+  REQUIRE(maze != NULL);
+  REQUIRE(motion != NULL);
+  REQUIRE(context.distances != NULL);
+  REQUIRE(context.turn_counts != NULL);
+  REQUIRE(context.parents != NULL);
+  REQUIRE(context.settled != NULL);
+  REQUIRE(f413_rp_load_maze(maze));
+  REQUIRE(f413_test_copy_fixture_goals(maze));
+  REQUIRE(f413_rp_prepare_motion(motion, &arena));
+  CHECK(f413_rp_plan(&context, &start_state) == expected);
+  return true;
+}
+
+static bool f413_test_terminal_statuses(void)
+{
+  REQUIRE(nf_route_maze_init(&g_host_maze, F413_RP_WIDTH,
+                              F413_RP_HEIGHT));
+  REQUIRE(nf_route_maze_add_boundaries(&g_host_maze));
+  for (uint8_t coordinate = 0U; coordinate < 2U; coordinate++)
+  {
+    REQUIRE(nf_route_maze_set_wall(&g_host_maze, 1U, coordinate,
+                                    NF_ROUTE_DIR_EAST));
+    REQUIRE(nf_route_maze_set_wall(&g_host_maze, coordinate, 1U,
+                                    NF_ROUTE_DIR_NORTH));
+  }
+  g_host_maze.goals[1][1] = true;
+  REQUIRE(f413_test_expect_status(F413_RP_PLAN_NO_FEASIBLE_TERMINAL));
+
+  REQUIRE(nf_route_maze_set_wall(&g_host_maze, 0U, 0U,
+                                  NF_ROUTE_DIR_NORTH));
+  REQUIRE(nf_route_maze_set_wall(&g_host_maze, 0U, 0U,
+                                  NF_ROUTE_DIR_EAST));
+  REQUIRE(f413_test_expect_status(F413_RP_PLAN_NO_PATH));
+  return true;
+}
+
+int main(int argc, char** argv)
+{
+  if (argc != 2)
+  {
+    fprintf(stderr, "usage: %s 16MM2014CX.maze\n", argv[0]);
+    return 2;
+  }
+  (void)f413_test_kerilab_2014_parity(argv[1]);
+  (void)f413_test_public_cleanup_and_metadata(argv[1]);
+  (void)f413_test_terminal_statuses();
+  if (g_failures != 0U)
+  {
+    fprintf(stderr, "f413 route preview host tests: %u/%u failed\n",
+            g_failures, g_checks);
+    return 1;
+  }
+  printf("f413 route preview host tests: %u checks passed\n", g_checks);
+  return 0;
+}

@@ -43,6 +43,9 @@ UART commands that are normally non-motor:
 - `c`: IMU acceleration observation
 - `[`: search state / FRAM map consistency display
 - `@`: FRAM search map dump
+- `K`: strict KERI #1--#5 shortest-route preview from the saved FRAM maze
+  (`F413 mode2/case8`, diagnostic 16x16 centre 2x2 goal independent of the
+  compiled exploration goal, route derivation and UART output only)
 - `v`: bounded trace CSV dump
 - `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status
