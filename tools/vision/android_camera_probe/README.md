@@ -140,7 +140,7 @@ tools/vision/android_camera_probe/capture_optical_run.sh \
 ```
 
 The wrapper selects 1080p/240, 72 Mbps, 1.000 ms, ISO 800, and a 60-second
-maximum recording by default. It waits up to five minutes for a complete
+maximum recording by default. It waits up to 30 minutes for a complete
 START/STOP pair. The start token is decoded while the preview-only request is
 running; MediaRecorder is enabled before the firmware's final LED pulse and
 300 ms guard complete. The stop token leaves a default 900 ms video tail.
