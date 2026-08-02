@@ -15,10 +15,11 @@
 
 /*
  * This module is deliberately a preview-only implementation.  It owns no
- * motor/run-session references and its sole persistent-data operation is
- * nvm_maze_load_map().  The graph is the 16x16, KERI #1--#5 subset of the PC
- * slalom planner, compacted to the three boundary velocities needed by F413
- * mode2/case8.
+ * motor/run-session references and its sole persistent-data operation is the
+ * read-only nvm_maze_load_map() attempt.  If that read fails, a pinned contest
+ * maze in program Flash keeps the diagnostic usable without changing NVM.
+ * The graph is the 16x16, KERI #1--#5 subset of the PC slalom planner,
+ * compacted to the three boundary velocities needed by F413 mode2/case8.
  */
 
 #define F413_RP_WIDTH (16U)
@@ -39,6 +40,8 @@
 #define F413_RP_EPS (1.0e-8)
 #define F413_RP_MAX_TURN_INTERVALS (384U)
 #define F413_RP_SCRATCH_MIN_BYTES (180U * 1024U)
+#define F413_RP_BUILTIN_DATA_REV \
+  "762ed2b68735ea29148c6a1251a90ed0651ff26b"
 #define F413_RP_PARENT_VALID (0x80000000UL)
 #define F413_RP_PARENT_PREV_MASK (0x00003FFFUL)
 #define F413_RP_PARENT_CONNECTOR_SHIFT (14U)
@@ -104,6 +107,12 @@ typedef enum
   F413_RP_PLAN_NO_FEASIBLE_TERMINAL,
   F413_RP_PLAN_ERROR,
 } f413_rp_plan_status_t;
+
+typedef enum
+{
+  F413_RP_MAZE_SOURCE_FRAM = 0,
+  F413_RP_MAZE_SOURCE_BUILTIN_16MM2014CX,
+} f413_rp_maze_source_t;
 
 typedef struct
 {
@@ -214,6 +223,50 @@ typedef struct
 static const int8_t g_f413_rp_dx[8] = {0, 1, 1, 1, 0, -1, -1, -1};
 static const int8_t g_f413_rp_dy[8] = {1, 1, 0, -1, -1, -1, 0, 1};
 static const uint8_t g_f413_rp_wall_mask[4] = {0x08U, 0x04U, 0x02U, 0x01U};
+
+/*
+ * 16MM2014CX.maze, pinned from micromouse-maze-data revision
+ * F413_RP_BUILTIN_DATA_REV.  One NESW wall nibble per cell, ordered y=0..15
+ * then x=0..15.  static const keeps the 256-byte fallback in program Flash.
+ */
+static const uint8_t g_f413_rp_builtin_16mm2014cx_walls[] = {
+  0x7U, 0x3U, 0x2U, 0x2U, 0xEU, 0x3U, 0xAU, 0xAU,
+  0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0x6U, 0x3U, 0x6U, /* y=0 */
+  0x5U, 0x5U, 0x5U, 0x9U, 0x2U, 0xCU, 0x3U, 0xAU,
+  0x6U, 0x7U, 0x3U, 0x6U, 0x3U, 0x4U, 0x5U, 0x5U, /* y=1 */
+  0x5U, 0x5U, 0x5U, 0x7U, 0xDU, 0xBU, 0x0U, 0xEU,
+  0x9U, 0x0U, 0xCU, 0x1U, 0x4U, 0x5U, 0x5U, 0x5U, /* y=2 */
+  0x5U, 0x5U, 0x5U, 0x1U, 0x2U, 0xEU, 0x9U, 0x2U,
+  0xEU, 0x9U, 0x2U, 0xCU, 0x9U, 0x4U, 0x5U, 0x5U, /* y=3 */
+  0x5U, 0x5U, 0x5U, 0x5U, 0x1U, 0x2U, 0xEU, 0x9U,
+  0x2U, 0xEU, 0x9U, 0x6U, 0x3U, 0xCU, 0x5U, 0x5U, /* y=4 */
+  0x5U, 0x5U, 0x5U, 0x5U, 0xDU, 0x9U, 0x2U, 0xEU,
+  0x9U, 0x2U, 0xEU, 0x9U, 0x0U, 0xEU, 0x5U, 0x5U, /* y=5 */
+  0x5U, 0x5U, 0x5U, 0x5U, 0x3U, 0x6U, 0x9U, 0x2U,
+  0xEU, 0x9U, 0x2U, 0xEU, 0x9U, 0x2U, 0xCU, 0x5U, /* y=6 */
+  0x5U, 0x5U, 0x5U, 0x5U, 0x5U, 0x9U, 0x6U, 0x1U,
+  0x6U, 0x7U, 0x9U, 0x2U, 0xEU, 0xDU, 0x3U, 0xCU, /* y=7 */
+  0x5U, 0x5U, 0x5U, 0x9U, 0xCU, 0xBU, 0x4U, 0x9U,
+  0x8U, 0x4U, 0x7U, 0x9U, 0x2U, 0xAU, 0x0U, 0xEU, /* y=8 */
+  0x5U, 0x5U, 0x5U, 0x3U, 0xAU, 0xAU, 0x0U, 0x2U,
+  0x6U, 0x9U, 0x4U, 0x7U, 0x9U, 0x2U, 0x8U, 0x6U, /* y=9 */
+  0x5U, 0x5U, 0x5U, 0x9U, 0x2U, 0xEU, 0x5U, 0xDU,
+  0x9U, 0x6U, 0x9U, 0x4U, 0x7U, 0x1U, 0x6U, 0x5U, /* y=10 */
+  0x5U, 0x5U, 0x5U, 0xBU, 0x0U, 0xEU, 0x5U, 0x3U,
+  0xAU, 0xCU, 0xBU, 0x8U, 0x4U, 0xDU, 0x1U, 0x4U, /* y=11 */
+  0x5U, 0x5U, 0x5U, 0xBU, 0x0U, 0xEU, 0x5U, 0x9U,
+  0xAU, 0xAU, 0xAU, 0xAU, 0xCU, 0x3U, 0xCU, 0xDU, /* y=12 */
+  0x5U, 0x5U, 0x5U, 0xBU, 0x0U, 0xEU, 0x9U, 0xAU,
+  0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xCU, 0x3U, 0x6U, /* y=13 */
+  0x5U, 0x5U, 0x1U, 0xEU, 0x9U, 0xAU, 0xAU, 0xAU,
+  0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xCU, 0x5U, /* y=14 */
+  0x9U, 0xCU, 0x9U, 0xAU, 0xAU, 0xAU, 0xAU, 0xAU,
+  0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xAU, 0xCU, /* y=15 */
+};
+
+_Static_assert(sizeof(g_f413_rp_builtin_16mm2014cx_walls) ==
+                   F413_RP_CELL_COUNT,
+               "built-in 16MM2014CX wall fixture must cover all cells");
 
 static void* f413_rp_arena_alloc(f413_rp_arena_t* arena,
                                  size_t bytes,
@@ -1039,9 +1092,11 @@ static bool f413_rp_add_goal(f413_rp_maze_t* maze, uint8_t x, uint8_t y)
   return true;
 }
 
-static bool f413_rp_load_maze(f413_rp_maze_t* maze)
+static bool f413_rp_load_maze(f413_rp_maze_t* maze,
+                               f413_rp_maze_source_t* out_source)
 {
   uint16_t cells[F413_RP_CELL_COUNT];
+  bool fram_loaded;
   /*
    * Preview-only policy: past 16x16 contest fixtures use the conventional
    * central 2x2 goal.  Keep this independent of the machine's compiled
@@ -1051,18 +1106,20 @@ static bool f413_rp_load_maze(f413_rp_maze_t* maze)
       {7U, 7U}, {8U, 7U}, {7U, 8U}, {8U, 8U},
   };
 
-  if ((maze == NULL) ||
-      !nvm_maze_load_map(cells, (uint32_t)F413_RP_CELL_COUNT))
+  if ((maze == NULL) || (out_source == NULL))
   {
     return false;
   }
+  fram_loaded = nvm_maze_load_map(cells, (uint32_t)F413_RP_CELL_COUNT);
   memset(maze, 0, sizeof(*maze));
   for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
   {
     for (uint8_t x = 0U; x < F413_RP_WIDTH; x++)
     {
       const size_t index = f413_rp_cell_index(x, y);
-      maze->walls[index] = (uint8_t)((cells[index] >> 4U) & 0x0FU);
+      maze->walls[index] = fram_loaded ?
+          (uint8_t)((cells[index] >> 4U) & 0x0FU) :
+          g_f413_rp_builtin_16mm2014cx_walls[index];
       if (x == 0U)
       {
         maze->walls[index] |= 0x01U;
@@ -1124,7 +1181,13 @@ static bool f413_rp_load_maze(f413_rp_maze_t* maze)
   {
     (void)f413_rp_add_goal(maze, goals[index][0], goals[index][1]);
   }
-  return maze->goal_count != 0U;
+  if (maze->goal_count == 0U)
+  {
+    return false;
+  }
+  *out_source = fram_loaded ? F413_RP_MAZE_SOURCE_FRAM :
+                              F413_RP_MAZE_SOURCE_BUILTIN_16MM2014CX;
+  return true;
 }
 
 static NfTurnSpec f413_rp_scaled_turn(const NfTurnSpec* source, double scale)
@@ -2689,10 +2752,11 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
       diagonal_actions++;
     }
   }
-  trace_printf("[KERI-PREVIEW] OK turns=%u diagonal-actions=%u expanded=%lu "
-               "relaxed=%lu heap-peak=%u goal-entry=%lu.%06lu s "
-               "stop=%lu.%06lu s\r\n",
+  trace_printf("[KERI-PREVIEW] OK turns=%u actions=%u diagonal-actions=%u "
+               "expanded=%lu relaxed=%lu heap-peak=%u "
+               "goal-entry=%lu.%06lu s stop=%lu.%06lu s\r\n",
                (unsigned int)context->goal.turn_count,
+               action_index + 1U,
                diagonal_actions,
                (unsigned long)context->expanded_states,
                (unsigned long)context->relaxed_edges,
@@ -2715,11 +2779,13 @@ void f413_route_preview_run_once(void)
   f413_rp_motion_t* motion;
   uint16_t start_state;
   f413_rp_plan_status_t plan_status;
+  f413_rp_maze_source_t maze_source;
   const uint32_t start_ms = HAL_GetTick();
   bool ok = false;
 
   trace_printf("[KERI-PREVIEW] START read-only/no-motor mode=2 case=8 "
-               "patterns=#1..#5 maze=FRAM "
+               "patterns=#1..#5 "
+               "maze-policy=FRAM-first fallback=builtin-16MM2014CX "
                "goal-source=diagnostic-center-2x2\r\n");
   if (!f413_trace_log_try_borrow_idle_scratch(&scratch, &scratch_bytes))
   {
@@ -2762,10 +2828,20 @@ void f413_route_preview_run_once(void)
     trace_printf("[KERI-PREVIEW] FAIL scratch layout\r\n");
     goto cleanup;
   }
-  if (!f413_rp_load_maze(maze))
+  if (!f413_rp_load_maze(maze, &maze_source))
   {
-    trace_printf("[KERI-PREVIEW] FAIL FRAM maze load or diagnostic goals\r\n");
+    trace_printf("[KERI-PREVIEW] FAIL maze preparation or diagnostic goals\r\n");
     goto cleanup;
+  }
+  if (maze_source == F413_RP_MAZE_SOURCE_FRAM)
+  {
+    trace_printf("[KERI-PREVIEW] maze-source=FRAM fram-load=ok\r\n");
+  }
+  else
+  {
+    trace_printf("[KERI-PREVIEW] maze-source=builtin-16MM2014CX "
+                 "data-rev=%s fram-load=fail\r\n",
+                 F413_RP_BUILTIN_DATA_REV);
   }
   trace_printf("[KERI-PREVIEW] goals goal-source=diagnostic-center-2x2 ");
   for (uint8_t index = 0U; index < maze->goal_count; index++)

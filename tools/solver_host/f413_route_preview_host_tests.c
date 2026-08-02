@@ -23,6 +23,7 @@ static char g_trace_output[32768U];
 static size_t g_trace_output_length;
 static bool g_lease_available = true;
 static bool g_nvm_load_available = true;
+static unsigned int g_nvm_load_count;
 static size_t g_reported_scratch_bytes = sizeof(g_scratch);
 static unsigned int g_release_count;
 static size_t g_verified_scratch_peak;
@@ -76,6 +77,7 @@ void f413_trace_log_release_idle_scratch(void* scratch)
 
 bool nvm_maze_load_map(uint16_t* cells, uint32_t count)
 {
+  g_nvm_load_count++;
   if (!g_nvm_load_available || (cells == NULL) ||
       (count != F413_RP_CELL_COUNT))
   {
@@ -323,6 +325,7 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
   f413_rp_context_t compact = {0};
   f413_rp_maze_t* compact_maze;
   f413_rp_motion_t* motion;
+  f413_rp_maze_source_t maze_source;
   uint16_t start_state;
   uint8_t* reconstruction_mark;
   const char* diagonal_text;
@@ -367,12 +370,16 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
   REQUIRE(compact.settled != NULL);
   REQUIRE(compact.heap_states != NULL);
   REQUIRE(compact.heap_positions != NULL);
-  REQUIRE(f413_rp_load_maze(compact_maze));
+  REQUIRE(f413_rp_load_maze(compact_maze, &maze_source));
+  CHECK(maze_source == F413_RP_MAZE_SOURCE_FRAM);
   CHECK(compact_maze->goal_count == 4U);
   for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
   {
     for (uint8_t x = 0U; x < F413_RP_WIDTH; x++)
     {
+      const size_t cell_index = (size_t)y * F413_RP_WIDTH + x;
+      CHECK(g_f413_rp_builtin_16mm2014cx_walls[cell_index] ==
+            (g_host_maze.walls[y][x] & 0x0FU));
       CHECK(f413_rp_goal_at(compact_maze, x, y) ==
             g_host_maze.goals[y][x]);
     }
@@ -418,13 +425,19 @@ static bool f413_test_public_cleanup_and_metadata(const char* maze_path)
                               sizeof(error)) == NF_MAZE_ASCII_OK);
   g_lease_available = true;
   g_nvm_load_available = true;
+  g_nvm_load_count = 0U;
   g_reported_scratch_bytes = sizeof(g_scratch);
   g_release_count = 0U;
   f413_test_reset_trace_capture();
   f413_route_preview_run_once();
   CHECK(g_release_count == 1U);
+  CHECK(g_nvm_load_count == 1U);
   CHECK(strstr(g_trace_output,
                "START read-only/no-motor mode=2 case=8") != NULL);
+  CHECK(strstr(g_trace_output,
+               "maze-policy=FRAM-first fallback=builtin-16MM2014CX") !=
+        NULL);
+  CHECK(strstr(g_trace_output, "maze-source=FRAM fram-load=ok") != NULL);
   CHECK(strstr(g_trace_output,
                "goal-source=diagnostic-center-2x2") != NULL);
   CHECK(strstr(g_trace_output, "[KERI-PREVIEW] OK ") != NULL);
@@ -434,28 +447,45 @@ static bool f413_test_public_cleanup_and_metadata(const char* maze_path)
         NULL);
 
   g_nvm_load_available = false;
+  g_nvm_load_count = 0U;
   g_release_count = 0U;
   f413_test_reset_trace_capture();
   f413_route_preview_run_once();
   CHECK(g_release_count == 1U);
-  CHECK(strstr(g_trace_output, "FAIL FRAM maze load") != NULL);
-  CHECK(strstr(g_trace_output, "END status=fail scratch=released") != NULL);
+  CHECK(g_nvm_load_count == 1U);
+  CHECK(strstr(g_trace_output,
+               "maze-source=builtin-16MM2014CX data-rev="
+               F413_RP_BUILTIN_DATA_REV " fram-load=fail") != NULL);
+  CHECK(strstr(g_trace_output, "goal=G(8,8)") != NULL);
+  CHECK(strstr(g_trace_output,
+               "OK turns=13 actions=15 diagonal-actions=8") != NULL);
+  CHECK(strstr(g_trace_output,
+               "goal-entry=13.223795 s stop=13.742911 s") != NULL);
+  CHECK(strstr(g_trace_output,
+               "wall-mismatch-normalized=0") != NULL);
+  CHECK(strstr(g_trace_output,
+               "END status=ok scratch=released used=") != NULL);
+  CHECK(strstr(g_trace_output, "motors=off nvm=read-only") != NULL);
   g_nvm_load_available = true;
 
   g_reported_scratch_bytes = F413_RP_SCRATCH_MIN_BYTES - 1U;
+  g_nvm_load_count = 0U;
   g_release_count = 0U;
   f413_test_reset_trace_capture();
   f413_route_preview_run_once();
   CHECK(g_release_count == 1U);
+  CHECK(g_nvm_load_count == 0U);
   CHECK(strstr(g_trace_output, "FAIL scratch=") != NULL);
   CHECK(strstr(g_trace_output, "END status=fail scratch=released") != NULL);
   g_reported_scratch_bytes = sizeof(g_scratch);
 
   g_lease_available = false;
+  g_nvm_load_count = 0U;
   g_release_count = 0U;
   f413_test_reset_trace_capture();
   f413_route_preview_run_once();
   CHECK(g_release_count == 0U);
+  CHECK(g_nvm_load_count == 0U);
   CHECK(strstr(g_trace_output,
                "FAIL trace capture active or scratch busy") != NULL);
   g_lease_available = true;
@@ -466,6 +496,7 @@ static bool f413_test_expect_status(f413_rp_plan_status_t expected)
 {
   f413_rp_arena_t arena = {g_scratch, g_scratch + sizeof(g_scratch)};
   f413_rp_context_t context = {0};
+  f413_rp_maze_source_t maze_source;
   f413_rp_maze_t* maze = f413_rp_arena_alloc(
       &arena, sizeof(f413_rp_maze_t), 8U);
   f413_rp_motion_t* motion = f413_rp_arena_alloc(
@@ -494,7 +525,8 @@ static bool f413_test_expect_status(f413_rp_plan_status_t expected)
   REQUIRE(context.settled != NULL);
   REQUIRE(context.heap_states != NULL);
   REQUIRE(context.heap_positions != NULL);
-  REQUIRE(f413_rp_load_maze(maze));
+  REQUIRE(f413_rp_load_maze(maze, &maze_source));
+  CHECK(maze_source == F413_RP_MAZE_SOURCE_FRAM);
   REQUIRE(f413_test_copy_fixture_goals(maze));
   REQUIRE(f413_rp_prepare_motion(motion, &arena));
   CHECK(f413_rp_plan(&context, &start_state) == expected);
