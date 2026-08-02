@@ -25,6 +25,7 @@ static bool g_lease_available = true;
 static bool g_nvm_load_available = true;
 static size_t g_reported_scratch_bytes = sizeof(g_scratch);
 static unsigned int g_release_count;
+static size_t g_verified_scratch_peak;
 
 #define CHECK(condition)                                                        \
   do                                                                            \
@@ -40,11 +41,14 @@ static unsigned int g_release_count;
 #define REQUIRE(condition)                                                      \
   do                                                                            \
   {                                                                             \
-    CHECK(condition);                                                           \
     if (!(condition))                                                           \
     {                                                                           \
+      g_checks++;                                                               \
+      g_failures++;                                                             \
+      fprintf(stderr, "FAIL %s:%d: %s\n", __FILE__, __LINE__, #condition);     \
       return false;                                                             \
     }                                                                           \
+    g_checks++;                                                                 \
   } while (0)
 
 bool f413_trace_log_try_borrow_idle_scratch(void** out, size_t* out_bytes)
@@ -191,11 +195,9 @@ static bool f413_test_copy_fixture_goals(f413_rp_maze_t* maze)
 
 static bool f413_test_action_parity(const f413_rp_context_t* compact,
                                     uint16_t start_state,
-                                    f413_rp_arena_t* arena,
                                     const NfSlalomRoutePlan* common)
 {
-  uint16_t* chain = f413_rp_arena_alloc(
-      arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  uint16_t* chain = compact->heap_states;
   size_t chain_count = 0U;
   uint16_t state = compact->goal.source_state;
   size_t common_index = 1U;
@@ -353,12 +355,18 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
       &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
   compact.settled = f413_rp_arena_alloc(
       &arena, F413_RP_SETTLED_BYTES, 1U);
+  compact.heap_states = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  compact.heap_positions = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
   REQUIRE(compact_maze != NULL);
   REQUIRE(motion != NULL);
   REQUIRE(compact.distances != NULL);
   REQUIRE(compact.turn_counts != NULL);
   REQUIRE(compact.parents != NULL);
   REQUIRE(compact.settled != NULL);
+  REQUIRE(compact.heap_states != NULL);
+  REQUIRE(compact.heap_positions != NULL);
   REQUIRE(f413_rp_load_maze(compact_maze));
   CHECK(compact_maze->goal_count == 4U);
   for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
@@ -370,7 +378,11 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
     }
   }
   REQUIRE(f413_rp_prepare_motion(motion, &arena));
+  g_verified_scratch_peak = (size_t)(arena.cursor - g_scratch);
+  CHECK(g_verified_scratch_peak <= F413_RP_SCRATCH_MIN_BYTES);
   REQUIRE(f413_rp_plan(&compact, &start_state) == F413_RP_PLAN_OK);
+  CHECK(compact.heap_peak > 0U);
+  CHECK(compact.heap_peak <= F413_RP_STATE_COUNT);
 
   CHECK(compact.goal.goal_x == common.goal_x);
   CHECK(compact.goal.goal_y == common.goal_y);
@@ -383,10 +395,10 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
   CHECK(common.action_count == 15U);
   CHECK(f413_test_common_diagonal_actions(&common) == 8U);
   reconstruction_mark = arena.cursor;
-  REQUIRE(f413_test_action_parity(&compact, start_state, &arena, &common));
-  arena.cursor = reconstruction_mark;
+  REQUIRE(f413_test_action_parity(&compact, start_state, &common));
   f413_test_reset_trace_capture();
-  REQUIRE(f413_rp_print_plan(&compact, &arena, start_state));
+  REQUIRE(f413_rp_print_plan(&compact, start_state));
+  CHECK(arena.cursor == reconstruction_mark);
   diagonal_text = strstr(g_trace_output, "diagonal-actions=");
   REQUIRE(diagonal_text != NULL);
   REQUIRE(sscanf(diagonal_text, "diagonal-actions=%u",
@@ -470,12 +482,18 @@ static bool f413_test_expect_status(f413_rp_plan_status_t expected)
       &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
   context.settled = f413_rp_arena_alloc(
       &arena, F413_RP_SETTLED_BYTES, 1U);
+  context.heap_states = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.heap_positions = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
   REQUIRE(maze != NULL);
   REQUIRE(motion != NULL);
   REQUIRE(context.distances != NULL);
   REQUIRE(context.turn_counts != NULL);
   REQUIRE(context.parents != NULL);
   REQUIRE(context.settled != NULL);
+  REQUIRE(context.heap_states != NULL);
+  REQUIRE(context.heap_positions != NULL);
   REQUIRE(f413_rp_load_maze(maze));
   REQUIRE(f413_test_copy_fixture_goals(maze));
   REQUIRE(f413_rp_prepare_motion(motion, &arena));
@@ -506,6 +524,123 @@ static bool f413_test_terminal_statuses(void)
   return true;
 }
 
+static bool f413_test_heap_order_and_relax(void)
+{
+  f413_rp_arena_t arena = {g_scratch, g_scratch + sizeof(g_scratch)};
+  f413_rp_context_t context = {0};
+  uint16_t popped;
+  uint32_t first_parent;
+
+  context.distances = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.turn_counts = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.parents = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.settled = f413_rp_arena_alloc(
+      &arena, F413_RP_SETTLED_BYTES, 1U);
+  context.heap_states = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.heap_positions = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  REQUIRE(context.distances != NULL);
+  REQUIRE(context.turn_counts != NULL);
+  REQUIRE(context.parents != NULL);
+  REQUIRE(context.settled != NULL);
+  REQUIRE(context.heap_states != NULL);
+  REQUIRE(context.heap_positions != NULL);
+  memset(context.distances, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint32_t));
+  memset(context.turn_counts, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint16_t));
+  memset(context.parents, 0, F413_RP_STATE_COUNT * sizeof(uint32_t));
+  memset(context.settled, 0, F413_RP_SETTLED_BYTES);
+  memset(context.heap_positions, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint16_t));
+
+  context.distances[30U] = 100U;
+  context.turn_counts[30U] = 2U;
+  context.distances[20U] = 100U;
+  context.turn_counts[20U] = 1U;
+  context.distances[10U] = 100U;
+  context.turn_counts[10U] = 1U;
+  REQUIRE(f413_rp_heap_push_or_decrease(&context, 30U));
+  REQUIRE(f413_rp_heap_push_or_decrease(&context, 20U));
+  REQUIRE(f413_rp_heap_push_or_decrease(&context, 10U));
+  REQUIRE(f413_rp_heap_peek(&context, &popped));
+  CHECK(popped == 10U);
+  context.distances[30U] = 99U;
+  REQUIRE(f413_rp_heap_push_or_decrease(&context, 30U));
+  REQUIRE(f413_rp_heap_pop(&context, &popped));
+  CHECK(popped == 30U);
+  CHECK(context.heap_positions[30U] == UINT16_MAX);
+  REQUIRE(f413_rp_heap_pop(&context, &popped));
+  CHECK(popped == 10U);
+  REQUIRE(f413_rp_heap_pop(&context, &popped));
+  CHECK(popped == 20U);
+  CHECK(context.heap_size == 0U);
+  CHECK(context.heap_peak == 3U);
+
+  memset(context.distances, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint32_t));
+  memset(context.turn_counts, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint16_t));
+  memset(context.parents, 0, F413_RP_STATE_COUNT * sizeof(uint32_t));
+  memset(context.settled, 0, F413_RP_SETTLED_BYTES);
+  memset(context.heap_positions, 0xFF,
+         F413_RP_STATE_COUNT * sizeof(uint16_t));
+  context.heap_size = 0U;
+  context.heap_peak = 0U;
+  context.relaxed_edges = 0U;
+  context.distances[1U] = 10U;
+  context.turn_counts[1U] = 2U;
+  REQUIRE(f413_rp_relax(&context, 1U, 2U, 0U,
+                         F413_RP_KIND_LARGE_90, F413_RP_SIDE_RIGHT,
+                         F413_RP_SPEED_CRAWL, 5U));
+  first_parent = context.parents[2U];
+  CHECK(context.distances[2U] == 15U);
+  CHECK(context.turn_counts[2U] == 3U);
+  CHECK(context.relaxed_edges == 1U);
+
+  context.distances[6U] = 15U;
+  context.turn_counts[6U] = 2U;
+  REQUIRE(f413_rp_heap_push_or_decrease(&context, 6U));
+  REQUIRE(f413_rp_heap_peek(&context, &popped));
+  CHECK(popped == 6U);
+
+  context.distances[3U] = 10U;
+  context.turn_counts[3U] = 2U;
+  REQUIRE(f413_rp_relax(&context, 3U, 2U, 1U,
+                         F413_RP_KIND_LARGE_180, F413_RP_SIDE_LEFT,
+                         F413_RP_SPEED_LOW, 5U));
+  CHECK(context.parents[2U] == first_parent);
+  CHECK(context.relaxed_edges == 1U);
+
+  context.distances[4U] = 10U;
+  context.turn_counts[4U] = 1U;
+  REQUIRE(f413_rp_relax(&context, 4U, 2U, 2U,
+                         F413_RP_KIND_45_IN, F413_RP_SIDE_LEFT,
+                         F413_RP_SPEED_LOW, 5U));
+  CHECK(context.distances[2U] == 15U);
+  CHECK(context.turn_counts[2U] == 2U);
+  CHECK(context.parents[2U] != first_parent);
+  CHECK(f413_rp_parent_previous(context.parents[2U]) == 4U);
+  CHECK(context.relaxed_edges == 2U);
+  REQUIRE(f413_rp_heap_peek(&context, &popped));
+  CHECK(popped == 2U);
+
+  f413_rp_set_settled(&context, 2U);
+  context.distances[5U] = 9U;
+  context.turn_counts[5U] = 0U;
+  CHECK(!f413_rp_relax(&context, 5U, 2U, 0U,
+                        F413_RP_KIND_LARGE_90, F413_RP_SIDE_RIGHT,
+                        F413_RP_SPEED_CRAWL, 5U));
+  CHECK(context.distances[2U] == 15U);
+  CHECK(context.turn_counts[2U] == 2U);
+  CHECK(f413_rp_parent_previous(context.parents[2U]) == 4U);
+  return true;
+}
+
 int main(int argc, char** argv)
 {
   if (argc != 2)
@@ -516,12 +651,16 @@ int main(int argc, char** argv)
   (void)f413_test_kerilab_2014_parity(argv[1]);
   (void)f413_test_public_cleanup_and_metadata(argv[1]);
   (void)f413_test_terminal_statuses();
+  (void)f413_test_heap_order_and_relax();
   if (g_failures != 0U)
   {
     fprintf(stderr, "f413 route preview host tests: %u/%u failed\n",
             g_failures, g_checks);
     return 1;
   }
-  printf("f413 route preview host tests: %u checks passed\n", g_checks);
+  printf("f413 route preview host tests: %u checks passed "
+         "scratch_peak=%zu/%zu bytes\n",
+         g_checks, g_verified_scratch_peak,
+         (size_t)F413_TRACE_LOG_IDLE_SCRATCH_BYTES);
   return 0;
 }
