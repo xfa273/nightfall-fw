@@ -48,7 +48,10 @@ UART commands that are normally non-motor:
   goal).  It prefers a successfully loaded FRAM maze and, only if that read
   fails, uses a pinned 16MM2014CX fixture from program Flash.  UART identifies
   the source; the command only derives/prints a route and never seeds or saves
-  the fixture to FRAM.
+  the fixture to FRAM.  The measured built-in fixture calculation takes about
+  270 seconds on F413; wait for the `END` line before sending another command,
+  and ensure only one host process has the UART open so readers do not split
+  the output stream.
 - `v`: bounded trace CSV dump
 - `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status

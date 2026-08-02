@@ -308,6 +308,11 @@ executorを呼ばない。各turnについて#番号、左右、直交／斜めc
 anchor、累積時刻を表示し、最後に選択Gへの最初の進入時刻と停止tail完了時刻を出す。
 これは実機上で経路導出を観察する入口であり、導出したactionを走らせる入口ではない。
 
+F413実機のbuilt-in 16MM2014CXでは、`K`は270.313秒で完了し、G(8,8)、
+goal-entry 13.223795秒、stop 13.742911秒、15 action（斜め8）を返した。これはPC側の
+同一profile/fixture結果と一致する。UARTは複数processで同時openすると受信byteが
+reader間に分配されるため、preview取得時は1 readerだけを使用する。
+
 ## 実走行へ接続する前に残すgate
 
 PC側のアルゴリズム、変換fixture、F413非走行previewまでは完了したが、実走行への
