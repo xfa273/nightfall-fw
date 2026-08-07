@@ -5,9 +5,9 @@
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
 #define F413_HW_MOTOR_PWM_MAX (1000U)
-#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (300U)
-#define F413_HW_VIDEO_SYNC_ON_PULSE_MS (300U)
-#define F413_HW_VIDEO_SYNC_OFF_GAP_MS (200U)
+#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (1500U)
+#define F413_HW_VIDEO_SYNC_ON_PULSE_MS (350U)
+#define F413_HW_VIDEO_SYNC_OFF_GAP_MS (300U)
 #define F413_HW_VIDEO_SYNC_FINAL_ON_MS (600U)
 
 extern TIM_HandleTypeDef htim2;
@@ -80,8 +80,9 @@ static void f413_hw_emit_video_sync_pattern(uint8_t pulse_count)
 
   /*
    * Long, camera-rate-independent flashes form one optical token.
-   * The initial OFF interval also clears any OP-UI mode indication so the
-   * Pixel detector can learn a local dark baseline before the first pulse.
+   * The initial OFF interval is longer than the Pixel decoder's sequence
+   * timeout. It therefore clears both an OP-UI all-LED mode indication and
+   * any partial pulse sequence produced by the moving mouse.
    */
   f413_hw_show_led_mask(0U);
   HAL_Delay(F413_HW_VIDEO_SYNC_OFF_PREROLL_MS);

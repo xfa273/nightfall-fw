@@ -1012,12 +1012,6 @@ public final class MainActivity extends Activity {
         );
         bitmap.recycle();
 
-        OpticalTriggerDetector.Result result = opticalDetector.process(
-                opticalPixels,
-                OPTICAL_SAMPLE_WIDTH,
-                OPTICAL_SAMPLE_HEIGHT,
-                nowNs
-        );
         if (!opticalWaitingForStart && opticalWaitingForMotion) {
             MotionGateDetector.Result motion = motionGateDetector.process(
                     opticalPixels,
@@ -1049,13 +1043,19 @@ public final class MainActivity extends Activity {
                                 motion.phase,
                                 motion.baselineReady ? "yes" : "no",
                                 motion.changedPixels,
-                                result.phase
+                                "WAIT_MOTION"
                         ),
                         true
                 );
             }
             return;
         }
+        OpticalTriggerDetector.Result result = opticalDetector.process(
+                opticalPixels,
+                OPTICAL_SAMPLE_WIDTH,
+                OPTICAL_SAMPLE_HEIGHT,
+                nowNs
+        );
         if (result.triggered) {
             opticalDetectionEnabled = false;
             if (opticalWaitingForStart) {

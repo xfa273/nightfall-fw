@@ -3,10 +3,11 @@ package com.nightfall.hfrrecorder;
 /**
  * Detects a configurable visible-LED token emitted by the F413 firmware.
  *
- * <p>Only rising edges are decoded. Consecutive preview frames are compared,
- * then all three spatially separated status LEDs must rise simultaneously on
- * each pulse about 500 ms apart. The same LED triangle must be found in every
- * pulse. Restricting the signal to this blue-chroma geometry
+ * <p>Only rising edges are decoded. Consecutive preview-frame changes and the
+ * absolute blue level are combined, then all three spatially separated status
+ * LEDs must rise simultaneously on each pulse about 650 ms apart. The same LED
+ * triangle must be found in every pulse. Restricting the signal to this
+ * blue-chroma geometry
  * rejects white illumination changes, hands moving through the frame, and
  * ordinary single-LED UI activity. A short calibration period derives a
  * threshold from real preview noise. This class has no Android dependencies
@@ -15,6 +16,7 @@ package com.nightfall.hfrrecorder;
 final class OpticalTriggerDetector {
     private static final int TILE_SIZE = 8;
     private static final int PIXEL_DELTA_THRESHOLD = 20;
+    private static final int ABSOLUTE_BLUE_CHROMA_THRESHOLD = 48;
     private static final long CALIBRATION_WARMUP_NS = 800_000_000L;
     private static final long CALIBRATION_SAMPLE_NS = 1_200_000_000L;
     private static final int CALIBRATION_CAPACITY = 64;
@@ -23,8 +25,8 @@ final class OpticalTriggerDetector {
     private static final int CALIBRATION_MARGIN = 200;
     private static final int CALIBRATION_MULTIPLIER = 3;
     private static final long RISE_REFRACTORY_NS = 150_000_000L;
-    private static final long RISE_GAP_MIN_NS = 320_000_000L;
-    private static final long RISE_GAP_MAX_NS = 750_000_000L;
+    private static final long RISE_GAP_MIN_NS = 300_000_000L;
+    private static final long RISE_GAP_MAX_NS = 950_000_000L;
     private static final int MIN_COMPONENT_SCORE = 60;
     private static final int MIN_COMPONENT_HOT_PIXELS = 2;
     private static final int MAX_COMPONENTS = 12;
@@ -92,6 +94,7 @@ final class OpticalTriggerDetector {
     private int[] tileScores;
     private int[] tileHotPixels;
     private int[] pixelDeltas;
+    private int[] absoluteBlueChroma;
     private int[] componentQueue;
     private int tileColumns;
     private int tileRows;
@@ -106,6 +109,7 @@ final class OpticalTriggerDetector {
     private int effectiveScoreThreshold;
     private int acceptedRises;
     private long lastRiseNs;
+    private boolean pulseLevelHigh;
     private final int[] candidateLedX = new int[3];
     private final int[] candidateLedY = new int[3];
 
@@ -144,6 +148,7 @@ final class OpticalTriggerDetector {
         tileScores = null;
         tileHotPixels = null;
         pixelDeltas = null;
+        absoluteBlueChroma = null;
         componentQueue = null;
         width = 0;
         height = 0;
@@ -180,6 +185,10 @@ final class OpticalTriggerDetector {
             for (int x = 0; x < width; x += 1) {
                 int index = rowOffset + x;
                 int current = blueChroma(pixels[index]);
+                absoluteBlueChroma[index] = current
+                        >= ABSOLUTE_BLUE_CHROMA_THRESHOLD
+                        ? current
+                        : 0;
                 int delta = current - previous[index];
                 if (delta >= PIXEL_DELTA_THRESHOLD) {
                     pixelDeltas[index] = delta;
@@ -236,13 +245,24 @@ final class OpticalTriggerDetector {
 
         boolean risingEdge = bestScore >= effectiveScoreThreshold
                 && bestHotPixels >= hotPixelThreshold;
-        Pulse pulse = null;
+        Pulse deltaPulse = null;
         if (risingEdge) {
-            pulse = findThreeLedPulse(Math.max(
-                    MIN_COMPONENT_SCORE,
-                    effectiveScoreThreshold / 3
-            ));
+            deltaPulse = findThreeLedPulse(
+                    pixelDeltas,
+                    Math.max(
+                            MIN_COMPONENT_SCORE,
+                            effectiveScoreThreshold / 3
+                    )
+            );
         }
+        Pulse levelPulse = findThreeLedPulse(
+                absoluteBlueChroma,
+                Math.max(MIN_COMPONENT_SCORE, effectiveScoreThreshold / 3)
+        );
+        boolean levelHigh = levelPulse != null;
+        Pulse pulse = !pulseLevelHigh
+                ? (levelPulse != null ? levelPulse : deltaPulse)
+                : null;
         boolean triggered = false;
         if (pulse != null
                 && (lastRiseNs == 0L
@@ -253,6 +273,7 @@ final class OpticalTriggerDetector {
                 && nowNs - lastRiseNs > RISE_GAP_MAX_NS) {
             resetSequence();
         }
+        pulseLevelHigh = levelHigh;
         return result(
                 triggered,
                 bestScore,
@@ -283,6 +304,7 @@ final class OpticalTriggerDetector {
         tileScores = new int[tileColumns * tileRows];
         tileHotPixels = new int[tileColumns * tileRows];
         pixelDeltas = new int[pixels.length];
+        absoluteBlueChroma = new int[pixels.length];
         componentQueue = new int[pixels.length];
         if (calibrationStartedNs < 0L) {
             calibrationStartedNs = nowNs;
@@ -320,11 +342,14 @@ final class OpticalTriggerDetector {
         );
     }
 
-    private Pulse findThreeLedPulse(int componentScoreThreshold) {
+    private Pulse findThreeLedPulse(
+            int[] componentPixels,
+            int componentScoreThreshold
+    ) {
         int componentCount = 0;
         java.util.Arrays.fill(componentScores, 0);
-        for (int seed = 0; seed < pixelDeltas.length; seed += 1) {
-            if (pixelDeltas[seed] == 0) {
+        for (int seed = 0; seed < componentPixels.length; seed += 1) {
+            if (componentPixels[seed] == 0) {
                 continue;
             }
             int queueRead = 0;
@@ -333,15 +358,15 @@ final class OpticalTriggerDetector {
             int hotPixels = 0;
             int sumX = 0;
             int sumY = 0;
-            pixelDeltas[seed] = -pixelDeltas[seed];
+            componentPixels[seed] = -componentPixels[seed];
             componentQueue[queueWrite++] = seed;
             while (queueRead < queueWrite) {
                 int index = componentQueue[queueRead++];
-                int delta = -pixelDeltas[index];
+                int delta = -componentPixels[index];
                 if (delta <= 0) {
                     continue;
                 }
-                pixelDeltas[index] = 0;
+                componentPixels[index] = 0;
                 int x = index % width;
                 int y = index / width;
                 score += delta;
@@ -356,9 +381,10 @@ final class OpticalTriggerDetector {
                     int rowOffset = neighborY * width;
                     for (int neighborX = minX; neighborX <= maxX; neighborX += 1) {
                         int neighbor = rowOffset + neighborX;
-                        if (pixelDeltas[neighbor] > 0) {
+                        if (componentPixels[neighbor] > 0) {
                             componentQueue[queueWrite++] = neighbor;
-                            pixelDeltas[neighbor] = -pixelDeltas[neighbor];
+                            componentPixels[neighbor] =
+                                    -componentPixels[neighbor];
                         }
                     }
                 }
@@ -552,6 +578,7 @@ final class OpticalTriggerDetector {
     private void resetSequence() {
         lastRiseNs = 0L;
         acceptedRises = 0;
+        pulseLevelHigh = false;
         java.util.Arrays.fill(candidateLedX, -1);
         java.util.Arrays.fill(candidateLedY, -1);
     }

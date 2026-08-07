@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.0` of
+The collector installs version `0.5.1` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -122,15 +122,19 @@ for a recording-surface-only diagnostic.
 
 The recorder can arm a preview-only high-speed session and wait for the F413
 mouse to emit its visible-LED token. The START token drives all three status
-LEDs three times; STOP drives them four times. Each rise is 500 ms apart, with
-300 ms ordinary pulses and a 600 ms final pulse. Separate token lengths prevent
-a late START token from being consumed as STOP after an earlier false START.
-The Pixel compares consecutive preview frames, discards the first 0.8 seconds
-while auto exposure settles, calibrates local preview noise for 1.2 seconds,
-and requires three spatially separated blue status LEDs to rise together on
-each pulse. The same LED triangle must repeat at the expected spacing. White
-illumination changes, hands moving through the frame, and
-ordinary single-LED UI activity are therefore not accepted as a token.
+LEDs three times; STOP drives them four times. Each token begins with 1.5 s of
+all-LED OFF time, then uses 350 ms ordinary pulses, 300 ms OFF gaps, and a
+600 ms final pulse. The pre-roll is longer than the Pixel sequence timeout, so
+an all-LED OP-UI mode indication or a partial sequence seen while the mouse was
+moving cannot become pulse 1 of the token. Separate token lengths prevent a
+late START token from being consumed as STOP after an earlier false START.
+The Pixel compares consecutive preview frames and also checks the absolute
+blue level, discards the first 0.8 seconds while auto exposure settles,
+calibrates local preview noise for 1.2 seconds, and requires three spatially
+separated blue status LEDs to rise together on each pulse. The same LED
+triangle must repeat at the expected spacing. White illumination changes,
+hands moving through the frame, and ordinary single-LED UI activity are
+therefore not accepted as a token.
 
 Arm and collect one run with:
 
@@ -165,6 +169,11 @@ partial final video is saved before the loop ends. The app refuses to start a
 new retained run below 1 GiB of free internal storage. Mac-launched sessions
 keep their one-shot behavior and use the configuration supplied by
 `record_test.sh` or `capture_optical_run.sh`.
+
+Version 0.5.1 hardens the optical decoder for the overhead installation. It
+does not advance the STOP sequence while waiting for the first real mouse
+motion, combines frame-difference and absolute-blue detection, and pairs with
+the longer F413 all-LED-OFF pre-roll described above.
 
 Collect all Pixel-started runs without deleting them from the phone:
 

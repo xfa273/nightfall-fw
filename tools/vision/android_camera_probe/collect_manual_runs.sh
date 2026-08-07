@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-sessions/hfr-tests/pixel8/manual-runs}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=14
-expected_version_name=0.5.0
+expected_version_code=15
+expected_version_name=0.5.1
 adb_command=${ADB:-}
 python_command=${PYTHON:-}
 
