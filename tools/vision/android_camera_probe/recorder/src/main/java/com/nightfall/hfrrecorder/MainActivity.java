@@ -23,6 +23,10 @@ import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 public final class MainActivity extends Activity {
     private static final int CAMERA_PERMISSION_REQUEST = 2001;
     private static final String EXTRA_AUTO_RECORD = "auto_record";
@@ -97,17 +101,25 @@ public final class MainActivity extends Activity {
     private int manualCompletedRuns;
     private WifiTransferServer wifiTransferServer;
     private boolean wifiCaptureSlotOwned;
+    private volatile WifiTransferServer.CaptureControlState captureControlState =
+            new WifiTransferServer.CaptureControlState(
+                    "idle",
+                    false,
+                    false,
+                    0,
+                    null,
+                    "連続撮影は停止中です"
+            );
     private final Runnable manualRearmRunnable = () -> {
         if (!manualContinuousStandby || isFinishing() || isDestroyed()) {
             return;
         }
-        setStatus(
-                String.format(
-                        "%d本保存済み。次の走行を待機します...",
-                        manualCompletedRuns
-                ),
-                true
+        String message = String.format(
+                "%d本保存済み。次の走行を待機します...",
+                manualCompletedRuns
         );
+        setStatus(message, true);
+        publishCaptureControlState("starting", false, message);
         startRecording(false);
     };
 
@@ -121,7 +133,26 @@ public final class MainActivity extends Activity {
                 this,
                 snapshot -> runOnUiThread(
                         () -> updateWifiStatus(snapshot)
-                )
+                ),
+                new WifiTransferServer.CaptureControlHandler() {
+                    @Override
+                    public WifiTransferServer.CaptureControlResult
+                    startContinuousStandby() {
+                        return runRemoteCaptureControl(true);
+                    }
+
+                    @Override
+                    public WifiTransferServer.CaptureControlResult
+                    stopContinuousStandby() {
+                        return runRemoteCaptureControl(false);
+                    }
+
+                    @Override
+                    public WifiTransferServer.CaptureControlState
+                    captureControlState() {
+                        return captureControlState;
+                    }
+                }
         );
         wifiTransferServer.start();
         autoPending = getIntent().getBooleanExtra(EXTRA_AUTO_RECORD, false);
@@ -422,10 +453,13 @@ public final class MainActivity extends Activity {
         startRecording(true);
     }
 
-    private void startManualContinuousStandby() {
-        if (manualContinuousStandby
-                || (recorder != null && recorder.isActive())) {
-            return;
+    private boolean startManualContinuousStandby() {
+        if (manualContinuousStandby) {
+            return true;
+        }
+        if (recorder != null && recorder.isActive()) {
+            setStatus("別の撮影セッションが動作中です", false);
+            return false;
         }
         if (wifiTransferServer != null
                 && wifiTransferServer.isTransferActive()) {
@@ -433,14 +467,116 @@ public final class MainActivity extends Activity {
                     "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
                     false
             );
-            return;
+            publishCaptureControlState(
+                    "idle",
+                    false,
+                    "Wi-Fi転送の完了後に撮影スタンバイを開始してください"
+            );
+            return false;
         }
         manualContinuousStandby = true;
         manualStopRequested = false;
         manualSessionNonce = "manual-" + System.currentTimeMillis();
         manualRunSequence = 0;
         manualCompletedRuns = 0;
+        publishCaptureControlState(
+                "starting",
+                false,
+                "240 fps連続撮影スタンバイを開始しています"
+        );
         startRecording(false);
+        return manualContinuousStandby;
+    }
+
+    private WifiTransferServer.CaptureControlResult runRemoteCaptureControl(
+            boolean start
+    ) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return applyRemoteCaptureControl(start);
+        }
+        AtomicReference<WifiTransferServer.CaptureControlResult> result =
+                new AtomicReference<>();
+        CountDownLatch completed = new CountDownLatch(1);
+        uiHandler.post(() -> {
+            try {
+                result.set(applyRemoteCaptureControl(start));
+            } finally {
+                completed.countDown();
+            }
+        });
+        try {
+            if (!completed.await(5L, TimeUnit.SECONDS)) {
+                return new WifiTransferServer.CaptureControlResult(
+                        false,
+                        "Pixel UI did not respond to capture control",
+                        captureControlState
+                );
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return new WifiTransferServer.CaptureControlResult(
+                    false,
+                    "capture control was interrupted",
+                    captureControlState
+            );
+        }
+        return result.get();
+    }
+
+    private WifiTransferServer.CaptureControlResult applyRemoteCaptureControl(
+            boolean start
+    ) {
+        if (isFinishing() || isDestroyed()) {
+            return rejectedRemoteControl("HFR Recorder is closing");
+        }
+        if (start) {
+            if (manualContinuousStandby) {
+                return acceptedRemoteControl();
+            }
+            if (checkSelfPermission(Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return rejectedRemoteControl(
+                        "Pixelでカメラ権限を許可してください"
+                );
+            }
+            if (preview == null || !preview.isAvailable()) {
+                return rejectedRemoteControl(
+                        "カメラプレビューの準備ができていません"
+                );
+            }
+            if (!startManualContinuousStandby()) {
+                return rejectedRemoteControl(captureControlState.message);
+            }
+            return acceptedRemoteControl();
+        }
+        if (!manualContinuousStandby) {
+            if (recorder != null && recorder.isActive()) {
+                return rejectedRemoteControl(
+                        "連続撮影以外のセッションが動作中です"
+                );
+            }
+            return acceptedRemoteControl();
+        }
+        stopFromPixel();
+        return acceptedRemoteControl();
+    }
+
+    private WifiTransferServer.CaptureControlResult acceptedRemoteControl() {
+        return new WifiTransferServer.CaptureControlResult(
+                true,
+                null,
+                captureControlState
+        );
+    }
+
+    private WifiTransferServer.CaptureControlResult rejectedRemoteControl(
+            String message
+    ) {
+        return new WifiTransferServer.CaptureControlResult(
+                false,
+                message,
+                captureControlState
+        );
     }
 
     private void stopFromPixel() {
@@ -449,18 +585,24 @@ public final class MainActivity extends Activity {
             manualContinuousStandby = false;
             manualStopRequested = true;
             uiHandler.removeCallbacks(manualRearmRunnable);
+            publishCaptureControlState(
+                    "stopping",
+                    recorder != null
+                            && recorder.isActive()
+                            && !opticalWaitingForStart,
+                    "連続撮影を終了しています"
+            );
         }
         if (recorder == null || !recorder.isActive()) {
             resetControlsAfterRun();
-            setStatus(
-                    stoppingContinuous
-                            ? String.format(
-                            "連続撮影を終了しました（%d本保存）",
-                            manualCompletedRuns
-                    )
-                            : "撮影を停止しました",
-                    true
-            );
+            String message = stoppingContinuous
+                    ? String.format(
+                    "連続撮影を終了しました（%d本保存）",
+                    manualCompletedRuns
+            )
+                    : "撮影を停止しました";
+            setStatus(message, true);
+            publishCaptureControlState("idle", false, message);
             return;
         }
         opticalDetectionEnabled = false;
@@ -484,7 +626,14 @@ public final class MainActivity extends Activity {
             return;
         }
         if (!preview.isAvailable()) {
+            manualContinuousStandby = false;
+            resetControlsAfterRun();
             setStatus("Preview surface is not ready.", false);
+            publishCaptureControlState(
+                    "error",
+                    false,
+                    "Preview surface is not ready."
+            );
             return;
         }
         HfrRecorder.Config config;
@@ -493,7 +642,14 @@ public final class MainActivity extends Activity {
                     ? readConfig(getIntent())
                     : createManualOpticalConfig();
         } catch (IllegalArgumentException exception) {
+            manualContinuousStandby = false;
+            resetControlsAfterRun();
             setStatus(exception.getMessage(), false);
+            publishCaptureControlState(
+                    "error",
+                    false,
+                    exception.getMessage()
+            );
             return;
         }
         if (config.retainRunOutput
@@ -505,6 +661,11 @@ public final class MainActivity extends Activity {
                     "空き容量が1 GiB未満のため連続撮影を開始できません",
                     false
             );
+            publishCaptureControlState(
+                    "error",
+                    false,
+                    "空き容量が1 GiB未満のため連続撮影を開始できません"
+            );
             return;
         }
         if (wifiTransferServer != null && !wifiCaptureSlotOwned) {
@@ -514,6 +675,11 @@ public final class MainActivity extends Activity {
                 setStatus(
                         "Wi-Fi転送の完了後に撮影スタンバイを開始してください",
                         false
+                );
+                publishCaptureControlState(
+                        "idle",
+                        false,
+                        "Wi-Fi転送の完了後に撮影スタンバイを開始してください"
                 );
                 return;
             }
@@ -549,6 +715,13 @@ public final class MainActivity extends Activity {
                                             : "待機をキャンセル"
                             );
                             stopButton.setEnabled(true);
+                            publishCaptureControlState(
+                                    "armed",
+                                    false,
+                                    config.retainRunOutput
+                                            ? "LED STARTシグナルを待機しています"
+                                            : "撮影開始を待機しています"
+                            );
                         });
                     }
 
@@ -579,6 +752,11 @@ public final class MainActivity extends Activity {
                                             : "録画を停止"
                             );
                             stopButton.setEnabled(true);
+                            publishCaptureControlState(
+                                    "recording",
+                                    true,
+                                    "走行を録画しています"
+                            );
                         });
                     }
 
@@ -589,14 +767,17 @@ public final class MainActivity extends Activity {
                             if (wifiTransferServer != null) {
                                 wifiTransferServer.notifyRunsChanged();
                             }
-                            setStatus(
-                                    config.retainRunOutput
-                                            ? String.format(
-                                            "連続撮影を終了しました（%d本保存）",
-                                            manualCompletedRuns
-                                    )
-                                            : "撮影スタンバイを終了しました",
-                                    true
+                            String statusMessage = config.retainRunOutput
+                                    ? String.format(
+                                    "連続撮影を終了しました（%d本保存）",
+                                    manualCompletedRuns
+                            )
+                                    : "撮影スタンバイを終了しました";
+                            setStatus(statusMessage, true);
+                            publishCaptureControlState(
+                                    "idle",
+                                    false,
+                                    statusMessage
                             );
                         });
                     }
@@ -610,12 +791,15 @@ public final class MainActivity extends Activity {
                             if (config.retainRunOutput
                                     && manualContinuousStandby) {
                                 prepareControlsForRearm();
-                                setStatus(
-                                        String.format(
-                                                "%d本目を保存しました。2秒後に再待機します...",
-                                                manualCompletedRuns
-                                        ),
-                                        true
+                                String statusMessage = String.format(
+                                        "%d本目を保存しました。2秒後に再待機します...",
+                                        manualCompletedRuns
+                                );
+                                setStatus(statusMessage, true);
+                                publishCaptureControlState(
+                                        "rearming",
+                                        false,
+                                        statusMessage
                                 );
                                 uiHandler.postDelayed(
                                         manualRearmRunnable,
@@ -623,15 +807,18 @@ public final class MainActivity extends Activity {
                                 );
                             } else {
                                 resetControlsAfterRun();
-                                setStatus(
-                                        config.retainRunOutput
-                                                && manualStopRequested
-                                                ? String.format(
-                                                "連続撮影を終了しました（%d本保存）",
-                                                manualCompletedRuns
-                                        )
-                                                : message,
-                                        true
+                                String statusMessage = config.retainRunOutput
+                                        && manualStopRequested
+                                        ? String.format(
+                                        "連続撮影を終了しました（%d本保存）",
+                                        manualCompletedRuns
+                                )
+                                        : message;
+                                setStatus(statusMessage, true);
+                                publishCaptureControlState(
+                                        "idle",
+                                        false,
+                                        statusMessage
                                 );
                             }
                             if (wifiTransferServer != null) {
@@ -649,7 +836,13 @@ public final class MainActivity extends Activity {
                             if (wifiTransferServer != null) {
                                 wifiTransferServer.notifyRunsChanged();
                             }
-                            setStatus("ERROR: " + message, false);
+                            String statusMessage = "ERROR: " + message;
+                            setStatus(statusMessage, false);
+                            publishCaptureControlState(
+                                    "error",
+                                    false,
+                                    statusMessage
+                            );
                         });
                     }
                 }
@@ -763,6 +956,21 @@ public final class MainActivity extends Activity {
         );
         config.validate();
         return config;
+    }
+
+    private void publishCaptureControlState(
+            String state,
+            boolean recording,
+            String message
+    ) {
+        captureControlState = new WifiTransferServer.CaptureControlState(
+                state,
+                manualContinuousStandby,
+                recording,
+                manualCompletedRuns,
+                manualSessionNonce,
+                message == null ? "" : message
+        );
     }
 
     private void setStatus(String message, boolean normal) {

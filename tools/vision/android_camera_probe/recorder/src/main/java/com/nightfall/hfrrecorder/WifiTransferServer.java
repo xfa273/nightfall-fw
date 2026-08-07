@@ -51,6 +51,68 @@ final class WifiTransferServer implements AutoCloseable {
         void onSnapshot(Snapshot snapshot);
     }
 
+    interface CaptureControlHandler {
+        CaptureControlResult startContinuousStandby();
+
+        CaptureControlResult stopContinuousStandby();
+
+        CaptureControlState captureControlState();
+    }
+
+    static final class CaptureControlState {
+        final String state;
+        final boolean continuousStandby;
+        final boolean recording;
+        final int completedRuns;
+        final String sessionNonce;
+        final String message;
+
+        CaptureControlState(
+                String state,
+                boolean continuousStandby,
+                boolean recording,
+                int completedRuns,
+                String sessionNonce,
+                String message
+        ) {
+            this.state = state;
+            this.continuousStandby = continuousStandby;
+            this.recording = recording;
+            this.completedRuns = completedRuns;
+            this.sessionNonce = sessionNonce;
+            this.message = message;
+        }
+
+        JSONObject toJson() throws JSONException {
+            JSONObject result = new JSONObject();
+            result.put("state", state);
+            result.put("continuous_standby", continuousStandby);
+            result.put("recording", recording);
+            result.put("completed_runs", completedRuns);
+            result.put("session_nonce", sessionNonce == null
+                    ? JSONObject.NULL
+                    : sessionNonce);
+            result.put("message", message);
+            return result;
+        }
+    }
+
+    static final class CaptureControlResult {
+        final boolean accepted;
+        final String error;
+        final CaptureControlState state;
+
+        CaptureControlResult(
+                boolean accepted,
+                String error,
+                CaptureControlState state
+        ) {
+            this.accepted = accepted;
+            this.error = error;
+            this.state = state;
+        }
+    }
+
     static final class Snapshot {
         final boolean running;
         final List<String> addresses;
@@ -112,6 +174,7 @@ final class WifiTransferServer implements AutoCloseable {
     private final File retainedRoot;
     private final SharedPreferences preferences;
     private final Listener listener;
+    private final CaptureControlHandler captureControlHandler;
     private final SecureRandom random = new SecureRandom();
     private final AtomicInteger activeTransfers = new AtomicInteger();
     private final ExecutorService clientExecutor =
@@ -131,9 +194,14 @@ final class WifiTransferServer implements AutoCloseable {
     private long pairingExpiresElapsedMs;
     private int pairingAttempts;
 
-    WifiTransferServer(Context context, Listener listener) {
+    WifiTransferServer(
+            Context context,
+            Listener listener,
+            CaptureControlHandler captureControlHandler
+    ) {
         this.context = context.getApplicationContext();
         this.listener = listener;
+        this.captureControlHandler = captureControlHandler;
         retainedRoot = new File(context.getFilesDir(), "manual_runs");
         preferences = context.getSharedPreferences(
                 PREFS_NAME,
@@ -413,6 +481,21 @@ final class WifiTransferServer implements AutoCloseable {
                 sendJson(output, 200, runsJson());
                 return;
             }
+            if ("GET".equals(method)
+                    && "/api/v1/control/status".equals(path)) {
+                sendJson(output, 200, infoJson());
+                return;
+            }
+            if ("POST".equals(method)
+                    && "/api/v1/control/standby/start".equals(path)) {
+                handleCaptureControl(true, output);
+                return;
+            }
+            if ("POST".equals(method)
+                    && "/api/v1/control/standby/stop".equals(path)) {
+                handleCaptureControl(false, output);
+                return;
+            }
             if (path.startsWith("/api/v1/runs/")) {
                 handleRunRequest(method, path, headers, output);
                 return;
@@ -421,6 +504,33 @@ final class WifiTransferServer implements AutoCloseable {
         } catch (Exception ignored) {
             // A disconnected collector must never terminate the server.
         }
+    }
+
+    private void handleCaptureControl(
+            boolean start,
+            OutputStream output
+    ) throws IOException, JSONException {
+        if (captureControlHandler == null) {
+            sendError(output, 503, "capture control is unavailable");
+            return;
+        }
+        CaptureControlResult result = start
+                ? captureControlHandler.startContinuousStandby()
+                : captureControlHandler.stopContinuousStandby();
+        if (!result.accepted) {
+            sendError(
+                    output,
+                    409,
+                    result.error == null
+                            ? "capture control request was rejected"
+                            : result.error
+            );
+            return;
+        }
+        JSONObject response = infoJson();
+        response.put("control_accepted", true);
+        response.put("capture_control", result.state.toJson());
+        sendJson(output, 200, response);
     }
 
     private void handlePair(
@@ -642,6 +752,13 @@ final class WifiTransferServer implements AutoCloseable {
         result.put("acknowledged_runs", counts.acknowledged);
         result.put("capture_busy", captureBusy);
         result.put("active_transfers", activeTransfers.get());
+        if (captureControlHandler != null) {
+            CaptureControlState controlState =
+                    captureControlHandler.captureControlState();
+            if (controlState != null) {
+                result.put("capture_control", controlState.toJson());
+            }
+        }
         return result;
     }
 

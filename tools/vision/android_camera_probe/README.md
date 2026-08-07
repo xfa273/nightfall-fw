@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.4.1` of
+The collector installs version `0.5.0` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -154,7 +154,7 @@ saturation. A frame-wide illumination change is also rejected. The report
 records the accepted token length, LED-triangle center, changed-pixel count,
 blue-chroma score, hot-pixel count, effective threshold, and matched LED count.
 
-Version 0.4.1 can also be operated entirely from the Pixel. Open **Nightfall
+Version 0.5.0 can also be operated entirely from the Pixel. Open **Nightfall
 HFR Recorder** from the launcher and tap **連続撮影スタンバイ (240 fps)**.
 This uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
 60-second per-run limit, and a 900 ms STOP tail). After each complete
@@ -180,7 +180,7 @@ armed standby before START does not create a saved run.
 
 ## ADB-free daily Wi-Fi collection
 
-Recorder version 0.4.1 keeps ADB installation and collection available for
+Recorder version 0.5.0 keeps ADB installation and collection available for
 development, but routine operation no longer needs ADB. While the activity is
 open it provides an authenticated HTTP service on TCP port 46052 and responds
 to Nightfall discovery broadcasts on UDP port 46051. The video is always
@@ -204,7 +204,42 @@ tools/vision/android_camera_probe/collect_wifi_runs.py \
 The pairing code is valid for ten minutes and is limited to eight attempts.
 Pairing returns a random 256-bit access token, which the Mac stores with mode
 0600 in `~/.config/nightfall-hfr/wifi_devices.json`. The token is never printed.
-Later collections need only:
+Version 0.5.0 also lets that paired Mac inspect and control continuous optical
+standby. Start the app once on the Pixel after a reboot, then routine capture
+control can be done without touching the mounted phone or using ADB:
+
+```sh
+# Inspect camera state and retained-run counts.
+tools/vision/android_camera_probe/hfr_control.py status
+
+# Open the 1080p/240 camera and wait for the three-pulse START token.
+tools/vision/android_camera_probe/hfr_control.py start
+
+# Keep repeating runs until this explicit command; save an active final run.
+tools/vision/android_camera_probe/hfr_control.py stop
+```
+
+The `start` and `stop` operations are idempotent. The authenticated control API
+is deliberately available only while **Nightfall HFR Recorder** is open; after
+a Pixel reboot the app must be opened once locally (or with ADB during
+development). The current activity keeps the screen awake while it is open.
+
+After stopping a batch, transfer it with the unified controller:
+
+```sh
+tools/vision/android_camera_probe/hfr_control.py collect
+```
+
+Or explicitly request both operations in one command:
+
+```sh
+tools/vision/android_camera_probe/hfr_control.py stop-and-collect
+```
+
+Capture remains higher priority than file transfer: `collect` refuses to run
+while standby is active, and completing an individual run never starts an
+automatic transfer or ends the repeated standby loop. The older standalone
+collector remains available; later collections need only:
 
 ```sh
 tools/vision/android_camera_probe/collect_wifi_runs.py
