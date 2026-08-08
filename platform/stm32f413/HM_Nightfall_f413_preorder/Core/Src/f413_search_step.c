@@ -3428,9 +3428,6 @@ void f413_search_step_run_case0_test_once(
                (double)params->dist_offset_in,
                (double)params->dist_offset_out);
 
-  f413_ctrl_start();
-  f413_ctrl_reset_distance();
-  f413_ctrl_reset_angle();
   f413_search_step_set_context(1U, 0U, sub, (uint8_t)'T');
   f413_search_step_set_front_match_trace(false,
                                          F413_FRONT_MATCH_PHASE_ALIGN_YAW,
@@ -3445,6 +3442,9 @@ void f413_search_step_run_case0_test_once(
           : 1U);
   f413_search_step_trace_start();
   trace_started = true;
+  f413_ctrl_start();
+  f413_ctrl_reset_distance();
+  f413_ctrl_reset_angle();
 
   if (test_config->test_kind == F413_SEARCH_STEP_CASE0_TEST_TURN_R90)
   {
@@ -3633,6 +3633,9 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
   trace_printf("\r\n");
 
+  /* Keep the driver in standby for the complete optical START token. */
+  f413_ctrl_stop();
+  trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
   trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
   f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);

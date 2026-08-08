@@ -276,6 +276,9 @@ static void nightfall_trace_log_auto_tick_sample(void)
 
 static void nightfall_trace_log_on_run_start(void)
 {
+  /* Keep the driver in standby for the complete optical START token. */
+  f413_ctrl_stop();
+  trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
   trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
   f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);

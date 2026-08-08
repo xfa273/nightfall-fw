@@ -363,6 +363,9 @@ static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn(float angle_d
 
 static void f413_path_run_trace_on_run_start(void)
 {
+  /* Keep the driver in standby for the complete optical START token. */
+  f413_ctrl_stop();
+  trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
   trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
   f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
@@ -1284,13 +1287,13 @@ void f413_path_run_session_once(uint8_t mode,
     return;
   }
 
-  f413_ctrl_start();
   f413_wall_runtime_set_control_gains(case_params->kp_wall, case_params->kp_diagonal);
   f413_wall_runtime_set_wall_end_thresholds(mode_params->wall_end_thr_r_high,
                                             mode_params->wall_end_thr_r_low,
                                             mode_params->wall_end_thr_l_high,
                                             mode_params->wall_end_thr_l_low);
   f413_path_run_trace_on_run_start();
+  f413_ctrl_start();
 
   {
     const float first_speed = f413_path_run_cap_positive(

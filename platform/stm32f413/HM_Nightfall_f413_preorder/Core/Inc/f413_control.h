@@ -28,7 +28,7 @@ extern "C" {
 /* 初期化（TIM5割り込み開始） — main初期化後に1回呼ぶ */
 void f413_ctrl_init(void);
 
-/* 制御開始/停止 */
+/* 制御開始/停止。startはPWMを開始してMOTOR_STBYを上げるため、走行前信号の完了後に呼ぶ。 */
 void f413_ctrl_start(void);
 void f413_ctrl_stop(void);
 
