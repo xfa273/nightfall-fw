@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.3` of
+The collector installs version `0.5.4` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -129,7 +129,7 @@ The payload is followed by 500 ms with all LEDs OFF. The common SYNC pulse
 establishes the slot timing, and the long preamble keeps an all-LED OP-UI mode
 indication from being mistaken for the beginning of a token.
 
-Version 0.5.3 classifies all five payload slots before reporting a typed token.
+Version 0.5.4 classifies all five payload slots before reporting a typed token.
 At least three consistent short votes identify START and at least three
 consistent long votes identify STOP. Missing or uncertain slots are erasures;
 any mixture of short and long votes is invalid. Because both token types have
@@ -184,10 +184,18 @@ does not advance the STOP sequence while waiting for the first real mouse
 motion, combines frame-difference and absolute-blue detection, and pairs with
 the longer F413 all-LED-OFF pre-roll described above.
 
-Version 0.5.3 uses the framed fixed-slot protocol described above, preserves
-quiet-interval re-arming and two-of-three learned LED matching, and treats an
-uncertain slot as an erasure. Motion is still reported when observed but is no
-longer required for saving a run.
+Version 0.5.3 introduced the framed fixed-slot protocol described above,
+preserved quiet-interval re-arming and two-of-three learned LED matching, and
+treated an uncertain slot as an erasure. Motion is still reported when
+observed but is no longer required for saving a run.
+
+Version 0.5.4 prevents a noisy two-second preview calibration from blinding
+all later tokens in a continuous session. The adaptive frame-difference score
+is capped at five times the configured lower bound, while the complete framed
+token may recover from the absolute blue level and three-LED geometry even
+when the adaptive score was raised. Completing an invalid token resets the
+decoder, so the next fully framed START remains eligible without restarting
+standby.
 
 Collect all Pixel-started runs without deleting them from the phone:
 
@@ -368,8 +376,11 @@ HFR_OPTICAL_STOP_TAIL_MS=900 \
 ```
 
 The configured score is a lower bound; the app raises it automatically when
-preview noise measured during arming is higher. Always repeat the non-motor
-UART-token test after changing height, exposure, ISO, or illumination.
+preview noise measured during arming is higher, up to five times the
+configured value. Absolute-blue token recovery remains tied to the configured
+lower bound rather than the adaptive noise estimate. Always repeat the
+non-motor UART-token test after changing height, exposure, ISO, or
+illumination.
 
 ### Pixel 8 verified HFR path
 

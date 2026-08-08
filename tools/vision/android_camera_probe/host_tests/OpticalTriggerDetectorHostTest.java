@@ -22,6 +22,7 @@ public final class OpticalTriggerDetectorHostTest {
     public static void main(String[] args) {
         testImmediateTokenAfterArm();
         testDelayedFirstSampleAfterArm();
+        testNoisyCalibrationCannotBlindToken();
         testCleanStart();
         testCleanStopAndEveryPrefix();
         testEveryMissingStartSlot();
@@ -29,6 +30,7 @@ public final class OpticalTriggerDetectorHostTest {
         testEveryTwoMissingStartSlots();
         testEveryTwoMissingStopSlots();
         testMixedPayloadIsInvalid();
+        testInvalidTokenThenValidTokenRecovers();
         testModeIndicationWithoutFramingIsIgnored();
         testWhiteWaveformIsIgnored();
         testSingleLedWaveformIsIgnored();
@@ -64,6 +66,26 @@ public final class OpticalTriggerDetectorHostTest {
                 OpticalTriggerDetector.TokenType.START,
                 "START with 400 ms delayed first sample"
         );
+    }
+
+    private static void testNoisyCalibrationCannotBlindToken() {
+        Simulation simulation = new Simulation(false);
+        simulation.feedNoisyCalibration(CALIBRATION_FRAMES);
+        OpticalTriggerDetector.Result result = simulation.emitToken(
+                filledSlots(SHORT_SLOT),
+                7
+        );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START after noisy calibration"
+        );
+        if (result.threshold != 900) {
+            throw new AssertionError(
+                    "noisy calibration threshold=" + result.threshold
+                            + " expected capped threshold=900"
+            );
+        }
     }
 
     private static void testCleanStart() {
@@ -176,6 +198,35 @@ public final class OpticalTriggerDetectorHostTest {
                 throw new AssertionError(context + " must never trigger recording");
             }
         }
+    }
+
+    private static void testInvalidTokenThenValidTokenRecovers() {
+        Simulation simulation = new Simulation();
+        OpticalTriggerDetector.Result invalid = simulation.emitToken(
+                new int[] {
+                        SHORT_SLOT,
+                        LONG_SLOT,
+                        SHORT_SLOT,
+                        LONG_SLOT,
+                        SHORT_SLOT
+                },
+                7
+        );
+        assertToken(
+                invalid,
+                OpticalTriggerDetector.TokenType.INVALID,
+                "mixed token before recovery"
+        );
+        OpticalTriggerDetector.Result recovered = simulation.emitToken(
+                filledSlots(SHORT_SLOT),
+                7
+        );
+        assertToken(
+                recovered,
+                OpticalTriggerDetector.TokenType.START,
+                "START after invalid token"
+        );
+        assertVotes(recovered, 5, 0, 0, "START after invalid token");
     }
 
     private static void testModeIndicationWithoutFramingIsIgnored() {
@@ -400,6 +451,17 @@ public final class OpticalTriggerDetectorHostTest {
             }
         }
 
+        void feedNoisyCalibration(int frames) {
+            for (int index = 0; index < frames; index += 1) {
+                makeFrame(frame, 0);
+                if ((index & 1) == 0) {
+                    setBlueBlock(frame, 40, 40, 6);
+                }
+                record(detector.process(frame, WIDTH, HEIGHT, nowNs));
+                nowNs += FRAME_NS;
+            }
+        }
+
         void assertNoToken(String context) {
             if (emitted != null) {
                 throw new AssertionError(
@@ -447,6 +509,19 @@ public final class OpticalTriggerDetectorHostTest {
     private static void setLed(int[] frame, int centerX, int centerY) {
         for (int y = centerY - 1; y <= centerY + 1; y += 1) {
             for (int x = centerX - 1; x <= centerX + 1; x += 1) {
+                frame[y * WIDTH + x] = 0xff2020ff;
+            }
+        }
+    }
+
+    private static void setBlueBlock(
+            int[] frame,
+            int centerX,
+            int centerY,
+            int radius
+    ) {
+        for (int y = centerY - radius; y <= centerY + radius; y += 1) {
+            for (int x = centerX - radius; x <= centerX + radius; x += 1) {
                 frame[y * WIDTH + x] = 0xff2020ff;
             }
         }

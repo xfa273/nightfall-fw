@@ -24,6 +24,7 @@ final class OpticalTriggerDetector {
     private static final int CALIBRATION_PERCENTILE_DENOMINATOR = 10;
     private static final int CALIBRATION_MARGIN = 200;
     private static final int CALIBRATION_MULTIPLIER = 3;
+    private static final int MAX_ADAPTIVE_THRESHOLD_MULTIPLIER = 5;
     private static final long PREAMBLE_LOW_NS = 1_800_000_000L;
     private static final long LOW_CONFIRM_NS = 175_000_000L;
     private static final long SYNC_HIGH_MIN_NS = 650_000_000L;
@@ -260,10 +261,7 @@ final class OpticalTriggerDetector {
         if (!calibrationComplete) {
             Pulse calibrationPulse = findThreeLedPulse(
                     absoluteBlueChroma,
-                    Math.max(
-                            MIN_COMPONENT_SCORE,
-                            configuredScoreThreshold / 3
-                    )
+                    absoluteComponentScoreThreshold()
             );
             if (calibrationPulse == null) {
                 if (calibrationQuietStartedNs < 0L) {
@@ -302,10 +300,7 @@ final class OpticalTriggerDetector {
                 ? findKnownLedPulse(absoluteBlueChroma)
                 : findThreeLedPulse(
                         absoluteBlueChroma,
-                        Math.max(
-                                MIN_COMPONENT_SCORE,
-                                effectiveScoreThreshold / 3
-                        )
+                        absoluteComponentScoreThreshold()
                 );
         Pulse pulse = levelPulse != null
                 ? levelPulse
@@ -549,9 +544,21 @@ final class OpticalTriggerDetector {
         );
         int noiseThreshold = sorted[index] * CALIBRATION_MULTIPLIER
                 + CALIBRATION_MARGIN;
+        int maximumThreshold = (int) Math.min(
+                Integer.MAX_VALUE,
+                (long) configuredScoreThreshold
+                        * MAX_ADAPTIVE_THRESHOLD_MULTIPLIER
+        );
         effectiveScoreThreshold = Math.max(
                 configuredScoreThreshold,
-                noiseThreshold
+                Math.min(noiseThreshold, maximumThreshold)
+        );
+    }
+
+    private int absoluteComponentScoreThreshold() {
+        return Math.max(
+                MIN_COMPONENT_SCORE,
+                configuredScoreThreshold / 3
         );
     }
 
@@ -672,10 +679,7 @@ final class OpticalTriggerDetector {
         Pulse pulse = new Pulse();
         boolean[] matchedKnown = new boolean[candidateLedX.length];
         int matched = 0;
-        int componentScoreThreshold = Math.max(
-                MIN_COMPONENT_SCORE,
-                effectiveScoreThreshold / 3
-        );
+        int componentScoreThreshold = absoluteComponentScoreThreshold();
         for (int led = 0; led < candidateLedX.length; led += 1) {
             int minX = Math.max(0, candidateLedX[led] - KNOWN_LED_RADIUS);
             int maxX = Math.min(width - 1,
