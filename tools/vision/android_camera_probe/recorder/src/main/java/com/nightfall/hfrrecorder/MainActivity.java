@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.Surface;
 import android.view.TextureView;
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class MainActivity extends Activity {
+    private static final String LOG_TAG = "HfrOptical";
     private static final int CAMERA_PERMISSION_REQUEST = 2001;
     private static final String EXTRA_AUTO_RECORD = "auto_record";
     private static final String EXTRA_NONCE = "record_nonce";
@@ -736,8 +738,7 @@ public final class MainActivity extends Activity {
                                 lastOpticalSampleNs = 0L;
                                 lastOpticalStatusNs = 0L;
                                 if (opticalDetector != null) {
-                                    opticalDetector.setRequiredRises(4);
-                                    opticalDetector.rearmAfterQuiet();
+                                    opticalDetector.rearm();
                                 }
                                 motionGateDetector = new MotionGateDetector();
                                 motionGateDetector.arm(
@@ -856,8 +857,7 @@ public final class MainActivity extends Activity {
         if (config.opticalTrigger) {
             opticalDetector = new OpticalTriggerDetector(
                     config.opticalTriggerScore,
-                    config.opticalTriggerHotPixels,
-                    3
+                    config.opticalTriggerHotPixels
             );
             motionGateDetector = null;
         } else {
@@ -1042,9 +1042,24 @@ public final class MainActivity extends Activity {
                 OPTICAL_SAMPLE_HEIGHT,
                 nowNs
         );
-        if (result.triggered) {
-            opticalDetectionEnabled = false;
-            if (opticalWaitingForStart) {
+        if (result.tokenType != OpticalTriggerDetector.TokenType.NONE) {
+            boolean expectedStart = opticalWaitingForStart
+                    && result.tokenType
+                    == OpticalTriggerDetector.TokenType.START;
+            boolean expectedStop = !opticalWaitingForStart
+                    && result.tokenType
+                    == OpticalTriggerDetector.TokenType.STOP;
+            Log.i(LOG_TAG, String.format(
+                    "token=%s state=%s short=%d long=%d erasure=%d expected=%s",
+                    result.tokenType,
+                    opticalWaitingForStart ? "ARMED" : "REC",
+                    result.shortVotes,
+                    result.longVotes,
+                    result.erasureVotes,
+                    expectedStart || expectedStop
+            ));
+            if (expectedStart) {
+                opticalDetectionEnabled = false;
                 opticalStartCenterX = result.centerX;
                 opticalStartCenterY = result.centerY;
                 setStatus("LED START token detected; starting recorder...", true);
@@ -1054,11 +1069,15 @@ public final class MainActivity extends Activity {
                         result.hotPixels,
                         result.threshold,
                         result.matchedLeds,
-                        result.requiredRises,
+                        result.requiredVotes,
+                        result.shortVotes,
+                        result.longVotes,
+                        result.erasureVotes,
                         result.centerX,
                         result.centerY
                 );
-            } else {
+            } else if (expectedStop) {
+                opticalDetectionEnabled = false;
                 setStatus("LED STOP token detected; saving tail...", true);
                 recorder.triggerStop(
                         nowNs,
@@ -1067,8 +1086,29 @@ public final class MainActivity extends Activity {
                         result.hotPixels,
                         result.threshold,
                         result.matchedLeds,
-                        result.requiredRises
+                        result.requiredVotes,
+                        result.shortVotes,
+                        result.longVotes,
+                        result.erasureVotes
                 );
+            } else {
+                String ignored = result.tokenType
+                        == OpticalTriggerDetector.TokenType.INVALID
+                        ? String.format(
+                                "Invalid LED token ignored (S=%d L=%d E=%d)",
+                                result.shortVotes,
+                                result.longVotes,
+                                result.erasureVotes
+                        )
+                        : String.format(
+                                "%s token ignored while %s",
+                                result.tokenType,
+                                opticalWaitingForStart
+                                        ? "waiting for START"
+                                        : "recording"
+                        );
+                setStatus(ignored, false);
+                lastOpticalStatusNs = nowNs;
             }
         } else if (nowNs - lastOpticalStatusNs
                 >= OPTICAL_STATUS_INTERVAL_NS) {
@@ -1081,14 +1121,16 @@ public final class MainActivity extends Activity {
                             motion.changedPixels
                     );
             setStatus(String.format(
-                    "%s LED: phase=%s score=%d/%d hot=%d matched=%d token=%d%s",
+                    "%s LED: phase=%s score=%d/%d hot=%d matched=%d votes=%d/%d/%d%s",
                     opticalWaitingForStart ? "ARMED" : "REC",
                     result.phase,
                     result.score,
                     result.threshold,
                     result.hotPixels,
                     result.matchedLeds,
-                    result.requiredRises,
+                    result.shortVotes,
+                    result.longVotes,
+                    result.erasureVotes,
                     motionStatus
             ), true);
         }

@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.2` of
+The collector installs version `0.5.3` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -121,23 +121,31 @@ for a recording-surface-only diagnostic.
 ## F413 optical-trigger capture
 
 The recorder can arm a preview-only high-speed session and wait for the F413
-mouse to emit its visible-LED token. The START token drives all three status
-LEDs five times; STOP drives them six times. The Pixel accepts START after
-three valid rises and STOP after four, leaving redundant physical flashes for
-recovery. Each token begins with 1.8 s of
-all-LED OFF time, then uses 350 ms ordinary pulses, 300 ms OFF gaps, and a
-600 ms final pulse. The pre-roll is longer than the Pixel sequence timeout, so
-an all-LED OP-UI mode indication or a partial sequence seen while the mouse was
-moving cannot become pulse 1 of the token.
+mouse to emit a framed visible-LED token. START and STOP use the same frame:
+2.5 seconds with all three status LEDs OFF, a 900 ms all-LED SYNC pulse, a
+300 ms gap, and five 1.1-second payload slots. Every START slot begins with
+350 ms ON; every STOP slot begins with 800 ms ON. The rest of each slot is OFF.
+The payload is followed by 500 ms with all LEDs OFF. The common SYNC pulse
+establishes the slot timing, and the long preamble keeps an all-LED OP-UI mode
+indication from being mistaken for the beginning of a token.
+
+Version 0.5.3 classifies all five payload slots before reporting a typed token.
+At least three consistent short votes identify START and at least three
+consistent long votes identify STOP. Missing or uncertain slots are erasures;
+any mixture of short and long votes is invalid. Because both token types have
+the same number of fixed slots and are decoded only when complete, no STOP
+prefix can be accepted as START. A STOP received while waiting for START, or a
+START received while recording, is explicitly ignored without changing the
+capture state.
+
 The Pixel compares consecutive preview frames and also checks the absolute
 blue level, discards the first 0.8 seconds while auto exposure settles,
 calibrates local preview noise for 1.2 seconds, and requires three spatially
-separated blue status LEDs on the first pulse. Later pulses reuse those
+separated blue status LEDs on SYNC. Payload slots reuse those
 locations and may retain two LEDs, which tolerates one dim or H.264-compressed
-LED. A 175 ms confirmed-low interval prevents a flickering long flash from
-being counted twice, and one missing physical pulse may be bridged. White
-illumination changes, hands moving through the frame, and ordinary single-LED
-UI activity are therefore not accepted as a token.
+LED. A 175 ms confirmed-low interval rejects brief flicker around the SYNC
+edge. White illumination changes, hands moving through the frame, and ordinary
+single-LED UI activity are therefore not accepted as a complete token.
 
 Arm and collect one run with:
 
@@ -149,14 +157,13 @@ tools/vision/android_camera_probe/capture_optical_run.sh \
 The wrapper selects 1080p/240, 72 Mbps, 1.000 ms, ISO 800, and a 60-second
 maximum recording by default. It waits up to 30 minutes for a complete
 START/STOP pair. The start token is decoded while the preview-only request is
-running; MediaRecorder is enabled after the third valid START rise, so the
-redundant flashes and 300 ms guard are included as a pre-motion lead-in. The
-stop token leaves a default 900 ms video tail.
+running; MediaRecorder is enabled only after the complete START payload is
+classified, so the F413 500 ms final-OFF interval and 300 ms run guard provide
+the pre-motion lead-in. The stop token leaves a default 900 ms video tail.
 `hfr_report.json` records both optical detection times and the delay from start
-detection to MediaRecorder start. Version 0.5.2 arms the STOP decoder after a
-500 ms all-LED-low interval; body-motion detection continues only as report
-telemetry and can no longer block STOP or leave a recording running. The report
-records the accepted token length, LED-triangle center, optional motion
+detection to MediaRecorder start. Body-motion detection continues only as
+report telemetry and does not gate STOP. The report records the decoded token
+type, short/long/erasure vote counts, LED-triangle center, optional motion
 changed-pixel count, blue-chroma score, hot-pixel count, effective threshold,
 and matched LED count.
 
@@ -177,10 +184,10 @@ does not advance the STOP sequence while waiting for the first real mouse
 motion, combines frame-difference and absolute-blue detection, and pairs with
 the longer F413 all-LED-OFF pre-roll described above.
 
-Version 0.5.2 replaces that hard motion gate with quiet-interval re-arming,
-debounces low intervals, reuses two of three learned LED locations, bridges one
-missing pulse, and pairs with redundant five/six-flash F413 tokens. Motion is
-still reported when observed but is no longer required for saving a run.
+Version 0.5.3 uses the framed fixed-slot protocol described above, preserves
+quiet-interval re-arming and two-of-three learned LED matching, and treats an
+uncertain slot as an erasure. Motion is still reported when observed but is no
+longer required for saving a run.
 
 Collect all Pixel-started runs without deleting them from the phone:
 
@@ -228,7 +235,7 @@ control can be done without touching the mounted phone or using ADB:
 # Inspect camera state and retained-run counts.
 tools/vision/android_camera_probe/hfr_control.py status
 
-# Open the 1080p/240 camera and wait for the three-pulse START token.
+# Open the 1080p/240 camera and wait for a complete framed START token.
 tools/vision/android_camera_probe/hfr_control.py start
 
 # Keep repeating runs until this explicit command; save an active final run.
@@ -341,13 +348,15 @@ quality; illuminate the maze for moving runs and repeat this test after the
 final camera/light installation is fixed.
 
 No UART connection to the mouse is used during a floor run. While developing
-with a wired and stationary mouse, UART `;` emits START (five physical flashes,
-decode after three) and UART `,` emits STOP (six physical flashes, decode after
-four), both without starting the motors. A stationary test can validate both
-tokens; body motion is diagnostic only and is not needed to arm STOP.
+with a wired and stationary mouse, UART `;` emits the short-pulse START frame
+and UART `,` emits the long-pulse STOP frame, both without starting the motors.
+A stationary test can validate both typed tokens; body motion is diagnostic
+only and is not needed to decode STOP. A STOP frame sent while the Pixel is
+armed must leave it armed, and a START frame sent while recording must leave it
+recording.
 The mouse and its three visible status LEDs must be inside the Pixel frame.
-After arming, wait until the screen reports `WAIT_RISE_1_OF_3` before starting
-the mouse so the preview-noise calibration is complete.
+After arming, wait until the screen reports `WAIT_PREAMBLE` before starting the
+mouse so the preview-noise calibration is complete.
 
 The thresholds can be overridden for a measured installation:
 

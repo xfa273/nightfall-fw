@@ -5,12 +5,14 @@
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
 #define F413_HW_MOTOR_PWM_MAX (1000U)
-#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (1800U)
-#define F413_HW_VIDEO_SYNC_ON_PULSE_MS (350U)
-#define F413_HW_VIDEO_SYNC_OFF_GAP_MS (300U)
-#define F413_HW_VIDEO_SYNC_FINAL_ON_MS (600U)
-#define F413_HW_VIDEO_SYNC_START_PULSES (5U)
-#define F413_HW_VIDEO_SYNC_STOP_PULSES (6U)
+#define F413_HW_VIDEO_SYNC_OFF_PREAMBLE_MS (2500U)
+#define F413_HW_VIDEO_SYNC_SYNC_ON_MS (900U)
+#define F413_HW_VIDEO_SYNC_SYNC_GAP_MS (300U)
+#define F413_HW_VIDEO_SYNC_PAYLOAD_SLOTS (5U)
+#define F413_HW_VIDEO_SYNC_PAYLOAD_SLOT_MS (1100U)
+#define F413_HW_VIDEO_SYNC_START_ON_MS (350U)
+#define F413_HW_VIDEO_SYNC_STOP_ON_MS (800U)
+#define F413_HW_VIDEO_SYNC_FINAL_OFF_MS (500U)
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim11;
@@ -76,42 +78,45 @@ void f413_hw_show_mode_leds(uint8_t mode)
   HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, (mode & 0x04U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-static void f413_hw_emit_video_sync_pattern(uint8_t pulse_count)
+static void f413_hw_emit_video_sync_pattern(uint32_t payload_on_ms)
 {
-  uint8_t pulse;
+  uint8_t slot;
+  uint32_t payload_off_ms = F413_HW_VIDEO_SYNC_PAYLOAD_SLOT_MS - payload_on_ms;
 
   /*
-   * Long, camera-rate-independent flashes form one optical token.  The Pixel
-   * decodes START after any three and STOP after any four valid rises, so the
-   * extra flashes tolerate a dim, occluded, or dropped preview pulse.
-   * The initial OFF interval is longer than the Pixel decoder's sequence
-   * timeout. It therefore clears both an OP-UI all-LED mode indication and
-   * any partial pulse sequence produced by the moving mouse.
+   * The long OFF preamble separates a run token from OP-UI LED indications.
+   * A fixed SYNC pulse then anchors five equal-width payload slots. START uses
+   * a short ON interval in every slot; STOP uses a long ON interval. Because
+   * both tokens have the same slot count and differ by pulse width, a STOP
+   * token can never be accepted as a prefix-compatible START token.
    */
   f413_hw_show_led_mask(0U);
-  HAL_Delay(F413_HW_VIDEO_SYNC_OFF_PREROLL_MS);
-  for (pulse = 0U; pulse < pulse_count; pulse++)
+  HAL_Delay(F413_HW_VIDEO_SYNC_OFF_PREAMBLE_MS);
+
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_ON_MS);
+  f413_hw_show_led_mask(0U);
+  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_GAP_MS);
+
+  for (slot = 0U; slot < F413_HW_VIDEO_SYNC_PAYLOAD_SLOTS; slot++)
   {
     f413_hw_set_all_leds(GPIO_PIN_SET);
-    HAL_Delay(((pulse + 1U) == pulse_count)
-                  ? F413_HW_VIDEO_SYNC_FINAL_ON_MS
-                  : F413_HW_VIDEO_SYNC_ON_PULSE_MS);
+    HAL_Delay(payload_on_ms);
     f413_hw_show_led_mask(0U);
-    if ((pulse + 1U) < pulse_count)
-    {
-      HAL_Delay(F413_HW_VIDEO_SYNC_OFF_GAP_MS);
-    }
+    HAL_Delay(payload_off_ms);
   }
+
+  HAL_Delay(F413_HW_VIDEO_SYNC_FINAL_OFF_MS);
 }
 
 void f413_hw_emit_video_sync_start_pattern(void)
 {
-  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_START_PULSES);
+  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_START_ON_MS);
 }
 
 void f413_hw_emit_video_sync_stop_pattern(void)
 {
-  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_STOP_PULSES);
+  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_STOP_ON_MS);
 }
 
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms)

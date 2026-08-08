@@ -296,12 +296,12 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       break;
 
     case ';':
-      trace_printf("[VIDEO-SYNC] optical TEST START redundant 5-pulse token\r\n");
+      trace_printf("[VIDEO-SYNC] optical TEST START fixed-slot SHORT token\r\n");
       f413_hw_emit_video_sync_start_pattern();
       break;
 
     case ',':
-      trace_printf("[VIDEO-SYNC] optical TEST STOP redundant 6-pulse token\r\n");
+      trace_printf("[VIDEO-SYNC] optical TEST STOP fixed-slot LONG token\r\n");
       f413_hw_emit_video_sync_stop_pattern();
       break;
 

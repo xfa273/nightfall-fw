@@ -366,7 +366,10 @@ final class HfrRecorder {
     private int opticalStartHotPixels;
     private int opticalStartThreshold;
     private int opticalStartMatchedLeds;
-    private int opticalStartRequiredRises;
+    private int opticalStartRequiredVotes;
+    private int opticalStartShortVotes;
+    private int opticalStartLongVotes;
+    private int opticalStartErasureVotes;
     private int opticalStartCenterX;
     private int opticalStartCenterY;
     private long opticalMotionDetectedElapsedNs;
@@ -375,7 +378,10 @@ final class HfrRecorder {
     private int opticalStopHotPixels;
     private int opticalStopThreshold;
     private int opticalStopMatchedLeds;
-    private int opticalStopRequiredRises;
+    private int opticalStopRequiredVotes;
+    private int opticalStopShortVotes;
+    private int opticalStopLongVotes;
+    private int opticalStopErasureVotes;
     private int captureFailureCount;
     private File videoFile;
     private File videoTempFile;
@@ -420,7 +426,10 @@ final class HfrRecorder {
         opticalStartHotPixels = 0;
         opticalStartThreshold = 0;
         opticalStartMatchedLeds = 0;
-        opticalStartRequiredRises = 0;
+        opticalStartRequiredVotes = 0;
+        opticalStartShortVotes = 0;
+        opticalStartLongVotes = 0;
+        opticalStartErasureVotes = 0;
         opticalStartCenterX = -1;
         opticalStartCenterY = -1;
         opticalMotionDetectedElapsedNs = 0;
@@ -429,7 +438,10 @@ final class HfrRecorder {
         opticalStopHotPixels = 0;
         opticalStopThreshold = 0;
         opticalStopMatchedLeds = 0;
-        opticalStopRequiredRises = 0;
+        opticalStopRequiredVotes = 0;
+        opticalStopShortVotes = 0;
+        opticalStopLongVotes = 0;
+        opticalStopErasureVotes = 0;
         prepareOutputFiles();
         listener.onStatus(
                 String.format(
@@ -483,7 +495,10 @@ final class HfrRecorder {
             int hotPixels,
             int threshold,
             int matchedLeds,
-            int requiredRises,
+            int requiredVotes,
+            int shortVotes,
+            int longVotes,
+            int erasureVotes,
             int centerX,
             int centerY
     ) {
@@ -499,7 +514,10 @@ final class HfrRecorder {
             opticalStartHotPixels = hotPixels;
             opticalStartThreshold = threshold;
             opticalStartMatchedLeds = matchedLeds;
-            opticalStartRequiredRises = requiredRises;
+            opticalStartRequiredVotes = requiredVotes;
+            opticalStartShortVotes = shortVotes;
+            opticalStartLongVotes = longVotes;
+            opticalStartErasureVotes = erasureVotes;
             opticalStartCenterX = centerX;
             opticalStartCenterY = centerY;
             opticalArmed = false;
@@ -539,7 +557,10 @@ final class HfrRecorder {
             int hotPixels,
             int threshold,
             int matchedLeds,
-            int requiredRises
+            int requiredVotes,
+            int shortVotes,
+            int longVotes,
+            int erasureVotes
     ) {
         if (!active.get()
                 || stopping.get()
@@ -552,7 +573,10 @@ final class HfrRecorder {
         opticalStopHotPixels = hotPixels;
         opticalStopThreshold = threshold;
         opticalStopMatchedLeds = matchedLeds;
-        opticalStopRequiredRises = requiredRises;
+        opticalStopRequiredVotes = requiredVotes;
+        opticalStopShortVotes = shortVotes;
+        opticalStopLongVotes = longVotes;
+        opticalStopErasureVotes = erasureVotes;
         mainHandler.postAtTime(
                 this::stop,
                 this,
@@ -1288,6 +1312,13 @@ final class HfrRecorder {
         );
         JSONObject opticalTrigger = new JSONObject();
         opticalTrigger.put("enabled", config.opticalTrigger);
+        opticalTrigger.put("protocol", "framed-fixed-slot-v1");
+        opticalTrigger.put(
+                "start_token_type",
+                opticalStartDetectedElapsedNs > 0
+                        ? "START"
+                        : JSONObject.NULL
+        );
         opticalTrigger.put(
                 "start_detected_elapsed_realtime_ns",
                 opticalStartDetectedElapsedNs > 0
@@ -1335,8 +1366,30 @@ final class HfrRecorder {
         );
         opticalTrigger.put(
                 "start_required_rises",
-                opticalStartRequiredRises > 0
-                        ? opticalStartRequiredRises
+                JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_required_votes",
+                opticalStartRequiredVotes > 0
+                        ? opticalStartRequiredVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_short_votes",
+                opticalStartDetectedElapsedNs > 0
+                        ? opticalStartShortVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_long_votes",
+                opticalStartDetectedElapsedNs > 0
+                        ? opticalStartLongVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "start_erasure_votes",
+                opticalStartDetectedElapsedNs > 0
+                        ? opticalStartErasureVotes
                         : JSONObject.NULL
         );
         opticalTrigger.put(
@@ -1369,6 +1422,12 @@ final class HfrRecorder {
                 "motion_changed_pixels",
                 opticalMotionDetectedElapsedNs > 0
                         ? opticalMotionChangedPixels
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_token_type",
+                opticalStopDetectedElapsedNs > 0
+                        ? "STOP"
                         : JSONObject.NULL
         );
         opticalTrigger.put(
@@ -1409,8 +1468,30 @@ final class HfrRecorder {
         );
         opticalTrigger.put(
                 "stop_required_rises",
-                opticalStopRequiredRises > 0
-                        ? opticalStopRequiredRises
+                JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_required_votes",
+                opticalStopRequiredVotes > 0
+                        ? opticalStopRequiredVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_short_votes",
+                opticalStopDetectedElapsedNs > 0
+                        ? opticalStopShortVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_long_votes",
+                opticalStopDetectedElapsedNs > 0
+                        ? opticalStopLongVotes
+                        : JSONObject.NULL
+        );
+        opticalTrigger.put(
+                "stop_erasure_votes",
+                opticalStopDetectedElapsedNs > 0
+                        ? opticalStopErasureVotes
                         : JSONObject.NULL
         );
         report.put("optical_trigger", opticalTrigger);

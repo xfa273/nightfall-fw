@@ -14,8 +14,8 @@ serial=$1
 output_root=${2:-/tmp/nightfall-hfr-recordings}
 package_name=com.nightfall.hfrrecorder
 expected_schema=nightfall_android_hfr_recording_v1
-expected_version_code=15
-expected_version_name=0.5.2
+expected_version_code=17
+expected_version_name=0.5.3
 camera_id=${HFR_CAMERA_ID:-0}
 width=${HFR_WIDTH:-1920}
 height=${HFR_HEIGHT:-1080}
@@ -234,7 +234,7 @@ if [ "$optical_trigger" = "1" ]; then
     "START/STOP (max_recording=${duration_seconds}s," \
     "exposure_us=${exposure_us}, iso=${iso}, score=${optical_trigger_score}," \
     "hot_pixels=${optical_trigger_hot_pixels})."
-  echo "[HFR-RECORDER] Wait about 2 seconds for WAIT_RISE_1_OF_3 on Pixel" \
+  echo "[HFR-RECORDER] Wait about 2 seconds for WAIT_PREAMBLE on Pixel" \
     "before starting the mouse."
 else
   echo "[HFR-RECORDER] Recording ${width}x${height}@${fps}" \
