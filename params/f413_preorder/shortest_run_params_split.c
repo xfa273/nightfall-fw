@@ -7,10 +7,10 @@
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 14000.0f,
+    .alpha_turn90 = 22000.0f,
     .acceleration_turn = 0.0f,
     .dist_offset_in = 0.0f,
-    .dist_offset_out = 17.2f,
+    .dist_offset_out = 26.0f,
     .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
