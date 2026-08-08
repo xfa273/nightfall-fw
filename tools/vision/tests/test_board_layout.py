@@ -19,6 +19,11 @@ import aruco_trajectory as aruco  # noqa: E402
 
 
 class BoardLayoutTest(unittest.TestCase):
+    def test_writer_fps_uses_nominal_hfr_rate_without_rounding_ntsc(self):
+        self.assertEqual(aruco.writer_fps(239.914), 240.0)
+        self.assertEqual(aruco.writer_fps(119.88), 120.0)
+        self.assertEqual(aruco.writer_fps(29.97), 29.97)
+
     def test_example_has_metric_grid_and_aruco_corner_order(self):
         layout = board_layout.load(
             VISION_ROOT / "board_layout_4x4_example.json",
@@ -67,6 +72,7 @@ class BoardLayoutTest(unittest.TestCase):
         )
         self.assertEqual(len(calibrations), 5)
         self.assertTrue(all(not item.used_previous_homography for item in calibrations))
+        self.assertTrue(all(item.inlier_corner_count == 4 for item in calibrations))
         self.assertTrue(all(item.reprojection_rmse_px < 1e-3 for item in calibrations))
         np.testing.assert_allclose(targets[5], layout.target_corners_px[5])
 
@@ -120,7 +126,7 @@ class BoardLayoutTest(unittest.TestCase):
             8,
         )
 
-    def test_measured_layout_falls_back_to_four_marker_centers(self):
+    def test_measured_layout_prefers_four_marker_centers(self):
         layout = board_layout.load(
             VISION_ROOT / "board_layout_4x4_example.json",
             900,

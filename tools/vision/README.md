@@ -112,29 +112,34 @@ They prove visibility only. Use fixed perimeter markers and
 
 ## Markerless vehicle pose
 
-`markerless_trajectory.py` never detects the carried ID. Its current pipeline
-is:
+`markerless_trajectory.py` never detects a carried ArUco ID. Its current
+pipeline is:
 
-1. per-frame rectification from fixed IDs 5, 4, and 6;
-2. a 41-frame temporal-median background;
-3. a green PCB component of at least 250 canonical pixels as the mandatory
-   per-frame search seed;
-4. nearby background difference as the foreground body;
-5. one red connected component as the tracked point and directed heading cue;
-6. gated foreground principal-axis continuity as a cue fallback.
+1. per-frame rectification from the fixed board markers;
+2. a narrow blue-colour mask for the 8 mm circular vehicle-centre label;
+3. expected metric area, circularity, and temporal prediction to distinguish
+   the label from the bluer optical START/STOP LEDs;
+4. a 41-frame temporal-median background plus the green PCB to estimate the
+   body silhouette;
+5. one optional red component as a directed heading cue;
+6. gated foreground principal-axis continuity as a heading fallback.
 
-This is not a general contour-only tracker. The current red tracker is not a
-multi-LED pose solver, and a frame without a usable green component is
-invalid. Cue lever arm, recent cue distance, principal-axis anisotropy, and
+The blue label is the default position source. Its position stays valid even
+when green-PCB or body extraction fails; those features are now used only to
+estimate heading. This is still not a general colour tracker: the HSV and
+blue-channel gates were measured for the current Pixel 8 exposure, lighting,
+and blue label. Revalidate them after changing the label material, camera
+processing, or illumination. The current red tracker is not a multi-LED pose
+solver. Cue lever arm, recent cue distance, principal-axis anisotropy, and
 maximum yaw rate gate `heading_valid` independently of position validity.
-`qa_report.json` records accepted-cue lever-arm percentiles as
-`accepted_cue_lever_arm_px`.
+`qa_report.json` records label detection/area and accepted-cue lever-arm
+percentiles.
 
 Without `--background-video`, the median background assumes that the vehicle
 does not occupy the same pixel in half or more of the sampled run frames.
 Prefer a separate empty-maze clip captured with unchanged camera/exposure.
 
-The fixed-marker transform is specific to the existing test board:
+The legacy fixed-marker transform is specific to the existing test board:
 
 - IDs 5, 7, 4, and 6 are top-left, top-right, bottom-right, and bottom-left.
 - Only 5, 4, and 6 enter the homography. ID 7 is detection-count QA only.
@@ -146,7 +151,12 @@ Do not place arbitrary perimeter markers and treat the legacy transform as
 metric. New setups should copy and then replace the measured values in
 `board_layout_4x4_example.json`. Its `nightfall_vision_board_layout_v1` schema
 maps marker center, black-side length, rotation, and the analysis grid in mm.
-The current solver still uses IDs 5, 4, and 6 for homography; ID 7 is QA-only.
+With a measured layout and all four markers visible, the solver uses the four
+marker centres. This prevents frame-to-frame switching between incompatible
+corner and centre fits in the presence of lens distortion. If a measured
+marker is hidden, the bounded fallback first attempts a corner RANSAC with at
+least three markers. Legacy mode still uses IDs 5, 4, and 6 for homography and
+treats ID 7 as QA-only.
 Coordinates are +x right and +y forward/up in the rectified view. At
 `rotation_deg: 0`, every printed marker's top edge faces +y and its top edge
 runs left-to-right along +x; positive rotation is counter-clockwise in the
@@ -190,11 +200,19 @@ For a measured 4×4 setup, run:
   tools/vision/markerless_trajectory.py /path/to/capture.mp4 \
   --board-layout /path/to/board_layout.json \
   --background-video /path/to/empty_background.mp4 \
+  --position-source label \
+  --label-colour blue \
+  --label-diameter-mm 8 \
+  --cue-colour none \
+  --position-only \
   --initial-yaw-deg 180 \
-  --cue-yaw-offset-deg 180 \
-  --maximum-missing-fraction 0.01 \
-  --maximum-heading-invalid-fraction 0.01
+  --maximum-missing-fraction 0.01
 ```
+
+`--position-only` makes blue-label position QA authoritative while continuing
+to export and report any heading estimate. It does not make an unreliable
+foreground heading accurate. Omit it and provide an unchanged empty-maze
+background plus a validated heading cue when yaw is required for turn fitting.
 
 In legacy mode without `--board-layout`, `--grid-cells` is the number of
 visible analysis-grid pitches, not the nominal cell count of the complete

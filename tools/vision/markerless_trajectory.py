@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Extract a planar micromouse pose without a marker on the vehicle.
+"""Extract a planar micromouse pose without an AR marker on the vehicle.
 
 Fixed ArUco markers remain around the maze to stabilize the maze plane.  The
-vehicle itself is found from background difference, constrained by its green
-PCB when visible.  A coloured LED can provide a directed heading and a stable
-tracked point; otherwise the foreground principal axis is followed with a
-known initial heading to resolve its 180 degree ambiguity.
+vehicle center is preferably tracked from its 8 mm blue label.  Background
+difference and the green PCB still provide its body silhouette and heading.  A
+separate coloured LED can provide a directed heading; otherwise the foreground
+principal axis is followed with a known initial heading to resolve its 180
+degree ambiguity.
 
 The implementation intentionally reuses the proven fixed-marker and grid code
 from ``aruco_trajectory.py`` so the original carried-marker workflow remains
@@ -34,6 +35,12 @@ import aruco_trajectory as aruco
 import board_layout
 
 
+BLUE_LABEL_HSV_LOW = (94, 80, 70)
+BLUE_LABEL_HSV_HIGH = (104, 255, 255)
+BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 18
+BLUE_LABEL_MIN_BLUE_RED_EXCESS = 40
+
+
 @dataclass
 class Detection:
     frame: int
@@ -41,10 +48,12 @@ class Detection:
     position_xy: np.ndarray
     body_xy: np.ndarray
     cue_xy: np.ndarray
+    label_xy: np.ndarray
     yaw_unwrapped_deg: float
     body_pixel_count: int
     green_pixel_count: int
     cue_pixel_count: int
+    label_pixel_count: int
     cue_brightness: float
     axis_anisotropy: float
     pose_confidence: float
@@ -120,6 +129,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--minimum-green-pixels", type=int, default=250)
     parser.add_argument("--minimum-cue-pixels", type=int, default=3)
     parser.add_argument("--maximum-cue-pixels", type=int, default=500)
+    parser.add_argument("--minimum-label-pixels", type=int, default=20)
+    parser.add_argument("--maximum-label-pixels", type=int, default=180)
+    parser.add_argument(
+        "--label-diameter-mm",
+        type=float,
+        default=8.0,
+        help="physical diameter of the circular vehicle-center label",
+    )
     parser.add_argument(
         "--minimum-cue-lever-arm-px",
         type=float,
@@ -146,12 +163,17 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--position-source",
-        choices=("cue", "body", "green"),
-        default="cue",
+        choices=("label", "cue", "body", "green"),
+        default="label",
         help=(
-            "track the LED centroid, foreground centroid, or green-PCB "
-            "centroid"
+            "track the blue center label, LED centroid, foreground centroid, "
+            "or green-PCB centroid"
         ),
+    )
+    parser.add_argument(
+        "--label-colour",
+        choices=("blue", "none"),
+        default="blue",
     )
     parser.add_argument(
         "--cue-colour",
@@ -221,6 +243,14 @@ def parse_args() -> argparse.Namespace:
         default=0.01,
     )
     parser.add_argument(
+        "--position-only",
+        action="store_true",
+        help=(
+            "require and export position QA while reporting, but not gating, "
+            "foreground-derived heading"
+        ),
+    )
+    parser.add_argument(
         "--no-video",
         action="store_true",
         help="skip the annotated top-view video",
@@ -233,6 +263,7 @@ def validate_args(args: argparse.Namespace) -> None:
         "marker_margin",
         "cell_size_mm",
         "tracking_radius_px",
+        "label_diameter_mm",
         "minimum_cue_lever_arm_px",
         "cue_distance_relative_tolerance",
         "minimum_axis_anisotropy",
@@ -295,6 +326,16 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--minimum-cue-pixels must be positive")
     if args.maximum_cue_pixels < args.minimum_cue_pixels:
         raise ValueError("--maximum-cue-pixels must be >= --minimum-cue-pixels")
+    if args.minimum_label_pixels <= 0:
+        raise ValueError("--minimum-label-pixels must be positive")
+    if args.maximum_label_pixels < args.minimum_label_pixels:
+        raise ValueError(
+            "--maximum-label-pixels must be >= --minimum-label-pixels"
+        )
+    if args.label_diameter_mm <= 0:
+        raise ValueError("--label-diameter-mm must be positive")
+    if args.position_source == "label" and args.label_colour == "none":
+        raise ValueError("--position-source label requires --label-colour blue")
     if args.minimum_cue_lever_arm_px <= 0:
         raise ValueError("--minimum-cue-lever-arm-px must be positive")
     if not 0 < args.cue_distance_relative_tolerance < 2:
@@ -462,6 +503,32 @@ def red_mask(frame: np.ndarray) -> np.ndarray:
     )
 
 
+def blue_label_mask(frame: np.ndarray) -> np.ndarray:
+    """Select the matte blue center label without accepting the green PCB.
+
+    The deliberately narrow hue range was measured from the Pixel 8 1 ms /
+    ISO 800 HFR path.  Blue-channel excess gates keep cyan PCB reflections out
+    while the upper hue bound separates the label pigment from the three blue
+    optical-token LEDs.  Do not apply an opening operation here: after metric
+    rectification the 8 mm label is only about 8 by 8 pixels.
+    """
+
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(
+        hsv,
+        np.asarray(BLUE_LABEL_HSV_LOW, dtype=np.uint8),
+        np.asarray(BLUE_LABEL_HSV_HIGH, dtype=np.uint8),
+    )
+    blue, green, red = cv2.split(frame.astype(np.int16))
+    channel_gate = np.where(
+        (blue - green >= BLUE_LABEL_MIN_BLUE_GREEN_EXCESS)
+        & (blue - red >= BLUE_LABEL_MIN_BLUE_RED_EXCESS),
+        255,
+        0,
+    ).astype(np.uint8)
+    return cv2.bitwise_and(mask, channel_gate)
+
+
 def centroid(mask: np.ndarray) -> Optional[np.ndarray]:
     moments = cv2.moments(mask, binaryImage=True)
     if moments["m00"] <= 0:
@@ -545,6 +612,47 @@ def _component_near(
         else:
             assert distance is not None
             score = distance - 0.002 * area
+        candidates.append((score, label))
+    if not candidates:
+        return None, 0, None
+    _, selected = min(candidates)
+    component = np.where(labels == selected, 255, 0).astype(np.uint8)
+    return (
+        np.asarray(centers[selected], dtype=float),
+        int(stats[selected, cv2.CC_STAT_AREA]),
+        component,
+    )
+
+
+def _label_component(
+    mask: np.ndarray,
+    minimum_pixels: int,
+    maximum_pixels: int,
+    expected_pixels: float,
+    prediction_xy: Optional[np.ndarray],
+    maximum_distance: float,
+) -> tuple[Optional[np.ndarray], int, Optional[np.ndarray]]:
+    """Choose the label over similarly coloured optical-token LED blobs."""
+
+    count, labels, stats, centers = cv2.connectedComponentsWithStats(
+        mask,
+        connectivity=8,
+    )
+    candidates: list[tuple[float, int]] = []
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        if not minimum_pixels <= area <= maximum_pixels:
+            continue
+        distance = 0.0
+        if prediction_xy is not None:
+            distance = float(np.linalg.norm(centers[label] - prediction_xy))
+            if distance > maximum_distance:
+                continue
+        width = max(1, int(stats[label, cv2.CC_STAT_WIDTH]))
+        height = max(1, int(stats[label, cv2.CC_STAT_HEIGHT]))
+        area_error = abs(math.log(area / max(1.0, expected_pixels)))
+        aspect_error = abs(math.log(width / height))
+        score = 0.10 * distance + 2.0 * area_error + 0.20 * aspect_error
         candidates.append((score, label))
     if not candidates:
         return None, 0, None
@@ -676,6 +784,17 @@ def _update_tracker_velocity(
     )
 
 
+def _expected_label_pixels(
+    grid: aruco.GridCalibration,
+    label_diameter_mm: float,
+    cell_size_mm: Optional[float],
+) -> float:
+    physical_pitch_mm = cell_size_mm if cell_size_mm is not None else 90.0
+    pixels_per_mm = math.sqrt(grid.x_pitch_px * grid.y_pitch_px) / physical_pitch_mm
+    radius_px = 0.5 * label_diameter_mm * pixels_per_mm
+    return math.pi * radius_px * radius_px
+
+
 def _cue_brightness(
     frame: np.ndarray,
     search_mask: np.ndarray,
@@ -698,6 +817,8 @@ def detect_pose(
     predicted_green_xy: Optional[np.ndarray],
     prior_yaw_deg: Optional[float],
     predicted_cue_xy: Optional[np.ndarray],
+    predicted_label_xy: Optional[np.ndarray],
+    expected_label_pixels: float,
     cue_distances: deque[float],
     prediction_is_seed: bool,
     frame_period_s: float,
@@ -706,7 +827,9 @@ def detect_pose(
     np.ndarray,
     np.ndarray,
     np.ndarray,
+    np.ndarray,
     float,
+    int,
     int,
     int,
     int,
@@ -743,74 +866,65 @@ def detect_pose(
     )
 
     board = _board_mask(foreground.shape, grid)
+    label_xy: Optional[np.ndarray] = None
+    label_count = 0
+    if args.label_colour == "blue":
+        label_xy, label_count, _ = _label_component(
+            blue_label_mask(frame) & board,
+            args.minimum_label_pixels,
+            args.maximum_label_pixels,
+            expected_label_pixels,
+            predicted_label_xy,
+            max(20.0, min(45.0, args.tracking_radius_px)),
+        )
+
     green = green_mask(frame) & board
+    green_prediction = predicted_green_xy
+    green_prediction_is_label_seed = False
+    if green_prediction is None and label_xy is not None:
+        green_prediction = label_xy
+        green_prediction_is_label_seed = True
     green_maximum_distance = None
-    if predicted_green_xy is not None:
-        green_maximum_distance = args.tracking_radius_px if prediction_is_seed else 45.0
+    if green_prediction is not None:
+        green_maximum_distance = (
+            args.tracking_radius_px
+            if prediction_is_seed or green_prediction_is_label_seed
+            else 45.0
+        )
     green_xy, green_count, _ = _component_near(
         green,
         args.minimum_green_pixels,
         9000,
-        predicted_green_xy,
+        green_prediction,
         maximum_distance=green_maximum_distance,
-        prefer_largest=prediction_is_seed,
+        prefer_largest=prediction_is_seed or green_prediction_is_label_seed,
     )
-    if green_xy is None:
-        nan_xy = np.full(2, np.nan, dtype=float)
-        return (
-            nan_xy,
-            nan_xy,
-            nan_xy,
-            nan_xy,
-            float("nan"),
-            0,
-            0,
-            0,
-            0.0,
-            0.0,
-            0.0,
-            False,
-            False,
-            "missing",
-            "missing",
-        )
 
-    body_xy, body_count, body = _foreground_cluster(
-        foreground,
-        green_xy,
-        args.tracking_radius_px,
-        args.minimum_body_pixels,
-    )
-    search = _circle_mask(
-        foreground.shape,
-        green_xy,
-        args.tracking_radius_px,
-    )
-    if body_xy is None or body is None or body_count < args.minimum_body_pixels:
-        nan_xy = np.full(2, np.nan, dtype=float)
-        return (
-            nan_xy,
-            nan_xy,
-            nan_xy,
-            green_xy,
-            float("nan"),
-            body_count,
-            green_count,
-            0,
-            _cue_brightness(frame, search),
-            0.0,
-            0.0,
-            False,
-            False,
-            "missing",
-            "missing",
+    body_seed = green_xy if green_xy is not None else label_xy
+    body_xy: Optional[np.ndarray] = None
+    body_count = 0
+    body: Optional[np.ndarray] = None
+    search = np.zeros(foreground.shape, dtype=np.uint8)
+    if body_seed is not None:
+        body_xy, body_count, body = _foreground_cluster(
+            foreground,
+            body_seed,
+            args.tracking_radius_px,
+            args.minimum_body_pixels,
+        )
+        search = _circle_mask(
+            foreground.shape,
+            body_seed,
+            args.tracking_radius_px,
         )
 
     cue_xy: Optional[np.ndarray] = None
     cue_count = 0
-    if args.cue_colour == "red":
+    if args.cue_colour == "red" and body_xy is not None:
         cue_candidates = red_mask(frame) & search & board
-        cue_prediction = predicted_cue_xy if predicted_cue_xy is not None else green_xy
+        cue_prediction = (
+            predicted_cue_xy if predicted_cue_xy is not None else body_seed
+        )
         cue_xy, cue_count, _ = _component_near(
             cue_candidates,
             args.minimum_cue_pixels,
@@ -820,12 +934,16 @@ def detect_pose(
         )
     cue_value = _cue_brightness(frame, search)
 
-    axis_angle, anisotropy = _principal_axis(body)
+    axis_angle, anisotropy = (
+        _principal_axis(body)
+        if body is not None
+        else (float("nan"), 0.0)
+    )
     heading_valid = False
     heading_source = "missing"
     yaw = float(prior_yaw_deg) if prior_yaw_deg is not None else float("nan")
     cue_was_rejected = False
-    if cue_xy is not None:
+    if cue_xy is not None and body_xy is not None:
         vector = cue_xy - body_xy
         cue_distance = float(np.linalg.norm(vector))
         distance_valid = _cue_distance_is_valid(
@@ -858,7 +976,7 @@ def detect_pose(
             cue_was_rejected = True
             heading_source = "cue_rejected_geometry"
 
-    if cue_xy is None and not cue_was_rejected:
+    if cue_xy is None and not cue_was_rejected and body_xy is not None:
         if math.isfinite(axis_angle) and anisotropy >= args.minimum_axis_anisotropy:
             candidate_yaw = _nearest_periodic(
                 axis_angle + args.axis_yaw_offset_deg,
@@ -885,9 +1003,20 @@ def detect_pose(
         else None
     )
     position_source = args.position_source
-    if args.position_source == "cue":
+    position_valid = False
+    nan_xy = np.full(2, np.nan, dtype=float)
+    if args.position_source == "label":
+        if label_xy is not None:
+            position_xy = label_xy
+            position_source = "blue_label"
+            position_valid = True
+        else:
+            position_xy = nan_xy
+            position_source = "label_missing"
+    elif args.position_source == "cue" and body_xy is not None:
         if accepted_cue_xy is not None:
             position_xy = accepted_cue_xy
+            position_valid = True
         elif cue_distances and math.isfinite(yaw):
             cue_direction = math.radians(yaw - args.cue_yaw_offset_deg)
             distance = float(np.median(cue_distances))
@@ -898,33 +1027,73 @@ def detect_pose(
                 ]
             )
             position_source = "cue_from_body"
+            position_valid = True
         else:
             position_xy = body_xy
             position_source = "body_fallback"
+            position_valid = True
     elif args.position_source == "green":
-        position_xy = green_xy
-    else:
+        if green_xy is not None:
+            position_xy = green_xy
+            position_valid = True
+        else:
+            position_xy = nan_xy
+            position_source = "green_missing"
+    elif body_xy is not None:
         position_xy = body_xy
+        position_valid = True
+    else:
+        position_xy = nan_xy
+        position_source = "body_missing"
 
     area_score = min(1.0, body_count / max(1.0, args.minimum_body_pixels * 4))
     cue_score = 1.0 if accepted_cue_xy is not None else 0.45
-    confidence = float(
-        max(0.0, min(1.0, 0.45 * area_score + 0.25 * anisotropy + 0.30 * cue_score))
+    label_score = (
+        math.exp(
+            -abs(math.log(label_count / max(1.0, expected_label_pixels)))
+        )
+        if label_xy is not None and label_count > 0
+        else 0.0
     )
-    nan_xy = np.full(2, np.nan, dtype=float)
+    if args.position_source == "label":
+        confidence = float(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    0.60 * label_score
+                    + 0.25 * area_score
+                    + 0.15 * float(heading_valid),
+                ),
+            )
+        )
+    else:
+        confidence = float(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    0.45 * area_score
+                    + 0.25 * anisotropy
+                    + 0.30 * cue_score,
+                ),
+            )
+        )
     return (
         position_xy,
-        body_xy,
+        body_xy if body_xy is not None else nan_xy,
         accepted_cue_xy if accepted_cue_xy is not None else nan_xy,
-        green_xy,
+        label_xy if label_xy is not None else nan_xy,
+        green_xy if green_xy is not None else nan_xy,
         yaw,
         body_count,
         green_count,
         cue_count,
+        label_count,
         cue_value,
         anisotropy,
         confidence,
-        True,
+        position_valid,
         heading_valid,
         heading_source,
         position_source,
@@ -933,6 +1102,8 @@ def detect_pose(
 
 def interpolate_detections(
     detections: Sequence[Detection],
+    allow_missing_heading: bool = False,
+    fallback_yaw_deg: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     valid = np.asarray([item.pose_valid for item in detections], dtype=bool)
     heading_valid = np.asarray(
@@ -944,7 +1115,7 @@ def interpolate_detections(
     if len(good) < 2:
         raise RuntimeError("fewer than two valid markerless poses")
     good_heading = np.flatnonzero(heading_valid)
-    if len(good_heading) < 2:
+    if len(good_heading) < 2 and not allow_missing_heading:
         raise RuntimeError("fewer than two valid markerless headings")
     raw_xy = np.asarray([item.position_xy for item in detections], dtype=float)
     raw_yaw = np.asarray(
@@ -953,11 +1124,14 @@ def interpolate_detections(
     )
     filled_x = np.interp(indexes, good, raw_xy[good, 0])
     filled_y = np.interp(indexes, good, raw_xy[good, 1])
-    filled_yaw = np.interp(
-        indexes,
-        good_heading,
-        raw_yaw[good_heading],
-    )
+    if len(good_heading) >= 2:
+        filled_yaw = np.interp(
+            indexes,
+            good_heading,
+            raw_yaw[good_heading],
+        )
+    else:
+        filled_yaw = np.full(len(detections), fallback_yaw_deg, dtype=float)
     return (
         np.column_stack([filled_x, filled_y]),
         filled_yaw,
@@ -972,8 +1146,14 @@ def convert_track(
     timestamps: np.ndarray,
     smooth_window: int,
     cell_size_mm: Optional[float],
+    position_only: bool = False,
+    initial_yaw_deg: Optional[float] = None,
 ) -> dict[str, np.ndarray]:
-    raw_xy, raw_yaw, valid, heading_valid = interpolate_detections(detections)
+    raw_xy, raw_yaw, valid, heading_valid = interpolate_detections(
+        detections,
+        allow_missing_heading=position_only,
+        fallback_yaw_deg=(initial_yaw_deg if initial_yaw_deg is not None else 0.0),
+    )
     smooth_x = aruco.savitzky_golay(raw_xy[:, 0], smooth_window)
     smooth_y = aruco.savitzky_golay(raw_xy[:, 1], smooth_window)
     smooth_yaw = aruco.savitzky_golay(raw_yaw, smooth_window)
@@ -1058,6 +1238,7 @@ def write_csv(
         "body_pixel_count",
         "green_pixel_count",
         "cue_pixel_count",
+        "label_pixel_count",
         "cue_brightness",
         "axis_anisotropy",
         "heading_source",
@@ -1066,6 +1247,8 @@ def write_csv(
         "body_y_px",
         "cue_x_px",
         "cue_y_px",
+        "label_x_px",
+        "label_y_px",
         "fixed_ids",
         "homography_rmse_px",
         "homography_used_previous",
@@ -1088,6 +1271,7 @@ def write_csv(
                 "body_pixel_count": detection.body_pixel_count,
                 "green_pixel_count": detection.green_pixel_count,
                 "cue_pixel_count": detection.cue_pixel_count,
+                "label_pixel_count": detection.label_pixel_count,
                 "cue_brightness": _fmt(detection.cue_brightness, 3),
                 "axis_anisotropy": _fmt(detection.axis_anisotropy),
                 "heading_source": detection.heading_source,
@@ -1096,6 +1280,8 @@ def write_csv(
                 "body_y_px": _fmt(detection.body_xy[1], 4),
                 "cue_x_px": _fmt(detection.cue_xy[0], 4),
                 "cue_y_px": _fmt(detection.cue_xy[1], 4),
+                "label_x_px": _fmt(detection.label_xy[0], 4),
+                "label_y_px": _fmt(detection.label_xy[1], 4),
                 "fixed_ids": "|".join(map(str, calibration.fixed_ids)),
                 "homography_rmse_px": _fmt(
                     calibration.reprojection_rmse_px,
@@ -1223,6 +1409,15 @@ def render_video(
             tipLength=0.25,
         )
         detection = detections[frame_index]
+        if np.all(np.isfinite(detection.label_xy)):
+            cv2.circle(
+                top,
+                tuple(np.rint(detection.label_xy).astype(int)),
+                7,
+                (255, 0, 255),
+                2,
+                cv2.LINE_AA,
+            )
         cv2.putText(
             top,
             "t={:.3f}s valid={} conf={:.2f} {} / {}".format(
@@ -1373,6 +1568,11 @@ def main() -> int:
                 args.marker_margin,
             )
         )
+        expected_label_pixels = _expected_label_pixels(
+            grid,
+            args.label_diameter_mm,
+            args.cell_size_mm,
+        )
         reference_path = output_dir / "reference_topview.png"
         if not cv2.imwrite(str(reference_path), background):
             raise RuntimeError(f"failed to write {reference_path}")
@@ -1393,7 +1593,10 @@ def main() -> int:
         prior_green_frame: Optional[int] = None
         prior_cue: Optional[np.ndarray] = None
         prior_cue_frame: Optional[int] = None
+        prior_label: Optional[np.ndarray] = None
+        prior_label_frame: Optional[int] = None
         tracker_velocity = np.zeros(2, dtype=float)
+        label_velocity = np.zeros(2, dtype=float)
         prior_yaw = args.initial_yaw_deg
         cue_distances: deque[float] = deque(maxlen=120)
         frame_index = 0
@@ -1418,15 +1621,23 @@ def main() -> int:
                 prior_cue_frame,
                 frame_index,
             )
+            predicted_label = _predict_tracker_position(
+                prior_label,
+                label_velocity,
+                prior_label_frame,
+                frame_index,
+            )
             (
                 position_xy,
                 body_xy,
                 cue_xy,
+                label_xy,
                 detected_green,
                 yaw,
                 body_count,
                 green_count,
                 cue_count,
+                label_count,
                 cue_value,
                 anisotropy,
                 confidence,
@@ -1442,6 +1653,8 @@ def main() -> int:
                 predicted_green,
                 prior_yaw,
                 predicted_cue,
+                predicted_label,
+                expected_label_pixels,
                 cue_distances,
                 prior_green is not None and not prior_green_is_observed,
                 (
@@ -1457,10 +1670,12 @@ def main() -> int:
                     position_xy=position_xy,
                     body_xy=body_xy,
                     cue_xy=cue_xy,
+                    label_xy=label_xy,
                     yaw_unwrapped_deg=yaw,
                     body_pixel_count=body_count,
                     green_pixel_count=green_count,
                     cue_pixel_count=cue_count,
+                    label_pixel_count=label_count,
                     cue_brightness=cue_value,
                     axis_anisotropy=anisotropy,
                     pose_confidence=confidence,
@@ -1470,7 +1685,7 @@ def main() -> int:
                     position_source=position_source,
                 )
             )
-            if valid:
+            if np.all(np.isfinite(detected_green)):
                 if (
                     prior_green is not None
                     and prior_green_is_observed
@@ -1486,11 +1701,22 @@ def main() -> int:
                 prior_green = detected_green
                 prior_green_is_observed = True
                 prior_green_frame = frame_index
-                if np.all(np.isfinite(cue_xy)):
-                    prior_cue = cue_xy
-                    prior_cue_frame = frame_index
-                if heading_valid:
-                    prior_yaw = yaw
+            if np.all(np.isfinite(label_xy)):
+                if prior_label is not None and prior_label_frame is not None:
+                    label_velocity = _update_tracker_velocity(
+                        label_velocity,
+                        prior_label,
+                        label_xy,
+                        prior_label_frame,
+                        frame_index,
+                    )
+                prior_label = label_xy
+                prior_label_frame = frame_index
+            if np.all(np.isfinite(cue_xy)):
+                prior_cue = cue_xy
+                prior_cue_frame = frame_index
+            if heading_valid:
+                prior_yaw = yaw
             frame_index += 1
         capture.release()
         if frame_index != info.frame_count:
@@ -1511,7 +1737,10 @@ def main() -> int:
         heading_invalid_fraction = 1.0 - (
             sum(item.heading_valid for item in detections) / len(detections)
         )
-        if heading_invalid_fraction > args.maximum_heading_invalid_fraction:
+        if (
+            not args.position_only
+            and heading_invalid_fraction > args.maximum_heading_invalid_fraction
+        ):
             raise RuntimeError(
                 "markerless heading-invalid fraction {:.3f} exceeds {:.3f}".format(
                     heading_invalid_fraction,
@@ -1524,6 +1753,8 @@ def main() -> int:
             timestamps,
             args.smooth_window,
             args.cell_size_mm,
+            args.position_only,
+            args.initial_yaw_deg,
         )
         csv_path = output_dir / "trajectory.csv"
         plot_path = output_dir / "trajectory.png"
@@ -1554,7 +1785,7 @@ def main() -> int:
             if math.isfinite(item.reprojection_rmse_px)
         ]
         report = {
-            "schema": "nightfall_markerless_trajectory_qa_v1",
+            "schema": "nightfall_markerless_trajectory_qa_v2",
             "input": {
                 "path": str(args.video.resolve()),
                 "sha256": sha256_file(args.video),
@@ -1581,7 +1812,16 @@ def main() -> int:
                 "detection_count": {
                     str(key): value for key, value in sorted(detection_counts.items())
                 },
-                "homography_marker_ids": list(aruco.HOMOGRAPHY_MARKER_IDS),
+                "homography_marker_ids": list(
+                    aruco.FIXED_ORDER
+                    if measured_layout is not None
+                    else aruco.HOMOGRAPHY_MARKER_IDS
+                ),
+                "homography_method": (
+                    "measured_four_marker_centers"
+                    if measured_layout is not None
+                    else "legacy_marker_corners"
+                ),
                 "fallback_frames": sum(
                     item.used_previous_homography for item in calibrations
                 ),
@@ -1611,8 +1851,9 @@ def main() -> int:
             },
             "markerless_pose": {
                 "method": (
-                    "rectified median-background difference constrained by "
-                    "green PCB, with colour cue or principal-axis heading"
+                    "blue center-label position with rectified "
+                    "median-background/green-PCB body and colour-cue or "
+                    "principal-axis heading"
                 ),
                 "valid_frames": sum(item.pose_valid for item in detections),
                 "missing_frames": sum(not item.pose_valid for item in detections),
@@ -1622,6 +1863,8 @@ def main() -> int:
                     not item.heading_valid for item in detections
                 ),
                 "heading_invalid_fraction": heading_invalid_fraction,
+                "heading_gate_applied": not args.position_only,
+                "position_only": args.position_only,
                 "heading_source_count": dict(source_counts),
                 "position_source_count": dict(position_counts),
                 "pose_confidence": percentile_summary(
@@ -1632,6 +1875,19 @@ def main() -> int:
                 ),
                 "cue_pixel_count": percentile_summary(
                     [item.cue_pixel_count for item in detections]
+                ),
+                "label_detected_frames": sum(
+                    item.label_pixel_count > 0 for item in detections
+                ),
+                "label_missing_frames": sum(
+                    item.label_pixel_count == 0 for item in detections
+                ),
+                "label_pixel_count": percentile_summary(
+                    [
+                        item.label_pixel_count
+                        for item in detections
+                        if item.label_pixel_count > 0
+                    ]
                 ),
                 "accepted_cue_lever_arm_px": percentile_summary(cue_lever_arms),
                 "cue_brightness": percentile_summary(
@@ -1666,6 +1922,19 @@ def main() -> int:
                 "tracking_radius_px": args.tracking_radius_px,
                 "minimum_body_pixels": args.minimum_body_pixels,
                 "minimum_green_pixels": args.minimum_green_pixels,
+                "label_colour": args.label_colour,
+                "label_diameter_mm": args.label_diameter_mm,
+                "expected_label_pixels": expected_label_pixels,
+                "minimum_label_pixels": args.minimum_label_pixels,
+                "maximum_label_pixels": args.maximum_label_pixels,
+                "blue_label_hsv_low": list(BLUE_LABEL_HSV_LOW),
+                "blue_label_hsv_high": list(BLUE_LABEL_HSV_HIGH),
+                "blue_label_min_blue_green_excess": (
+                    BLUE_LABEL_MIN_BLUE_GREEN_EXCESS
+                ),
+                "blue_label_min_blue_red_excess": (
+                    BLUE_LABEL_MIN_BLUE_RED_EXCESS
+                ),
             },
             "metric_scale": {
                 "cell_size_mm": args.cell_size_mm,
@@ -1739,10 +2008,12 @@ def main() -> int:
             encoding="utf-8",
         )
         print(
-            "[MARKERLESS] frames={} valid={} missing={} cue={} timestamp={}".format(
+            "[MARKERLESS] frames={} valid={} missing={} label={} cue={} "
+            "timestamp={}".format(
                 info.frame_count,
                 report["markerless_pose"]["valid_frames"],
                 report["markerless_pose"]["missing_frames"],
+                report["markerless_pose"]["label_detected_frames"],
                 source_counts.get("colour_cue", 0),
                 timestamp_source,
             )

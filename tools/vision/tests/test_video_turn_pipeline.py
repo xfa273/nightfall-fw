@@ -338,6 +338,9 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
             minimum_green_pixels=20,
             minimum_body_pixels=80,
             cue_colour="red",
+            label_colour="none",
+            minimum_label_pixels=20,
+            maximum_label_pixels=180,
             minimum_cue_pixels=1,
             maximum_cue_pixels=100,
             minimum_cue_lever_arm_px=10.0,
@@ -391,6 +394,8 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
                 np.asarray([50.0, 50.0]),
                 0.0,
                 np.asarray([52.0, 50.0]),
+                None,
+                50.0,
                 deque([38.0, 39.0, 37.0, 40.0, 38.5]),
                 False,
                 1.0 / 120.0,
@@ -425,6 +430,9 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
             minimum_green_pixels=20,
             minimum_body_pixels=80,
             cue_colour="none",
+            label_colour="none",
+            minimum_label_pixels=20,
+            maximum_label_pixels=180,
             minimum_cue_pixels=1,
             maximum_cue_pixels=100,
             minimum_cue_lever_arm_px=10.0,
@@ -468,12 +476,78 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
                 green_xy,
                 0.0,
                 None,
+                None,
+                50.0,
                 deque(),
                 False,
                 1.0 / 120.0,
             )
         np.testing.assert_allclose(result[0], green_xy)
         self.assertEqual(result[-1], "green")
+
+    def test_blue_label_mask_excludes_teal_pcb_and_bluer_led(self):
+        frame = np.zeros((1, 3, 3), dtype=np.uint8)
+        frame[0, 0] = (230, 173, 58)
+        frame[0, 1] = (140, 150, 30)
+        led_hsv = np.asarray([[[115, 220, 220]]], dtype=np.uint8)
+        frame[0, 2] = MARKERLESS.cv2.cvtColor(
+            led_hsv,
+            MARKERLESS.cv2.COLOR_HSV2BGR,
+        )[0, 0]
+        mask = MARKERLESS.blue_label_mask(frame)
+        self.assertEqual(mask[0].tolist(), [255, 0, 0])
+
+    def test_label_component_prefers_expected_area_and_prediction(self):
+        mask = np.zeros((100, 100), dtype=np.uint8)
+        mask[46:54, 46:54] = 255
+        mask[35:46, 60:71] = 255
+        center, count, _ = MARKERLESS._label_component(
+            mask,
+            minimum_pixels=20,
+            maximum_pixels=180,
+            expected_pixels=64.0,
+            prediction_xy=np.asarray([50.0, 50.0]),
+            maximum_distance=45.0,
+        )
+        self.assertEqual(count, 64)
+        np.testing.assert_allclose(center, [49.5, 49.5])
+
+    def test_position_only_interpolates_without_valid_heading(self):
+        detections = []
+        for index in range(3):
+            position = np.asarray([10.0 + index, 20.0], dtype=float)
+            nan_xy = np.full(2, np.nan, dtype=float)
+            detections.append(
+                MARKERLESS.Detection(
+                    frame=index,
+                    time_s=index / 240.0,
+                    position_xy=position,
+                    body_xy=nan_xy,
+                    cue_xy=nan_xy,
+                    label_xy=position,
+                    yaw_unwrapped_deg=float("nan"),
+                    body_pixel_count=0,
+                    green_pixel_count=0,
+                    cue_pixel_count=0,
+                    label_pixel_count=55,
+                    cue_brightness=0.0,
+                    axis_anisotropy=0.0,
+                    pose_confidence=1.0,
+                    pose_valid=True,
+                    heading_valid=False,
+                    heading_source="missing",
+                    position_source="blue_label",
+                )
+            )
+        xy, yaw, valid, heading_valid = MARKERLESS.interpolate_detections(
+            detections,
+            allow_missing_heading=True,
+            fallback_yaw_deg=15.0,
+        )
+        np.testing.assert_allclose(xy[:, 0], [10.0, 11.0, 12.0])
+        np.testing.assert_allclose(yaw, [15.0, 15.0, 15.0])
+        self.assertTrue(np.all(valid))
+        self.assertFalse(np.any(heading_valid))
 
 
 class TurnProposalSafetyGateTest(unittest.TestCase):

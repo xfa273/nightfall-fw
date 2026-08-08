@@ -286,19 +286,25 @@ corner noiseを減らせる場合がある。本番実装では静的校正を�
 
 ### 4.1 現在実装している方法
 
-`markerless_trajectory.py`の現在の有効フレームには、次がすべて必要で
-ある。
+`markerless_trajectory.py`は、機体中央へ貼った直径8 mmの青ラベルを
+既定の位置基準として使う。現在の有効な位置フレームには次が必要である。
 
-1. ID 5、4、6による盤面homography、または最大5フレームのfallback
-2. そのフレームで250 canonical pixel以上の緑PCB component
-3. 緑PCB近傍で得られる背景差分の前景cluster
+1. 実測layoutの4固定マーカ中心による盤面homography、3マーカ以上の
+   corner RANSAC、または最大5フレームのbounded fallback
+2. Pixel 8の現露光・照明で校正した狭い青色域に入るlabel component
+3. 8 mmから求める期待面積、形状、前フレームからの予測を通ること
 
-既定では、単一の赤componentを追跡点と有向yaw cueにする。赤cueが
-見つからないときは前景principal axisを前フレームyawへ連続化するが、
-現在はcue lever arm、直近cue距離、axis anisotropy、最大yaw rateを
-検査し、`heading_valid`を位置の`pose_valid`と別にCSVへ出す。したがって
-現在の実装は「任意の機体輪郭だけで追跡できる」ものではなく、「緑PCBを
-毎フレームseedとして使い、単一赤LEDを優先する」ものである。
+青ラベルは光学START/STOP信号の青LEDより色相が低いことを利用して
+分離する。ラベル材質、照明、露光、カメラ処理を変更した場合は色域を
+再検証する。緑PCBと背景差分の機体輪郭は、ラベル位置の必須条件では
+なく、body silhouetteとyaw推定の補助に使う。
+
+既定の位置sourceは青ラベルであり、単一の赤componentは有向yaw cueに
+だけ使える。赤cueが見つからないときは前景principal axisを前フレーム
+yawへ連続化するが、cue lever arm、直近cue距離、axis anisotropy、
+最大yaw rateを検査し、`heading_valid`を位置の`pose_valid`と別にCSVへ
+出す。`--position-only`ではheading不良を終了コードの失敗条件から外すが、
+推定yawが高精度になるわけではない。
 
 背景は動画全体から等間隔に選んだ41フレームのmedianで作る。同じ場所を
 機体が半数以上のsampleで占有すると機体が背景へ入り、検出に失敗する。
@@ -554,15 +560,20 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
   --output-dir "$session_dir/analysis" \
   --board-layout "$session_dir/board_layout.json" \
   --background-video "$session_dir/empty_background.mp4" \
+  --position-source label \
+  --label-colour blue \
+  --label-diameter-mm 8 \
+  --cue-colour none \
+  --position-only \
   --initial-yaw-deg 180 \
-  --cue-yaw-offset-deg 180 \
-  --maximum-missing-fraction 0.01 \
-  --maximum-heading-invalid-fraction 0.01
+  --maximum-missing-fraction 0.01
 ```
 
-layoutの固定マーカ幾何、green PCB、single red cueの条件を満たす試験
-だけに使う。`qa_report.json`のtimestamp source、homography、
-`accepted_cue_lever_arm_px`、heading validityを次の工程前に確認する。
+layoutの固定マーカ幾何と青ラベルの条件を満たす試験だけに使う。
+`qa_report.json`のtimestamp source、homography、label検出率・面積、
+position sourceを次の工程前に確認する。yawをターンfitへ使う場合は
+`--position-only`を外し、空迷路backgroundと有向cueを用意した上で
+`accepted_cue_lever_arm_px`とheading validityも確認する。
 
 ### 7.3 traceとのmotion同期
 
@@ -655,8 +666,8 @@ feedback gain分だけ次のsimulation targetへ反映し、既存のbounded fit
 - homographyのp95内部再投影RMSEが2 px以下
 - homography fallbackが0
 - markerless pose有効率が99%以上
-- markerless heading有効率が99%以上
-- 単一LEDを使う現構成ではcolour cue率が99%以上
+- yawを利用する解析ではmarkerless heading有効率が99%以上
+- yawを利用して単一LEDを使う構成ではcolour cue率が99%以上
 - cue欠落時のaxis fallbackはanisotropyとyaw rate gateを通ること
 - 静止時の位置・yaw標準偏差を記録
 - temporary ground truthによる画角内の絶対位置・yaw精度を記録

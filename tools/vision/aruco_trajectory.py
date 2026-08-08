@@ -443,49 +443,17 @@ def build_calibrations(
         inlier_corner_count = 0
         inlier_marker_count = 0
         used_previous_homography = False
-        if len(homography_ids) >= 3:
-            source_array = np.float32(source_points)
-            destination_array = np.float32(destination_points)
-            candidate_homography, inlier_mask = cv2.findHomography(
-                source_array,
-                destination_array,
-                method=cv2.RANSAC,
-                ransacReprojThreshold=3.0,
-            )
-            if candidate_homography is not None and inlier_mask is not None:
-                inliers = inlier_mask.ravel().astype(bool)
-                inlier_corner_count = int(np.sum(inliers))
-                inlier_marker_count = len(
-                    {
-                        marker_id
-                        for marker_id, is_inlier in zip(
-                            point_marker_ids, inliers
-                        )
-                        if is_inlier
-                    }
-                )
-            if (
-                candidate_homography is not None
-                and inlier_corner_count >= 8
-                and inlier_marker_count >= 3
-            ):
-                homography = candidate_homography
-                projected = cv2.perspectiveTransform(
-                    source_array[np.newaxis], homography
-                )[0]
-                residuals = np.linalg.norm(projected - destination_array, axis=1)
-                residuals = residuals[inliers]
-                rmse = float(np.sqrt(np.mean(np.square(residuals))))
 
-        # A measured layout fixes the marker centers independently of the
-        # detected black-square edge.  Lens distortion and a coloured printed
-        # border can make the apparent edge scale differ by several pixels at
-        # opposite corners of a wide phone-camera view.  When that defeats the
-        # stricter corner RANSAC, four marker centers still define the maze
-        # plane without depending on the apparent marker side length.
+        # A measured layout fixes the physical marker centers independently of
+        # the apparent black-square edges.  On a wide phone-camera view, lens
+        # distortion and the coloured printed surrounds can make a corner
+        # RANSAC alternate between acceptance and rejection on adjacent
+        # frames.  Alternating between that corner fit and a center fit moves a
+        # stationary maze point by tens of canonical pixels.  Four centers
+        # already determine the projective maze plane, so prefer that stable
+        # metric definition whenever all four measured markers are visible.
         if (
-            homography is None
-            and target_corners_override is not None
+            target_corners_override is not None
             and len(calibration_marker_ids) == 4
             and all(
                 marker_id in frame_observations
@@ -521,6 +489,40 @@ def build_calibrations(
                 rmse = float(np.sqrt(np.mean(np.square(residuals))))
                 inlier_corner_count = 4
                 inlier_marker_count = 4
+
+        if homography is None and len(homography_ids) >= 3:
+            source_array = np.float32(source_points)
+            destination_array = np.float32(destination_points)
+            candidate_homography, inlier_mask = cv2.findHomography(
+                source_array,
+                destination_array,
+                method=cv2.RANSAC,
+                ransacReprojThreshold=3.0,
+            )
+            if candidate_homography is not None and inlier_mask is not None:
+                inliers = inlier_mask.ravel().astype(bool)
+                inlier_corner_count = int(np.sum(inliers))
+                inlier_marker_count = len(
+                    {
+                        marker_id
+                        for marker_id, is_inlier in zip(
+                            point_marker_ids, inliers
+                        )
+                        if is_inlier
+                    }
+                )
+            if (
+                candidate_homography is not None
+                and inlier_corner_count >= 8
+                and inlier_marker_count >= 3
+            ):
+                homography = candidate_homography
+                projected = cv2.perspectiveTransform(
+                    source_array[np.newaxis], homography
+                )[0]
+                residuals = np.linalg.norm(projected - destination_array, axis=1)
+                residuals = residuals[inliers]
+                rmse = float(np.sqrt(np.mean(np.square(residuals))))
 
         if homography is None:
             if previous_homography is None:
@@ -1400,13 +1402,30 @@ def render_plot(
         raise RuntimeError("failed to write trajectory plot: {}".format(path))
 
 
+def writer_fps(source_fps: float) -> float:
+    """Use the nominal integer rate for nearly-integer HFR recordings.
+
+    OpenCV's MPEG-4 backend can turn a measured value such as 239.914 fps into
+    a timebase whose denominator exceeds the codec limit.  Pixel HFR capture
+    is clocked at the nominal integer rate, while timestamps remain available
+    in the trajectory CSV for measurement, so rounding only high-rate inputs
+    close to an integer is the least surprising annotated-video behaviour.
+    """
+
+    nominal = round(source_fps)
+    if source_fps >= 100.0 and abs(source_fps - nominal) <= 0.5:
+        return float(nominal)
+    return source_fps
+
+
 def open_writer(
     requested_path: Path, fps: float, size: Tuple[int, int]
 ) -> Tuple[cv2.VideoWriter, Path]:
+    output_fps = writer_fps(fps)
     writer = cv2.VideoWriter(
         str(requested_path),
         cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
+        output_fps,
         size,
     )
     if writer.isOpened():
@@ -1416,7 +1435,7 @@ def open_writer(
     writer = cv2.VideoWriter(
         str(fallback),
         cv2.VideoWriter_fourcc(*"MJPG"),
-        fps,
+        output_fps,
         size,
     )
     if not writer.isOpened():
