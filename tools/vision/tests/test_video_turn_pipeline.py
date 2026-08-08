@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import importlib.util
+import json
 import math
 import sys
 import tempfile
@@ -46,6 +47,10 @@ else:
     load_module(
         "aruco_trajectory",
         REPO_ROOT / "tools/vision/aruco_trajectory.py",
+    )
+    FRONT_LABEL_CALIBRATION = load_module(
+        "test_fit_front_label_heading",
+        REPO_ROOT / "tools/vision/fit_front_label_heading.py",
     )
     MARKERLESS = load_module(
         "test_markerless_trajectory",
@@ -200,6 +205,39 @@ class TurnCoordinateTest(unittest.TestCase):
 
 @unittest.skipUnless(MARKERLESS is not None, "OpenCV contrib is unavailable")
 class MarkerlessSafetyGateTest(unittest.TestCase):
+    def test_front_label_circle_fit_recovers_parallax_bias(self):
+        heading_deg = np.linspace(-100.0, 100.0, 401)
+        heading_rad = np.radians(heading_deg)
+        expected_bias_px = np.asarray([-3.4, -2.1])
+        radius_px = 28.0
+        vectors = expected_bias_px + radius_px * np.column_stack(
+            [np.cos(heading_rad), -np.sin(heading_rad)]
+        )
+        result = FRONT_LABEL_CALIBRATION.fit_bias(
+            vectors,
+            pixels_per_mm=1.1,
+        )
+        np.testing.assert_allclose(result["bias_px"], expected_bias_px, atol=1e-9)
+        self.assertAlmostEqual(result["radius_px"], radius_px)
+        self.assertAlmostEqual(result["heading_span_deg"], 200.0)
+        self.assertLess(float(np.max(result["radial_error_mm"])), 1e-9)
+
+    def test_front_label_calibration_loader_checks_baseline(self):
+        calibration = {
+            "schema": MARKERLESS.FRONT_LABEL_CALIBRATION_SCHEMA,
+            "coordinate_system": "x_right_y_forward_mm",
+            "front_label_distance_mm": 24.0,
+            "apparent_vector_bias_mm": {"right": -3.1, "forward": 1.8},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "front_label.json"
+            path.write_text(json.dumps(calibration), encoding="utf-8")
+            result = MARKERLESS.load_front_label_calibration(path, 24.0)
+            self.assertAlmostEqual(result["bias_right_mm"], -3.1)
+            self.assertAlmostEqual(result["bias_forward_mm"], 1.8)
+            with self.assertRaisesRegex(ValueError, "distance does not match"):
+                MARKERLESS.load_front_label_calibration(path, 30.0)
+
     def test_tracker_prediction_advances_across_missing_frames(self):
         predicted = MARKERLESS._predict_tracker_position(
             np.asarray([100.0, 200.0]),
@@ -339,6 +377,7 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
             minimum_body_pixels=80,
             cue_colour="red",
             label_colour="none",
+            front_label_colour="none",
             minimum_label_pixels=20,
             maximum_label_pixels=180,
             minimum_cue_pixels=1,
@@ -395,7 +434,12 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
                 0.0,
                 np.asarray([52.0, 50.0]),
                 None,
+                None,
                 50.0,
+                50.0,
+                24.0,
+                8.0,
+                np.zeros(2, dtype=float),
                 deque([38.0, 39.0, 37.0, 40.0, 38.5]),
                 False,
                 1.0 / 120.0,
@@ -431,6 +475,7 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
             minimum_body_pixels=80,
             cue_colour="none",
             label_colour="none",
+            front_label_colour="none",
             minimum_label_pixels=20,
             maximum_label_pixels=180,
             minimum_cue_pixels=1,
@@ -477,7 +522,12 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
                 0.0,
                 None,
                 None,
+                None,
                 50.0,
+                50.0,
+                24.0,
+                8.0,
+                np.zeros(2, dtype=float),
                 deque(),
                 False,
                 1.0 / 120.0,
@@ -512,6 +562,104 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         self.assertEqual(count, 64)
         np.testing.assert_allclose(center, [49.5, 49.5])
 
+    def test_front_label_component_rejects_rear_led_and_wall(self):
+        mask = np.zeros((120, 120), dtype=np.uint8)
+        mask[46:54, 70:78] = 255
+        mask[46:51, 40:45] = 255
+        mask[20:100, 95:99] = 255
+        center, count, _ = MARKERLESS._front_label_component(
+            mask,
+            center_xy=np.asarray([49.5, 49.5]),
+            minimum_pixels=20,
+            maximum_pixels=180,
+            expected_pixels=64.0,
+            expected_distance_px=24.0,
+            distance_tolerance_px=5.0,
+            prediction_xy=None,
+            maximum_prediction_distance_px=45.0,
+        )
+        self.assertEqual(count, 64)
+        np.testing.assert_allclose(center, [73.5, 49.5])
+
+    def test_front_label_provides_heading_without_body_segmentation(self):
+        frame = np.zeros((120, 120, 3), dtype=np.uint8)
+        background = np.zeros_like(frame)
+        blue = np.zeros((120, 120), dtype=np.uint8)
+        red = np.zeros_like(blue)
+        blue[46:54, 46:54] = 255
+        red[46:54, 70:78] = 255
+        grid = sys.modules["aruco_trajectory"].GridCalibration(
+            x_lines_px=np.asarray([10.0, 110.0]),
+            y_lines_px=np.asarray([10.0, 110.0]),
+            x_origin_px=10.0,
+            y_origin_px=10.0,
+            x_pitch_px=100.0,
+            y_pitch_px=100.0,
+            cells=1,
+            x_peak_contrast=1.0,
+            y_peak_contrast=1.0,
+        )
+        args = argparse.Namespace(
+            foreground_blur=3,
+            foreground_threshold=1,
+            morph_open=1,
+            morph_close=1,
+            tracking_radius_px=45.0,
+            minimum_green_pixels=20,
+            minimum_body_pixels=80,
+            cue_colour="none",
+            label_colour="blue",
+            front_label_colour="red",
+            minimum_label_pixels=20,
+            maximum_label_pixels=180,
+            minimum_front_label_pixels=20,
+            maximum_front_label_pixels=180,
+            minimum_cue_pixels=1,
+            maximum_cue_pixels=100,
+            minimum_cue_lever_arm_px=10.0,
+            cue_distance_relative_tolerance=0.9,
+            cue_yaw_offset_deg=0.0,
+            front_label_yaw_offset_deg=0.0,
+            initial_yaw_deg=None,
+            maximum_yaw_rate_deg_s=3000.0,
+            minimum_axis_anisotropy=0.5,
+            axis_yaw_offset_deg=0.0,
+            position_source="label",
+        )
+        with (
+            mock.patch.object(MARKERLESS, "blue_label_mask", return_value=blue),
+            mock.patch.object(MARKERLESS, "red_mask", return_value=red),
+            mock.patch.object(
+                MARKERLESS,
+                "green_mask",
+                return_value=np.zeros_like(blue),
+            ),
+        ):
+            result = MARKERLESS.detect_pose(
+                frame,
+                background,
+                grid,
+                args,
+                None,
+                None,
+                None,
+                None,
+                None,
+                64.0,
+                64.0,
+                24.0,
+                5.0,
+                np.zeros(2, dtype=float),
+                deque(),
+                False,
+                1.0 / 240.0,
+            )
+        np.testing.assert_allclose(result[0], [49.5, 49.5])
+        np.testing.assert_allclose(result[4], [73.5, 49.5])
+        self.assertAlmostEqual(result[6], 0.0)
+        self.assertTrue(result[-3])
+        self.assertEqual(result[-2], "front_label")
+
     def test_position_only_interpolates_without_valid_heading(self):
         detections = []
         for index in range(3):
@@ -525,11 +673,13 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
                     body_xy=nan_xy,
                     cue_xy=nan_xy,
                     label_xy=position,
+                    front_label_xy=nan_xy,
                     yaw_unwrapped_deg=float("nan"),
                     body_pixel_count=0,
                     green_pixel_count=0,
                     cue_pixel_count=0,
                     label_pixel_count=55,
+                    front_label_pixel_count=0,
                     cue_brightness=0.0,
                     axis_anisotropy=0.0,
                     pose_confidence=1.0,

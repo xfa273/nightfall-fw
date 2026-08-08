@@ -3,10 +3,10 @@
 
 Fixed ArUco markers remain around the maze to stabilize the maze plane.  The
 vehicle center is preferably tracked from its 8 mm blue label.  Background
-difference and the green PCB still provide its body silhouette and heading.  A
-separate coloured LED can provide a directed heading; otherwise the foreground
-principal axis is followed with a known initial heading to resolve its 180
-degree ambiguity.
+difference and the green PCB still provide its body silhouette.  A second red
+label at a known distance in front of the blue label provides a directed
+heading.  A separate coloured LED or the foreground principal axis remains as
+a fallback.
 
 The implementation intentionally reuses the proven fixed-marker and grid code
 from ``aruco_trajectory.py`` so the original carried-marker workflow remains
@@ -39,6 +39,8 @@ BLUE_LABEL_HSV_LOW = (94, 80, 70)
 BLUE_LABEL_HSV_HIGH = (104, 255, 255)
 BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 18
 BLUE_LABEL_MIN_BLUE_RED_EXCESS = 40
+DEFAULT_FRONT_LABEL_DISTANCE_MM = 24.0
+FRONT_LABEL_CALIBRATION_SCHEMA = "nightfall_front_label_heading_calibration_v1"
 
 
 @dataclass
@@ -49,11 +51,13 @@ class Detection:
     body_xy: np.ndarray
     cue_xy: np.ndarray
     label_xy: np.ndarray
+    front_label_xy: np.ndarray
     yaw_unwrapped_deg: float
     body_pixel_count: int
     green_pixel_count: int
     cue_pixel_count: int
     label_pixel_count: int
+    front_label_pixel_count: int
     cue_brightness: float
     axis_anisotropy: float
     pose_confidence: float
@@ -136,6 +140,67 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=8.0,
         help="physical diameter of the circular vehicle-center label",
+    )
+    parser.add_argument(
+        "--front-label-colour",
+        choices=("red", "none"),
+        default="red",
+        help="colour of the directed heading label in front of the centre",
+    )
+    parser.add_argument(
+        "--front-label-diameter-mm",
+        type=float,
+        default=8.0,
+    )
+    parser.add_argument(
+        "--front-label-distance-mm",
+        type=float,
+        default=DEFAULT_FRONT_LABEL_DISTANCE_MM,
+        help="measured centre-to-centre distance from blue to front label",
+    )
+    parser.add_argument(
+        "--front-label-distance-tolerance-mm",
+        type=float,
+        default=8.0,
+        help=(
+            "allowed apparent baseline error after floor-plane rectification; "
+            "includes label-height parallax"
+        ),
+    )
+    parser.add_argument("--minimum-front-label-pixels", type=int, default=20)
+    parser.add_argument("--maximum-front-label-pixels", type=int, default=180)
+    parser.add_argument(
+        "--front-label-yaw-offset-deg",
+        type=float,
+        default=0.0,
+        help="vehicle-forward yaw minus blue-centre-to-red-label direction",
+    )
+    parser.add_argument(
+        "--front-label-bias-right-mm",
+        type=float,
+        default=0.0,
+        help=(
+            "apparent blue-to-red vector bias toward maze +x to subtract; "
+            "calibrates differential label-height parallax"
+        ),
+    )
+    parser.add_argument(
+        "--front-label-bias-forward-mm",
+        type=float,
+        default=0.0,
+        help=(
+            "apparent blue-to-red vector bias toward maze +y to subtract; "
+            "calibrates differential label-height parallax"
+        ),
+    )
+    parser.add_argument(
+        "--front-label-calibration",
+        type=Path,
+        default=None,
+        help=(
+            "heading calibration JSON produced by "
+            "fit_front_label_heading.py; supplies parallax-bias correction"
+        ),
     )
     parser.add_argument(
         "--minimum-cue-lever-arm-px",
@@ -264,6 +329,12 @@ def validate_args(args: argparse.Namespace) -> None:
         "cell_size_mm",
         "tracking_radius_px",
         "label_diameter_mm",
+        "front_label_diameter_mm",
+        "front_label_distance_mm",
+        "front_label_distance_tolerance_mm",
+        "front_label_yaw_offset_deg",
+        "front_label_bias_right_mm",
+        "front_label_bias_forward_mm",
         "minimum_cue_lever_arm_px",
         "cue_distance_relative_tolerance",
         "minimum_axis_anisotropy",
@@ -283,7 +354,7 @@ def validate_args(args: argparse.Namespace) -> None:
             raise ValueError(f"--{name.replace('_', '-')} must be finite")
     if not args.video.is_file():
         raise ValueError(f"video does not exist: {args.video}")
-    for name in ("board_layout", "background_video"):
+    for name in ("board_layout", "background_video", "front_label_calibration"):
         path = getattr(args, name)
         if path is not None and not path.is_file():
             raise ValueError(f"--{name.replace('_', '-')} does not exist: {path}")
@@ -336,6 +407,29 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--label-diameter-mm must be positive")
     if args.position_source == "label" and args.label_colour == "none":
         raise ValueError("--position-source label requires --label-colour blue")
+    if args.front_label_diameter_mm <= 0:
+        raise ValueError("--front-label-diameter-mm must be positive")
+    if args.front_label_distance_mm <= 0:
+        raise ValueError("--front-label-distance-mm must be positive")
+    if args.front_label_distance_tolerance_mm <= 0:
+        raise ValueError(
+            "--front-label-distance-tolerance-mm must be positive"
+        )
+    if args.minimum_front_label_pixels <= 0:
+        raise ValueError("--minimum-front-label-pixels must be positive")
+    if args.maximum_front_label_pixels < args.minimum_front_label_pixels:
+        raise ValueError(
+            "--maximum-front-label-pixels must be >= "
+            "--minimum-front-label-pixels"
+        )
+    if args.front_label_calibration is not None and (
+        args.front_label_bias_right_mm != 0.0
+        or args.front_label_bias_forward_mm != 0.0
+    ):
+        raise ValueError(
+            "--front-label-calibration cannot be combined with direct "
+            "front-label bias values"
+        )
     if args.minimum_cue_lever_arm_px <= 0:
         raise ValueError("--minimum-cue-lever-arm-px must be positive")
     if not 0 < args.cue_distance_relative_tolerance < 2:
@@ -368,6 +462,55 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def load_front_label_calibration(
+    path: Path,
+    expected_distance_mm: float,
+) -> dict[str, object]:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid front-label calibration JSON: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("front-label calibration root must be an object")
+    if raw.get("schema") != FRONT_LABEL_CALIBRATION_SCHEMA:
+        raise ValueError(
+            "front-label calibration schema must be "
+            f"{FRONT_LABEL_CALIBRATION_SCHEMA}"
+        )
+    if raw.get("coordinate_system") != "x_right_y_forward_mm":
+        raise ValueError(
+            "front-label calibration coordinate_system must be "
+            "x_right_y_forward_mm"
+        )
+    try:
+        calibrated_distance = float(raw["front_label_distance_mm"])
+        bias = raw["apparent_vector_bias_mm"]
+        bias_right = float(bias["right"])
+        bias_forward = float(bias["forward"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("front-label calibration fields are invalid") from exc
+    if not all(
+        math.isfinite(value)
+        for value in (calibrated_distance, bias_right, bias_forward)
+    ):
+        raise ValueError("front-label calibration values must be finite")
+    if not math.isclose(
+        calibrated_distance,
+        expected_distance_mm,
+        rel_tol=0.0,
+        abs_tol=0.1,
+    ):
+        raise ValueError(
+            "front-label calibration distance does not match "
+            "--front-label-distance-mm"
+        )
+    return {
+        "raw": raw,
+        "bias_right_mm": bias_right,
+        "bias_forward_mm": bias_forward,
+    }
 
 
 def video_timestamps(
@@ -665,6 +808,67 @@ def _label_component(
     )
 
 
+def _front_label_component(
+    mask: np.ndarray,
+    center_xy: np.ndarray,
+    minimum_pixels: int,
+    maximum_pixels: int,
+    expected_pixels: float,
+    expected_distance_px: float,
+    distance_tolerance_px: float,
+    prediction_xy: Optional[np.ndarray],
+    maximum_prediction_distance_px: float,
+) -> tuple[Optional[np.ndarray], int, Optional[np.ndarray]]:
+    """Select a compact red label on the expected ring around the centre.
+
+    Maze walls and the rear status LED are also red.  Component area/shape,
+    the measured 24 mm centre-to-front baseline, and temporal prediction make
+    the front label independently identifiable even when body segmentation is
+    unavailable.
+    """
+
+    count, labels, stats, centers = cv2.connectedComponentsWithStats(
+        mask,
+        connectivity=8,
+    )
+    candidates: list[tuple[float, int]] = []
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        if not minimum_pixels <= area <= maximum_pixels:
+            continue
+        baseline = float(np.linalg.norm(centers[label] - center_xy))
+        baseline_error = abs(baseline - expected_distance_px)
+        if baseline_error > distance_tolerance_px:
+            continue
+        prediction_error = 0.0
+        if prediction_xy is not None:
+            prediction_error = float(
+                np.linalg.norm(centers[label] - prediction_xy)
+            )
+            if prediction_error > maximum_prediction_distance_px:
+                continue
+        width = max(1, int(stats[label, cv2.CC_STAT_WIDTH]))
+        height = max(1, int(stats[label, cv2.CC_STAT_HEIGHT]))
+        area_error = abs(math.log(area / max(1.0, expected_pixels)))
+        aspect_error = abs(math.log(width / height))
+        score = (
+            0.45 * baseline_error
+            + 2.0 * area_error
+            + 0.35 * aspect_error
+            + 0.08 * prediction_error
+        )
+        candidates.append((score, label))
+    if not candidates:
+        return None, 0, None
+    _, selected = min(candidates)
+    component = np.where(labels == selected, 255, 0).astype(np.uint8)
+    return (
+        np.asarray(centers[selected], dtype=float),
+        int(stats[selected, cv2.CC_STAT_AREA]),
+        component,
+    )
+
+
 def _foreground_cluster(
     mask: np.ndarray,
     seed_xy: np.ndarray,
@@ -784,13 +988,20 @@ def _update_tracker_velocity(
     )
 
 
+def _pixels_per_mm(
+    grid: aruco.GridCalibration,
+    cell_size_mm: Optional[float],
+) -> float:
+    physical_pitch_mm = cell_size_mm if cell_size_mm is not None else 90.0
+    return math.sqrt(grid.x_pitch_px * grid.y_pitch_px) / physical_pitch_mm
+
+
 def _expected_label_pixels(
     grid: aruco.GridCalibration,
     label_diameter_mm: float,
     cell_size_mm: Optional[float],
 ) -> float:
-    physical_pitch_mm = cell_size_mm if cell_size_mm is not None else 90.0
-    pixels_per_mm = math.sqrt(grid.x_pitch_px * grid.y_pitch_px) / physical_pitch_mm
+    pixels_per_mm = _pixels_per_mm(grid, cell_size_mm)
     radius_px = 0.5 * label_diameter_mm * pixels_per_mm
     return math.pi * radius_px * radius_px
 
@@ -818,7 +1029,12 @@ def detect_pose(
     prior_yaw_deg: Optional[float],
     predicted_cue_xy: Optional[np.ndarray],
     predicted_label_xy: Optional[np.ndarray],
+    predicted_front_label_xy: Optional[np.ndarray],
     expected_label_pixels: float,
+    expected_front_label_pixels: float,
+    expected_front_label_distance_px: float,
+    front_label_distance_tolerance_px: float,
+    front_label_bias_xy_px: np.ndarray,
     cue_distances: deque[float],
     prediction_is_seed: bool,
     frame_period_s: float,
@@ -828,7 +1044,9 @@ def detect_pose(
     np.ndarray,
     np.ndarray,
     np.ndarray,
+    np.ndarray,
     float,
+    int,
     int,
     int,
     int,
@@ -875,6 +1093,21 @@ def detect_pose(
             args.maximum_label_pixels,
             expected_label_pixels,
             predicted_label_xy,
+            max(20.0, min(45.0, args.tracking_radius_px)),
+        )
+
+    front_label_xy: Optional[np.ndarray] = None
+    front_label_count = 0
+    if args.front_label_colour == "red" and label_xy is not None:
+        front_label_xy, front_label_count, _ = _front_label_component(
+            red_mask(frame) & board,
+            label_xy,
+            args.minimum_front_label_pixels,
+            args.maximum_front_label_pixels,
+            expected_front_label_pixels,
+            expected_front_label_distance_px,
+            front_label_distance_tolerance_px,
+            predicted_front_label_xy,
             max(20.0, min(45.0, args.tracking_radius_px)),
         )
 
@@ -942,8 +1175,28 @@ def detect_pose(
     heading_valid = False
     heading_source = "missing"
     yaw = float(prior_yaw_deg) if prior_yaw_deg is not None else float("nan")
+    if front_label_xy is not None and label_xy is not None:
+        vector = front_label_xy - label_xy - front_label_bias_xy_px
+        front_direction = math.degrees(math.atan2(-vector[1], vector[0]))
+        candidate_yaw = _nearest_periodic(
+            front_direction + args.front_label_yaw_offset_deg,
+            prior_yaw_deg if prior_yaw_deg is not None else args.initial_yaw_deg,
+            360.0,
+        )
+        if _yaw_innovation_is_valid(
+            candidate_yaw,
+            prior_yaw_deg,
+            args.maximum_yaw_rate_deg_s,
+            frame_period_s,
+        ):
+            yaw = candidate_yaw
+            heading_valid = True
+            heading_source = "front_label"
+        else:
+            heading_source = "front_label_rejected_yaw_rate"
+
     cue_was_rejected = False
-    if cue_xy is not None and body_xy is not None:
+    if not heading_valid and cue_xy is not None and body_xy is not None:
         vector = cue_xy - body_xy
         cue_distance = float(np.linalg.norm(vector))
         distance_valid = _cue_distance_is_valid(
@@ -976,7 +1229,12 @@ def detect_pose(
             cue_was_rejected = True
             heading_source = "cue_rejected_geometry"
 
-    if cue_xy is None and not cue_was_rejected and body_xy is not None:
+    if (
+        not heading_valid
+        and cue_xy is None
+        and not cue_was_rejected
+        and body_xy is not None
+    ):
         if math.isfinite(axis_angle) and anisotropy >= args.minimum_axis_anisotropy:
             candidate_yaw = _nearest_periodic(
                 axis_angle + args.axis_yaw_offset_deg,
@@ -1084,12 +1342,14 @@ def detect_pose(
         body_xy if body_xy is not None else nan_xy,
         accepted_cue_xy if accepted_cue_xy is not None else nan_xy,
         label_xy if label_xy is not None else nan_xy,
+        front_label_xy if front_label_xy is not None else nan_xy,
         green_xy if green_xy is not None else nan_xy,
         yaw,
         body_count,
         green_count,
         cue_count,
         label_count,
+        front_label_count,
         cue_value,
         anisotropy,
         confidence,
@@ -1239,6 +1499,7 @@ def write_csv(
         "green_pixel_count",
         "cue_pixel_count",
         "label_pixel_count",
+        "front_label_pixel_count",
         "cue_brightness",
         "axis_anisotropy",
         "heading_source",
@@ -1249,6 +1510,9 @@ def write_csv(
         "cue_y_px",
         "label_x_px",
         "label_y_px",
+        "front_label_x_px",
+        "front_label_y_px",
+        "front_label_distance_px",
         "fixed_ids",
         "homography_rmse_px",
         "homography_used_previous",
@@ -1272,6 +1536,7 @@ def write_csv(
                 "green_pixel_count": detection.green_pixel_count,
                 "cue_pixel_count": detection.cue_pixel_count,
                 "label_pixel_count": detection.label_pixel_count,
+                "front_label_pixel_count": detection.front_label_pixel_count,
                 "cue_brightness": _fmt(detection.cue_brightness, 3),
                 "axis_anisotropy": _fmt(detection.axis_anisotropy),
                 "heading_source": detection.heading_source,
@@ -1282,6 +1547,12 @@ def write_csv(
                 "cue_y_px": _fmt(detection.cue_xy[1], 4),
                 "label_x_px": _fmt(detection.label_xy[0], 4),
                 "label_y_px": _fmt(detection.label_xy[1], 4),
+                "front_label_x_px": _fmt(detection.front_label_xy[0], 4),
+                "front_label_y_px": _fmt(detection.front_label_xy[1], 4),
+                "front_label_distance_px": _fmt(
+                    np.linalg.norm(detection.front_label_xy - detection.label_xy),
+                    4,
+                ),
                 "fixed_ids": "|".join(map(str, calibration.fixed_ids)),
                 "homography_rmse_px": _fmt(
                     calibration.reprojection_rmse_px,
@@ -1418,6 +1689,23 @@ def render_video(
                 2,
                 cv2.LINE_AA,
             )
+        if np.all(np.isfinite(detection.front_label_xy)):
+            cv2.line(
+                top,
+                tuple(np.rint(detection.label_xy).astype(int)),
+                tuple(np.rint(detection.front_label_xy).astype(int)),
+                (0, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+            cv2.circle(
+                top,
+                tuple(np.rint(detection.front_label_xy).astype(int)),
+                7,
+                (0, 0, 255),
+                2,
+                cv2.LINE_AA,
+            )
         cv2.putText(
             top,
             "t={:.3f}s valid={} conf={:.2f} {} / {}".format(
@@ -1488,6 +1776,18 @@ def main() -> int:
             args.cell_size_confirmed = True
         elif args.grid_cells is None:
             args.grid_cells = 8
+        front_label_calibration: Optional[dict[str, object]] = None
+        if args.front_label_calibration is not None:
+            front_label_calibration = load_front_label_calibration(
+                args.front_label_calibration,
+                args.front_label_distance_mm,
+            )
+            args.front_label_bias_right_mm = float(
+                front_label_calibration["bias_right_mm"]
+            )
+            args.front_label_bias_forward_mm = float(
+                front_label_calibration["bias_forward_mm"]
+            )
         output_dir = (
             args.output_dir
             if args.output_dir is not None
@@ -1573,6 +1873,25 @@ def main() -> int:
             args.label_diameter_mm,
             args.cell_size_mm,
         )
+        pixels_per_mm = _pixels_per_mm(grid, args.cell_size_mm)
+        expected_front_label_pixels = _expected_label_pixels(
+            grid,
+            args.front_label_diameter_mm,
+            args.cell_size_mm,
+        )
+        expected_front_label_distance_px = (
+            args.front_label_distance_mm * pixels_per_mm
+        )
+        front_label_distance_tolerance_px = (
+            args.front_label_distance_tolerance_mm * pixels_per_mm
+        )
+        front_label_bias_xy_px = np.asarray(
+            [
+                args.front_label_bias_right_mm * pixels_per_mm,
+                -args.front_label_bias_forward_mm * pixels_per_mm,
+            ],
+            dtype=float,
+        )
         reference_path = output_dir / "reference_topview.png"
         if not cv2.imwrite(str(reference_path), background):
             raise RuntimeError(f"failed to write {reference_path}")
@@ -1595,8 +1914,11 @@ def main() -> int:
         prior_cue_frame: Optional[int] = None
         prior_label: Optional[np.ndarray] = None
         prior_label_frame: Optional[int] = None
+        prior_front_label: Optional[np.ndarray] = None
+        prior_front_label_frame: Optional[int] = None
         tracker_velocity = np.zeros(2, dtype=float)
         label_velocity = np.zeros(2, dtype=float)
+        front_label_velocity = np.zeros(2, dtype=float)
         prior_yaw = args.initial_yaw_deg
         cue_distances: deque[float] = deque(maxlen=120)
         frame_index = 0
@@ -1627,17 +1949,25 @@ def main() -> int:
                 prior_label_frame,
                 frame_index,
             )
+            predicted_front_label = _predict_tracker_position(
+                prior_front_label,
+                front_label_velocity,
+                prior_front_label_frame,
+                frame_index,
+            )
             (
                 position_xy,
                 body_xy,
                 cue_xy,
                 label_xy,
+                front_label_xy,
                 detected_green,
                 yaw,
                 body_count,
                 green_count,
                 cue_count,
                 label_count,
+                front_label_count,
                 cue_value,
                 anisotropy,
                 confidence,
@@ -1654,7 +1984,12 @@ def main() -> int:
                 prior_yaw,
                 predicted_cue,
                 predicted_label,
+                predicted_front_label,
                 expected_label_pixels,
+                expected_front_label_pixels,
+                expected_front_label_distance_px,
+                front_label_distance_tolerance_px,
+                front_label_bias_xy_px,
                 cue_distances,
                 prior_green is not None and not prior_green_is_observed,
                 (
@@ -1671,11 +2006,13 @@ def main() -> int:
                     body_xy=body_xy,
                     cue_xy=cue_xy,
                     label_xy=label_xy,
+                    front_label_xy=front_label_xy,
                     yaw_unwrapped_deg=yaw,
                     body_pixel_count=body_count,
                     green_pixel_count=green_count,
                     cue_pixel_count=cue_count,
                     label_pixel_count=label_count,
+                    front_label_pixel_count=front_label_count,
                     cue_brightness=cue_value,
                     axis_anisotropy=anisotropy,
                     pose_confidence=confidence,
@@ -1712,6 +2049,20 @@ def main() -> int:
                     )
                 prior_label = label_xy
                 prior_label_frame = frame_index
+            if np.all(np.isfinite(front_label_xy)):
+                if (
+                    prior_front_label is not None
+                    and prior_front_label_frame is not None
+                ):
+                    front_label_velocity = _update_tracker_velocity(
+                        front_label_velocity,
+                        prior_front_label,
+                        front_label_xy,
+                        prior_front_label_frame,
+                        frame_index,
+                    )
+                prior_front_label = front_label_xy
+                prior_front_label_frame = frame_index
             if np.all(np.isfinite(cue_xy)):
                 prior_cue = cue_xy
                 prior_cue_frame = frame_index
@@ -1779,13 +2130,22 @@ def main() -> int:
             for item in detections
             if np.all(np.isfinite(item.cue_xy)) and np.all(np.isfinite(item.body_xy))
         ]
+        front_label_distances_px = [
+            float(np.linalg.norm(item.front_label_xy - item.label_xy))
+            for item in detections
+            if np.all(np.isfinite(item.front_label_xy))
+            and np.all(np.isfinite(item.label_xy))
+        ]
+        front_label_distances_mm = [
+            distance / pixels_per_mm for distance in front_label_distances_px
+        ]
         homography_errors = [
             item.reprojection_rmse_px
             for item in calibrations
             if math.isfinite(item.reprojection_rmse_px)
         ]
         report = {
-            "schema": "nightfall_markerless_trajectory_qa_v2",
+            "schema": "nightfall_markerless_trajectory_qa_v3",
             "input": {
                 "path": str(args.video.resolve()),
                 "sha256": sha256_file(args.video),
@@ -1851,9 +2211,9 @@ def main() -> int:
             },
             "markerless_pose": {
                 "method": (
-                    "blue center-label position with rectified "
-                    "median-background/green-PCB body and colour-cue or "
-                    "principal-axis heading"
+                    "blue center-label position with blue-to-red front-label "
+                    "heading; rectified median-background/green-PCB body, "
+                    "colour cue, and principal axis are fallbacks"
                 ),
                 "valid_frames": sum(item.pose_valid for item in detections),
                 "missing_frames": sum(not item.pose_valid for item in detections),
@@ -1889,6 +2249,25 @@ def main() -> int:
                         if item.label_pixel_count > 0
                     ]
                 ),
+                "front_label_detected_frames": sum(
+                    item.front_label_pixel_count > 0 for item in detections
+                ),
+                "front_label_missing_frames": sum(
+                    item.front_label_pixel_count == 0 for item in detections
+                ),
+                "front_label_pixel_count": percentile_summary(
+                    [
+                        item.front_label_pixel_count
+                        for item in detections
+                        if item.front_label_pixel_count > 0
+                    ]
+                ),
+                "front_label_distance_px": percentile_summary(
+                    front_label_distances_px
+                ),
+                "front_label_distance_mm_observed": percentile_summary(
+                    front_label_distances_mm
+                ),
                 "accepted_cue_lever_arm_px": percentile_summary(cue_lever_arms),
                 "cue_brightness": percentile_summary(
                     [item.cue_brightness for item in detections]
@@ -1900,6 +2279,24 @@ def main() -> int:
                     else None
                 ),
                 "cue_yaw_offset_deg": args.cue_yaw_offset_deg,
+                "front_label_yaw_offset_deg": (
+                    args.front_label_yaw_offset_deg
+                ),
+                "front_label_bias_right_mm": (
+                    args.front_label_bias_right_mm
+                ),
+                "front_label_bias_forward_mm": (
+                    args.front_label_bias_forward_mm
+                ),
+                "front_label_calibration": (
+                    {
+                        "path": str(args.front_label_calibration.resolve()),
+                        "sha256": sha256_file(args.front_label_calibration),
+                        "schema": FRONT_LABEL_CALIBRATION_SCHEMA,
+                    }
+                    if args.front_label_calibration is not None
+                    else None
+                ),
                 "axis_yaw_offset_deg": args.axis_yaw_offset_deg,
                 "minimum_cue_lever_arm_px": (args.minimum_cue_lever_arm_px),
                 "cue_distance_relative_tolerance": (
@@ -1909,7 +2306,8 @@ def main() -> int:
                 "maximum_yaw_rate_deg_s": (args.maximum_yaw_rate_deg_s),
                 "tracked_point": args.position_source,
                 "front_back_ambiguity_resolved": (
-                    source_counts.get("colour_cue", 0) > 0
+                    source_counts.get("front_label", 0) > 0
+                    or source_counts.get("colour_cue", 0) > 0
                     or args.initial_yaw_deg is not None
                 ),
             },
@@ -1927,6 +2325,22 @@ def main() -> int:
                 "expected_label_pixels": expected_label_pixels,
                 "minimum_label_pixels": args.minimum_label_pixels,
                 "maximum_label_pixels": args.maximum_label_pixels,
+                "front_label_colour": args.front_label_colour,
+                "front_label_diameter_mm": args.front_label_diameter_mm,
+                "front_label_distance_mm": args.front_label_distance_mm,
+                "front_label_distance_tolerance_mm": (
+                    args.front_label_distance_tolerance_mm
+                ),
+                "expected_front_label_pixels": expected_front_label_pixels,
+                "expected_front_label_distance_px": (
+                    expected_front_label_distance_px
+                ),
+                "minimum_front_label_pixels": (
+                    args.minimum_front_label_pixels
+                ),
+                "maximum_front_label_pixels": (
+                    args.maximum_front_label_pixels
+                ),
                 "blue_label_hsv_low": list(BLUE_LABEL_HSV_LOW),
                 "blue_label_hsv_high": list(BLUE_LABEL_HSV_HIGH),
                 "blue_label_min_blue_green_excess": (
@@ -1957,7 +2371,7 @@ def main() -> int:
             },
         }
         calibration = {
-            "schema": "nightfall_markerless_board_calibration_v2",
+            "schema": "nightfall_markerless_board_calibration_v3",
             "fixed_layout": aruco.DEFAULT_FIXED_LAYOUT,
             "measured_layout": (
                 {
@@ -2008,12 +2422,13 @@ def main() -> int:
             encoding="utf-8",
         )
         print(
-            "[MARKERLESS] frames={} valid={} missing={} label={} cue={} "
-            "timestamp={}".format(
+            "[MARKERLESS] frames={} valid={} missing={} center={} front={} "
+            "cue={} timestamp={}".format(
                 info.frame_count,
                 report["markerless_pose"]["valid_frames"],
                 report["markerless_pose"]["missing_frames"],
                 report["markerless_pose"]["label_detected_frames"],
+                report["markerless_pose"]["front_label_detected_frames"],
                 source_counts.get("colour_cue", 0),
                 timestamp_source,
             )

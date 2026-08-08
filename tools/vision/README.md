@@ -8,8 +8,10 @@ Reusable tools in this directory are:
 
 - `aruco_trajectory.py`: carried-ArUco reference extractor for the existing
   8×8 test board
-- `markerless_trajectory.py`: fixed board markers plus green PCB, foreground,
-  and one red cue; no vehicle marker is used
+- `markerless_trajectory.py`: fixed board markers plus blue centre and red front
+  labels; no vehicle ArUco marker is used
+- `fit_front_label_heading.py`: fits the fixed image-space bias caused by a
+  height difference between the two vehicle labels
 - `desk_green_pair_probe.py`: raw-pixel feasibility probe that tracks the two
   separated green PCB regions before a marked maze fixture is available
 - `generate_fixed_aruco_print_pack.py`: print-ready A4 PDF and vector SVG
@@ -119,21 +121,43 @@ pipeline is:
 2. a narrow blue-colour mask for the 8 mm circular vehicle-centre label;
 3. expected metric area, circularity, and temporal prediction to distinguish
    the label from the bluer optical START/STOP LEDs;
-4. a 41-frame temporal-median background plus the green PCB to estimate the
+4. an 8 mm red label 24 mm in front of the blue label, with expected area,
+   baseline, circularity, and temporal prediction to reject red walls and the
+   rear status LED;
+5. the directed blue-to-red vector as the primary heading measurement;
+6. a 41-frame temporal-median background plus the green PCB to estimate the
    body silhouette;
-5. one optional red component as a directed heading cue;
-6. gated foreground principal-axis continuity as a heading fallback.
+7. the legacy red body-centroid cue and gated foreground principal axis as
+   heading fallbacks.
 
-The blue label is the default position source. Its position stays valid even
-when green-PCB or body extraction fails; those features are now used only to
-estimate heading. This is still not a general colour tracker: the HSV and
-blue-channel gates were measured for the current Pixel 8 exposure, lighting,
-and blue label. Revalidate them after changing the label material, camera
-processing, or illumination. The current red tracker is not a multi-LED pose
-solver. Cue lever arm, recent cue distance, principal-axis anisotropy, and
-maximum yaw rate gate `heading_valid` independently of position validity.
-`qa_report.json` records label detection/area and accepted-cue lever-arm
-percentiles.
+The blue label is the default position source. Its position and the two-label
+heading stay valid even when green-PCB or body extraction fails. This is still
+not a general colour tracker: the HSV/channel gates were measured for the
+current Pixel 8 exposure, lighting, and labels. Revalidate them after changing
+label material, camera processing, or illumination. Maximum yaw rate gates
+`heading_valid` independently of position validity. `qa_report.json` records
+both label detection rates, areas, observed baseline, selected heading source,
+and the applied heading calibration.
+
+Place the blue and red label surfaces at the same height when practical. A
+height difference makes floor-plane rectification add an approximately fixed
+vector to the observed blue-to-red baseline. It biases yaw even when both
+centres are detected accurately. With the camera and vehicle label placement
+fixed, record turns covering at least 60 degrees, first extract uncalibrated
+trajectories, and fit that vector:
+
+```sh
+./.venv-vision/bin/python tools/vision/fit_front_label_heading.py \
+  trial90/trajectory.csv trial180/trajectory.csv \
+  --board-layout /path/to/board_layout.json \
+  --front-label-distance-mm 24 \
+  --output /path/to/front_label_heading_calibration.json
+```
+
+Repeat the calibration after changing camera position, rectification layout,
+or either label height. The fitted apparent radius need not equal the physical
+24 mm when the labels are above the maze plane; yaw uses only the circle-centre
+bias.
 
 Without `--background-video`, the median background assumes that the vehicle
 does not occupy the same pixel in half or more of the sampled run frames.
@@ -203,16 +227,19 @@ For a measured 4×4 setup, run:
   --position-source label \
   --label-colour blue \
   --label-diameter-mm 8 \
+  --front-label-colour red \
+  --front-label-diameter-mm 8 \
+  --front-label-distance-mm 24 \
+  --front-label-calibration /path/to/front_label_heading_calibration.json \
   --cue-colour none \
-  --position-only \
-  --initial-yaw-deg 180 \
   --maximum-missing-fraction 0.01
 ```
 
-`--position-only` makes blue-label position QA authoritative while continuing
-to export and report any heading estimate. It does not make an unreliable
-foreground heading accurate. Omit it and provide an unchanged empty-maze
-background plus a validated heading cue when yaw is required for turn fitting.
+For a one-label position-only analysis, set `--front-label-colour none` and add
+`--position-only`. That mode exports any fallback heading but does not make an
+unreliable foreground heading accurate. A two-label run does not require the
+empty-maze background for its primary position and heading; the background is
+still useful for body/fallback diagnostics.
 
 In legacy mode without `--board-layout`, `--grid-cells` is the number of
 visible analysis-grid pitches, not the nominal cell count of the complete

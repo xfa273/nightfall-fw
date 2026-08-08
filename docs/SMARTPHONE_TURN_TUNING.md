@@ -287,7 +287,9 @@ corner noiseを減らせる場合がある。本番実装では静的校正を�
 ### 4.1 現在実装している方法
 
 `markerless_trajectory.py`は、機体中央へ貼った直径8 mmの青ラベルを
-既定の位置基準として使う。現在の有効な位置フレームには次が必要である。
+既定の位置基準とし、その24 mm前方に貼った直径8 mmの赤ラベルとの
+有向ベクトルをyaw基準として使う。現在の有効な位置フレームには次が
+必要である。
 
 1. 実測layoutの4固定マーカ中心による盤面homography、3マーカ以上の
    corner RANSAC、または最大5フレームのbounded fallback
@@ -299,12 +301,21 @@ corner noiseを減らせる場合がある。本番実装では静的校正を�
 再検証する。緑PCBと背景差分の機体輪郭は、ラベル位置の必須条件では
 なく、body silhouetteとyaw推定の補助に使う。
 
-既定の位置sourceは青ラベルであり、単一の赤componentは有向yaw cueに
-だけ使える。赤cueが見つからないときは前景principal axisを前フレーム
-yawへ連続化するが、cue lever arm、直近cue距離、axis anisotropy、
-最大yaw rateを検査し、`heading_valid`を位置の`pose_valid`と別にCSVへ
-出す。`--position-only`ではheading不良を終了コードの失敗条件から外すが、
-推定yawが高精度になるわけではない。
+赤ラベルは、期待面積、青ラベルからの距離、円形度、時系列予測を使って
+赤い迷路壁や後方LEDから分離する。青・赤の両中心を検出できた場合は、
+輪郭を検出できなくても位置と有向yawを求められる。赤ラベルが見つから
+ないときだけ、従来のbody-centroid基準の赤cueまたは前景principal axisを
+fallbackとする。最大yaw rateなどを検査し、`heading_valid`を位置の
+`pose_valid`と別にCSVへ出す。`--position-only`ではheading不良を終了
+コードの失敗条件から外すが、推定yawが高精度になるわけではない。
+
+青と赤のラベル面は同じ高さに揃えるのが望ましい。高さが異なる場合、
+床面homographyで補正した青→赤ベクトルにはほぼ一定の視差ベクトルが
+加わり、両ラベルを正確に検出してもyawが偏る。カメラとラベル配置を
+固定し、60度以上のyaw範囲を含む未較正trajectoryを
+`fit_front_label_heading.py`へ渡すと、その固定成分を円当てはめで求めた
+較正JSONを生成できる。カメラ位置、盤面layout、どちらかのラベル高さを
+変更した場合は再較正する。
 
 背景は動画全体から等間隔に選んだ41フレームのmedianで作る。同じ場所を
 機体が半数以上のsampleで占有すると機体が背景へ入り、検出に失敗する。
@@ -327,8 +338,8 @@ mm精度と解釈してはならず、ターン調整には固定外周マーカ
 
 ### 4.2 推奨する次段
 
-輪郭長軸だけでは前後が180度曖昧で、影や反射にも弱い。機体にARマーカを
-貼らずに精度を上げる順序は次とする。
+青・赤2ラベル方式で輪郭長軸の180度曖昧性は解消した。さらにARマーカを
+貼らず、ラベルの汚れや遮蔽に対する冗長性を上げる候補は次である。
 
 1. 既存LEDのうち、前後または三角形になる2〜3灯を既知配置で点灯する。
 2. 各LEDを個別追跡し、剛体配置から位置とyawを求める。
@@ -553,6 +564,18 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
 次は、標準180 mmセルを4×4区画、90 mm解析pitchで映し、実測layoutと
 空迷路clipを使う例である。
 
+青・赤ラベルの高さが異なる場合は、先に異なるyawを含む未較正CSVから
+視差較正を作る。
+
+```sh
+./.venv-vision/bin/python \
+  tools/vision/fit_front_label_heading.py \
+  "$trial90_dir/trajectory.csv" "$trial180_dir/trajectory.csv" \
+  --board-layout "$session_dir/board_layout.json" \
+  --front-label-distance-mm 24 \
+  --output "$session_dir/front_label_heading_calibration.json"
+```
+
 ```sh
 ./.venv-vision/bin/python \
   tools/vision/markerless_trajectory.py \
@@ -563,17 +586,20 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
   --position-source label \
   --label-colour blue \
   --label-diameter-mm 8 \
+  --front-label-colour red \
+  --front-label-diameter-mm 8 \
+  --front-label-distance-mm 24 \
+  --front-label-calibration "$session_dir/front_label_heading_calibration.json" \
   --cue-colour none \
-  --position-only \
-  --initial-yaw-deg 180 \
   --maximum-missing-fraction 0.01
 ```
 
-layoutの固定マーカ幾何と青ラベルの条件を満たす試験だけに使う。
-`qa_report.json`のtimestamp source、homography、label検出率・面積、
-position sourceを次の工程前に確認する。yawをターンfitへ使う場合は
-`--position-only`を外し、空迷路backgroundと有向cueを用意した上で
-`accepted_cue_lever_arm_px`とheading validityも確認する。
+layoutの固定マーカ幾何と青・赤ラベルの条件を満たす試験だけに使う。
+`qa_report.json`のtimestamp source、homography、両labelの検出率・面積、
+観測baseline、position/heading source、較正JSONのSHA-256を次の工程前に
+確認する。青ラベルだけの位置解析では`--front-label-colour none`と
+`--position-only`を使う。2ラベルの主推定には空迷路backgroundは不要だが、
+body/fallbackの診断には有用である。
 
 ### 7.3 traceとのmotion同期
 
@@ -667,7 +693,8 @@ feedback gain分だけ次のsimulation targetへ反映し、既存のbounded fit
 - homography fallbackが0
 - markerless pose有効率が99%以上
 - yawを利用する解析ではmarkerless heading有効率が99%以上
-- yawを利用して単一LEDを使う構成ではcolour cue率が99%以上
+- yawを利用する2ラベル構成では赤front label検出率が99%以上
+- yawを利用して単一LEDを使うfallback構成ではcolour cue率が99%以上
 - cue欠落時のaxis fallbackはanisotropyとyaw rate gateを通ること
 - 静止時の位置・yaw標準偏差を記録
 - temporary ground truthによる画角内の絶対位置・yaw精度を記録
