@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="nightfall-dashboard-token" content="__NIGHTFALL_CSRF_TOKEN__">
+  <title>Nightfall HFR Monitor</title>
+  <link rel="stylesheet" href="/dashboard.css">
+  <script src="/dashboard.js" defer></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">NIGHTFALL / PIXEL HFR</p>
+        <h1>走行撮影モニター</h1>
+      </div>
+      <div id="connectionBadge" class="connection offline">
+        <span class="connection-dot" aria-hidden="true"></span>
+        <span id="connectionText">接続確認中</span>
+      </div>
+    </header>
+
+    <section id="hero" class="hero offline" aria-live="polite">
+      <div class="hero-icon" aria-hidden="true"><span></span></div>
+      <div class="hero-copy">
+        <p id="heroKicker" class="hero-kicker">PIXELを確認しています</p>
+        <h2 id="heroTitle">接続確認中</h2>
+        <p id="heroDetail">Nightfall HFR Recorderとの接続を待っています。</p>
+      </div>
+      <div class="hero-count">
+        <span id="sessionRuns" class="hero-count-number">—</span>
+        <span class="hero-count-label">この待機で保存</span>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="撮影数">
+      <article class="metric primary">
+        <span class="metric-label">このセッション</span>
+        <strong id="completedRuns">—</strong>
+        <span class="metric-unit">本保存</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Pixel内</span>
+        <strong id="savedRuns">—</strong>
+        <span class="metric-unit">本保持</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Mac未転送</span>
+        <strong id="pendingRuns">—</strong>
+        <span class="metric-unit">本</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">状態更新</span>
+        <strong id="freshness">—</strong>
+        <span class="metric-unit">秒前</span>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel validation-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">LATEST RUN</p>
+            <h3>直近動画の保存確認</h3>
+          </div>
+          <span id="validationBadge" class="pill neutral">未確認</span>
+        </div>
+        <p id="validationMessage" class="validation-message">
+          Pixelの保存一覧を確認しています。
+        </p>
+        <dl class="run-details">
+          <div><dt>run</dt><dd id="latestRunName">—</dd></div>
+          <div><dt>動画サイズ</dt><dd id="latestRunSize">—</dd></div>
+          <div><dt>転送</dt><dd id="latestRunTransfer">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="panel controls-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">REMOTE CONTROL</p>
+            <h3>撮影操作</h3>
+          </div>
+        </div>
+        <div class="button-grid">
+          <button id="startButton" class="button start" data-action="start">
+            連続待機を開始
+          </button>
+          <button id="stopButton" class="button stop" data-action="stop">
+            待機を終了
+          </button>
+          <button id="collectButton" class="button secondary" data-action="collect">
+            Macへ転送
+          </button>
+          <button id="stopCollectButton" class="button secondary" data-action="stop-and-collect">
+            終了して転送
+          </button>
+        </div>
+        <p id="operationMessage" class="operation-message">操作待ち</p>
+      </article>
+    </section>
+
+    <section class="panel event-panel">
+      <div class="panel-heading compact">
+        <div>
+          <p class="eyebrow">EVENTS</p>
+          <h3>この画面を開いてからの記録</h3>
+        </div>
+        <button id="clearEventsButton" class="text-button">クリア</button>
+      </div>
+      <ol id="eventList" class="event-list">
+        <li class="empty-event">まだイベントはありません。</li>
+      </ol>
+    </section>
+
+    <footer>
+      <span id="deviceInfo">Pixel情報を取得中</span>
+      <span>画面は自動更新されます</span>
+    </footer>
+  </main>
+</body>
+</html>

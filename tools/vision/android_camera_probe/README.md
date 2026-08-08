@@ -233,6 +233,41 @@ is deliberately available only while **Nightfall HFR Recorder** is open; after
 a Pixel reboot the app must be opened once locally (or with ADB during
 development). The current activity keeps the screen awake while it is open.
 
+### Mac live dashboard
+
+For routine turn tuning, keep a live status and control window open on the Mac:
+
+```sh
+tools/vision/android_camera_probe/hfr_dashboard.py
+```
+
+The command opens `http://127.0.0.1:8765/` in the default browser and refreshes
+Pixel state automatically. On macOS the executable
+`open_hfr_dashboard.command` can also be opened from Finder, avoiding a typed
+command. The dashboard shows a large state banner for armed, recording,
+re-arming, stopped, disconnected, and error states; the current continuous
+session count; retained and not-yet-transferred counts; and whether the newest
+run has a complete MP4/report/result artifact set. After a run it changes to
+**保存確認済み・次の走行OK** only when the Pixel has returned to optical
+standby and the newest retained run is complete. A recording that remains
+active for more than 15 seconds is highlighted as a possible missed STOP token
+or merged run.
+
+The same page provides continuous-standby start/stop, transfer, and explicit
+stop-and-transfer buttons. Transfer remains disabled while capture owns the
+camera/storage lease. The Pixel access token stays in the Mac process and is
+not sent to the browser; mutating dashboard requests use a per-launch token,
+and the server listens on loopback only by default. Useful options include:
+
+```sh
+# Keep the dashboard on another local port without opening a new browser tab.
+tools/vision/android_camera_probe/hfr_dashboard.py --port 8877 --no-open
+
+# Warn sooner for a test whose normal video is shorter than ten seconds.
+tools/vision/android_camera_probe/hfr_dashboard.py \
+  --recording-warning-seconds 10
+```
+
 After stopping a batch, transfer it with the unified controller:
 
 ```sh
