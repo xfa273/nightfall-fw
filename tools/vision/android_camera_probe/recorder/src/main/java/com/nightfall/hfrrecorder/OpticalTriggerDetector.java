@@ -4,10 +4,12 @@ package com.nightfall.hfrrecorder;
  * Detects a configurable visible-LED token emitted by the F413 firmware.
  *
  * <p>Only rising edges are decoded. Consecutive preview-frame changes and the
- * absolute blue level are combined, then all three spatially separated status
- * LEDs must rise simultaneously on each pulse about 650 ms apart. The same LED
- * triangle must be found in every pulse. Restricting the signal to this
- * blue-chroma geometry
+ * absolute blue level are combined.  The first pulse learns the three
+ * spatially separated status-LED locations; later pulses may retain two of
+ * those three locations so that one dim or compressed LED does not discard the
+ * token.  A confirmed low interval separates physical pulses and prevents one
+ * flickering ON interval from being counted twice.  Restricting the signal to
+ * this blue-chroma geometry
  * rejects white illumination changes, hands moving through the frame, and
  * ordinary single-LED UI activity. A short calibration period derives a
  * threshold from real preview noise. This class has no Android dependencies
@@ -24,16 +26,19 @@ final class OpticalTriggerDetector {
     private static final int CALIBRATION_PERCENTILE_DENOMINATOR = 10;
     private static final int CALIBRATION_MARGIN = 200;
     private static final int CALIBRATION_MULTIPLIER = 3;
-    private static final long RISE_REFRACTORY_NS = 150_000_000L;
+    private static final long LOW_CONFIRM_NS = 175_000_000L;
+    private static final long REARM_QUIET_NS = 500_000_000L;
     private static final long RISE_GAP_MIN_NS = 300_000_000L;
-    private static final long RISE_GAP_MAX_NS = 950_000_000L;
+    private static final long RISE_GAP_MAX_NS = 1_450_000_000L;
     private static final int MIN_COMPONENT_SCORE = 60;
     private static final int MIN_COMPONENT_HOT_PIXELS = 2;
     private static final int MAX_COMPONENTS = 12;
     private static final int MIN_LED_SEPARATION_SQUARED = 36;
     private static final int MAX_LED_SEPARATION_SQUARED = 10_000;
     private static final int MIN_TRIANGLE_DOUBLE_AREA = 30;
-    private static final int MAX_LED_MATCH_DISTANCE_SQUARED = 64;
+    private static final int MAX_LED_MATCH_DISTANCE_SQUARED = 144;
+    private static final int KNOWN_LED_RADIUS = 5;
+    private static final int MIN_KNOWN_LED_MATCHES = 2;
     private static final int[][] LED_MATCH_PERMUTATIONS = {
             {0, 1, 2},
             {0, 2, 1},
@@ -83,6 +88,7 @@ final class OpticalTriggerDetector {
     private static final class Pulse {
         final int[] x = new int[3];
         final int[] y = new int[3];
+        int matchedLeds = 3;
     }
 
     private final int configuredScoreThreshold;
@@ -109,7 +115,9 @@ final class OpticalTriggerDetector {
     private int effectiveScoreThreshold;
     private int acceptedRises;
     private long lastRiseNs;
-    private boolean pulseLevelHigh;
+    private long lowStartedNs = -1L;
+    private boolean riseArmed;
+    private boolean waitingForQuiet;
     private final int[] candidateLedX = new int[3];
     private final int[] candidateLedY = new int[3];
 
@@ -164,6 +172,12 @@ final class OpticalTriggerDetector {
     void rearm() {
         previous = null;
         resetSequence();
+    }
+
+    void rearmAfterQuiet() {
+        previous = null;
+        resetSequence();
+        waitingForQuiet = true;
     }
 
     Result process(int[] pixels, int frameWidth, int frameHeight, long nowNs) {
@@ -255,25 +269,41 @@ final class OpticalTriggerDetector {
                     )
             );
         }
-        Pulse levelPulse = findThreeLedPulse(
-                absoluteBlueChroma,
-                Math.max(MIN_COMPONENT_SCORE, effectiveScoreThreshold / 3)
-        );
-        boolean levelHigh = levelPulse != null;
-        Pulse pulse = !pulseLevelHigh
-                ? (levelPulse != null ? levelPulse : deltaPulse)
-                : null;
+        Pulse levelPulse = acceptedRises == 0
+                ? findThreeLedPulse(
+                        absoluteBlueChroma,
+                        Math.max(
+                                MIN_COMPONENT_SCORE,
+                                effectiveScoreThreshold / 3
+                        )
+                )
+                : findKnownLedPulse(absoluteBlueChroma);
+        Pulse pulse = levelPulse != null
+                ? levelPulse
+                : (acceptedRises == 0 ? deltaPulse : null);
         boolean triggered = false;
-        if (pulse != null
-                && (lastRiseNs == 0L
-                || nowNs - lastRiseNs >= RISE_REFRACTORY_NS)) {
+        if (pulse == null) {
+            if (lowStartedNs < 0L) {
+                lowStartedNs = nowNs;
+            }
+            long requiredLowNs = waitingForQuiet
+                    ? REARM_QUIET_NS
+                    : LOW_CONFIRM_NS;
+            if (nowNs - lowStartedNs >= requiredLowNs) {
+                riseArmed = true;
+                waitingForQuiet = false;
+            }
+        } else {
+            lowStartedNs = -1L;
+        }
+        if (pulse != null && riseArmed && !waitingForQuiet) {
+            riseArmed = false;
             triggered = acceptRise(pulse, nowNs);
         }
         if (acceptedRises != 0
                 && nowNs - lastRiseNs > RISE_GAP_MAX_NS) {
             resetSequence();
         }
-        pulseLevelHigh = levelHigh;
         return result(
                 triggered,
                 bestScore,
@@ -455,6 +485,78 @@ final class OpticalTriggerDetector {
         return Math.min(MAX_COMPONENTS, componentCount + 1);
     }
 
+    private Pulse findKnownLedPulse(int[] componentPixels) {
+        Pulse pulse = new Pulse();
+        boolean[] matchedKnown = new boolean[candidateLedX.length];
+        int matched = 0;
+        int componentScoreThreshold = Math.max(
+                MIN_COMPONENT_SCORE,
+                effectiveScoreThreshold / 3
+        );
+        for (int led = 0; led < candidateLedX.length; led += 1) {
+            int minX = Math.max(0, candidateLedX[led] - KNOWN_LED_RADIUS);
+            int maxX = Math.min(width - 1,
+                    candidateLedX[led] + KNOWN_LED_RADIUS);
+            int minY = Math.max(0, candidateLedY[led] - KNOWN_LED_RADIUS);
+            int maxY = Math.min(height - 1,
+                    candidateLedY[led] + KNOWN_LED_RADIUS);
+            int score = 0;
+            int hotPixels = 0;
+            int sumX = 0;
+            int sumY = 0;
+            for (int y = minY; y <= maxY; y += 1) {
+                int row = y * width;
+                for (int x = minX; x <= maxX; x += 1) {
+                    int value = componentPixels[row + x];
+                    if (value <= 0) {
+                        continue;
+                    }
+                    score += value;
+                    hotPixels += 1;
+                    sumX += x;
+                    sumY += y;
+                }
+            }
+            if (score < componentScoreThreshold
+                    || hotPixels < MIN_COMPONENT_HOT_PIXELS) {
+                pulse.x[led] = candidateLedX[led];
+                pulse.y[led] = candidateLedY[led];
+                continue;
+            }
+            pulse.x[led] = (sumX + hotPixels / 2) / hotPixels;
+            pulse.y[led] = (sumY + hotPixels / 2) / hotPixels;
+            matchedKnown[led] = true;
+            matched += 1;
+        }
+        if (matched < MIN_KNOWN_LED_MATCHES) {
+            return null;
+        }
+        boolean separatedPair = false;
+        for (int first = 0; first < matchedKnown.length - 1; first += 1) {
+            if (!matchedKnown[first]) {
+                continue;
+            }
+            for (int second = first + 1;
+                    second < matchedKnown.length;
+                    second += 1) {
+                if (!matchedKnown[second]) {
+                    continue;
+                }
+                int deltaX = pulse.x[first] - pulse.x[second];
+                int deltaY = pulse.y[first] - pulse.y[second];
+                if (deltaX * deltaX + deltaY * deltaY
+                        >= MIN_LED_SEPARATION_SQUARED) {
+                    separatedPair = true;
+                }
+            }
+        }
+        if (!separatedPair) {
+            return null;
+        }
+        pulse.matchedLeds = matched;
+        return pulse;
+    }
+
     private boolean isLedTriangle(int first, int second, int third) {
         int firstSecond = distanceSquared(first, second);
         int firstThird = distanceSquared(first, third);
@@ -494,10 +596,13 @@ final class OpticalTriggerDetector {
         if (gapNs < RISE_GAP_MIN_NS) {
             return false;
         }
-        if (gapNs > RISE_GAP_MAX_NS || !matchesCandidate(pulse)) {
+        if (gapNs > RISE_GAP_MAX_NS) {
             rememberCandidate(pulse);
             lastRiseNs = nowNs;
             acceptedRises = 1;
+            return false;
+        }
+        if (!matchesCandidate(pulse)) {
             return false;
         }
 
@@ -555,7 +660,7 @@ final class OpticalTriggerDetector {
                 score,
                 hotPixels,
                 effectiveScoreThreshold,
-                pulse == null ? 0 : 3,
+                pulse == null ? 0 : pulse.matchedLeds,
                 centerX,
                 centerY,
                 acceptedRises,
@@ -568,6 +673,18 @@ final class OpticalTriggerDetector {
         if (!calibrationComplete) {
             return "CALIBRATING";
         }
+        if (waitingForQuiet) {
+            return "WAIT_QUIET";
+        }
+        if (!riseArmed) {
+            return acceptedRises == 0
+                    ? "WAIT_LOW"
+                    : String.format(
+                            "WAIT_LOW_AFTER_%d_OF_%d",
+                            acceptedRises,
+                            requiredRises
+                    );
+        }
         return String.format(
                 "WAIT_RISE_%d_OF_%d",
                 acceptedRises + 1,
@@ -578,7 +695,9 @@ final class OpticalTriggerDetector {
     private void resetSequence() {
         lastRiseNs = 0L;
         acceptedRises = 0;
-        pulseLevelHigh = false;
+        lowStartedNs = -1L;
+        riseArmed = false;
+        waitingForQuiet = false;
         java.util.Arrays.fill(candidateLedX, -1);
         java.util.Arrays.fill(candidateLedY, -1);
     }

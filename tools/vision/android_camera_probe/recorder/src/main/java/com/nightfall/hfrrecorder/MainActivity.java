@@ -737,7 +737,7 @@ public final class MainActivity extends Activity {
                                 lastOpticalStatusNs = 0L;
                                 if (opticalDetector != null) {
                                     opticalDetector.setRequiredRises(4);
-                                    opticalDetector.rearm();
+                                    opticalDetector.rearmAfterQuiet();
                                 }
                                 motionGateDetector = new MotionGateDetector();
                                 motionGateDetector.arm(
@@ -1012,43 +1012,29 @@ public final class MainActivity extends Activity {
         );
         bitmap.recycle();
 
-        if (!opticalWaitingForStart && opticalWaitingForMotion) {
-            MotionGateDetector.Result motion = motionGateDetector.process(
+        MotionGateDetector.Result motion = null;
+        if (!opticalWaitingForStart
+                && opticalWaitingForMotion
+                && motionGateDetector != null) {
+            motion = motionGateDetector.process(
                     opticalPixels,
                     OPTICAL_SAMPLE_WIDTH,
                     OPTICAL_SAMPLE_HEIGHT
             );
             if (motion.motionDetected) {
                 opticalWaitingForMotion = false;
-                opticalDetector.rearm();
                 recorder.noteMotionGate(
                         nowNs,
                         motion.changedPixels
                 );
                 setStatus(
                         String.format(
-                                "Motion detected (%d changed px); STOP 4-pulse armed",
+                                "Motion detected (%d changed px); STOP decoder remains armed",
                                 motion.changedPixels
                         ),
                         true
                 );
-                return;
             }
-            if (nowNs - lastOpticalStatusNs
-                    >= OPTICAL_STATUS_INTERVAL_NS) {
-                lastOpticalStatusNs = nowNs;
-                setStatus(
-                        String.format(
-                                "REC MOVE: phase=%s baseline=%s changed=%d LED=%s",
-                                motion.phase,
-                                motion.baselineReady ? "yes" : "no",
-                                motion.changedPixels,
-                                "WAIT_MOTION"
-                        ),
-                        true
-                );
-            }
-            return;
         }
         OpticalTriggerDetector.Result result = opticalDetector.process(
                 opticalPixels,
@@ -1087,19 +1073,24 @@ public final class MainActivity extends Activity {
         } else if (nowNs - lastOpticalStatusNs
                 >= OPTICAL_STATUS_INTERVAL_NS) {
             lastOpticalStatusNs = nowNs;
-            setStatus(
-                    String.format(
-                            "%s LED: phase=%s score=%d/%d hot=%d matched=%d token=%d",
-                            opticalWaitingForStart ? "ARMED" : "REC",
-                            result.phase,
-                            result.score,
-                            result.threshold,
-                            result.hotPixels,
-                            result.matchedLeds,
-                            result.requiredRises
-                    ),
-                    true
-            );
+            String motionStatus = motion == null
+                    ? ""
+                    : String.format(
+                            " motion=%s/%d",
+                            motion.phase,
+                            motion.changedPixels
+                    );
+            setStatus(String.format(
+                    "%s LED: phase=%s score=%d/%d hot=%d matched=%d token=%d%s",
+                    opticalWaitingForStart ? "ARMED" : "REC",
+                    result.phase,
+                    result.score,
+                    result.threshold,
+                    result.hotPixels,
+                    result.matchedLeds,
+                    result.requiredRises,
+                    motionStatus
+            ), true);
         }
     }
 

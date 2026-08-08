@@ -118,6 +118,59 @@ public final class OpticalTriggerDetectorHostTest {
         nowNs = feedGradualPulse(detector, frame, nowNs, false);
         nowNs = feed(detector, frame, nowNs, false, 12, false);
         feedGradualPulse(detector, frame, nowNs, true);
+
+        // A short preview dropout inside one physical ON interval must not be
+        // counted as another pulse.
+        detector = new OpticalTriggerDetector(180, 2);
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        nowNs = feed(detector, frame, nowNs, true, 8, false);
+        nowNs = feed(detector, frame, nowNs, false, 5, false);
+        nowNs = feed(detector, frame, nowNs, true, 6, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feed(detector, frame, nowNs, true, 12, true);
+
+        // The redundant firmware token remains decodable when one whole
+        // physical pulse is absent from the preview.
+        detector = new OpticalTriggerDetector(180, 2);
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 28, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feed(detector, frame, nowNs, true, 12, true);
+
+        // After the initial full triangle, two retained LED locations are
+        // sufficient for later pulses.
+        detector = new OpticalTriggerDetector(180, 2);
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feedLedMask(detector, frame, nowNs, 3, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feedLedMask(detector, frame, nowNs, 3, 12, true);
+
+        // STOP re-arming waits through all remaining redundant START pulses;
+        // a short inter-pulse OFF gap cannot open it.
+        detector = new OpticalTriggerDetector(180, 2, 4);
+        nowNs = 0L;
+        nowNs = feed(detector, frame, nowNs, false, 90, false);
+        detector.rearmAfterQuiet();
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 12, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 24, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feed(detector, frame, nowNs, true, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        nowNs = feedLedMask(detector, frame, nowNs, 3, 12, false);
+        nowNs = feed(detector, frame, nowNs, false, 8, false);
+        feedLedMask(detector, frame, nowNs, 3, 12, true);
         System.out.println("OpticalTriggerDetectorHostTest PASS");
     }
 

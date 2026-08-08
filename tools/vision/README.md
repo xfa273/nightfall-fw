@@ -25,9 +25,10 @@ Reusable tools in this directory are:
 - `../tuning/turn_video_tune.py`: converts video endpoints to the firmware turn
   frame and prints a bounded candidate without editing source files
 
-The Android real-time HFR recorder and F413 three-pulse START/four-pulse STOP
-optical trigger are implemented, with a markerless green-body motion gate
-between them. Pixel 8 has passed a preview plus 1080p/240
+The Android real-time HFR recorder and redundant F413 five-flash START/six-flash
+STOP optical trigger are implemented. The Pixel decodes after three/four valid
+rises, while markerless body motion is diagnostic rather than a hard gate.
+Pixel 8 has passed a preview plus 1080p/240
 manual-exposure recording trial with per-frame-rate CaptureResult metadata,
 and both optical edges passed a stationary no-motor integration trial;
 the tested Xiaomi 13 Ultra firmware rejects all public Camera2 constrained-HFR

@@ -276,7 +276,7 @@ static void nightfall_trace_log_auto_tick_sample(void)
 
 static void nightfall_trace_log_on_run_start(void)
 {
-  trace_printf("[VIDEO-SYNC] optical START 3-pulse token\r\n");
+  trace_printf("[VIDEO-SYNC] optical START redundant 5-pulse token\r\n");
   f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
@@ -288,7 +288,7 @@ static void nightfall_trace_log_on_run_stop(void)
   trace_printf("[TRACE-LOG] run-hook: stop tail=%u ms\r\n",
                (unsigned int)F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
   f413_trace_log_auto_stop_after_tail(F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
-  trace_printf("[VIDEO-SYNC] optical STOP 4-pulse token\r\n");
+  trace_printf("[VIDEO-SYNC] optical STOP redundant 6-pulse token\r\n");
   f413_hw_emit_video_sync_stop_pattern();
 }
 

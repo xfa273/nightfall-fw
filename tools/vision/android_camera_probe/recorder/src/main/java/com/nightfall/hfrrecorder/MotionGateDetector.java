@@ -1,15 +1,15 @@
 package com.nightfall.hfrrecorder;
 
 /**
- * Opens the STOP decoder after the micromouse leaves its START appearance.
+ * Records when the micromouse leaves its START appearance.
  *
  * <p>The START LED triangle supplies a local image anchor.  After the final
  * START flash settles, this detector averages a small baseline around that
- * anchor and looks for a sustained, spatially local appearance change.  Blue
+ * anchor and looks for a sustained, spatially local appearance change. Blue
  * LED pixels and blue-dominant changes are excluded, so ordinary status-LED
- * activity cannot open the gate.  The detector does not depend on PCB colour
- * saturation, which is weak and illumination-dependent in Pixel 8 HFR
- * preview frames.  It has no Android dependencies and is host tested.</p>
+ * activity does not become motion telemetry. This detector no longer gates
+ * STOP decoding; a missed motion observation cannot prevent video saving. It
+ * has no Android dependencies and is host tested.</p>
  */
 final class MotionGateDetector {
     private static final int REGION_HALF_SIZE = 48;

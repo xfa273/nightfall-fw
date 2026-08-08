@@ -5,10 +5,12 @@
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
 #define F413_HW_MOTOR_PWM_MAX (1000U)
-#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (1500U)
+#define F413_HW_VIDEO_SYNC_OFF_PREROLL_MS (1800U)
 #define F413_HW_VIDEO_SYNC_ON_PULSE_MS (350U)
 #define F413_HW_VIDEO_SYNC_OFF_GAP_MS (300U)
 #define F413_HW_VIDEO_SYNC_FINAL_ON_MS (600U)
+#define F413_HW_VIDEO_SYNC_START_PULSES (5U)
+#define F413_HW_VIDEO_SYNC_STOP_PULSES (6U)
 
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim11;
@@ -79,7 +81,9 @@ static void f413_hw_emit_video_sync_pattern(uint8_t pulse_count)
   uint8_t pulse;
 
   /*
-   * Long, camera-rate-independent flashes form one optical token.
+   * Long, camera-rate-independent flashes form one optical token.  The Pixel
+   * decodes START after any three and STOP after any four valid rises, so the
+   * extra flashes tolerate a dim, occluded, or dropped preview pulse.
    * The initial OFF interval is longer than the Pixel decoder's sequence
    * timeout. It therefore clears both an OP-UI all-LED mode indication and
    * any partial pulse sequence produced by the moving mouse.
@@ -102,12 +106,12 @@ static void f413_hw_emit_video_sync_pattern(uint8_t pulse_count)
 
 void f413_hw_emit_video_sync_start_pattern(void)
 {
-  f413_hw_emit_video_sync_pattern(3U);
+  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_START_PULSES);
 }
 
 void f413_hw_emit_video_sync_stop_pattern(void)
 {
-  f413_hw_emit_video_sync_pattern(4U);
+  f413_hw_emit_video_sync_pattern(F413_HW_VIDEO_SYNC_STOP_PULSES);
 }
 
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms)
