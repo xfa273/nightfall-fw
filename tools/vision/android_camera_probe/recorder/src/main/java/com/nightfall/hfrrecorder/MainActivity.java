@@ -77,6 +77,7 @@ public final class MainActivity extends Activity {
     private TextView status;
     private TextView wifiStatus;
     private Button startButton;
+    private Button finishRunButton;
     private Button stopButton;
     private Button wifiPairButton;
     private Button wifiDeleteButton;
@@ -147,6 +148,12 @@ public final class MainActivity extends Activity {
                     public WifiTransferServer.CaptureControlResult
                     stopContinuousStandby() {
                         return runRemoteCaptureControl(false);
+                    }
+
+                    @Override
+                    public WifiTransferServer.CaptureControlResult
+                    finishCurrentRecording() {
+                        return runRemoteFinishCurrentRecording();
                     }
 
                     @Override
@@ -271,6 +278,14 @@ public final class MainActivity extends Activity {
                 view -> startManualContinuousStandby()
         );
         controls.addView(startButton);
+
+        finishRunButton = new Button(this);
+        finishRunButton.setText("この撮影だけ終了");
+        finishRunButton.setEnabled(false);
+        finishRunButton.setOnClickListener(
+                view -> finishCurrentRecording()
+        );
+        controls.addView(finishRunButton);
 
         stopButton = new Button(this);
         stopButton.setText("待機をキャンセル");
@@ -563,6 +578,62 @@ public final class MainActivity extends Activity {
         return acceptedRemoteControl();
     }
 
+    private WifiTransferServer.CaptureControlResult
+    runRemoteFinishCurrentRecording() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return applyRemoteFinishCurrentRecording();
+        }
+        AtomicReference<WifiTransferServer.CaptureControlResult> result =
+                new AtomicReference<>();
+        CountDownLatch completed = new CountDownLatch(1);
+        uiHandler.post(() -> {
+            try {
+                result.set(applyRemoteFinishCurrentRecording());
+            } finally {
+                completed.countDown();
+            }
+        });
+        try {
+            if (!completed.await(5L, TimeUnit.SECONDS)) {
+                return new WifiTransferServer.CaptureControlResult(
+                        false,
+                        "Pixel UI did not respond to recording stop",
+                        captureControlState
+                );
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return new WifiTransferServer.CaptureControlResult(
+                    false,
+                    "recording stop was interrupted",
+                    captureControlState
+            );
+        }
+        return result.get();
+    }
+
+    private WifiTransferServer.CaptureControlResult
+    applyRemoteFinishCurrentRecording() {
+        if (isFinishing() || isDestroyed()) {
+            return rejectedRemoteControl("HFR Recorder is closing");
+        }
+        if (!manualContinuousStandby) {
+            return rejectedRemoteControl(
+                    "連続撮影スタンバイ中ではありません"
+            );
+        }
+        if (!"recording".equals(captureControlState.state)
+                || recorder == null
+                || !recorder.isActive()
+                || opticalWaitingForStart) {
+            return rejectedRemoteControl(
+                    "現在録画中の動画はありません"
+            );
+        }
+        finishCurrentRecording();
+        return acceptedRemoteControl();
+    }
+
     private WifiTransferServer.CaptureControlResult acceptedRemoteControl() {
         return new WifiTransferServer.CaptureControlResult(
                 true,
@@ -608,6 +679,7 @@ public final class MainActivity extends Activity {
             return;
         }
         opticalDetectionEnabled = false;
+        finishRunButton.setEnabled(false);
         stopButton.setEnabled(false);
         if (opticalWaitingForStart) {
             setStatus("撮影スタンバイを終了しています...", true);
@@ -621,6 +693,25 @@ public final class MainActivity extends Activity {
             );
             recorder.stop();
         }
+    }
+
+    private void finishCurrentRecording() {
+        if (!manualContinuousStandby
+                || recorder == null
+                || !recorder.isActive()
+                || opticalWaitingForStart
+                || !"recording".equals(captureControlState.state)) {
+            setStatus("現在録画中の動画はありません", false);
+            return;
+        }
+        opticalDetectionEnabled = false;
+        opticalWaitingForMotion = false;
+        finishRunButton.setEnabled(false);
+        stopButton.setEnabled(false);
+        String message = "現在の動画だけを終了して保存しています。連続待機は継続します";
+        setStatus(message, true);
+        publishCaptureControlState("finishing-run", true, message);
+        recorder.stop();
     }
 
     private void startRecording(boolean useIntentConfig) {
@@ -711,6 +802,7 @@ public final class MainActivity extends Activity {
                                 opticalDetector.reset();
                             }
                             startButton.setEnabled(false);
+                            finishRunButton.setEnabled(false);
                             stopButton.setText(
                                     config.retainRunOutput
                                             ? "連続待機を終了"
@@ -747,6 +839,9 @@ public final class MainActivity extends Activity {
                                 );
                             }
                             startButton.setEnabled(false);
+                            finishRunButton.setEnabled(
+                                    config.retainRunOutput
+                            );
                             stopButton.setText(
                                     config.retainRunOutput
                                             ? "連続待機を終了"
@@ -764,6 +859,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onCancelled(String message) {
                         runOnUiThread(() -> {
+                            finishRunButton.setEnabled(false);
                             resetControlsAfterRun();
                             if (wifiTransferServer != null) {
                                 wifiTransferServer.notifyRunsChanged();
@@ -786,6 +882,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onFinished(String message) {
                         runOnUiThread(() -> {
+                            finishRunButton.setEnabled(false);
                             if (config.retainRunOutput) {
                                 manualCompletedRuns += 1;
                             }
@@ -831,6 +928,7 @@ public final class MainActivity extends Activity {
                     @Override
                     public void onError(String message) {
                         runOnUiThread(() -> {
+                            finishRunButton.setEnabled(false);
                             manualContinuousStandby = false;
                             uiHandler.removeCallbacks(manualRearmRunnable);
                             resetControlsAfterRun();
@@ -849,6 +947,7 @@ public final class MainActivity extends Activity {
                 }
         );
         startButton.setEnabled(false);
+        finishRunButton.setEnabled(false);
         stopButton.setEnabled(false);
         if (config.retainRunOutput) {
             stopButton.setText("連続待機を終了");
@@ -910,6 +1009,7 @@ public final class MainActivity extends Activity {
         uiHandler.removeCallbacks(manualRearmRunnable);
         startButton.setEnabled(true);
         startButton.setText("連続撮影スタンバイ (240 fps)");
+        finishRunButton.setEnabled(false);
         stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
         if (wifiTransferServer != null && wifiCaptureSlotOwned) {
@@ -923,6 +1023,7 @@ public final class MainActivity extends Activity {
         opticalWaitingForStart = false;
         opticalWaitingForMotion = false;
         startButton.setEnabled(false);
+        finishRunButton.setEnabled(false);
         stopButton.setText("連続待機を終了");
         stopButton.setEnabled(true);
     }
@@ -1078,7 +1179,11 @@ public final class MainActivity extends Activity {
                 );
             } else if (expectedStop) {
                 opticalDetectionEnabled = false;
-                setStatus("LED STOP token detected; saving tail...", true);
+                finishRunButton.setEnabled(false);
+                stopButton.setEnabled(false);
+                String message = "LED STOP token detected; saving tail...";
+                setStatus(message, true);
+                publishCaptureControlState("finishing-run", true, message);
                 recorder.triggerStop(
                         nowNs,
                         activeConfig.opticalStopTailMs,

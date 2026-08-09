@@ -9,7 +9,8 @@ const elements = Object.fromEntries([
   "heroDetail", "sessionRuns", "completedRuns", "savedRuns", "pendingRuns",
   "freshness", "validationBadge", "validationMessage", "latestRunName",
   "latestRunSize", "latestRunTransfer", "operationMessage", "deviceInfo",
-  "startButton", "stopButton", "collectButton", "stopCollectButton",
+  "startButton", "finishRunButton", "stopButton", "collectButton",
+  "stopCollectButton",
   "eventList", "clearEventsButton",
 ].map((id) => [id, document.getElementById(id)]));
 
@@ -130,6 +131,7 @@ function renderOffline(data) {
   });
   const running = renderOperation(data.operation);
   elements.startButton.disabled = true;
+  elements.finishRunButton.disabled = true;
   elements.stopButton.disabled = true;
   elements.collectButton.disabled = true;
   elements.stopCollectButton.disabled = true;
@@ -209,6 +211,13 @@ function renderOnline(data) {
       recentSave && latestComplete ? "保存確認済み・次の走行OK" : "次の走行OK",
       `LED START信号を待機中です。現在のセッションで${completed}本保存済みです。`,
     );
+  } else if (state === "finishing-run") {
+    setHero(
+      "transition",
+      "SAVING CURRENT RUN",
+      "現在の動画を保存中",
+      capture.message || "保存後も連続撮影スタンバイを継続します。",
+    );
   } else if (state === "starting" || state === "stopping") {
     setHero(
       "transition",
@@ -239,11 +248,20 @@ function renderOnline(data) {
 
   const actionRunning = renderOperation(data.operation);
   const captureBusy = Boolean(pixel.capture_busy);
-  const activeCapture = ["starting", "armed", "recording", "rearming", "stopping"].includes(state);
+  const activeCapture = [
+    "starting", "armed", "recording", "finishing-run", "rearming", "stopping",
+  ].includes(state);
   elements.startButton.disabled = actionRunning || activeCapture;
-  elements.stopButton.disabled = actionRunning || !capture.continuous_standby;
+  elements.finishRunButton.disabled = actionRunning
+    || state !== "recording"
+    || !capture.continuous_standby;
+  elements.stopButton.disabled = actionRunning
+    || !capture.continuous_standby
+    || state === "finishing-run";
   elements.collectButton.disabled = actionRunning || captureBusy;
-  elements.stopCollectButton.disabled = actionRunning || !captureBusy;
+  elements.stopCollectButton.disabled = actionRunning
+    || !captureBusy
+    || state === "finishing-run";
 
   if (previousState !== state) {
     if (state === "armed" && previousState !== null) addEvent("次の走行の撮影スタンバイ完了");
@@ -272,7 +290,7 @@ async function pollStatus() {
 
 async function performAction(action) {
   const buttons = [
-    elements.startButton, elements.stopButton,
+    elements.startButton, elements.finishRunButton, elements.stopButton,
     elements.collectButton, elements.stopCollectButton,
   ];
   buttons.forEach((button) => { button.disabled = true; });

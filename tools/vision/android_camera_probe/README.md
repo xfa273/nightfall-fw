@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.4` of
+The collector installs version `0.5.5` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -129,7 +129,7 @@ The payload is followed by 500 ms with all LEDs OFF. The common SYNC pulse
 establishes the slot timing, and the long preamble keeps an all-LED OP-UI mode
 indication from being mistaken for the beginning of a token.
 
-Version 0.5.4 classifies all five payload slots before reporting a typed token.
+Version 0.5.5 classifies all five payload slots before reporting a typed token.
 At least three consistent short votes identify START and at least three
 consistent long votes identify STOP. Missing or uncertain slots are erasures;
 any mixture of short and long votes is invalid. Because both token types have
@@ -141,11 +141,15 @@ capture state.
 The Pixel compares consecutive preview frames and also checks the absolute
 blue level, discards the first 0.8 seconds while auto exposure settles,
 calibrates local preview noise for 1.2 seconds, and requires three spatially
-separated blue status LEDs on SYNC. Payload slots reuse those
-locations and may retain two LEDs, which tolerates one dim or H.264-compressed
-LED. A 175 ms confirmed-low interval rejects brief flicker around the SYNC
-edge. White illumination changes, hands moving through the frame, and ordinary
-single-LED UI activity are therefore not accepted as a complete token.
+separated blue status LEDs on SYNC. SYNC location learning prefers the three
+components that actually rose, so the persistent blue trajectory label is not
+substituted for a signalling LED. Payload slots reuse the learned locations
+and may retain two LEDs; at those fixed coordinates only, a one-preview-pixel
+LED is accepted. This tolerates a dim LED at the edge of the overhead view
+without relaxing full-frame noise rejection. A 175 ms confirmed-low interval
+rejects brief flicker around the SYNC edge. White illumination changes, hands
+moving through the frame, and ordinary single-LED UI activity are therefore
+not accepted as a complete token.
 
 Arm and collect one run with:
 
@@ -179,6 +183,12 @@ new retained run below 1 GiB of free internal storage. Mac-launched sessions
 keep their one-shot behavior and use the configuration supplied by
 `record_test.sh` or `capture_optical_run.sh`.
 
+If STOP is missed while a run is recording, tap **この撮影だけ終了**. The
+current MP4 is finalized and retained, then the same continuous session
+automatically returns to optical standby after two seconds. This operation
+does not end continuous standby; **連続待機を終了** remains the explicit batch
+stop.
+
 Version 0.5.1 hardens the optical decoder for the overhead installation. It
 does not advance the STOP sequence while waiting for the first real mouse
 motion, combines frame-difference and absolute-blue detection, and pairs with
@@ -196,6 +206,12 @@ token may recover from the absolute blue level and three-LED geometry even
 when the adaptive score was raised. Completing an invalid token resets the
 decoder, so the next fully framed START remains eligible without restarting
 standby.
+
+Version 0.5.5 keeps the static blue trajectory label out of SYNC learning by
+preferring rising components, accepts a one-pixel LED only after its location
+has been learned, and adds a current-recording-only stop operation on Pixel and
+the authenticated Mac controls. Saving that one recording preserves and
+automatically re-arms continuous standby.
 
 Collect all Pixel-started runs without deleting them from the phone:
 
@@ -246,6 +262,9 @@ tools/vision/android_camera_probe/hfr_control.py status
 # Open the 1080p/240 camera and wait for a complete framed START token.
 tools/vision/android_camera_probe/hfr_control.py start
 
+# If STOP was missed, save only the active video and keep continuous standby.
+tools/vision/android_camera_probe/hfr_control.py finish-run
+
 # Keep repeating runs until this explicit command; save an active final run.
 tools/vision/android_camera_probe/hfr_control.py stop
 ```
@@ -275,7 +294,8 @@ standby and the newest retained run is complete. A recording that remains
 active for more than 15 seconds is highlighted as a possible missed STOP token
 or merged run.
 
-The same page provides continuous-standby start/stop, transfer, and explicit
+The same page provides continuous-standby start/stop, a **この撮影だけ終了**
+button that preserves continuous standby, transfer, and explicit
 stop-and-transfer buttons. Transfer remains disabled while capture owns the
 camera/storage lease. The Pixel access token stays in the Mac process and is
 not sent to the browser; mutating dashboard requests use a per-launch token,

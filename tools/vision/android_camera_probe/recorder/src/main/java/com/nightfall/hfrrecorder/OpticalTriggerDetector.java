@@ -40,6 +40,9 @@ final class OpticalTriggerDetector {
     private static final int MIN_TOKEN_VOTES = 3;
     private static final int MIN_COMPONENT_SCORE = 60;
     private static final int MIN_COMPONENT_HOT_PIXELS = 2;
+    private static final int MIN_KNOWN_LED_SCORE =
+            ABSOLUTE_BLUE_CHROMA_THRESHOLD;
+    private static final int MIN_KNOWN_LED_HOT_PIXELS = 1;
     private static final int MAX_COMPONENTS = 12;
     private static final int MIN_LED_SEPARATION_SQUARED = 36;
     private static final int MAX_LED_SEPARATION_SQUARED = 10_000;
@@ -289,10 +292,7 @@ final class OpticalTriggerDetector {
         if (risingEdge) {
             deltaPulse = findThreeLedPulse(
                     pixelDeltas,
-                    Math.max(
-                            MIN_COMPONENT_SCORE,
-                            effectiveScoreThreshold / 3
-                    )
+                    MIN_COMPONENT_SCORE
             );
         }
         boolean candidateKnown = candidateLedX[0] >= 0;
@@ -302,9 +302,13 @@ final class OpticalTriggerDetector {
                         absoluteBlueChroma,
                         absoluteComponentScoreThreshold()
                 );
-        Pulse pulse = levelPulse != null
-                ? levelPulse
-                : (!candidateKnown ? deltaPulse : null);
+        // At the beginning of SYNC, prefer components that actually rose.
+        // The mouse carries a persistent blue centre label for trajectory
+        // tracking; an absolute-level triangle can otherwise learn that
+        // label in place of one of the three signalling LEDs.
+        Pulse pulse = !candidateKnown && deltaPulse != null
+                ? deltaPulse
+                : levelPulse;
         Result decoded = decodeFrame(
                 pulse,
                 nowNs,
@@ -679,7 +683,6 @@ final class OpticalTriggerDetector {
         Pulse pulse = new Pulse();
         boolean[] matchedKnown = new boolean[candidateLedX.length];
         int matched = 0;
-        int componentScoreThreshold = absoluteComponentScoreThreshold();
         for (int led = 0; led < candidateLedX.length; led += 1) {
             int minX = Math.max(0, candidateLedX[led] - KNOWN_LED_RADIUS);
             int maxX = Math.min(width - 1,
@@ -704,8 +707,12 @@ final class OpticalTriggerDetector {
                     sumY += y;
                 }
             }
-            if (score < componentScoreThreshold
-                    || hotPixels < MIN_COMPONENT_HOT_PIXELS) {
+            // Once SYNC has fixed the three LED coordinates, accepting a
+            // single chroma pixel is safe because two separated known
+            // locations must still agree. At the overhead camera height an
+            // LED can project to one 480x270 preview pixel near the maze edge.
+            if (score < MIN_KNOWN_LED_SCORE
+                    || hotPixels < MIN_KNOWN_LED_HOT_PIXELS) {
                 pulse.x[led] = candidateLedX[led];
                 pulse.y[led] = candidateLedY[led];
                 continue;

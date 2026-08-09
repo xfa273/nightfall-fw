@@ -272,6 +272,7 @@ h3 { font-size: 20px; }
 .button:hover:not(:disabled) { transform: translateY(-1px); }
 .button:disabled { cursor: not-allowed; opacity: .35; }
 .button.start { color: #051a12; background: var(--green); }
+.button.finish { color: #291b00; background: #f2b84b; }
 .button.stop { color: #2a070c; background: var(--red); }
 .button.secondary { border-color: #36516a; background: #1b3042; }
 

@@ -56,6 +56,8 @@ final class WifiTransferServer implements AutoCloseable {
 
         CaptureControlResult stopContinuousStandby();
 
+        CaptureControlResult finishCurrentRecording();
+
         CaptureControlState captureControlState();
     }
 
@@ -496,6 +498,11 @@ final class WifiTransferServer implements AutoCloseable {
                 handleCaptureControl(false, output);
                 return;
             }
+            if ("POST".equals(method)
+                    && "/api/v1/control/recording/stop".equals(path)) {
+                handleCurrentRecordingStop(output);
+                return;
+            }
             if (path.startsWith("/api/v1/runs/")) {
                 handleRunRequest(method, path, headers, output);
                 return;
@@ -523,6 +530,31 @@ final class WifiTransferServer implements AutoCloseable {
                     409,
                     result.error == null
                             ? "capture control request was rejected"
+                            : result.error
+            );
+            return;
+        }
+        JSONObject response = infoJson();
+        response.put("control_accepted", true);
+        response.put("capture_control", result.state.toJson());
+        sendJson(output, 200, response);
+    }
+
+    private void handleCurrentRecordingStop(
+            OutputStream output
+    ) throws IOException, JSONException {
+        if (captureControlHandler == null) {
+            sendError(output, 503, "capture control is unavailable");
+            return;
+        }
+        CaptureControlResult result =
+                captureControlHandler.finishCurrentRecording();
+        if (!result.accepted) {
+            sendError(
+                    output,
+                    409,
+                    result.error == null
+                            ? "recording stop request was rejected"
                             : result.error
             );
             return;

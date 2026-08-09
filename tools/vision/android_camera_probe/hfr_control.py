@@ -25,6 +25,7 @@ from collect_wifi_runs import (
 CONTROL_STATUS_PATH = "/api/v1/control/status"
 CONTROL_START_PATH = "/api/v1/control/standby/start"
 CONTROL_STOP_PATH = "/api/v1/control/standby/stop"
+CONTROL_FINISH_RUN_PATH = "/api/v1/control/recording/stop"
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -36,7 +37,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "action",
-        choices=("status", "start", "stop", "collect", "stop-and-collect"),
+        choices=(
+            "status",
+            "start",
+            "finish-run",
+            "stop",
+            "collect",
+            "stop-and-collect",
+        ),
     )
     parser.add_argument(
         "output_root",
@@ -137,6 +145,38 @@ def wait_for_stop(client: ApiClient, timeout: float) -> dict[str, Any]:
         time.sleep(0.25)
 
 
+def wait_for_current_run_finish(
+    client: ApiClient,
+    timeout: float,
+    completed_before: int,
+) -> dict[str, Any]:
+    deadline = time.monotonic() + max(0.0, timeout)
+    while True:
+        response = read_status(client)
+        state = capture_state(response)
+        if state["state"] == "error":
+            raise WifiCollectorError(
+                "現在の動画の保存中にエラーが発生しました: "
+                + str(state.get("message", "unknown error"))
+            )
+        if not state.get("continuous_standby"):
+            raise WifiCollectorError(
+                "現在の動画を終了した後、連続撮影スタンバイが解除されました"
+            )
+        completed = int(state.get("completed_runs", 0))
+        if completed > completed_before and state["state"] in {
+            "rearming",
+            "starting",
+            "armed",
+        }:
+            return response
+        if time.monotonic() >= deadline:
+            raise WifiCollectorError(
+                f"現在の動画の保存待ちが{timeout:g}秒でタイムアウトしました"
+            )
+        time.sleep(0.25)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
@@ -155,6 +195,22 @@ def main(argv: list[str] | None = None) -> int:
             response = wait_for_start(client, args.wait_seconds)
             print_status(response, endpoint.host, endpoint.port)
             print("[HFR-CONTROL] 連続撮影スタンバイを開始しました")
+            return 0
+
+        if args.action == "finish-run":
+            before = capture_state(read_status(client))
+            completed_before = int(before.get("completed_runs", 0))
+            client.json_request("POST", CONTROL_FINISH_RUN_PATH, {})
+            response = wait_for_current_run_finish(
+                client,
+                args.wait_seconds,
+                completed_before,
+            )
+            print_status(response, endpoint.host, endpoint.port)
+            print(
+                "[HFR-CONTROL] 現在の動画だけを終了しました。"
+                "連続撮影スタンバイは継続します"
+            )
             return 0
 
         if args.action in {"stop", "stop-and-collect"}:

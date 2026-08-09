@@ -33,12 +33,14 @@ from collect_wifi_runs import (
     save_config,
 )
 from hfr_control import (
+    CONTROL_FINISH_RUN_PATH,
     CONTROL_START_PATH,
     CONTROL_STOP_PATH,
     capture_state,
     read_status,
     wait_for_start,
     wait_for_stop,
+    wait_for_current_run_finish,
 )
 
 
@@ -49,7 +51,13 @@ STATIC_FILES = {
     "/dashboard.css": ("dashboard.css", "text/css; charset=utf-8"),
     "/dashboard.js": ("dashboard.js", "text/javascript; charset=utf-8"),
 }
-VALID_ACTIONS = {"start", "stop", "collect", "stop-and-collect"}
+VALID_ACTIONS = {
+    "start",
+    "finish-run",
+    "stop",
+    "collect",
+    "stop-and-collect",
+}
 
 
 @dataclass
@@ -326,6 +334,19 @@ class PixelDashboard:
                 messages.append(
                     f"連続撮影スタンバイ開始: {capture_state(response)['state']}"
                 )
+            if action == "finish-run":
+                before = capture_state(read_status(client))
+                completed_before = int(before.get("completed_runs", 0))
+                client.json_request("POST", CONTROL_FINISH_RUN_PATH, {})
+                response = wait_for_current_run_finish(
+                    client,
+                    self.wait_seconds,
+                    completed_before,
+                )
+                messages.append(
+                    "現在の動画を保存し、連続撮影スタンバイを継続"
+                    f"（{capture_state(response).get('completed_runs', 0)}本保存）"
+                )
             if action in {"stop", "stop-and-collect"}:
                 client.json_request("POST", CONTROL_STOP_PATH, {})
                 response = wait_for_stop(client, self.wait_seconds)
@@ -359,6 +380,7 @@ class PixelDashboard:
     def _action_label(action: str) -> str:
         return {
             "start": "待機開始",
+            "finish-run": "現在の撮影だけ終了",
             "stop": "待機終了",
             "collect": "Macへ転送",
             "stop-and-collect": "待機終了と転送",

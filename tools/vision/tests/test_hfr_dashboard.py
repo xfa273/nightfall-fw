@@ -96,6 +96,7 @@ class DashboardTest(unittest.TestCase):
             page = response.read().decode("utf-8")
             self.assertEqual(response.status, 200)
             self.assertIn("走行撮影モニター", page)
+            self.assertIn("この撮影だけ終了", page)
             self.assertIn(token, page)
             self.assertIn("default-src 'self'", response.getheader("Content-Security-Policy"))
             connection.close()
@@ -131,6 +132,23 @@ class DashboardTest(unittest.TestCase):
             self.assertEqual(response.status, 202)
             self.assertTrue(accepted["accepted"])
             self.assertEqual(model.actions, ["start"])
+            connection.close()
+
+            connection = HTTPConnection("127.0.0.1", server.server_port)
+            connection.request(
+                "POST",
+                "/api/action/finish-run",
+                body=b"{}",
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Nightfall-Dashboard-Token": token,
+                },
+            )
+            response = connection.getresponse()
+            accepted = json.loads(response.read())
+            self.assertEqual(response.status, 202)
+            self.assertTrue(accepted["accepted"])
+            self.assertEqual(model.actions, ["start", "finish-run"])
             connection.close()
         finally:
             server.shutdown()

@@ -35,6 +35,7 @@ public final class OpticalTriggerDetectorHostTest {
         testWhiteWaveformIsIgnored();
         testSingleLedWaveformIsIgnored();
         testTwoOfThreePayloadLedsAreAccepted();
+        testPersistentBlueMarkerAndSinglePixelLeds();
         testShortPreviewDropoutIsTolerated();
         System.out.println("OpticalTriggerDetectorHostTest PASS");
     }
@@ -292,6 +293,42 @@ public final class OpticalTriggerDetectorHostTest {
         }
     }
 
+    private static void testPersistentBlueMarkerAndSinglePixelLeds() {
+        Simulation simulation = new Simulation(false);
+        simulation.feedMarkerMask(0, CALIBRATION_FRAMES, false);
+        simulation.feedMarkerMask(0, PREAMBLE_FRAMES, false);
+        // Only the first SYNC sample is large enough for unconstrained
+        // component discovery. The remaining signal projects to one pixel
+        // per LED, matching the difficult endpoint in the real 240 fps run.
+        simulation.feedMarkerMask(7, 1, false);
+        simulation.feedMarkerMask(7, SYNC_FRAMES - 1, true);
+        simulation.feedMarkerMask(0, SYNC_GAP_FRAMES, true);
+        for (int slot = 0; slot < 5; slot += 1) {
+            simulation.feedMarkerMask(7, STOP_HIGH_FRAMES, true);
+            simulation.feedMarkerMask(
+                    0,
+                    SLOT_FRAMES - STOP_HIGH_FRAMES,
+                    true
+            );
+        }
+        simulation.feedMarkerMask(0, 1, true);
+        OpticalTriggerDetector.Result result = simulation.takeToken(
+                "STOP beside persistent blue marker with one-pixel LEDs"
+        );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.STOP,
+                "persistent marker and one-pixel LEDs"
+        );
+        assertVotes(result, 0, 5, 0, "persistent marker and one-pixel LEDs");
+        if (result.centerX != 233 || result.centerY != 134) {
+            throw new AssertionError(
+                    "SYNC learned marker instead of three real LEDs: center="
+                            + result.centerX + "," + result.centerY
+            );
+        }
+    }
+
     private static void testShortPreviewDropoutIsTolerated() {
         Simulation simulation = new Simulation();
         simulation.beginToken();
@@ -462,6 +499,14 @@ public final class OpticalTriggerDetectorHostTest {
             }
         }
 
+        void feedMarkerMask(int ledMask, int frames, boolean onePixelLeds) {
+            for (int index = 0; index < frames; index += 1) {
+                makeMarkerFrame(frame, ledMask, onePixelLeds);
+                record(detector.process(frame, WIDTH, HEIGHT, nowNs));
+                nowNs += FRAME_NS;
+            }
+        }
+
         void assertNoToken(String context) {
             if (emitted != null) {
                 throw new AssertionError(
@@ -510,6 +555,32 @@ public final class OpticalTriggerDetectorHostTest {
         for (int y = centerY - 1; y <= centerY + 1; y += 1) {
             for (int x = centerX - 1; x <= centerX + 1; x += 1) {
                 frame[y * WIDTH + x] = 0xff2020ff;
+            }
+        }
+    }
+
+    private static void makeMarkerFrame(
+            int[] frame,
+            int ledMask,
+            boolean onePixelLeds
+    ) {
+        Arrays.fill(frame, 0xff202020);
+        // This static, stronger component models the 8 mm blue trajectory
+        // label located between the optical signalling LEDs.
+        setBlueBlock(frame, 230, 134, 2);
+        int[][] leds = {
+                {220, 134},
+                {240, 126},
+                {240, 142}
+        };
+        for (int led = 0; led < leds.length; led += 1) {
+            if ((ledMask & (1 << led)) == 0) {
+                continue;
+            }
+            if (onePixelLeds) {
+                frame[leds[led][1] * WIDTH + leds[led][0]] = 0xff202060;
+            } else {
+                setLed(frame, leds[led][0], leds[led][1]);
             }
         }
     }
