@@ -21,7 +21,7 @@ MPM3610 の連続出力は 1.2A なので、モータとファンは 5V 出力�
 ## Classic から移植した回路
 
 - Q2: `SI7135DP-T1-GE3` P-channel MOSFET
-- R12 10k と POWER0: メインスイッチのゲート回路
+- R12 100k と POWER0: メインスイッチのゲート回路
 - U7: `MPM3610GQV-P`
 - C22: 10uF / 25V X7R 入力コンデンサ
 - C23: 22uF / 10V X7R 出力コンデンサ
@@ -61,14 +61,20 @@ MPM3610 の連続出力は 1.2A なので、モータとファンは 5V 出力�
 7. F413 firmware のバッテリ電圧換算を `VBAT = ADC_voltage * 127 / 27` に更新する。
 8. ERC ベースラインを整理し、電源入力・未接続 pin・フットプリント割当を全回路で確認する。
 
-## 検証済みネット
+## 回路図表記
+
+- `VBAT_RAW` / `VBAT_SW` / `+5V` は上向きの電源シンボル、`GND2` は下向きの GND シンボルで表記した。
+- 機能ブロック内の EN / FB / fan- / main-switch gate は直接配線し、長距離信号の `FAN_PWM` / `VOL_CHECK` だけネットラベルを表示した。
+- MPM3610、ファン、バッテリ入力、ADC 分圧は、電源を上、GND を下にそろえた。
+
+## 検証済み接続ノード
 
 - `VBAT_RAW`: P1 battery+、Q2 source 1–3、R12
-- `PWR_GATE`: Q2 gate、R12、POWER0
+- main-switch gate: Q2 gate、R12、POWER0
 - `VBAT_SW`: Q2 drain、U7 IN、U2/U3 VIN、J2 fan+、D4 cathode、C22/C24、R4、R31
 - `+5V`: U7 OUT 7–9、C23、AP2210 VIN。U2/U3 VIN は含まない
-- `MPM_EN`: U7 EN、R31
-- `MPM_FB`: U7 FB、R29、R30
+- MPM3610 EN: U7 EN、R31
+- MPM3610 FB: U7 FB、R29、R30
 - `FAN_PWM`: U5 PB8、Q3 gate、R32
-- `FAN_NEG`: J2 fan-、Q3 drain、D4 anode、C24
+- fan-: J2 fan-、Q3 drain、D4 anode、C24
 - `GND2`: U7 AGND/PGND、Q3 source、R30/R32、C22/C23

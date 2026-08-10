@@ -2,453 +2,7 @@
 	(version 20251024)
 	(generator "kicad_symbol_editor")
 	(generator_version "10.0")
-	(symbol "MPM3610GQV-P"
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(duplicate_pin_numbers_are_jumpers no)
-		(property "Reference" "U"
-			(at -10.16 -17.78 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "MPM3610GQV-P"
-			(at -10.16 17.78 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" "Nightfall-Power:MPM3610_QFN-20_3x5mm"
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090"
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "4.5V to 21V, 1.2A step-down power module; grouped pins follow the MPS datasheet."
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "ki_locked" ""
-			(at 0 0 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(hide yes)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(symbol "MPM3610GQV-P_1_0"
-			(rectangle
-				(start -10.16 -15.24)
-				(end 10.16 15.24)
-				(stroke (width 0.254) (type solid))
-				(fill (type background))
-			)
-			(text "MPM3610"
-				(at 0 0 0)
-				(effects
-					(font (size 1.27 1.27))
-					(justify left bottom)
-				)
-			)
-			(pin input line
-				(at 15.24 5.08 180)
-				(length 5.08)
-				(name "FB"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "1"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_out line
-				(at 15.24 0 180)
-				(length 5.08)
-				(name "VCC"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "2"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at -5.08 -20.32 90)
-				(length 5.08)
-				(name "AGND"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "3"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin output line
-				(at 15.24 -5.08 180)
-				(length 5.08)
-				(name "SW"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "4"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin output line
-				(at 15.24 -5.08 180)
-				(length 5.08)
-				(name "SW"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "5"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin output line
-				(at 15.24 -5.08 180)
-				(length 5.08)
-				(name "SW"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "6"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_out line
-				(at 15.24 10.16 180)
-				(length 5.08)
-				(name "OUT"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "7"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_out line
-				(at 15.24 10.16 180)
-				(length 5.08)
-				(name "OUT"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "8"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_out line
-				(at 15.24 10.16 180)
-				(length 5.08)
-				(name "OUT"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "9"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin no_connect line
-				(at 15.24 -12.7 180)
-				(length 5.08)
-				(name "NC"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "10"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin passive line
-				(at 15.24 -10.16 180)
-				(length 5.08)
-				(name "BST"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "11"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at 5.08 -20.32 90)
-				(length 5.08)
-				(name "PGND"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "12"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at 5.08 -20.32 90)
-				(length 5.08)
-				(name "PGND"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "13"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at 5.08 -20.32 90)
-				(length 5.08)
-				(name "PGND"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "14"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin no_connect line
-				(at -15.24 -5.08 0)
-				(length 5.08)
-				(name "NC"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "15"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at -15.24 10.16 0)
-				(length 5.08)
-				(name "IN"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "16"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin input line
-				(at -15.24 5.08 0)
-				(length 5.08)
-				(name "EN"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "17"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin input line
-				(at -15.24 0 0)
-				(length 5.08)
-				(name "AAM"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "18"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin no_connect line
-				(at -15.24 -7.62 0)
-				(length 5.08)
-				(name "NC"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "19"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-			(pin no_connect line
-				(at -15.24 -10.16 0)
-				(length 5.08)
-				(name "NC"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-				(number "20"
-					(effects
-						(font
-							(size 1.016 1.016)
-						)
-					)
-				)
-			)
-		)
-		(embedded_fonts no)
-	)
+
 	(symbol "SI7135DP-T1-GE3"
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -564,7 +118,7 @@
 				(number "2"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -582,7 +136,7 @@
 				(number "3"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -636,7 +190,7 @@
 				(number "6"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -654,7 +208,7 @@
 				(number "7"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -672,7 +226,7 @@
 				(number "8"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -795,7 +349,7 @@
 				(number "2"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -813,7 +367,7 @@
 				(number "5"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -831,7 +385,7 @@
 				(number "6"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -849,7 +403,7 @@
 				(number "7"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
@@ -903,11 +457,265 @@
 				(number "8"
 					(effects
 						(font
-							(size 1.016 1.016)
+							(size 0 0)
 						)
 					)
 				)
 			)
+		)
+		(embedded_fonts no)
+	)
+	(symbol "MPM3610GQV-P"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "U" (at -12.7 15.24 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "MPM3610GQV-P" (at 12.7 15.24 0) (effects (font (size 1.27 1.27)) (justify right)))
+		(property "Footprint" "Nightfall-Power:MPM3610_QFN-20_3x5mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "4.5V to 21V, 1.2A step-down power module; grouped pins follow the MPS datasheet." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "ki_locked" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "MPM3610GQV-P_1_0"
+			(rectangle (start -12.7 -12.7) (end 12.7 12.7) (stroke (width 0.254) (type solid)) (fill (type background)))
+			(text "MPM3610" (at 0 0 0) (effects (font (size 1.27 1.27))))
+			(pin no_connect line
+				(at -17.78 0 0)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "15" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_in line
+				(at -5.08 17.78 270)
+				(length 5.08)
+				(name "IN" (effects (font (size 1.016 1.016))))
+				(number "16" (effects (font (size 1.016 1.016))))
+			)
+			(pin input line
+				(at -17.78 7.62 0)
+				(length 5.08)
+				(name "EN" (effects (font (size 1.016 1.016))))
+				(number "17" (effects (font (size 1.016 1.016))))
+			)
+			(pin input line
+				(at -17.78 2.54 0)
+				(length 5.08)
+				(name "AAM" (effects (font (size 1.016 1.016))))
+				(number "18" (effects (font (size 1.016 1.016))))
+			)
+			(pin no_connect line
+				(at -17.78 -5.08 0)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "19" (effects (font (size 1.016 1.016))))
+			)
+			(pin no_connect line
+				(at -17.78 -7.62 0)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "20" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_out line
+				(at 17.78 7.62 180)
+				(length 5.08)
+				(name "OUT" (effects (font (size 1.016 1.016))))
+				(number "7" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_out line
+				(at 17.78 7.62 180)
+				(length 5.08)
+				(name "OUT" (effects (font (size 1.016 1.016))))
+				(number "8" (effects (font (size 0 0))))
+			)
+			(pin power_out line
+				(at 17.78 7.62 180)
+				(length 5.08)
+				(name "OUT" (effects (font (size 1.016 1.016))))
+				(number "9" (effects (font (size 0 0))))
+			)
+			(pin input line
+				(at 17.78 0 180)
+				(length 5.08)
+				(name "FB" (effects (font (size 1.016 1.016))))
+				(number "1" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_out line
+				(at 17.78 -5.08 180)
+				(length 5.08)
+				(name "VCC" (effects (font (size 1.016 1.016))))
+				(number "2" (effects (font (size 1.016 1.016))))
+			)
+			(pin output line
+				(at 17.78 -7.62 180)
+				(length 5.08)
+				(name "SW" (effects (font (size 1.016 1.016))))
+				(number "4" (effects (font (size 1.016 1.016))))
+			)
+			(pin output line
+				(at 17.78 -7.62 180)
+				(length 5.08)
+				(name "SW" (effects (font (size 1.016 1.016))))
+				(number "5" (effects (font (size 0 0))))
+			)
+			(pin output line
+				(at 17.78 -7.62 180)
+				(length 5.08)
+				(name "SW" (effects (font (size 1.016 1.016))))
+				(number "6" (effects (font (size 0 0))))
+			)
+			(pin passive line
+				(at 17.78 -10.16 180)
+				(length 5.08)
+				(name "BST" (effects (font (size 1.016 1.016))))
+				(number "11" (effects (font (size 1.016 1.016))))
+			)
+			(pin no_connect line
+				(at 17.78 -12.7 180)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "10" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_in line
+				(at -5.08 -17.78 90)
+				(length 5.08)
+				(name "AGND" (effects (font (size 1.016 1.016))))
+				(number "3" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_in line
+				(at 5.08 -17.78 90)
+				(length 5.08)
+				(name "PGND" (effects (font (size 1.016 1.016))))
+				(number "12" (effects (font (size 1.016 1.016))))
+			)
+			(pin power_in line
+				(at 5.08 -17.78 90)
+				(length 5.08)
+				(name "PGND" (effects (font (size 1.016 1.016))))
+				(number "13" (effects (font (size 0 0))))
+			)
+			(pin power_in line
+				(at 5.08 -17.78 90)
+				(length 5.08)
+				(name "PGND" (effects (font (size 1.016 1.016))))
+				(number "14" (effects (font (size 0 0))))
+			)
+		)
+		(embedded_fonts no)
+	)
+	(symbol "R_VERTICAL"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "R" (at 2.54 1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "" (at 2.54 -1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Vertical schematic symbol for clear power flow." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "R_VERTICAL_1_0"
+			(rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(pin passive line (at 0 5.08 270) (length 3.81) (name "2" (effects (font (size 0 0)))) (number "2" (effects (font (size 0 0)))))
+			(pin passive line (at 0 -5.08 90) (length 3.81) (name "1" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+		)
+		(embedded_fonts no)
+	)
+	(symbol "C_VERTICAL"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "C" (at 2.54 1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "" (at 2.54 -1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Vertical schematic symbol for clear power flow." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "C_VERTICAL_1_0"
+			(polyline (pts (xy -2.032 0.635) (xy 2.032 0.635)) (stroke (width 0.508) (type solid)) (fill (type none)))
+			(polyline (pts (xy -2.032 -0.635) (xy 2.032 -0.635)) (stroke (width 0.508) (type solid)) (fill (type none)))
+			(pin passive line (at 0 5.08 270) (length 3.81) (name "1" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+			(pin passive line (at 0 -5.08 90) (length 3.81) (name "2" (effects (font (size 0 0)))) (number "2" (effects (font (size 0 0)))))
+		)
+		(embedded_fonts no)
+	)
+	(symbol "D_VERTICAL"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "D" (at 2.54 1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "" (at 2.54 -1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Vertical schematic symbol for clear power flow." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "D_VERTICAL_1_0"
+			(polyline (pts (xy -1.524 1.27) (xy 1.524 1.27)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(polyline (pts (xy -1.524 -1.27) (xy 1.524 -1.27) (xy 0 1.27) (xy -1.524 -1.27)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(pin passive line (at 0 5.08 270) (length 3.81) (name "K" (effects (font (size 0 0)))) (number "3" (effects (font (size 0 0)))))
+			(pin passive line (at 0 -5.08 90) (length 3.81) (name "A" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+		)
+		(embedded_fonts no)
+	)
+	(symbol "SW_SPDT_VERTICAL"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "SW" (at -5.08 1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Value" "" (at -5.08 -1.27 0) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "HM_Nightfall-mini-2e_v1:SW_EG1215AA" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Vertical SPDT slide-switch symbol." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "SW_SPDT_VERTICAL_1_0"
+			(circle (center 0 2.54) (radius 0.381) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(circle (center 0 -2.54) (radius 0.381) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(circle (center 2.54 0) (radius 0.381) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(polyline (pts (xy 0 2.159) (xy 2.159 0.381)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(pin passive line (at 0 7.62 270) (length 4.699) (name "COM" (effects (font (size 0 0)))) (number "2" (effects (font (size 1.016 1.016)))))
+			(pin passive line (at 0 -7.62 90) (length 4.699) (name "OFF" (effects (font (size 0 0)))) (number "1" (effects (font (size 1.016 1.016)))))
+			(pin passive line (at 7.62 0 180) (length 4.699) (name "ALT" (effects (font (size 0 0)))) (number "3" (effects (font (size 1.016 1.016)))))
+		)
+		(embedded_fonts no)
+	)
+	(symbol "VBAT_SW"
+		(power global)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "#PWR" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "VBAT_SW" (at 0 -3.81 0) (effects (font (size 1.27 1.27)) (justify bottom)))
+		(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Global VBAT_SW power net." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "VBAT_SW_1_0"
+			(polyline (pts (xy 0 0) (xy -1.27 -1.905)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(polyline (pts (xy 1.27 -1.905) (xy 0 0)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(pin power_in line (at 0 -2.54 90) (length 2.54) (name "VBAT_SW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+		)
+		(embedded_fonts no)
+	)
+	(symbol "VBAT_RAW"
+		(power global)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "#PWR" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "VBAT_RAW" (at 0 -3.81 0) (effects (font (size 1.27 1.27)) (justify bottom)))
+		(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Global VBAT_RAW power net." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(symbol "VBAT_RAW_1_0"
+			(polyline (pts (xy 0 0) (xy -1.27 -1.905)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(polyline (pts (xy 1.27 -1.905) (xy 0 0)) (stroke (width 0.254) (type solid)) (fill (type none)))
+			(pin passive line (at 0 -2.54 90) (length 2.54) (name "VBAT_RAW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
 		)
 		(embedded_fonts no)
 	)
