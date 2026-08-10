@@ -310,12 +310,11 @@ fallbackとする。最大yaw rateなどを検査し、`heading_valid`を位置�
 コードの失敗条件から外すが、推定yawが高精度になるわけではない。
 
 青と赤のラベル面は同じ高さに揃えるのが望ましい。高さが異なる場合、
-床面homographyで補正した青→赤ベクトルにはほぼ一定の視差ベクトルが
-加わり、両ラベルを正確に検出してもyawが偏る。カメラとラベル配置を
-固定し、60度以上のyaw範囲を含む未較正trajectoryを
-`fit_front_label_heading.py`へ渡すと、その固定成分を円当てはめで求めた
-較正JSONを生成できる。カメラ位置、盤面layout、どちらかのラベル高さを
-変更した場合は再較正する。
+床面homographyで補正した青→赤ベクトルの視差は画面位置によって変化し、
+両ラベルを正確に検出してもyawが偏る。`fit_front_label_heading.py`の
+定数bias較正は同じ局所画角でのみ使い、盤面の複数位置をhold-out評価する。
+全画角で精度が必要なら、ラベル面を同じ高さにするか、カメラ内部較正と
+各ラベル高さを使うray-plane補正が必要である。
 
 背景は動画全体から等間隔に選んだ41フレームのmedianで作る。同じ場所を
 機体が半数以上のsampleで占有すると機体が背景へ入り、検出に失敗する。
@@ -635,6 +634,23 @@ median速度をhard gateする。以下の0.8では各側120 ms以上が実デ�
 `--start-s/--end-s`で走行中の内部turnだけを切る場合も、現在の150 ms
 medianは移動中のposeを平均してbiasを生む。この用途は、trace位相境界へ
 poseを補間する実装を追加するまでparameter fitへ使わない。
+
+青・赤ラベルの高さが異なり、trialに十分な進入・脱出直線が含まれる場合は
+`--heading-source trajectory`を使える。これはmotion pathの累積距離8～32%
+と68～92%をそれぞれ直線回帰し、時間順の初期・終了方位を求める。既定で
+各直線の投影長30 mm以上、直交残差p95が3 mm以下を要求するため、曲線や
+誤追跡を方位として受理しない。このモードは位置だけを使うので、
+`--anchor-right-mm`と`--anchor-forward-mm`は0に限る。直線を持たない専用
+turn clipでは使わず、同じ高さの2ラベルheadingを使う。
+
+```sh
+./.venv-vision/bin/python tools/tuning/turn_video_tune.py \
+  trial01/trajectory.csv trial02/trajectory.csv trial03/trajectory.csv \
+  --heading-source trajectory \
+  --minimum-trajectory-heading-span-mm 30 \
+  --maximum-trajectory-heading-residual-mm 3 \
+  --report-json "$session_dir/analysis/turn_report.json"
+```
 
 5回の同一専用trialについて、QA基準を明示的にgateする例:
 

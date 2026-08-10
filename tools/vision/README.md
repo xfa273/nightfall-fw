@@ -141,11 +141,10 @@ both label detection rates, areas, observed baseline, selected heading source,
 and the applied heading calibration.
 
 Place the blue and red label surfaces at the same height when practical. A
-height difference makes floor-plane rectification add an approximately fixed
-vector to the observed blue-to-red baseline. It biases yaw even when both
-centres are detected accurately. With the camera and vehicle label placement
-fixed, record turns covering at least 60 degrees, first extract uncalibrated
-trajectories, and fit that vector:
+height difference makes floor-plane rectification add a position-dependent
+parallax vector to the observed blue-to-red baseline. It biases yaw even when
+both centres are detected accurately. The following constant-bias fit is only
+a local calibration; validate it at held-out board positions:
 
 ```sh
 ./.venv-vision/bin/python tools/vision/fit_front_label_heading.py \
@@ -156,9 +155,9 @@ trajectories, and fit that vector:
 ```
 
 Repeat the calibration after changing camera position, rectification layout,
-or either label height. The fitted apparent radius need not equal the physical
-24 mm when the labels are above the maze plane; yaw uses only the circle-centre
-bias.
+or either label height. For full-board accuracy, put both labels at the same
+height or use camera intrinsics and the two label heights for ray-plane
+correction.
 
 Without `--background-video`, the median background assumes that the vehicle
 does not occupy the same pixel in half or more of the sampled run frames.
@@ -347,6 +346,14 @@ pass. The fitter prints an experiment candidate only. It does not edit params,
 build, flash, spin the fan, or start a run. Any floor/maze trial requires
 explicit authorization for that specific motion under
 `docs/ai/HIL_SAFETY.md`.
+
+When unequal label heights make heading depend on board position, trials with
+long initial and final straights can instead use `--heading-source trajectory`.
+It fits the ordered centre-label path over cumulative-distance fractions
+8--32% and 68--92%. The default gates require at least 30 mm projected span and
+at most 3 mm p95 perpendicular residual in both fits. Curved or corrupted fit
+windows are rejected. This mode uses position only and therefore requires both
+anchor offsets to remain zero.
 
 ## Carried-ArUco reference extraction
 

@@ -182,6 +182,11 @@ class TurnCoordinateTest(unittest.TestCase):
                 cell_size_mm=None,
                 minimum_valid_fraction=0.95,
                 minimum_heading_valid_fraction=0.99,
+                heading_source="label",
+                trajectory_heading_inner_fraction=0.08,
+                trajectory_heading_outer_fraction=0.32,
+                minimum_trajectory_heading_span_mm=3.0,
+                maximum_trajectory_heading_residual_mm=1.0,
                 anchor_right_mm=0.0,
                 anchor_forward_mm=0.0,
                 start_s=None,
@@ -190,6 +195,7 @@ class TurnCoordinateTest(unittest.TestCase):
                 pose_window_ms=150.0,
                 maximum_pose_window_speed_mm_s=10.0,
                 minimum_pose_window_coverage=0.8,
+                side="right",
             )
             trial = TURN.analyze_trial(path, args)
             self.assertAlmostEqual(trial.endpoint.x_right_mm, 10.0, delta=0.3)
@@ -201,6 +207,49 @@ class TurnCoordinateTest(unittest.TestCase):
             self.assertAlmostEqual(trial.endpoint.theta_deg, 90.0, delta=1.0)
             self.assertEqual(trial.tracking_valid_fraction, 1.0)
             self.assertEqual(trial.heading_valid_fraction, 1.0)
+
+            args.heading_source = "trajectory"
+            trajectory_trial = TURN.analyze_trial(path, args)
+            self.assertAlmostEqual(
+                trajectory_trial.endpoint.x_right_mm,
+                0.0,
+                delta=0.3,
+            )
+            self.assertAlmostEqual(
+                trajectory_trial.endpoint.y_forward_mm,
+                math.hypot(10.0, 20.0),
+                delta=0.3,
+            )
+            self.assertAlmostEqual(
+                trajectory_trial.endpoint.theta_deg,
+                0.0,
+                delta=0.2,
+            )
+            self.assertEqual(trajectory_trial.heading_source, "trajectory")
+            self.assertGreater(trajectory_trial.start_heading_fit_span_mm, 3.0)
+            self.assertLess(
+                trajectory_trial.start_heading_fit_residual_p95_mm,
+                0.01,
+            )
+
+    def test_trajectory_heading_rejects_a_curved_fit_window(self):
+        angle = np.linspace(0.0, math.pi / 2.0, 101)
+        x = 50.0 * np.cos(angle)
+        y = 50.0 * np.sin(angle)
+        cumulative = np.concatenate(
+            ([0.0], np.cumsum(np.hypot(np.diff(x), np.diff(y))))
+        )
+        with self.assertRaisesRegex(ValueError, "residual p95"):
+            TURN._fit_trajectory_heading(
+                x,
+                y,
+                cumulative,
+                0.0,
+                1.0,
+                minimum_span_mm=30.0,
+                maximum_residual_mm=3.0,
+                label="synthetic",
+            )
 
 
 @unittest.skipUnless(MARKERLESS is not None, "OpenCV contrib is unavailable")

@@ -62,6 +62,13 @@ class Trial:
     yaw_change_abs_deg: float
     tracking_valid_fraction: float
     heading_valid_fraction: float
+    heading_source: str
+    start_heading_fit_span_mm: Optional[float]
+    end_heading_fit_span_mm: Optional[float]
+    start_heading_fit_residual_p95_mm: Optional[float]
+    end_heading_fit_residual_p95_mm: Optional[float]
+    start_heading_fit_samples: Optional[int]
+    end_heading_fit_samples: Optional[int]
     start_pose_speed_median_mm_s: float
     end_pose_speed_median_mm_s: float
     start_pose_window_s: float
@@ -146,6 +153,39 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.99,
         help="reject a trial below this measured-heading fraction",
+    )
+    parser.add_argument(
+        "--heading-source",
+        choices=("label", "trajectory"),
+        default="label",
+        help=(
+            "use the two-label pose heading or regress the initial/final "
+            "straight trajectory (immune to label-height parallax)"
+        ),
+    )
+    parser.add_argument(
+        "--trajectory-heading-inner-fraction",
+        type=float,
+        default=0.08,
+        help="fraction of path omitted next to each motion endpoint",
+    )
+    parser.add_argument(
+        "--trajectory-heading-outer-fraction",
+        type=float,
+        default=0.32,
+        help="outer cumulative-path fraction of each straight-line fit",
+    )
+    parser.add_argument(
+        "--minimum-trajectory-heading-span-mm",
+        type=float,
+        default=30.0,
+        help="minimum projected line span required for each heading fit",
+    )
+    parser.add_argument(
+        "--maximum-trajectory-heading-residual-mm",
+        type=float,
+        default=3.0,
+        help="maximum p95 perpendicular residual of each heading fit",
     )
     parser.add_argument(
         "--maximum-endpoint-std-mm",
@@ -351,6 +391,79 @@ def _tracked_to_reference(
     return reference_x, reference_y
 
 
+@dataclass
+class TrajectoryHeadingFit:
+    yaw_deg: float
+    span_mm: float
+    residual_p95_mm: float
+    sample_count: int
+
+
+def _fit_trajectory_heading(
+    x_mm: np.ndarray,
+    y_mm: np.ndarray,
+    cumulative_mm: np.ndarray,
+    fraction_start: float,
+    fraction_end: float,
+    minimum_span_mm: float,
+    maximum_residual_mm: float,
+    label: str,
+) -> TrajectoryHeadingFit:
+    total_length = float(cumulative_mm[-1])
+    if total_length <= 0.0:
+        raise ValueError("motion path has zero length")
+    fraction = cumulative_mm / total_length
+    selected = (
+        np.isfinite(x_mm)
+        & np.isfinite(y_mm)
+        & (fraction >= fraction_start)
+        & (fraction <= fraction_end)
+    )
+    indexes = np.flatnonzero(selected)
+    if len(indexes) < 5:
+        raise ValueError(
+            f"{label} trajectory-heading fit has {len(indexes)} samples; "
+            "requires at least 5"
+        )
+
+    fit_s = cumulative_mm[indexes]
+    fit_x = x_mm[indexes]
+    fit_y = y_mm[indexes]
+    centered_s = fit_s - float(np.mean(fit_s))
+    denominator = float(np.dot(centered_s, centered_s))
+    if denominator <= 0.0:
+        raise ValueError(f"{label} trajectory-heading fit has zero time span")
+    centered_x = fit_x - float(np.mean(fit_x))
+    centered_y = fit_y - float(np.mean(fit_y))
+    slope_x = float(np.dot(centered_s, centered_x) / denominator)
+    slope_y = float(np.dot(centered_s, centered_y) / denominator)
+    slope_norm = math.hypot(slope_x, slope_y)
+    if slope_norm <= 1e-9:
+        raise ValueError(f"{label} trajectory-heading fit has zero direction")
+    unit_x = slope_x / slope_norm
+    unit_y = slope_y / slope_norm
+    longitudinal = centered_x * unit_x + centered_y * unit_y
+    span_mm = float(np.ptp(longitudinal))
+    if span_mm < minimum_span_mm:
+        raise ValueError(
+            f"{label} trajectory-heading span {span_mm:.3f} mm is below "
+            f"{minimum_span_mm:.3f} mm"
+        )
+    perpendicular = np.abs(-unit_y * centered_x + unit_x * centered_y)
+    residual_p95_mm = float(np.percentile(perpendicular, 95.0))
+    if residual_p95_mm > maximum_residual_mm:
+        raise ValueError(
+            f"{label} trajectory-heading residual p95 "
+            f"{residual_p95_mm:.3f} mm exceeds {maximum_residual_mm:.3f} mm"
+        )
+    return TrajectoryHeadingFit(
+        yaw_deg=math.degrees(math.atan2(unit_y, unit_x)),
+        span_mm=span_mm,
+        residual_p95_mm=residual_p95_mm,
+        sample_count=len(indexes),
+    )
+
+
 def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     rows = _load_csv_rows(path)
     time_s = _column(rows, ("video_pts_s", "time_s"))
@@ -365,12 +478,14 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
         assert x_cell is not None and y_cell is not None
         x_mm = x_cell * args.cell_size_mm
         y_mm = y_cell * args.cell_size_mm
+    heading_source = args.heading_source
     yaw = _column(
         rows,
         ("yaw_deg_unwrapped", "yaw_deg", "heading_deg_unwrapped"),
+        required=heading_source == "label",
     )
-    assert yaw is not None
-    yaw = _unwrap_degrees(yaw)
+    if yaw is not None:
+        yaw = _unwrap_degrees(yaw)
 
     valid_column = _column(
         rows,
@@ -386,9 +501,13 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     valid = finite_position
     if valid_column is not None:
         valid &= valid_column > 0.5
-    heading_valid = valid & np.isfinite(yaw)
-    if heading_valid_column is not None:
-        heading_valid &= heading_valid_column > 0.5
+    if heading_source == "label":
+        assert yaw is not None
+        heading_valid = valid & np.isfinite(yaw)
+        if heading_valid_column is not None:
+            heading_valid &= heading_valid_column > 0.5
+    else:
+        heading_valid = valid.copy()
     if np.count_nonzero(valid) < 2:
         raise ValueError(f"{path}: fewer than two valid poses")
     if np.count_nonzero(heading_valid) < 2:
@@ -398,18 +517,21 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
         indexes = np.arange(len(rows))
         x_mm = np.interp(indexes, good_position, x_mm[good_position])
         y_mm = np.interp(indexes, good_position, y_mm[good_position])
-    if not np.all(heading_valid):
+    if heading_source == "label" and not np.all(heading_valid):
+        assert yaw is not None
         good_heading = np.flatnonzero(heading_valid)
         indexes = np.arange(len(rows))
         yaw = np.interp(indexes, good_heading, yaw[good_heading])
 
-    x_mm, y_mm = _tracked_to_reference(
-        x_mm,
-        y_mm,
-        yaw,
-        args.anchor_right_mm,
-        args.anchor_forward_mm,
-    )
+    if heading_source == "label":
+        assert yaw is not None
+        x_mm, y_mm = _tracked_to_reference(
+            x_mm,
+            y_mm,
+            yaw,
+            args.anchor_right_mm,
+            args.anchor_forward_mm,
+        )
     speed = _column(rows, ("speed_mm_s",), required=False)
     if speed is None:
         speed = np.hypot(_gradient(x_mm, time_s), _gradient(y_mm, time_s))
@@ -490,10 +612,46 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
             )
     start_x = _median(x_mm[start_indexes])
     start_y = _median(y_mm[start_indexes])
-    start_yaw = _median(yaw[start_indexes])
     end_x = _median(x_mm[end_indexes])
     end_y = _median(y_mm[end_indexes])
-    end_yaw = _median(yaw[end_indexes])
+
+    path_slice = slice(motion_start_index, motion_end_index + 1)
+    path_x = x_mm[path_slice]
+    path_y = y_mm[path_slice]
+    path_steps = np.hypot(np.diff(path_x), np.diff(path_y))
+    cumulative_path = np.concatenate(([0.0], np.cumsum(path_steps)))
+    path_length = float(cumulative_path[-1])
+    start_fit: Optional[TrajectoryHeadingFit] = None
+    end_fit: Optional[TrajectoryHeadingFit] = None
+    if heading_source == "trajectory":
+        inner = args.trajectory_heading_inner_fraction
+        outer = args.trajectory_heading_outer_fraction
+        start_fit = _fit_trajectory_heading(
+            path_x,
+            path_y,
+            cumulative_path,
+            inner,
+            outer,
+            args.minimum_trajectory_heading_span_mm,
+            args.maximum_trajectory_heading_residual_mm,
+            "start",
+        )
+        end_fit = _fit_trajectory_heading(
+            path_x,
+            path_y,
+            cumulative_path,
+            1.0 - outer,
+            1.0 - inner,
+            args.minimum_trajectory_heading_span_mm,
+            args.maximum_trajectory_heading_residual_mm,
+            "end",
+        )
+        start_yaw = start_fit.yaw_deg
+        end_yaw = end_fit.yaw_deg
+    else:
+        assert yaw is not None
+        start_yaw = _median(yaw[start_indexes])
+        end_yaw = _median(yaw[end_indexes])
 
     dx = end_x - start_x
     dy = end_y - start_y
@@ -501,11 +659,10 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     x_right = math.sin(heading) * dx - math.cos(heading) * dy
     y_forward = math.cos(heading) * dx + math.sin(heading) * dy
     theta = end_yaw - start_yaw
-
-    path_slice = slice(motion_start_index, motion_end_index + 1)
-    path_x = x_mm[path_slice]
-    path_y = y_mm[path_slice]
-    path_length = float(np.sum(np.hypot(np.diff(path_x), np.diff(path_y))))
+    if heading_source == "trajectory":
+        theta = (theta + 180.0) % 360.0 - 180.0
+        if math.isclose(abs(theta), 180.0, abs_tol=1e-9):
+            theta = -180.0 if args.side == "right" else 180.0
     peak_speed = float(np.nanmax(speed[path_slice]))
     return Trial(
         path=str(path.resolve()),
@@ -527,6 +684,19 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
         yaw_change_abs_deg=abs(theta),
         tracking_valid_fraction=valid_fraction,
         heading_valid_fraction=heading_valid_fraction,
+        heading_source=heading_source,
+        start_heading_fit_span_mm=None if start_fit is None else start_fit.span_mm,
+        end_heading_fit_span_mm=None if end_fit is None else end_fit.span_mm,
+        start_heading_fit_residual_p95_mm=(
+            None if start_fit is None else start_fit.residual_p95_mm
+        ),
+        end_heading_fit_residual_p95_mm=(
+            None if end_fit is None else end_fit.residual_p95_mm
+        ),
+        start_heading_fit_samples=(
+            None if start_fit is None else start_fit.sample_count
+        ),
+        end_heading_fit_samples=None if end_fit is None else end_fit.sample_count,
         start_pose_speed_median_mm_s=start_pose_speed,
         end_pose_speed_median_mm_s=end_pose_speed,
         start_pose_window_s=start_pose_window_s,
@@ -549,7 +719,7 @@ def summarize_trials(trials: Sequence[Trial]) -> dict[str, Any]:
     x = [trial.endpoint.x_right_mm for trial in trials]
     y = [trial.endpoint.y_forward_mm for trial in trials]
     theta = [trial.endpoint.theta_deg for trial in trials]
-    return {
+    result = {
         "count": len(trials),
         "endpoint": {
             "x_right_mm": _summary(x),
@@ -566,6 +736,34 @@ def summarize_trials(trials: Sequence[Trial]) -> dict[str, Any]:
             [trial.heading_valid_fraction for trial in trials]
         ),
     }
+    start_spans = [
+        trial.start_heading_fit_span_mm
+        for trial in trials
+        if trial.start_heading_fit_span_mm is not None
+    ]
+    end_spans = [
+        trial.end_heading_fit_span_mm
+        for trial in trials
+        if trial.end_heading_fit_span_mm is not None
+    ]
+    start_residuals = [
+        trial.start_heading_fit_residual_p95_mm
+        for trial in trials
+        if trial.start_heading_fit_residual_p95_mm is not None
+    ]
+    end_residuals = [
+        trial.end_heading_fit_residual_p95_mm
+        for trial in trials
+        if trial.end_heading_fit_residual_p95_mm is not None
+    ]
+    if start_spans and end_spans and start_residuals and end_residuals:
+        result["trajectory_heading_fit"] = {
+            "start_span_mm": _summary(start_spans),
+            "end_span_mm": _summary(end_spans),
+            "start_residual_p95_mm": _summary(start_residuals),
+            "end_residual_p95_mm": _summary(end_residuals),
+        }
+    return result
 
 
 def _load_turn_tune_module() -> Any:
@@ -799,6 +997,21 @@ def print_report(report: dict[str, Any]) -> None:
             endpoint["theta_deg"]["std"],
         )
     )
+    if "trajectory_heading_fit" in aggregate:
+        fit = aggregate["trajectory_heading_fit"]
+        print(
+            "[VIDEO-TURN] trajectory_heading "
+            "span_min={:.3f}mm residual_p95_max={:.3f}mm".format(
+                min(
+                    fit["start_span_mm"]["min"],
+                    fit["end_span_mm"]["min"],
+                ),
+                max(
+                    fit["start_residual_p95_mm"]["max"],
+                    fit["end_residual_p95_mm"]["max"],
+                ),
+            )
+        )
     if "proposal" in report:
         proposal = report["proposal"]
         correction = proposal["desired_minus_observed"]
@@ -829,6 +1042,10 @@ def validate_args(args: argparse.Namespace) -> None:
         "anchor_forward_mm",
         "minimum_valid_fraction",
         "minimum_heading_valid_fraction",
+        "trajectory_heading_inner_fraction",
+        "trajectory_heading_outer_fraction",
+        "minimum_trajectory_heading_span_mm",
+        "maximum_trajectory_heading_residual_mm",
         "maximum_endpoint_std_mm",
         "maximum_yaw_std_deg",
         "feedback_gain",
@@ -861,6 +1078,29 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--minimum-valid-fraction must be in (0, 1]")
     if not 0.0 < args.minimum_heading_valid_fraction <= 1.0:
         raise ValueError("--minimum-heading-valid-fraction must be in (0, 1]")
+    if not (
+        0.0
+        <= args.trajectory_heading_inner_fraction
+        < args.trajectory_heading_outer_fraction
+        < 0.5
+    ):
+        raise ValueError(
+            "trajectory heading fractions must satisfy "
+            "0 <= inner < outer < 0.5"
+        )
+    if args.minimum_trajectory_heading_span_mm <= 0.0:
+        raise ValueError("--minimum-trajectory-heading-span-mm must be positive")
+    if args.maximum_trajectory_heading_residual_mm < 0.0:
+        raise ValueError(
+            "--maximum-trajectory-heading-residual-mm must be non-negative"
+        )
+    if args.heading_source == "trajectory" and (
+        args.anchor_right_mm != 0.0 or args.anchor_forward_mm != 0.0
+    ):
+        raise ValueError(
+            "--heading-source trajectory requires zero anchor offsets; "
+            "a height-independent heading cannot rotate an offset anchor"
+        )
     if not 0.0 < args.feedback_gain <= 1.0:
         raise ValueError("--feedback-gain must be in (0, 1]")
     if args.minimum_fit_trials < 1:
@@ -902,13 +1142,14 @@ def main() -> int:
         trials = [analyze_trial(path, args) for path in args.trajectory_csv]
         aggregate = summarize_trials(trials)
         report: dict[str, Any] = {
-            "schema": "nightfall_video_turn_report_v1",
+            "schema": "nightfall_video_turn_report_v2",
             "coordinate_frame": {
                 "x_right_mm": "vehicle right is positive",
                 "y_forward_mm": "vehicle forward is positive",
                 "theta_deg": "left turn is positive",
             },
             "analysis": {
+                "heading_source": args.heading_source,
                 "motion_threshold_mm_s": args.motion_threshold_mm_s,
                 "pose_window_ms": args.pose_window_ms,
                 "maximum_pose_window_speed_mm_s": (args.maximum_pose_window_speed_mm_s),
@@ -917,6 +1158,18 @@ def main() -> int:
                 "anchor_forward_mm": args.anchor_forward_mm,
                 "minimum_valid_fraction": args.minimum_valid_fraction,
                 "minimum_heading_valid_fraction": (args.minimum_heading_valid_fraction),
+                "trajectory_heading_inner_fraction": (
+                    args.trajectory_heading_inner_fraction
+                ),
+                "trajectory_heading_outer_fraction": (
+                    args.trajectory_heading_outer_fraction
+                ),
+                "minimum_trajectory_heading_span_mm": (
+                    args.minimum_trajectory_heading_span_mm
+                ),
+                "maximum_trajectory_heading_residual_mm": (
+                    args.maximum_trajectory_heading_residual_mm
+                ),
                 "turn_selection": {
                     "runner": args.runner,
                     "mode": args.mode,
