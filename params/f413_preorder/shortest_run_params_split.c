@@ -52,10 +52,10 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .dist_turn135in_out = 22.0f,
     // 135deg Out
     .velocity_turn135out = 500.0f,
-    .alpha_turn135out    = 8200.0f,
+    .alpha_turn135out    = 8850.0f,
     .angle_turn135out    = 133.3f,
     .dist_turn135out_in  = 0.0f,
-    .dist_turn135out_out = 10.5f,
+    .dist_turn135out_out = 12.0f,
     // Fan
     .fan_power          = 0,
     // Makepath
