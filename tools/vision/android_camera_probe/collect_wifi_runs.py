@@ -133,6 +133,11 @@ class ApiClient:
             partial.unlink()
             offset = 0
         if offset == expected_size:
+            if not partial.is_file():
+                partial.parent.mkdir(parents=True, exist_ok=True)
+                with partial.open("wb") as output:
+                    output.flush()
+                    os.fsync(output.fileno())
             os.replace(partial, destination)
             print(f"[HFR-WIFI] Resumed complete file: {label}")
             return

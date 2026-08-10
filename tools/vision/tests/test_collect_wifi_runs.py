@@ -200,6 +200,23 @@ class WifiCollectorTest(unittest.TestCase):
         self.assertEqual(wifi.parse_host("192.0.2.4"), ("192.0.2.4", 46052))
         self.assertEqual(wifi.parse_host("192.0.2.4:1234"), ("192.0.2.4", 1234))
 
+    def test_download_zero_length_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            endpoint = wifi.fetch_info("127.0.0.1", self.server.server_port)
+            client = wifi.ApiClient(endpoint, FakePixelHandler.token)
+            destination = Path(temporary) / "capture_results.jsonl"
+
+            client.download(
+                "/unused-for-zero-length-artifact",
+                destination,
+                0,
+                "empty/capture_results.jsonl",
+            )
+
+            self.assertTrue(destination.is_file())
+            self.assertEqual(destination.stat().st_size, 0)
+            self.assertFalse(destination.with_name(destination.name + ".part").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
