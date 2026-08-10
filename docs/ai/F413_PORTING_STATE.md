@@ -25,13 +25,12 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Trace log schema is v6: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00060000`.
 - F413 reuses F405 solver/path/maze logic through `f413_solver_bridge.c`.
 - `tools/solver_host` can run solver and exploration simulation on the host.
-- UART `K` provides a read-only, non-motor mode2/case8 preview using strict
-  KERI shortest-turn patterns #1--#5 and a diagnostic 16x16 centre 2x2 goal
-  independent of the compiled exploration goal.  A successfully loaded FRAM
-  maze always has priority; only when that read fails, the preview uses the
-  pinned 16MM2014CX wall-nibble fixture from program Flash without saving it
-  to FRAM.  UART identifies the selected source and reports the typed route
-  and first-goal-entry time, but the preview is not connected to a runner.
+- The fixed-memory KERI #1--#5 time planner is connected to mode2 case6--9.
+  It requires a successfully loaded FRAM maze, uses the compiled `GOAL1..9`,
+  the selected case's straight limits, and the calibrated mode2 turn timing,
+  then transactionally converts a nominal-speed, cardinal-stop route into the
+  existing `path[]` runner grammar.  UART `K` remains a read-only case8
+  diagnostic with a centre 2x2 goal and a pinned 16MM2014CX fallback.
 - F413 OP UI has F405-style mode/case/sub selection and UART `P`/`E` wrappers.
 - F413 run-session helpers and safe trace sessions have been split into `f413_run_session.c`.
 - Recent refactors split F413 helpers/diagnostics/UI/run-session code out of `main.c`.
@@ -49,8 +48,10 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Real maze exploration is not finished as a trusted competition flow.
 - Wall control and wall-end behavior need more floor/maze data.
 - Shortest-run UI flow from a real explored FRAM map needs careful validation.
-- Mode 2 shortest-run floor tuning is the next step; modes 3-7 remain parameter
-  baselines and are constrained by explicit F413 straight/diagonal/turn speed caps.
+- Mode 2 individual turns are calibrated; the new case6--9 diagonal shortest
+  flow still needs staged floor validation on a known saved maze.  Modes 3-7
+  remain parameter baselines and are constrained by explicit F413
+  straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
 - `board/mini_r2_0` does not exist yet; board separation is incomplete.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.
@@ -72,11 +73,10 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   - F413 run-hook trace capture service and guarded idle-scratch lease used by
     foreground-only route preview.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_preview.c`
-  - Fixed-memory strict KERI #1--#5 time-based route preview; prefers the FRAM
-    maze and falls back after a failed read to the pinned built-in
-    16MM2014CX fixture, uses a non-persistent diagnostic centre 2x2 goal,
-    never starts motor/fan/run execution or writes NVM, and emits the selected
-    action list.
+  - Fixed-memory strict KERI #1--#5 time planner shared by the UART preview and
+    mode2 case6--9 path generation.  Run generation requires the FRAM maze and
+    compiled goals; preview alone may use the built-in diagnostic fixture.
+    This module builds but never starts motor/fan execution or writes NVM.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_trace_diag.c`
   - Trace dump/selftest/CSV/bin diagnostic output.
 - `nvm/nvm.c`
@@ -124,4 +124,6 @@ Treat motor, fan, turn, search, shortest, and NVM-destructive operations as gate
    - `tools/solver_host/run_solver_host.sh --explore-sim`
    - UART `@` dump rendering
    - solver from search dump
-5. Only after basic tuning: floor low-speed one-step exploration, then short maze exploration.
+5. Validate diagonal shortest running in stages: inspect the generated path,
+   then run mode2 case6 on a known maze before increasing to case7--9.
+6. Only after basic tuning: floor low-speed one-step exploration, then short maze exploration.

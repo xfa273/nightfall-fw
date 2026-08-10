@@ -2,15 +2,14 @@
 
 ## Purpose and scope
 
-This document freezes a **PC-only geometric and timing audit baseline** for the
-diagonal slalom planner.  It is not a firmware parameter update and it does
-not claim that a mouse can safely run the provisional values below.
+This document freezes the geometric and timing audit baseline for the diagonal
+slalom planner.  F413 timing entries are the current calibrated firmware data;
+the exact-closing centre-line seeds remain PC-only analytical geometry.
 
 The primary profile is STM32F413 `f413_preorder`, shortest-run mode 2.  F405
-`mini_r1_0` modes 2 through 5 are comparison profiles.  At the time this
-baseline was recorded,
-`params/f413_preorder/shortest_run_params_split.c` and
-`params/mini_r1_0/shortest_run_params_split.c` were byte-identical.
+`mini_r1_0` modes 2 through 5 are preserved comparison profiles.  F413 mode2
+has since been calibrated independently and is intentionally no longer
+byte-identical to F405 mini mode2.
 
 The machine-independent data are in
 `tools/solver_host/slalom_profile_baseline.h/.c`.  The executable audit is
@@ -20,11 +19,11 @@ The machine-independent data are in
 tools/solver_host/run_slalom_profile_audit.sh
 ```
 
-The runner first verifies that the F413 and F405 mini parameter source tables
-remain byte-identical, then compiles the real parameter table and compares
-every copied turn field against it.  It builds with C11,
+The runner compiles the real F413 parameter table and compares every copied
+primary turn field against it; the preserved F405 values are checked as host
+comparison baselines.  It builds with C11,
 `-Wall -Wextra -Werror -Wpedantic`, ASan, and UBSan.  A successful baseline run
-reports `all 882 checks passed`.
+reports `all 837 checks passed`.
 
 ## Model assumptions
 
@@ -62,9 +61,10 @@ planner therefore makes the approximation explicit:
 
 The planner rejects a non-positive resulting speed.  The profile starts and
 ends at the configured velocity and its distance integral is exactly the
-geometry length.  Diagonal turns use the same provisional seed for duration
-and geometry, so their correction is zero apart from numerical rounding.
-This composite trajectory is a coherent PC surrogate, not a claim about the
+geometry length.  F413 diagonal turns now use calibrated firmware parameters
+for duration while retaining the exact-closing seed only for centre-line
+geometry.  F405 comparison diagonals still use their seed for both.  This
+composite trajectory is a coherent planning surrogate, not a claim about the
 unmeasured within-turn velocity of the real machine.
 
 The audit deliberately uses the **logical turn angles** 45, 90, 135, and 180
@@ -125,8 +125,8 @@ angles in the geometry table, not the independently stored tuning angles.
 
 | Profile | small90 | large90 | large180 | 45in | 45out | V90 | 135in | 135out |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| F413 mode2 | `300/8920/10/14.2` | `500/4700/5/15` | `500/4697/12/19` | `500/6360/0/28` | `500/7700/15/0` | `500/12200/2/28` | `500/6888/9/17` | `500/6950/0/12` |
-| F405 mode2 | same as F413 mode2 | same | same | same | same | same | same | same |
+| F413 mode2 | `300/28000/0/28.4` | `500/9400/0/29.8` | `500/4150/6.5/20` | `500/6200/23.5/10.5` | `500/10500/7.5/0` | `500/12200/12.8/27.2` | `500/10250/3.5/22` | `500/8850/0/12` |
+| F405 mode2 | `300/8920/10/14.2` | `500/4700/5/15` | `500/4697/12/19` | `500/6360/0/28` | `500/7700/15/0` | `500/12200/2/28` | `500/6888/9/17` | `500/6950/0/12` |
 | F405 mode3 | `600/36000/4/14` | `1000/17300/1/6` | `1000/15000/0/0` | `1000/27200/0/35` | `1000/28000/17/0` | `1000/43000/6/23` | `1000/26500/5/25` | `1000/29000/0/26` |
 | F405 mode4 | `800/51500/4/14` | `1000/17300/1/6` | `1000/15000/0/0` | `1200/16422/0/20` | `1200/16422/18/2` | `1200/25838/5/7` | `1200/17395/8/2` | `1200/17736/2/10` |
 | F405 mode5 | `800/51500/4/14` | `1200/24800/2/8` | `1200/21000/0/4` | unavailable | unavailable | unavailable | unavailable | unavailable |
@@ -141,19 +141,27 @@ millimeters.  Calibrated orthogonal parameters remain the duration source even
 when this simplified continuous model has a visible closure residual.  Every
 primitive has a separate PC-only exact-closure centre-line seed: leaving even
 a sub-5-mm residual would make the next exact graph edge begin at a different
-pose.  Current diagonal values are audited for context, but provisional seeds
-supply both their geometry and timing.
+pose.  F413 diagonal values supply calibrated timing; provisional seeds supply
+their logical geometry.  F405 comparison diagonals retain seed timing.
 
 | Profile | Primitive | Residual `(dx, dy)` mm | Norm mm | Classification |
 | --- | --- | ---: | ---: | --- |
-| F413/F405 mode2 | small90 | `(+4.043967, +8.243967)` | 9.182410 | current timing retained |
-| F413/F405 mode2 | large90 | `(+4.647088, +14.647088)` | 15.366607 | current timing retained |
-| F413/F405 mode2 | large180 | `(-7.000000, -2.672291)` | 7.492739 | current timing retained |
-| F413/F405 mode2 | 45in | `(+11.729505, +8.735720)` | 14.625119 | current audit; provisional timing/geometry |
-| F413/F405 mode2 | 45out | `(-5.998413, -0.977048)` | 6.077465 | current audit; provisional timing/geometry |
-| F413/F405 mode2 | V90 | `(-5.997294, +20.002706)` | 20.882427 | current audit; provisional timing/geometry |
-| F413/F405 mode2 | 135in | `(-10.256355, +13.192288)` | 16.710155 | current audit; provisional timing/geometry |
-| F413/F405 mode2 | 135out | `(-2.709449, +3.789764)` | 4.658693 | current audit; provisional timing/geometry |
+| F413 mode2 | small90 | `(-22.962753, +5.437247)` | 23.597705 | calibrated timing retained |
+| F413 mode2 | large90 | `(-26.609936, +3.190064)` | 26.800471 | calibrated timing retained |
+| F413 mode2 | large180 | `(-13.500000, +2.904831)` | 13.808984 | calibrated timing retained |
+| F413 mode2 | 45in | `(+23.905570, -3.203544)` | 24.119266 | calibrated timing; seed geometry |
+| F413 mode2 | 45out | `(-24.194822, -5.407646)` | 24.791774 | calibrated timing; seed geometry |
+| F413 mode2 | V90 | `(+4.802706, +19.202706)` | 19.794188 | calibrated timing; seed geometry |
+| F413 mode2 | 135in | `(-26.098704, +0.294717)` | 26.100368 | calibrated timing; seed geometry |
+| F413 mode2 | 135out | `(-6.988675, -6.541201)` | 9.572298 | calibrated timing; seed geometry |
+| F405 mode2 | small90 | `(+4.043967, +8.243967)` | 9.182410 | current timing retained |
+| F405 mode2 | large90 | `(+4.647088, +14.647088)` | 15.366607 | current timing retained |
+| F405 mode2 | large180 | `(-7.000000, -2.672291)` | 7.492739 | current timing retained |
+| F405 mode2 | 45in | `(+11.729505, +8.735720)` | 14.625119 | provisional timing/geometry |
+| F405 mode2 | 45out | `(-5.998413, -0.977048)` | 6.077465 | provisional timing/geometry |
+| F405 mode2 | V90 | `(-5.997294, +20.002706)` | 20.882427 | provisional timing/geometry |
+| F405 mode2 | 135in | `(-10.256355, +13.192288)` | 16.710155 | provisional timing/geometry |
+| F405 mode2 | 135out | `(-2.709449, +3.789764)` | 4.658693 | provisional timing/geometry |
 | F405 mode3 | small90 | `(-2.129949, +7.870051)` | 8.153182 | current timing retained |
 | F405 mode3 | large90 | `(+4.452744, +9.452744)` | 10.448986 | current timing retained |
 | F405 mode3 | large180 | `(0.000000, +7.734233)` | 7.734233 | current timing retained |
@@ -181,18 +189,18 @@ logical path lattice.
 
 ## PC-only provisional exact-closure seeds
 
-> **These values are analytical seeds for host-side planning experiments.
-> They are not firmware parameters, are not HIL-qualified, and must not be
-> copied into a machine profile without the normal tuning and safety process.**
+> **These values are analytical centre-line seeds.  They are not firmware
+> parameters and must not be copied into a machine profile.**
 
 All seeds retain the current primitive's centre velocity where one exists and
 solve the continuous model for geometric closure.  Values are rounded for
 readability; the executable audit requires every seed's residual norm to be at
-most `0.001 mm`.  Orthogonal current parameters remain the duration source;
-their seeds only provide the continuous centre line.  Diagonal seeds provide
-both duration and geometry.  The final sampled pose is canonicalized to the
-logical endpoint only after passing this sub-micron gate, preventing topology
-from changing with the requested sampling interval.
+most `0.001 mm`.  F413 mode2 current parameters provide duration for all
+turns, while their seeds only provide the continuous centre line.  F405
+comparison diagonal seeds provide both duration and geometry.  The final
+sampled pose is canonicalized to the logical endpoint only after passing this
+sub-micron gate, preventing topology from changing with the requested sampling
+interval.
 
 Each entry is `velocity / alpha / dist_in / dist_out` in the same units as the
 current-parameter table.

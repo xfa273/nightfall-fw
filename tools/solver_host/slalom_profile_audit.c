@@ -17,8 +17,9 @@ static const ShortestRunModeParams_t *nf_compiled_mode(size_t profile_index)
 {
     switch (profile_index) {
     case 0U:
-    case 1U:
         return &shortestRunModeParams2;
+    case 1U:
+        return NULL;
     case 2U:
         return &shortestRunModeParams3;
     case 3U:
@@ -168,9 +169,11 @@ static void nf_audit_compiled_source(size_t profile_index,
 {
     const ShortestRunModeParams_t *mode = nf_compiled_mode(profile_index);
 
-    nf_check(mode != NULL, profile->name, "compiled-source",
-             "profile has no compiled shortest-run source mapping");
     if (mode == NULL) {
+        if (profile->primary) {
+            nf_check(false, profile->name, "compiled-source",
+                     "primary profile has no compiled source mapping");
+        }
         return;
     }
     for (size_t i = 0U; i < NF_PRIMITIVE_COUNT; i++) {
@@ -257,7 +260,7 @@ static void nf_audit_profile(size_t profile_index,
         const NfProvisionalSeed *seed = &profile->seeds[i];
         NfTurnPlan current_plan = {0};
         const bool timing_is_provisional =
-            i >= (size_t)NF_PRIMITIVE_45_IN;
+            !profile->primary && i >= (size_t)NF_PRIMITIVE_45_IN;
 
         if (!current->available) {
             printf(" primitive=%s target=(%.6f,%.6f) current=UNAVAILABLE "
@@ -309,9 +312,11 @@ static void nf_audit_profile(size_t profile_index,
                    current_forward_mm, current_lateral_mm,
                    residual_forward_mm, residual_lateral_mm,
                    residual_norm_mm,
-                   timing_is_provisional
-                       ? "PROVISIONAL_DIAGONAL_TIMING"
-                       : "CURRENT_CALIBRATED_ORTHOGONAL_TIMING");
+                   timing_is_provisional ?
+                       "PROVISIONAL_DIAGONAL_TIMING" :
+                       (profile->primary ?
+                            "CURRENT_CALIBRATED_TIMING" :
+                            "CURRENT_CALIBRATED_ORTHOGONAL_TIMING"));
         }
 
         nf_check(seed->available,
@@ -342,7 +347,8 @@ int main(void)
            NF_SLALOM_LOGICAL_DIAGONAL_MM, NF_SLALOM_COMMAND_DIAGONAL_MM,
            command_delta_mm,
            100.0 * command_delta_mm / NF_SLALOM_LOGICAL_DIAGONAL_MM);
-    printf("notice=all-seeds-are-PC-only-provisional;firmware-parameters-unchanged\n");
+    printf("notice=seeds-are-PC-only-geometry;"
+           "f413-current-timing-is-calibrated-firmware-data\n");
 
     for (size_t i = 0U; i < nf_slalom_profile_count; i++) {
         nf_audit_profile(i, &nf_slalom_profiles[i]);

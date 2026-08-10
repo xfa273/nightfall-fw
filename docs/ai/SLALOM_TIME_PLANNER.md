@@ -1,4 +1,4 @@
-# 斜め対応・時間最短経路プランナ（PC参照実装）
+# 斜め対応・時間最短経路プランナ（PC参照・F413固定メモリ実装）
 
 ## 到達点と適用範囲
 
@@ -13,9 +13,9 @@ PC参照実装として、直交・斜めを同じ時間軸で比較する経路
 - #5: 斜めV90度
 
 #0の小回り90度は直交限定baselineとの比較用にだけ残し、斜めplannerの候補・出力
-には含めない。PC参照実装は動的メモリを使い、斜めparameterの一部は机上の仮値で
-ある。F413では同じトポロジと時間契約を16x16固定メモリへ縮小した非走行previewを
-用意し、typed actionの実走行executorへの接続は引き続き行わない。
+には含めない。PC参照実装は動的メモリを使い、F405 comparison profileの斜め時間には
+机上の仮値を含む。F413では同じトポロジと時間契約を16x16固定メモリへ縮小し、
+mode2 case6--9を既存runnerへ接続した。
 
 ## グラフとアンカー
 
@@ -158,16 +158,17 @@ anchor更新と壁判定にはlogical値、直線所要時間にはcommand値を
 | `f405-mini-mode4` | comparison | 13 mm | none |
 | `f405-mini-mode5` | comparison | 13 mm | none |
 
-各profileのcase 8/9から直交・斜め直線速度と加速度を読む。現在F413とF405 miniの
-parameter sourceはbyte-identicalであり、auditとhost buildが毎回`cmp`したうえで
-実ソースをコンパイルしてbaselineとのdriftを検出する。
+各profileのcase 8/9から直交・斜め直線速度と加速度を読む。F413 mode2は実機調整後の
+独立したparameter source、F405 miniは比較用baselineである。auditはF413実ソースを
+コンパイルし、保存したprofile baselineとのdriftを検出する。
 
 - small/large 90/180は調整済みの現値を総時間源として保持し、同じ重心速度の
   PC専用exact-closure seedを中心線に使う。
-- 45 in/out、V90、135 in/outは全profileでPC専用exact-closure seedを時間・中心線の
-  両方に使う。mode5は斜め値が未設定なので、large turnと同じ1200 mm/sを仮の
-  重心速度とした。
-- 全seedに0.001 mmの固定closure gateを課し、仮値はfirmware parameterへ書き戻さない。
+- F413 mode2の45 in/out、V90、135 in/outは実機調整値を時間源に使う。F405 comparison
+  profileでは従来どおりPC専用seedを時間源にし、mode5はlarge turnと同じ1200 mm/sを
+  仮の重心速度とする。
+- 全profileの論理anchor幾何はPC専用exact-closure seedを使い、0.001 mmの固定closure
+  gateを課す。seedはfirmware parameterへ書き戻さない。
 
 ## ゴール評価
 
@@ -286,7 +287,7 @@ tools/solver_host/run_slalom_kerilab_matrix.sh
 matrixのTSVは実行ごとの一時ファイルへ書き、全gate通過後に同一ディレクトリ内で
 原子的に置換する。並行実行や途中失敗で既存の完全な結果を部分追記で壊さない。
 
-## F413非走行preview
+## F413 previewとmode2実行経路
 
 F413にはUART `K`として、同じKERI #1〜#5トポロジと時間契約で経路を導出する
 非走行previewを追加した。保存済みFRAM迷路を正常に読めた場合は必ずそれを使い、
@@ -306,17 +307,22 @@ lease中のtrace開始は拒否し、全終了経路でbufferを返却する。
 `K`は`nvm_maze_load_map()`以外のNVM API、motor、fan、run session、既存`path[]`
 executorを呼ばない。各turnについて#番号、左右、直交／斜めconnector、速度mode、
 anchor、累積時刻を表示し、最後に選択Gへの最初の進入時刻と停止tail完了時刻を出す。
-これは実機上で経路導出を観察する入口であり、導出したactionを走らせる入口ではない。
+これは実機上で経路導出を観察する入口である。
 
-## 実走行へ接続する前に残すgate
+mode2 case6--9は同じ固定メモリplannerを実走行用に使う。この入口ではfallback迷路を
+禁止し、保存済みFRAM迷路とcompiled `GOAL1..9`だけを受理する。選択caseの直交・斜め
+直線制限とmode2の調整済みturn値で時間を評価し、現runnerで表現可能なNOMINAL turn、
+cardinal停止tailだけを候補にする。選択結果はtransactionalに既存の斜め`path[]`文法へ
+変換・文法検証し、成功後だけrun sessionへ渡す。case6--9は斜めを許可するという意味で、
+保存迷路とgoalに対する時間最短が直交なら直交経路を選ぶ。
 
-PC側のアルゴリズム、変換fixture、F413非走行previewまでは完了したが、実走行への
-接続には次を要求する。
+## 実走行で残すgate
 
-1. 45/135/V90を各対象modeで実機調整し、PC仮値を実測値へ置換する。
-2. 完成機の安全包絡を測定し、直進を含む掃引判定とclearance-aware再探索を実装する。
-3. typed executor、またはlegacy runnerの速度連続・斜め終端を実装する。
-4. previewと実行用profileの時間・action列を一致させ、仮parameterを含むconfigを
-   build時に固定・検証する。
-5. 1 kHz離散制御、壁切れ補正、動画／trace実測を公称時間モデルと照合する。
-6. 上記を通した後、HIL安全手順に従い低速・単一primitiveから段階的に有効化する。
+PC側のアルゴリズム、変換fixture、F413固定メモリ化、mode2 case6--9への接続は完了した。
+現時点のrunner互換入口には次の制約と追試が残る。
+
+1. 完成機の安全包絡を測定し、直進を含む掃引判定とclearance-aware再探索を実装する。
+2. typed executor、またはlegacy runnerの速度sidecarと斜め終端を実装して、LOW/CRAWL
+   turnや斜め停止tailも候補に戻す。
+3. 1 kHz離散制御、壁切れ補正、動画／trace実測を公称時間モデルと照合する。
+4. HIL安全手順に従いcase6から既知迷路で段階的に検証し、その後case7--9へ上げる。

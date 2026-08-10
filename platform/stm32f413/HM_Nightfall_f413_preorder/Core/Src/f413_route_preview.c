@@ -7,19 +7,26 @@
 #include <string.h>
 
 #include "f413_trace_log.h"
+#include "legacy_path_codec.h"
 #include "motion_time.h"
 #include "nvm_params.h"
 #include "params.h"
 #include "shortest_run_params.h"
 #include "trace.h"
 
+#ifndef ROUTE_MAX_LEN
+#define ROUTE_MAX_LEN (1024U)
+#endif
+
+extern uint16_t path[ROUTE_MAX_LEN];
+
 /*
- * This module is deliberately a preview-only implementation.  It owns no
- * motor/run-session references and its sole persistent-data operation is the
- * read-only nvm_maze_load_map() attempt.  If that read fails, a pinned contest
- * maze in program Flash keeps the diagnostic usable without changing NVM.
- * The graph is the 16x16, KERI #1--#5 subset of the PC slalom planner,
- * compacted to the three boundary velocities needed by F413 mode2/case8.
+ * Fixed-memory 16x16 KERI #1--#5 planner shared by the read-only preview and
+ * mode2 case6..9 path generation.  The preview may fall back to a pinned maze;
+ * run-path generation requires the saved FRAM maze and compiled goals.  This
+ * module never starts control/motors and never writes NVM.  Executable output
+ * is additionally limited to nominal-speed turns and a cardinal stop tail so
+ * it can be represented by the current legacy path runner without a sidecar.
  */
 
 #define F413_RP_WIDTH (16U)
@@ -193,6 +200,7 @@ typedef struct
   uint32_t expanded_states;
   uint32_t relaxed_edges;
   bool goal_cross_reachable;
+  bool execution_compatible;
   f413_rp_goal_t goal;
 } f413_rp_context_t;
 
@@ -1092,25 +1100,22 @@ static bool f413_rp_add_goal(f413_rp_maze_t* maze, uint8_t x, uint8_t y)
   return true;
 }
 
-static bool f413_rp_load_maze(f413_rp_maze_t* maze,
-                               f413_rp_maze_source_t* out_source)
+static bool f413_rp_load_walls(f413_rp_maze_t* maze,
+                               f413_rp_maze_source_t* out_source,
+                               bool allow_builtin_fallback)
 {
   uint16_t cells[F413_RP_CELL_COUNT];
   bool fram_loaded;
-  /*
-   * Preview-only policy: past 16x16 contest fixtures use the conventional
-   * central 2x2 goal.  Keep this independent of the machine's compiled
-   * exploration goal and never persist it to FRAM.
-   */
-  static const uint8_t goals[4][2] = {
-      {7U, 7U}, {8U, 7U}, {7U, 8U}, {8U, 8U},
-  };
 
   if ((maze == NULL) || (out_source == NULL))
   {
     return false;
   }
   fram_loaded = nvm_maze_load_map(cells, (uint32_t)F413_RP_CELL_COUNT);
+  if (!fram_loaded && !allow_builtin_fallback)
+  {
+    return false;
+  }
   memset(maze, 0, sizeof(*maze));
   for (uint8_t y = 0U; y < F413_RP_HEIGHT; y++)
   {
@@ -1177,17 +1182,57 @@ static bool f413_rp_load_maze(f413_rp_maze_t* maze,
       }
     }
   }
+  *out_source = fram_loaded ? F413_RP_MAZE_SOURCE_FRAM :
+                              F413_RP_MAZE_SOURCE_BUILTIN_16MM2014CX;
+  return true;
+}
+
+static bool f413_rp_load_maze(f413_rp_maze_t* maze,
+                               f413_rp_maze_source_t* out_source)
+{
+  /* Preview diagnostics intentionally keep the conventional centre goal. */
+  static const uint8_t goals[4][2] = {
+      {7U, 7U}, {8U, 7U}, {7U, 8U}, {8U, 8U},
+  };
+
+  if (!f413_rp_load_walls(maze, out_source, true))
+  {
+    return false;
+  }
   for (size_t index = 0U; index < 4U; index++)
   {
     (void)f413_rp_add_goal(maze, goals[index][0], goals[index][1]);
   }
-  if (maze->goal_count == 0U)
+  return maze->goal_count != 0U;
+}
+
+static bool f413_rp_load_run_maze(f413_rp_maze_t* maze,
+                                   f413_rp_maze_source_t* out_source)
+{
+  static const uint8_t goals[9][2] = {
+      {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
+      {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
+      {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
+  };
+
+  if (!f413_rp_load_walls(maze, out_source, false))
   {
     return false;
   }
-  *out_source = fram_loaded ? F413_RP_MAZE_SOURCE_FRAM :
-                              F413_RP_MAZE_SOURCE_BUILTIN_16MM2014CX;
-  return true;
+  for (size_t index = 0U; index < 9U; index++)
+  {
+    const uint8_t x = goals[index][0];
+    const uint8_t y = goals[index][1];
+
+    /* Keep the existing solver's (0,0) unused-slot convention. */
+    if (((x != 0U) || (y != 0U)) &&
+        (x < F413_RP_WIDTH) && (y < F413_RP_HEIGHT) &&
+        !f413_rp_add_goal(maze, x, y))
+    {
+      return false;
+    }
+  }
+  return maze->goal_count != 0U;
 }
 
 static NfTurnSpec f413_rp_scaled_turn(const NfTurnSpec* source, double scale)
@@ -1263,20 +1308,26 @@ static bool f413_rp_seconds_to_us(double seconds, uint32_t* out_us)
 }
 
 static bool f413_rp_prepare_motion(f413_rp_motion_t* motion,
-                                   f413_rp_arena_t* arena)
+                                   f413_rp_arena_t* arena,
+                                   uint8_t case_index)
 {
   const ShortestRunModeParams_t* mode = &shortestRunModeParams2;
-  const ShortestRunCaseParams_t* run_case = &shortestRunCaseParamsMode2[7];
+  const ShortestRunCaseParams_t* run_case;
   NfTurnSpec nominal_timing[F413_RP_KIND_COUNT] = {
       {true, mode->velocity_l_turn_90, mode->alpha_l_turn_90, 90.0,
        mode->dist_l_turn_in_90, mode->dist_l_turn_out_90},
       {true, mode->velocity_l_turn_180, mode->alpha_l_turn_180, 180.0,
        mode->dist_l_turn_in_180, mode->dist_l_turn_out_180},
-      {true, mode->velocity_turn45in, 7234.4, 45.0, 0.0, 18.640},
-      {true, mode->velocity_turn45out, 7234.4, 45.0, 18.640, 0.0},
-      {true, mode->velocity_turnV90, 12200.0, 90.0, 7.997, 7.997},
-      {true, mode->velocity_turn135in, 8500.0, 135.0, 18.932, 11.212},
-      {true, mode->velocity_turn135out, 8500.0, 135.0, 11.212, 18.932},
+      {true, mode->velocity_turn45in, mode->alpha_turn45in, 45.0,
+       mode->dist_turn45in_in, mode->dist_turn45in_out},
+      {true, mode->velocity_turn45out, mode->alpha_turn45out, 45.0,
+       mode->dist_turn45out_in, mode->dist_turn45out_out},
+      {true, mode->velocity_turnV90, mode->alpha_turnV90, 90.0,
+       mode->dist_turnV90_in, mode->dist_turnV90_out},
+      {true, mode->velocity_turn135in, mode->alpha_turn135in, 135.0,
+       mode->dist_turn135in_in, mode->dist_turn135in_out},
+      {true, mode->velocity_turn135out, mode->alpha_turn135out, 135.0,
+       mode->dist_turn135out_in, mode->dist_turn135out_out},
   };
   const NfTurnSpec nominal_geometry[F413_RP_KIND_COUNT] = {
       {true, mode->velocity_l_turn_90, 4700.0, 90.0,
@@ -1291,10 +1342,12 @@ static bool f413_rp_prepare_motion(f413_rp_motion_t* motion,
   NfLinearPlan start_plan;
   double crawl_velocity;
 
-  if ((motion == NULL) || (arena == NULL))
+  if ((motion == NULL) || (arena == NULL) ||
+      (case_index < 1U) || (case_index > 9U))
   {
     return false;
   }
+  run_case = &shortestRunCaseParamsMode2[case_index - 1U];
   memset(motion, 0, sizeof(*motion));
   motion->orthogonal = (NfLinearLimits){
       run_case->velocity_straight,
@@ -2090,7 +2143,8 @@ static bool f413_rp_consider_direct_goal(f413_rp_context_t* context,
   }
   context->goal_cross_reachable =
       context->goal_cross_reachable || ray.first_goal.present;
-  if (!ray.first_goal.present || (ray.first_goal.step == 0U) ||
+  if ((context->execution_compatible && !f413_rp_is_cardinal(heading)) ||
+      !ray.first_goal.present || (ray.first_goal.step == 0U) ||
       (ray.stop_steps < ray.first_goal.step) ||
       ((uint16_t)(ray.stop_steps - ray.first_goal.step) < 1U))
   {
@@ -2259,7 +2313,8 @@ static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
 
     context->goal_cross_reachable = true;
 
-    if (!f413_rp_turn_elapsed_us(context->motion, kind, turn_speed,
+    if ((context->execution_compatible && !f413_rp_is_cardinal(end_heading)) ||
+        !f413_rp_turn_elapsed_us(context->motion, kind, turn_speed,
                                   turn_trace.goal_geometry_fraction,
                                   &turn_cross_us) ||
         !f413_rp_u32_add(connector_us, turn_cross_us, &cross_edge_us) ||
@@ -2344,6 +2399,11 @@ static bool f413_rp_expand_state(f413_rp_context_t* context, uint16_t state)
       for (f413_rp_speed_t turn_speed = F413_RP_SPEED_NOMINAL;
            turn_speed < F413_RP_SPEED_COUNT; turn_speed++)
       {
+        if (context->execution_compatible &&
+            (turn_speed != F413_RP_SPEED_NOMINAL))
+        {
+          continue;
+        }
         if (!f413_rp_build_turn_edge(context, state, heading, speed,
                                       connector_steps, connector_anchor, kind,
                                       F413_RP_SIDE_RIGHT, turn_speed) ||
@@ -2532,6 +2592,205 @@ static bool f413_rp_advance_steps(const f413_rp_maze_t* maze,
     current = next;
   }
   *out = current;
+  return true;
+}
+
+static uint16_t f413_rp_legacy_turn_code(f413_rp_kind_t kind,
+                                          f413_rp_side_t side)
+{
+  static const uint16_t right_codes[F413_RP_KIND_COUNT] = {
+      NF_LEGACY_PATH_LARGE_RIGHT_90,
+      NF_LEGACY_PATH_LARGE_RIGHT_180,
+      NF_LEGACY_PATH_RIGHT_45_IN,
+      NF_LEGACY_PATH_RIGHT_45_OUT,
+      NF_LEGACY_PATH_RIGHT_V90,
+      NF_LEGACY_PATH_RIGHT_135_IN,
+      NF_LEGACY_PATH_RIGHT_135_OUT,
+  };
+  static const uint16_t left_codes[F413_RP_KIND_COUNT] = {
+      NF_LEGACY_PATH_LARGE_LEFT_90,
+      NF_LEGACY_PATH_LARGE_LEFT_180,
+      NF_LEGACY_PATH_LEFT_45_IN,
+      NF_LEGACY_PATH_LEFT_45_OUT,
+      NF_LEGACY_PATH_LEFT_V90,
+      NF_LEGACY_PATH_LEFT_135_IN,
+      NF_LEGACY_PATH_LEFT_135_OUT,
+  };
+
+  if ((unsigned int)kind >= F413_RP_KIND_COUNT)
+  {
+    return 0U;
+  }
+  return (side == F413_RP_SIDE_LEFT) ? left_codes[kind] : right_codes[kind];
+}
+
+static bool f413_rp_legacy_append(uint16_t* output,
+                                  size_t capacity,
+                                  size_t* count,
+                                  uint16_t code)
+{
+  if ((output == NULL) || (count == NULL) || (code == 0U) ||
+      (*count >= capacity) || ((*count + 1U) >= capacity))
+  {
+    return false;
+  }
+  output[*count] = code;
+  (*count)++;
+  return true;
+}
+
+static bool f413_rp_legacy_emit_connector(uint16_t* output,
+                                           size_t capacity,
+                                           size_t* count,
+                                           bool diagonal,
+                                           uint16_t steps)
+{
+  const uint16_t base = diagonal ?
+      NF_LEGACY_PATH_DIAGONAL_STRAIGHT_BASE :
+      NF_LEGACY_PATH_STRAIGHT_BASE;
+
+  while (steps != 0U)
+  {
+    const uint16_t chunk = (steps > 99U) ? 99U : steps;
+    if (!f413_rp_legacy_append(output, capacity, count,
+                                (uint16_t)(base + chunk)))
+    {
+      return false;
+    }
+    steps = (uint16_t)(steps - chunk);
+  }
+  return true;
+}
+
+static bool f413_rp_emit_legacy_path(f413_rp_context_t* context,
+                                      uint16_t start_state,
+                                      uint16_t* output,
+                                      size_t output_capacity,
+                                      size_t* out_count)
+{
+  uint16_t* chain;
+  uint16_t* temporary;
+  size_t chain_count = 0U;
+  size_t count = 0U;
+  uint16_t state;
+  NfLegacyPathResult validation;
+
+  if ((context == NULL) || !context->goal.valid ||
+      (context->heap_states == NULL) || (context->heap_positions == NULL) ||
+      (output == NULL) || (output_capacity < 2U))
+  {
+    return false;
+  }
+  chain = context->heap_states;
+  temporary = context->heap_positions;
+  state = context->goal.source_state;
+  while (true)
+  {
+    uint32_t parent;
+    if (chain_count >= F413_RP_STATE_COUNT)
+    {
+      return false;
+    }
+    chain[chain_count++] = state;
+    if (state == start_state)
+    {
+      break;
+    }
+    parent = context->parents[state];
+    if ((parent & F413_RP_PARENT_VALID) == 0U)
+    {
+      return false;
+    }
+    state = f413_rp_parent_previous(parent);
+  }
+
+  for (size_t cursor = chain_count; cursor > 1U; cursor--)
+  {
+    const uint16_t destination_state = chain[cursor - 2U];
+    const uint32_t parent = context->parents[destination_state];
+    f413_rp_anchor_t source;
+    f413_rp_heading_t heading;
+    f413_rp_speed_t source_speed;
+    const f413_rp_speed_t turn_speed = f413_rp_parent_speed(parent);
+    const uint16_t turn_code = f413_rp_legacy_turn_code(
+        f413_rp_parent_kind(parent), f413_rp_parent_side(parent));
+
+    if ((turn_speed != F413_RP_SPEED_NOMINAL) || (turn_code == 0U) ||
+        !f413_rp_state_decode(f413_rp_parent_previous(parent), &source,
+                               &heading, &source_speed) ||
+        !f413_rp_legacy_emit_connector(
+            temporary, output_capacity, &count,
+            !f413_rp_is_cardinal(heading),
+            f413_rp_parent_connector(parent)) ||
+        !f413_rp_legacy_append(temporary, output_capacity, &count, turn_code))
+    {
+      return false;
+    }
+  }
+
+  if (context->goal.direct_connector)
+  {
+    f413_rp_anchor_t source;
+    f413_rp_heading_t heading;
+    f413_rp_speed_t speed;
+    if ((context->goal.connector_steps < 1U) ||
+        !f413_rp_state_decode(context->goal.source_state, &source,
+                               &heading, &speed) ||
+        !f413_rp_is_cardinal(heading) ||
+        !f413_rp_legacy_emit_connector(
+            temporary, output_capacity, &count, false,
+            (uint16_t)(context->goal.connector_steps - 1U)))
+    {
+      return false;
+    }
+  }
+  else
+  {
+    f413_rp_anchor_t source;
+    f413_rp_anchor_t connector_end;
+    f413_rp_anchor_t destination;
+    f413_rp_heading_t start_heading;
+    f413_rp_heading_t end_heading;
+    f413_rp_speed_t source_speed;
+    const uint16_t turn_code = f413_rp_legacy_turn_code(
+        context->goal.kind, context->goal.side);
+
+    if ((context->goal.speed != F413_RP_SPEED_NOMINAL) ||
+        (context->goal.stop_steps < 1U) || (turn_code == 0U) ||
+        !f413_rp_state_decode(context->goal.source_state, &source,
+                               &start_heading, &source_speed) ||
+        !f413_rp_advance_steps(context->maze, source, start_heading,
+                               context->goal.connector_steps,
+                               &connector_end) ||
+        !f413_rp_turn_destination(context->maze, connector_end, start_heading,
+                                   context->goal.kind, context->goal.side,
+                                   &destination, &end_heading) ||
+        !f413_rp_is_cardinal(end_heading) ||
+        !f413_rp_legacy_emit_connector(
+            temporary, output_capacity, &count,
+            !f413_rp_is_cardinal(start_heading),
+            context->goal.connector_steps) ||
+        !f413_rp_legacy_append(temporary, output_capacity, &count, turn_code) ||
+        !f413_rp_legacy_emit_connector(
+            temporary, output_capacity, &count, false,
+            (uint16_t)(context->goal.stop_steps - 1U)))
+    {
+      return false;
+    }
+  }
+
+  temporary[count] = 0U;
+  validation = nf_legacy_path_validate(temporary, count + 1U);
+  if ((validation.status != NF_LEGACY_PATH_OK) ||
+      (validation.length != count) || (count >= output_capacity))
+  {
+    return false;
+  }
+  memcpy(output, temporary, (count + 1U) * sizeof(output[0]));
+  if (out_count != NULL)
+  {
+    *out_count = count;
+  }
   return true;
 }
 
@@ -2853,7 +3112,7 @@ void f413_route_preview_run_once(void)
   trace_printf(" wall-mismatch-normalized=%u scratch=%lu\r\n",
                (unsigned int)maze->mismatch_count,
                (unsigned long)scratch_bytes);
-  if (!f413_rp_prepare_motion(motion, &arena))
+  if (!f413_rp_prepare_motion(motion, &arena, 8U))
   {
     trace_printf("[KERI-PREVIEW] FAIL mode2/case8 motion preparation\r\n");
     goto cleanup;
@@ -2908,4 +3167,137 @@ cleanup:
                ok ? "ok" : "fail", (unsigned long)scratch_used,
                (unsigned long)scratch_bytes,
                (unsigned long)(HAL_GetTick() - start_ms));
+}
+
+bool f413_route_build_mode2_path(uint8_t case_index)
+{
+  void* scratch = NULL;
+  size_t scratch_bytes = 0U;
+  size_t scratch_used = 0U;
+  size_t path_count = 0U;
+  f413_rp_arena_t arena = {0};
+  f413_rp_context_t context;
+  f413_rp_maze_t* maze;
+  f413_rp_motion_t* motion;
+  f413_rp_maze_source_t maze_source;
+  f413_rp_plan_status_t plan_status;
+  uint16_t start_state;
+  unsigned int diagonal_codes = 0U;
+  bool ok = false;
+
+  memset(path, 0, ROUTE_MAX_LEN * sizeof(path[0]));
+  if ((case_index < 6U) || (case_index > 9U))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL unsupported mode2 case=%u (expected 6..9)\r\n",
+                 (unsigned int)case_index);
+    return false;
+  }
+  trace_printf("[KERI-RUN-PATH] START mode=2 case=%u source=FRAM goals=compiled "
+               "turn-speed=nominal terminal=cardinal\r\n",
+               (unsigned int)case_index);
+  if (!f413_trace_log_try_borrow_idle_scratch(&scratch, &scratch_bytes))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL trace capture active or scratch busy\r\n");
+    return false;
+  }
+  arena.cursor = (uint8_t*)scratch;
+  arena.end = arena.cursor + scratch_bytes;
+  if (scratch_bytes < F413_RP_SCRATCH_MIN_BYTES)
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL scratch=%lu required>=%lu\r\n",
+                 (unsigned long)scratch_bytes,
+                 (unsigned long)F413_RP_SCRATCH_MIN_BYTES);
+    goto cleanup;
+  }
+
+  maze = (f413_rp_maze_t*)f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_maze_t), 8U);
+  motion = (f413_rp_motion_t*)f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_motion_t), 8U);
+  memset(&context, 0, sizeof(context));
+  context.maze = maze;
+  context.motion = motion;
+  context.execution_compatible = true;
+  context.distances = (uint32_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.turn_counts = (uint16_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.parents = (uint32_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.settled = (uint8_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_SETTLED_BYTES, 1U);
+  context.heap_states = (uint16_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.heap_positions = (uint16_t*)f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  if ((maze == NULL) || (motion == NULL) || (context.distances == NULL) ||
+      (context.turn_counts == NULL) || (context.parents == NULL) ||
+      (context.settled == NULL) || (context.heap_states == NULL) ||
+      (context.heap_positions == NULL))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL scratch layout\r\n");
+    goto cleanup;
+  }
+  if (!f413_rp_load_run_maze(maze, &maze_source) ||
+      (maze_source != F413_RP_MAZE_SOURCE_FRAM))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL saved FRAM maze unavailable\r\n");
+    goto cleanup;
+  }
+  if (!f413_rp_prepare_motion(motion, &arena, case_index))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL mode2/case%u motion preparation\r\n",
+                 (unsigned int)case_index);
+    goto cleanup;
+  }
+  plan_status = f413_rp_plan(&context, &start_state);
+  if (plan_status != F413_RP_PLAN_OK)
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL plan status=%u expanded=%lu relaxed=%lu\r\n",
+                 (unsigned int)plan_status,
+                 (unsigned long)context.expanded_states,
+                 (unsigned long)context.relaxed_edges);
+    goto cleanup;
+  }
+  if (!f413_rp_emit_legacy_path(&context, start_state, path,
+                                 ROUTE_MAX_LEN, &path_count))
+  {
+    trace_printf("[KERI-RUN-PATH] FAIL executable path conversion\r\n");
+    goto cleanup;
+  }
+  for (size_t index = 0U; index < path_count; index++)
+  {
+    if ((path[index] >= NF_LEGACY_PATH_RIGHT_45_IN) &&
+        (path[index] <= NF_LEGACY_PATH_LEFT_135_OUT))
+    {
+      diagonal_codes++;
+    }
+  }
+  trace_printf("[KERI-RUN-PATH] OK goal=G(%u,%u) codes=%u diagonal=%u "
+               "turns=%u expanded=%lu heap-peak=%u\r\n",
+               (unsigned int)context.goal.goal_x,
+               (unsigned int)context.goal.goal_y,
+               (unsigned int)path_count,
+               diagonal_codes,
+               (unsigned int)context.goal.turn_count,
+               (unsigned long)context.expanded_states,
+               (unsigned int)context.heap_peak);
+  ok = true;
+
+cleanup:
+  if ((scratch != NULL) && (arena.cursor != NULL))
+  {
+    scratch_used = (size_t)(arena.cursor - (uint8_t*)scratch);
+  }
+  f413_trace_log_release_idle_scratch(scratch);
+  if (!ok)
+  {
+    path[0] = 0U;
+  }
+  trace_printf("[KERI-RUN-PATH] END status=%s scratch=released used=%lu/%lu "
+               "motors=off nvm=read-only\r\n",
+               ok ? "ok" : "fail",
+               (unsigned long)scratch_used,
+               (unsigned long)scratch_bytes);
+  return ok;
 }

@@ -12,6 +12,8 @@
 #define NIGHTFALL_NVM_PARAMS_H_
 bool nvm_maze_load_map(uint16_t* cells, uint32_t count);
 uint32_t HAL_GetTick(void);
+#define ROUTE_MAX_LEN (1024U)
+uint16_t path[ROUTE_MAX_LEN];
 
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_preview.c"
 
@@ -384,7 +386,7 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
             g_host_maze.goals[y][x]);
     }
   }
-  REQUIRE(f413_rp_prepare_motion(motion, &arena));
+  REQUIRE(f413_rp_prepare_motion(motion, &arena, 8U));
   g_verified_scratch_peak = (size_t)(arena.cursor - g_scratch);
   CHECK(g_verified_scratch_peak <= F413_RP_SCRATCH_MIN_BYTES);
   REQUIRE(f413_rp_plan(&compact, &start_state) == F413_RP_PLAN_OK);
@@ -395,11 +397,11 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
   CHECK(compact.goal.goal_y == common.goal_y);
   CHECK(compact.goal.goal_entry_us == common.goal_entry_us);
   CHECK(compact.goal.stop_us == common.stop_us);
-  CHECK(common.goal_x == 8U);
-  CHECK(common.goal_y == 8U);
-  CHECK(common.goal_entry_us == 13223795ULL);
-  CHECK(common.stop_us == 13742911ULL);
-  CHECK(common.action_count == 15U);
+  CHECK(common.goal_x == 7U);
+  CHECK(common.goal_y == 7U);
+  CHECK(common.goal_entry_us == 12955105ULL);
+  CHECK(common.stop_us == 13474221ULL);
+  CHECK(common.action_count == 16U);
   CHECK(f413_test_common_diagonal_actions(&common) == 8U);
   reconstruction_mark = arena.cursor;
   REQUIRE(f413_test_action_parity(&compact, start_state, &common));
@@ -456,11 +458,11 @@ static bool f413_test_public_cleanup_and_metadata(const char* maze_path)
   CHECK(strstr(g_trace_output,
                "maze-source=builtin-16MM2014CX data-rev="
                F413_RP_BUILTIN_DATA_REV " fram-load=fail") != NULL);
-  CHECK(strstr(g_trace_output, "goal=G(8,8)") != NULL);
+  CHECK(strstr(g_trace_output, "goal=G(7,7)") != NULL);
   CHECK(strstr(g_trace_output,
-               "OK turns=13 actions=15 diagonal-actions=8") != NULL);
+               "OK turns=14 actions=16 diagonal-actions=8") != NULL);
   CHECK(strstr(g_trace_output,
-               "goal-entry=13.223795 s stop=13.742911 s") != NULL);
+               "goal-entry=12.955105 s stop=13.474221 s") != NULL);
   CHECK(strstr(g_trace_output,
                "wall-mismatch-normalized=0") != NULL);
   CHECK(strstr(g_trace_output,
@@ -528,7 +530,7 @@ static bool f413_test_expect_status(f413_rp_plan_status_t expected)
   REQUIRE(f413_rp_load_maze(maze, &maze_source));
   CHECK(maze_source == F413_RP_MAZE_SOURCE_FRAM);
   REQUIRE(f413_test_copy_fixture_goals(maze));
-  REQUIRE(f413_rp_prepare_motion(motion, &arena));
+  REQUIRE(f413_rp_prepare_motion(motion, &arena, 8U));
   CHECK(f413_rp_plan(&context, &start_state) == expected);
   return true;
 }
@@ -673,6 +675,122 @@ static bool f413_test_heap_order_and_relax(void)
   return true;
 }
 
+static bool f413_test_public_run_path_build(const char* maze_path)
+{
+  NfMazeAsciiInfo info;
+  char error[192];
+
+  REQUIRE(nf_maze_ascii_load(maze_path, &g_host_maze, &info, error,
+                              sizeof(error)) == NF_MAZE_ASCII_OK);
+  g_lease_available = true;
+  g_nvm_load_available = true;
+  for (uint8_t case_index = 6U; case_index <= 9U; case_index++)
+  {
+    NfLegacyPathResult validation;
+    g_release_count = 0U;
+    f413_test_reset_trace_capture();
+    REQUIRE(f413_route_build_mode2_path(case_index));
+    CHECK(g_release_count == 1U);
+    validation = nf_legacy_path_validate(path, ROUTE_MAX_LEN);
+    CHECK(validation.status == NF_LEGACY_PATH_OK);
+    CHECK(strstr(g_trace_output, "[KERI-RUN-PATH] OK ") != NULL);
+    CHECK(strstr(g_trace_output, "motors=off nvm=read-only") != NULL);
+  }
+
+  g_nvm_load_available = false;
+  path[0] = 999U;
+  g_release_count = 0U;
+  f413_test_reset_trace_capture();
+  CHECK(!f413_route_build_mode2_path(8U));
+  CHECK(path[0] == 0U);
+  CHECK(g_release_count == 1U);
+  CHECK(strstr(g_trace_output, "saved FRAM maze unavailable") != NULL);
+  g_nvm_load_available = true;
+  return true;
+}
+
+static bool f413_test_execution_diagonal_path_exists(void)
+{
+  f413_rp_arena_t arena = {g_scratch, g_scratch + sizeof(g_scratch)};
+  f413_rp_context_t context = {0};
+  f413_rp_maze_source_t maze_source;
+  f413_rp_maze_t* maze = f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_maze_t), 8U);
+  f413_rp_motion_t* motion = f413_rp_arena_alloc(
+      &arena, sizeof(f413_rp_motion_t), 8U);
+  bool found = false;
+
+  REQUIRE(nf_route_maze_init(&g_host_maze, F413_RP_WIDTH,
+                              F413_RP_HEIGHT));
+  REQUIRE(nf_route_maze_add_boundaries(&g_host_maze));
+  context.maze = maze;
+  context.motion = motion;
+  context.execution_compatible = true;
+  context.distances = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.turn_counts = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.parents = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
+  context.settled = f413_rp_arena_alloc(
+      &arena, F413_RP_SETTLED_BYTES, 1U);
+  context.heap_states = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  context.heap_positions = f413_rp_arena_alloc(
+      &arena, F413_RP_STATE_COUNT * sizeof(uint16_t), 2U);
+  REQUIRE(maze != NULL);
+  REQUIRE(motion != NULL);
+  REQUIRE(context.distances != NULL);
+  REQUIRE(context.turn_counts != NULL);
+  REQUIRE(context.parents != NULL);
+  REQUIRE(context.settled != NULL);
+  REQUIRE(context.heap_states != NULL);
+  REQUIRE(context.heap_positions != NULL);
+  REQUIRE(f413_rp_load_walls(maze, &maze_source, false));
+  REQUIRE(maze_source == F413_RP_MAZE_SOURCE_FRAM);
+  REQUIRE(f413_rp_prepare_motion(motion, &arena, 8U));
+
+  for (uint8_t y = 0U; (y < F413_RP_HEIGHT) && !found; y++)
+  {
+    for (uint8_t x = 0U; (x < F413_RP_WIDTH) && !found; x++)
+    {
+      uint16_t start_state;
+      size_t path_count = 0U;
+
+      if ((x == START_X) && (y == START_Y))
+      {
+        continue;
+      }
+      memset(maze->goal_bits, 0, sizeof(maze->goal_bits));
+      maze->goal_count = 0U;
+      REQUIRE(f413_rp_add_goal(maze, x, y));
+      if ((f413_rp_plan(&context, &start_state) != F413_RP_PLAN_OK) ||
+          !f413_rp_emit_legacy_path(&context, start_state, path,
+                                     ROUTE_MAX_LEN, &path_count))
+      {
+        continue;
+      }
+      for (size_t index = 0U; index < path_count; index++)
+      {
+        if ((path[index] > NF_LEGACY_PATH_DIAGONAL_STRAIGHT_BASE) &&
+            (path[index] <= NF_LEGACY_PATH_DIAGONAL_STRAIGHT_MAX))
+        {
+          found = true;
+          break;
+        }
+      }
+    }
+  }
+  CHECK(found);
+  if (found)
+  {
+    const NfLegacyPathResult validation =
+        nf_legacy_path_validate(path, ROUTE_MAX_LEN);
+    CHECK(validation.status == NF_LEGACY_PATH_OK);
+  }
+  return true;
+}
+
 int main(int argc, char** argv)
 {
   if (argc != 2)
@@ -684,6 +802,8 @@ int main(int argc, char** argv)
   (void)f413_test_public_cleanup_and_metadata(argv[1]);
   (void)f413_test_terminal_statuses();
   (void)f413_test_heap_order_and_relax();
+  (void)f413_test_public_run_path_build(argv[1]);
+  (void)f413_test_execution_diagonal_path_exists();
   if (g_failures != 0U)
   {
     fprintf(stderr, "f413 route preview host tests: %u/%u failed\n",

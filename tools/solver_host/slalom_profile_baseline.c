@@ -41,8 +41,27 @@ const NfPrimitiveGeometry
     },
 };
 
-/* F413 preorder mode 2 and F405 mini mode 2 are byte-identical today. */
+/* F413 preorder mode 2 after overhead-video turn calibration. */
 static const NfCurrentPrimitive g_current_mode2[NF_PRIMITIVE_COUNT] = {
+    NF_CURRENT(300.0, 28000.0, 0.0, 28.4,
+               22.037247, 50.437247),
+    NF_CURRENT(500.0, 9400.0, 0.0, 29.8,
+               63.390064, 93.190064),
+    NF_CURRENT(500.0, 4150.0, 6.5, 20.0,
+               -13.500000, 92.904831),
+    NF_CURRENT(500.0, 6200.0, 23.5, 10.5,
+               113.905570, 41.796456),
+    NF_CURRENT(500.0, 10500.0, 7.5, 0.0,
+               71.264593, 26.412159),
+    NF_CURRENT(500.0, 12200.0, 12.8, 27.2,
+               68.442316, 82.842316),
+    NF_CURRENT(500.0, 10250.0, 3.5, 22.0,
+               18.901296, 90.294717),
+    NF_CURRENT(500.0, 8850.0, 0.0, 12.0,
+               24.831130, 88.918214),
+};
+
+static const NfCurrentPrimitive g_current_f405_mode2[NF_PRIMITIVE_COUNT] = {
     NF_CURRENT(300.0, 8920.0, 10.0, 14.2,
                49.043967006716, 53.243967006716),
     NF_CURRENT(500.0, 4700.0, 5.0, 15.0,
@@ -192,7 +211,7 @@ const NfAuditProfile nf_slalom_profiles[] = {
         2U,
         13.0,
         {0.0, 1.2},
-        g_current_mode2,
+        g_current_f405_mode2,
         g_seed_mode2,
     },
     {

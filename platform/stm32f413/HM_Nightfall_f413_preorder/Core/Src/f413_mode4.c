@@ -72,6 +72,7 @@ void f413_mode4_run_case(uint8_t op_case)
   config.op_case = k_cases[op_case - 1U].case_index;
   config.label = k_cases[op_case - 1U].params_ref;
   config.features = k_cases[op_case - 1U].features;
+  config.diagonal_time_plan = false;
   f413_mode_shortest_run_config(&config);
 }
 

@@ -9,15 +9,9 @@ SANITIZE=${SANITIZE:-1}
 
 mkdir -p "$OUT_DIR"
 
-# The checked baseline intentionally shares one compiled parameter table for
-# F413 mode 2 and F405 mini modes 2-5.  Refuse to audit stale copied data if
-# those source tables diverge later.
-if ! cmp -s \
-  "$ROOT_DIR/params/f413_preorder/shortest_run_params_split.c" \
-  "$ROOT_DIR/params/mini_r1_0/shortest_run_params_split.c"; then
-  echo "F413 and F405 mini shortest-run parameter sources diverged; update the slalom baseline mapping" >&2
-  exit 1
-fi
+# F413 mode2 is now independently calibrated.  The executable audit links the
+# F413 table; the preserved F405 mode2 comparison baseline is not source-audited
+# in this binary.
 
 SANITIZER_FLAGS=
 if [ "$SANITIZE" = "1" ]; then

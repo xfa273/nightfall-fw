@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "f413_path_run.h"
+#include "f413_route_preview.h"
 #include "f413_run_features.h"
 #include "f413_trace_flags.h"
 #include "path.h"
@@ -134,11 +135,14 @@ void f413_mode_shortest_run_config(const f413_shortest_case_config_t* config)
   }
 
   f413_run_features_set(&config->features);
-  if (solver_build_path(config->mode, config->op_case))
+  if (config->diagonal_time_plan ?
+      f413_route_build_mode2_path(config->op_case) :
+      solver_build_path(config->mode, config->op_case))
   {
-    trace_printf("[RUN-TEST] shortest path ready mode=%u case=%u\r\n",
+    trace_printf("[RUN-TEST] shortest path ready mode=%u case=%u planner=%s\r\n",
                  (unsigned int)config->mode,
-                 (unsigned int)config->op_case);
+                 (unsigned int)config->op_case,
+                 config->diagonal_time_plan ? "KERI-fixed-memory" : "legacy");
     f413_path_run_print_preview();
     f413_path_run_session_once(config->mode,
                                config->op_case,
@@ -165,6 +169,7 @@ void f413_mode_shortest_run_case(uint8_t mode, uint8_t op_case)
     .op_case = op_case,
     .label = "shortest-default",
     .features = k_default_shortest_features,
+    .diagonal_time_plan = false,
   };
 
   f413_mode_shortest_run_config(&config);

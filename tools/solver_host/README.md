@@ -49,8 +49,9 @@ tools/solver_host/run_solver_host.sh --maze path/to/maze.maze \
 
 `--slalom-time-plan` は直交3種に45度in/out、V90、135度in/outを加えた
 時間最短経路を導出し、half-grid anchor・8方位・境界速度classを持つ型付き動作列へ
-変換します。F413は調整済みのmode2をprimaryとし、F405 mini mode2〜5を比較に
-使用します。caseは斜め直線値を持つ8または9だけを受理します。
+変換します。F413は斜めturnを含め実機調整済みのmode2をprimaryとし、F405 mini
+mode2〜5を比較に使用します。汎用PC CLIのcaseは斜め直線値を持つ8または9を受理し、
+F413実機の固定メモリ版はmode2 case6〜9から選択caseの直線値を使います。
 
 ```sh
 tools/solver_host/run_solver_host.sh \
@@ -68,9 +69,9 @@ tools/solver_host/run_solver_host.sh \
 
 `--compare-orthogonal` は同じconfigの斜め5種だけを無効にした候補と比較し、斜めを
 許した結果が遅くならないことを検査します。評価値は従来と同じく最初のG区画への
-進入時刻です。斜めturnはPC専用exact-closure仮値であり、firmware parameterは
-変更しません。斜め方位から次のturnへ入る前には最低1 diagonal half-stepを要求し、
-壁中心でturnを直接つなぐ0-step接続をplannerとvalidatorの両方で拒否します。
+進入時刻です。F413のturn時間は実機調整値、logical anchorの幾何はPC専用
+exact-closure seedです。0-step接続は一律禁止せず、KERI #1〜#5のprimitive固有guardで
+壁越しを拒否しながら合法な45/V90/135連結を許可します。
 
 過去大会24迷路×5profile×case 8/9の240構成を一括確認する場合:
 
@@ -85,9 +86,9 @@ tools/solver_host/run_slalom_kerilab_matrix.sh
 ことを示します。現runnerは直線codeごとに速度を再計画するため、互換経路でも
 `legacy_time_equivalent=no`です。
 
-固定データcommitでの基準結果は240/240成功、0-step斜めturn接続0、斜め採用かつ
-直交限定に対する厳密短縮225、直交同値15、`legacy_geometry=ok` 90、
-斜め終端非対応150です。
+固定データcommitの最新基準では230構成が停止可能で、全230で斜め採用・直交限定より
+短縮、小回り0、合法0-step 1303、LOW 219、CRAWL 49です。32MM2009HXの10構成は
+ゴール後の停止tailを確保できず、期待どおり`no-feasible-terminal`になります。
 
 ## KeriLab過去大会迷路を取得して一括確認
 

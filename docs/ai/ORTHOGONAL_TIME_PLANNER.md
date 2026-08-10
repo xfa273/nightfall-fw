@@ -181,14 +181,14 @@ tools/solver_host/run_solver_host.sh --mode 2 --case 8 --assert-valid
 - 45/135/V90と斜め直線はhalf-grid・8方位グラフへ追加済み
 - ターン掃引の矩形SAT診断とrequired-open軌跡再生は追加済み。ただし完成機包絡、
   直進掃引、衝突時の代替経路再探索は未完了
-- 公称残差をprofile別に監査し、直交は現調整値を時間源、PC専用exact-closure seedを
-  幾何源とした。斜めはPC仮値を時間・幾何の両方に使い、全8種へ固定0.001 mm gateを
-  適用済み
+- 公称残差をprofile別に監査し、F413 mode2は斜めを含む現調整値を時間源、PC専用
+  exact-closure seedを幾何源とした。F405 comparisonの斜めはPC仮値を時間・幾何の
+  両方に使い、全8種へ固定0.001 mm gateを適用済み
 - 連続raised-cosineモデルとF413の1 ms離散プロファイルの時刻差を定量化する
 - 公称時間と動画・ログから得た実測時間の誤差を比較する
 - 小迷路のstraight/turn oracleと全8primitive配置検査は追加済み。より大きい独立oracleは継続する
-- ホストの動的メモリ実装を、F413のRAM／計算時間制約に合わせて固定領域化する
-- ホスト結果が安定した後にだけ、実機ソフトへ共通コアを移植する
+- F413の固定メモリKERI #1〜#5実装とmode2 case6〜9のlegacy runner接続は完了済み
+- 完成機包絡・直進掃引とLOW/CRAWL速度sidecar、斜め停止tail対応は継続する
 
 構造上の参考は、KERI氏の
 [`StepMapSlalom`](https://github.com/kerikun11/micromouse-maze-library/blob/3170f7d50be544328257ab63180f2d279793c00a/src/MazeLib/StepMapSlalom.cpp)

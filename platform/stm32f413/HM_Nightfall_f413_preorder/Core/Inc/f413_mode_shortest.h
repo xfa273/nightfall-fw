@@ -10,6 +10,7 @@ typedef struct {
   uint8_t op_case;
   const char* label;
   f413_run_features_t features;
+  bool diagonal_time_plan;
 } f413_shortest_case_config_t;
 
 void f413_mode_shortest_run_case(uint8_t mode, uint8_t op_case);

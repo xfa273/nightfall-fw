@@ -183,12 +183,8 @@ bool nf_host_slalom_make_config(
         geometry_turn->alpha_deg_s2 = seed->alpha_deg_s2;
         geometry_turn->dist_in_mm = seed->dist_in_mm;
         geometry_turn->dist_out_mm = seed->dist_out_mm;
-        if (i <= (size_t)NF_PRIMITIVE_LARGE_180) {
-            if (!current->available) {
-                nf_host_slalom_error(error, error_size,
-                                     "orthogonal primitive is unavailable");
-                return false;
-            }
+        if (current->available &&
+            (profile->primary || i <= (size_t)NF_PRIMITIVE_LARGE_180)) {
             turn->velocity_mm_s = current->velocity_mm_s;
             turn->alpha_deg_s2 = current->alpha_deg_s2;
             turn->dist_in_mm = current->dist_in_mm;

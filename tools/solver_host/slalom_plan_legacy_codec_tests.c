@@ -172,7 +172,13 @@ static void test_diagonal_terminal_and_start_goal(void)
     NfSlalomLegacyResult result;
 
     REQUIRE_TRUE(open_maze(&maze, 10U, 10U));
-    maze.goals[2][2] = true;
+    /*
+     * Keep this fixture long enough that the calibrated F413 profile still
+     * selects a diagonal connector at the goal.  The former (2, 2) goal
+     * became an orthogonal terminal after the diagonal turn calibration was
+     * updated; that was a valid planner choice, not a codec regression.
+     */
+    maze.goals[7][7] = true;
     REQUIRE_TRUE(make_config(&config));
     REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
                  NF_SLALOM_PLAN_OK);

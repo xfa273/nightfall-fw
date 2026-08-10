@@ -39,9 +39,10 @@ void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms);
 
 /*
  * The large auto-trace staging buffer may be used as temporary workspace by
- * non-motor, foreground-only diagnostics while automatic capture is stopped.
- * A successful borrower must release the lease on every return path.  The
- * storage contents are disposable and never represent persistent FRAM data.
+ * foreground-only diagnostics or path planning before a run, while automatic
+ * capture is stopped.  A successful borrower must release the lease on every
+ * return path.  The storage contents are disposable and never represent
+ * persistent FRAM data.
  */
 bool f413_trace_log_try_borrow_idle_scratch(void** out, size_t* out_bytes);
 void f413_trace_log_release_idle_scratch(void* scratch);
