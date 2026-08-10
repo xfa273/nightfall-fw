@@ -156,11 +156,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--heading-source",
-        choices=("label", "trajectory"),
+        choices=("label", "trajectory", "trajectory-start"),
         default="label",
         help=(
-            "use the two-label pose heading or regress the initial/final "
-            "straight trajectory (immune to label-height parallax)"
+            "use the two-label pose heading, regress both initial/final "
+            "straight trajectories, or regress only the initial trajectory "
+            "and retain the final label heading"
         ),
     )
     parser.add_argument(
@@ -479,10 +480,11 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
         x_mm = x_cell * args.cell_size_mm
         y_mm = y_cell * args.cell_size_mm
     heading_source = args.heading_source
+    needs_label_heading = heading_source in ("label", "trajectory-start")
     yaw = _column(
         rows,
         ("yaw_deg_unwrapped", "yaw_deg", "heading_deg_unwrapped"),
-        required=heading_source == "label",
+        required=needs_label_heading,
     )
     if yaw is not None:
         yaw = _unwrap_degrees(yaw)
@@ -501,7 +503,7 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     valid = finite_position
     if valid_column is not None:
         valid &= valid_column > 0.5
-    if heading_source == "label":
+    if needs_label_heading:
         assert yaw is not None
         heading_valid = valid & np.isfinite(yaw)
         if heading_valid_column is not None:
@@ -517,7 +519,7 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
         indexes = np.arange(len(rows))
         x_mm = np.interp(indexes, good_position, x_mm[good_position])
         y_mm = np.interp(indexes, good_position, y_mm[good_position])
-    if heading_source == "label" and not np.all(heading_valid):
+    if needs_label_heading and not np.all(heading_valid):
         assert yaw is not None
         good_heading = np.flatnonzero(heading_valid)
         indexes = np.arange(len(rows))
@@ -623,7 +625,7 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     path_length = float(cumulative_path[-1])
     start_fit: Optional[TrajectoryHeadingFit] = None
     end_fit: Optional[TrajectoryHeadingFit] = None
-    if heading_source == "trajectory":
+    if heading_source in ("trajectory", "trajectory-start"):
         inner = args.trajectory_heading_inner_fraction
         outer = args.trajectory_heading_outer_fraction
         start_fit = _fit_trajectory_heading(
@@ -636,18 +638,22 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
             args.maximum_trajectory_heading_residual_mm,
             "start",
         )
-        end_fit = _fit_trajectory_heading(
-            path_x,
-            path_y,
-            cumulative_path,
-            1.0 - outer,
-            1.0 - inner,
-            args.minimum_trajectory_heading_span_mm,
-            args.maximum_trajectory_heading_residual_mm,
-            "end",
-        )
         start_yaw = start_fit.yaw_deg
-        end_yaw = end_fit.yaw_deg
+        if heading_source == "trajectory":
+            end_fit = _fit_trajectory_heading(
+                path_x,
+                path_y,
+                cumulative_path,
+                1.0 - outer,
+                1.0 - inner,
+                args.minimum_trajectory_heading_span_mm,
+                args.maximum_trajectory_heading_residual_mm,
+                "end",
+            )
+            end_yaw = end_fit.yaw_deg
+        else:
+            assert yaw is not None
+            end_yaw = _median(yaw[end_indexes])
     else:
         assert yaw is not None
         start_yaw = _median(yaw[start_indexes])
@@ -659,7 +665,7 @@ def analyze_trial(path: Path, args: argparse.Namespace) -> Trial:
     x_right = math.sin(heading) * dx - math.cos(heading) * dy
     y_forward = math.cos(heading) * dx + math.sin(heading) * dy
     theta = end_yaw - start_yaw
-    if heading_source == "trajectory":
+    if heading_source in ("trajectory", "trajectory-start"):
         theta = (theta + 180.0) % 360.0 - 180.0
         if math.isclose(abs(theta), 180.0, abs_tol=1e-9):
             theta = -180.0 if args.side == "right" else 180.0
@@ -1094,11 +1100,11 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError(
             "--maximum-trajectory-heading-residual-mm must be non-negative"
         )
-    if args.heading_source == "trajectory" and (
+    if args.heading_source in ("trajectory", "trajectory-start") and (
         args.anchor_right_mm != 0.0 or args.anchor_forward_mm != 0.0
     ):
         raise ValueError(
-            "--heading-source trajectory requires zero anchor offsets; "
+            f"--heading-source {args.heading_source} requires zero anchor offsets; "
             "a height-independent heading cannot rotate an offset anchor"
         )
     if not 0.0 < args.feedback_gain <= 1.0:

@@ -643,6 +643,12 @@ poseを補間する実装を追加するまでparameter fitへ使わない。
 `--anchor-right-mm`と`--anchor-forward-mm`は0に限る。直線を持たない専用
 turn clipでは使わず、同じ高さの2ラベルheadingを使う。
 
+複数turnを含み、十分な進入直線はあるが脱出直線がない試験では
+`--heading-source trajectory-start`を使う。位置のright/forward座標軸は
+進入直線から求め、終了方位だけを青・赤ラベルから読む。これにより開始位置の
+ラベル高視差が終了位置へ混入しない。ただし終了yaw自体には終端位置での
+ラベル高視差が残るため、位置調整を主目的とし、yawの精密調整には用いない。
+
 ```sh
 ./.venv-vision/bin/python tools/tuning/turn_video_tune.py \
   trial01/trajectory.csv trial02/trajectory.csv trial03/trajectory.csv \

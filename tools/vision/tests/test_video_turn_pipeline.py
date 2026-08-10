@@ -232,6 +232,29 @@ class TurnCoordinateTest(unittest.TestCase):
                 0.01,
             )
 
+            args.heading_source = "trajectory-start"
+            trajectory_start_trial = TURN.analyze_trial(path, args)
+            self.assertAlmostEqual(
+                trajectory_start_trial.endpoint.x_right_mm,
+                0.0,
+                delta=0.3,
+            )
+            self.assertAlmostEqual(
+                trajectory_start_trial.endpoint.y_forward_mm,
+                math.hypot(10.0, 20.0),
+                delta=0.3,
+            )
+            self.assertAlmostEqual(
+                trajectory_start_trial.endpoint.theta_deg,
+                116.565,
+                delta=1.0,
+            )
+            self.assertEqual(
+                trajectory_start_trial.heading_source,
+                "trajectory-start",
+            )
+            self.assertIsNone(trajectory_start_trial.end_heading_fit_span_mm)
+
     def test_trajectory_heading_rejects_a_curved_fit_window(self):
         angle = np.linspace(0.0, math.pi / 2.0, 101)
         x = 50.0 * np.cos(angle)
@@ -610,6 +633,47 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         )
         self.assertEqual(count, 64)
         np.testing.assert_allclose(center, [49.5, 49.5])
+
+    def test_initial_position_seeds_primary_blue_label_tracker(self):
+        args = argparse.Namespace(
+            initial_x_cell=7.38,
+            initial_y_cell=0.75,
+            position_source="label",
+            label_colour="blue",
+        )
+        grid = argparse.Namespace(
+            x_origin_px=64.0,
+            y_origin_px=64.0,
+            x_pitch_px=96.0,
+            y_pitch_px=96.0,
+            cells=8,
+        )
+
+        green_seed, label_seed = MARKERLESS._initial_tracking_seeds(args, grid)
+
+        np.testing.assert_allclose(green_seed, (772.48, 760.0), atol=1e-9)
+        np.testing.assert_allclose(label_seed, green_seed, atol=1e-9)
+        self.assertIsNot(label_seed, green_seed)
+
+    def test_initial_position_does_not_seed_an_unused_label_tracker(self):
+        args = argparse.Namespace(
+            initial_x_cell=1.0,
+            initial_y_cell=2.0,
+            position_source="green",
+            label_colour="blue",
+        )
+        grid = argparse.Namespace(
+            x_origin_px=10.0,
+            y_origin_px=20.0,
+            x_pitch_px=30.0,
+            y_pitch_px=40.0,
+            cells=4,
+        )
+
+        green_seed, label_seed = MARKERLESS._initial_tracking_seeds(args, grid)
+
+        np.testing.assert_allclose(green_seed, (40.0, 100.0), atol=1e-9)
+        self.assertIsNone(label_seed)
 
     def test_front_label_component_rejects_rear_led_and_wall(self):
         mask = np.zeros((120, 120), dtype=np.uint8)

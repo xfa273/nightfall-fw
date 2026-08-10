@@ -35,10 +35,10 @@ import aruco_trajectory as aruco
 import board_layout
 
 
-BLUE_LABEL_HSV_LOW = (94, 80, 70)
-BLUE_LABEL_HSV_HIGH = (104, 255, 255)
-BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 18
-BLUE_LABEL_MIN_BLUE_RED_EXCESS = 40
+BLUE_LABEL_HSV_LOW = (88, 50, 50)
+BLUE_LABEL_HSV_HIGH = (112, 255, 255)
+BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 8
+BLUE_LABEL_MIN_BLUE_RED_EXCESS = 25
 DEFAULT_FRONT_LABEL_DISTANCE_MM = 24.0
 FRONT_LABEL_CALIBRATION_SCHEMA = "nightfall_front_label_heading_calibration_v1"
 
@@ -972,6 +972,27 @@ def _predict_tracker_position(
     return observed_xy + velocity_px_per_frame * elapsed_frames
 
 
+def _initial_tracking_seeds(
+    args: argparse.Namespace,
+    grid: aruco.GridCalibration,
+) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    if args.initial_x_cell is None:
+        return None, None
+
+    bottom_y = grid.y_origin_px + grid.cells * grid.y_pitch_px
+    position = np.asarray(
+        [
+            grid.x_origin_px + args.initial_x_cell * grid.x_pitch_px,
+            bottom_y - args.initial_y_cell * grid.y_pitch_px,
+        ],
+        dtype=float,
+    )
+    label_seed = None
+    if args.position_source == "label" and args.label_colour == "blue":
+        label_seed = position.copy()
+    return position, label_seed
+
+
 def _update_tracker_velocity(
     velocity_px_per_frame: np.ndarray,
     previous_xy: np.ndarray,
@@ -1898,21 +1919,11 @@ def main() -> int:
 
         capture, _ = aruco.open_video(args.video)
         detections: list[Detection] = []
-        prior_green: Optional[np.ndarray] = None
-        if args.initial_x_cell is not None:
-            bottom_y = grid.y_origin_px + grid.cells * grid.y_pitch_px
-            prior_green = np.asarray(
-                [
-                    grid.x_origin_px + args.initial_x_cell * grid.x_pitch_px,
-                    bottom_y - args.initial_y_cell * grid.y_pitch_px,
-                ],
-                dtype=float,
-            )
+        prior_green, prior_label = _initial_tracking_seeds(args, grid)
         prior_green_is_observed = False
         prior_green_frame: Optional[int] = None
         prior_cue: Optional[np.ndarray] = None
         prior_cue_frame: Optional[int] = None
-        prior_label: Optional[np.ndarray] = None
         prior_label_frame: Optional[int] = None
         prior_front_label: Optional[np.ndarray] = None
         prior_front_label_frame: Optional[int] = None
