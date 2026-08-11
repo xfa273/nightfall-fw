@@ -26,7 +26,7 @@ MPM3610 の連続出力は 1.2A なので、モータとファンは 5V 出力�
 - C22: 10uF / 25V X7R 入力コンデンサ
 - C23: 22uF / 10V X7R 出力コンデンサ
 - R31: 100k EN pull-up
-- Q3: `PMPB13XNE,115` ファン low-side MOSFET
+- Q3: `IRLML6344TRPBF` ファン low-side MOSFET (`SOT-23`、G=1 / S=2 / D=3)
 - R32: 10k gate pull-down
 - D4: `BAS16WT1GW` flyback diode
 - C24: 0.1uF / 25V X7R ファンノイズ抑制
@@ -41,6 +41,7 @@ MPM3610 の連続出力は 1.2A なので、モータとファンは 5V 出力�
 - モータ入力バルク C7 / C9 を 10uF / 25V X7R とした。
 - バッテリ ADC 分圧を `22k / 10k` から `100k / 27k` へ変更した。3S 満充電 12.6V で ADC 入力は約 2.68V。
 - MCU の既存 `FAN_PWM` (U5 pin 45 / PB8) を Q3 gate へ接続した。
+- Classic の `PMPB13XNE,115` は今回の最大約 2A・約 10秒という条件に対してパッケージが大きいため、Q3 を `IRLML6344TRPBF` へ変更した。30V / 5A、SOT-23、`RDS(on)` max 37mΩ @ `VGS=2.5V` なので 3.3V GPIO で駆動でき、2A 時の導通損失は 25℃データを使った保守的な計算でも約 0.15W。
 
 ## 一次資料で確認した範囲
 
@@ -48,15 +49,16 @@ MPM3610 の連続出力は 1.2A なので、モータとファンは 5V 出力�
 - [MPM3610 datasheet](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090): pinout、0.798V FB、10uF input / 22uF output、EN pull-up、layout guidance。
 - [MP6551 product page](https://www.monolithicpower.com/en/products/motor-drivers-and-motor-controllers/mp6551.html): 2.5–14V input。3S 満充電 12.6V は範囲内だが余裕は 1.4V。
 - [Si7135DP product page](https://www.vishay.com/en/product/68807/): -30V P-channel、PowerPAK SO-8。
-- [PMPB13XNE datasheet](https://assets.nexperia.com/documents/data-sheet/PMPB13XNE.pdf): fan low-side MOSFET の pinout / package 確認元。
+- [IRLML6344 product page](https://www.infineon.com/part/IRLML6344) / [datasheet](https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf): 30V、5A、SOT-23、`RDS(on)` max 29mΩ @ 4.5V / 37mΩ @ 2.5V、pinout G=1 / S=2 / D=3 の確認元。
+- [秋月電子 106049](https://akizukidenshi.com/catalog/g/g106049/): `IRLML6344TRPBF` の国内入手先。2026-08-11 確認時点で通販在庫あり。
 
 ## PCB 前に必須の確認
 
-1. MPM3610 と PMPB13XNE のフットプリントを Classic Eagle 原本から移植し、メーカー推奨ランドと全 pin mapping を照合する。
+1. MPM3610 のフットプリントを Classic Eagle 原本から移植し、メーカー推奨ランドと全 pin mapping を照合する。Q3 は標準 `Package_TO_SOT_SMD:SOT-23` を割り当て済みだが、G=1 / S=2 / D=3、ランド寸法、2A 配線幅、放熱銅箔を PCB 上で再確認する。
 2. SI7135DP の source 1–3 / drain 5–8 と PowerPAK SO-8 pad mapping、バッテリ極性を照合する。
 3. MPM3610 の入力コンデンサ、PGND、OUT、FB をデータシート推奨どおり最短配置する。
 4. MP6551 の 14V 上限に対し、3S 回生・配線サージ・バッテリ切離し時の電圧を実測する。
-5. ファンが 2S–3S 直結に対応すること、または PWM duty 上限が必要かを部品確定時に決める。
+5. ファンが 2S–3S 直結に対応すること、または PWM duty 上限が必要かを部品確定時に決める。D4 `BAS16WT1GW` は 2A 連続電流用ダイオードではないため、実ファンの入力回路、PWM 周波数、ターンオフ電流を確認し、外付け flyback が必要なら電流定格に合う部品へ変更する。
 6. JST-PH2 を含むバッテリコネクタ、Q2、配線幅、銅厚の連続・ピーク電流定格を確認する。
 7. F413 firmware のバッテリ電圧換算を `VBAT = ADC_voltage * 127 / 27` に更新する。
 8. ERC ベースラインを整理し、電源入力・未接続 pin・フットプリント割当を全回路で確認する。

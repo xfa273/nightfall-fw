@@ -7921,14 +7921,7 @@
 					(stroke (width 0.254) (type solid))
 					(fill (type background))
 				)
-				(text "P-MOS"
-					(at 0 0 0)
-					(effects
-						(font (size 1.27 1.27))
-						(justify left bottom)
-					)
-				)
-				(pin passive line
+								(pin passive line
 					(at 0 5.08 270)
 					(length 5.08)
 					(name "S"
@@ -8075,237 +8068,159 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Nightfall-Power:PMPB13XNE,115"
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "Q"
-				(at -10.16 -17.78 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "PMPB13XNE,115"
-				(at -10.16 17.78 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" "Nightfall-Power:DFN2020MD-6_SOT1220"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PMPB13XNE.pdf"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "N-channel MOSFET for low-side suction-fan PWM switching."
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_locked" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "PMPB13XNE,115_1_0"
-				(rectangle
-					(start -3.81 -5.08)
-					(end 3.81 5.08)
-					(stroke (width 0.254) (type solid))
-					(fill (type background))
-				)
-				(text "N-MOS"
-					(at 0 0 0)
-					(effects
-						(font (size 1.27 1.27))
-						(justify left bottom)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 90)
-					(length 5.08)
-					(name "D"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 90)
-					(length 5.08)
-					(name "D"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 0 0)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 90)
-					(length 5.08)
-					(name "D"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 0 0)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 90)
-					(length 5.08)
-					(name "D"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "6"
-						(effects
-							(font
-								(size 0 0)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 7.62 90)
-					(length 5.08)
-					(name "D"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "7"
-						(effects
-							(font
-								(size 0 0)
-							)
-						)
-					)
-				)
-				(pin input line
-					(at -7.62 0 0)
-					(length 5.08)
-					(name "G"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -7.62 270)
-					(length 5.08)
-					(name "S"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at 0 -7.62 270)
-					(length 5.08)
-					(name "S"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "8"
-						(effects
-							(font
-								(size 0 0)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
+		(symbol "Nightfall-Power:IRLML6344TRPBF"
+		(pin_names
+			(offset 0)
+			(hide yes)
 		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "Q"
+			(at 5.08 1.905 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Value" "IRLML6344TRPBF"
+			(at 5.08 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" "https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3."
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "ki_locked" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(symbol "IRLML6344TRPBF_0_1"
+			(polyline
+				(pts (xy -2.286 1.905) (xy -2.286 -1.905))
+				(stroke (width 0.254) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -2.286 0) (xy -5.08 0))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.778 2.286) (xy -1.778 1.27))
+				(stroke (width 0.254) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.778 0.508) (xy -1.778 -0.508))
+				(stroke (width 0.254) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.778 -1.27) (xy -1.778 -2.286))
+				(stroke (width 0.254) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.778 -1.778) (xy 0.762 -1.778) (xy 0.762 1.778) (xy -1.778 1.778))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.524 0) (xy -0.508 0.381) (xy -0.508 -0.381) (xy -1.524 0))
+				(stroke (width 0) (type default))
+				(fill (type outline))
+			)
+			(circle
+				(center -0.889 0)
+				(radius 2.794)
+				(stroke (width 0.254) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy 0 2.54) (xy 0 1.778))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+			(circle
+				(center 0 1.778)
+				(radius 0.254)
+				(stroke (width 0) (type default))
+				(fill (type outline))
+			)
+			(circle
+				(center 0 -1.778)
+				(radius 0.254)
+				(stroke (width 0) (type default))
+				(fill (type outline))
+			)
+			(polyline
+				(pts (xy 0 -2.54) (xy 0 0) (xy -1.778 0))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy 0.381 0.381) (xy 1.143 0.381))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy 0.762 0.381) (xy 0.381 -0.254) (xy 1.143 -0.254) (xy 0.762 0.381))
+				(stroke (width 0) (type default))
+				(fill (type none))
+			)
+		)
+		(symbol "IRLML6344TRPBF_1_1"
+			(pin input line
+				(at -7.62 0 0)
+				(length 2.54)
+				(name "G" (effects (font (size 1.27 1.27))))
+				(number "1" (effects (font (size 1.27 1.27))))
+			)
+			(pin passive line
+				(at 0 -7.62 270)
+				(length 5.08)
+				(name "S" (effects (font (size 1.27 1.27))))
+				(number "2" (effects (font (size 1.27 1.27))))
+			)
+			(pin passive line
+				(at 0 7.62 90)
+				(length 5.08)
+				(name "D" (effects (font (size 1.27 1.27))))
+				(number "3" (effects (font (size 1.27 1.27))))
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "Nightfall-Power:MPM3610GQV-P"
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -13497,7 +13412,7 @@
 		(dnp no)
 		(uuid "02016c68-473d-4c20-a8b6-52e6f10f428d")
 		(property "Reference" "IR_LED_R0"
-			(at 465.836 362.712 90)
+			(at 458.470 362.712 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -13508,7 +13423,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 467.995 362.712 90)
+			(at 466.090 362.712 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -14473,7 +14388,7 @@
 			)
 		)
 		(property "Value" "LEDCHIPLED_0603"
-			(at 352.552 179.705 90)
+			(at 352.552 176.784 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15337,7 +15252,7 @@
 		(dnp no)
 		(uuid "330974fe-d639-40e6-8ffb-1ac2e6c1ee14")
 		(property "Reference" "PT_R0"
-			(at 295.656 367.792 90)
+			(at 288.290 367.792 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15348,7 +15263,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 297.815 367.792 90)
+			(at 295.910 367.792 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -15984,7 +15899,7 @@
 			)
 		)
 		(property "Value" "LEDCHIPLED_0603"
-			(at 441.452 212.725 90)
+			(at 441.452 209.804 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16606,7 +16521,7 @@
 		(dnp no)
 		(uuid "43798210-df33-4966-96d6-35b945d2521c")
 		(property "Reference" "PT_FR0"
-			(at 295.656 296.672 90)
+			(at 288.290 296.672 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -16617,7 +16532,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 297.815 296.672 90)
+			(at 295.910 296.672 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -18400,7 +18315,7 @@
 		(dnp no)
 		(uuid "75ec562d-96e5-4035-a3a3-e7301c8b9937")
 		(property "Reference" "IR_LED_FL0"
-			(at 399.796 306.832 90)
+			(at 392.430 306.832 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -18411,7 +18326,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 401.955 306.832 90)
+			(at 400.050 306.832 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -18880,7 +18795,7 @@
 		(dnp no)
 		(uuid "83b8a333-0da1-498d-b21e-f3263097da07")
 		(property "Reference" "SPK1"
-			(at 410.21 148.59 0)
+			(at 411.48 137.16 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -18891,7 +18806,7 @@
 			)
 		)
 		(property "Value" "SMT-0540-S-R"
-			(at 419.735 148.59 0)
+			(at 411.48 152.40 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20159,7 +20074,7 @@
 		(dnp no)
 		(uuid "a0a277ac-e369-4506-b5b1-147d1e2408c7")
 		(property "Reference" "PT_FL0"
-			(at 252.476 296.672 90)
+			(at 245.110 296.672 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20170,7 +20085,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 254.635 296.672 90)
+			(at 252.730 296.672 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20396,7 +20311,7 @@
 		(dnp no)
 		(uuid "aab6f4ca-395c-4232-aa73-ef946fe94994")
 		(property "Reference" "PT_L0"
-			(at 252.476 367.792 90)
+			(at 245.110 367.792 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -20407,7 +20322,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 254.635 367.792 90)
+			(at 252.730 367.792 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21510,7 +21425,7 @@
 		(dnp no)
 		(uuid "c236f773-34f1-40a4-8a7d-a3be627e6f58")
 		(property "Reference" "IR_LED_L0"
-			(at 399.796 362.712 90)
+			(at 392.430 362.712 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -21521,7 +21436,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 401.955 362.712 90)
+			(at 400.050 362.712 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22329,7 +22244,7 @@
 			)
 		)
 		(property "Value" "LEDCHIPLED_0603"
-			(at 395.732 212.725 90)
+			(at 395.732 209.804 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22795,7 +22710,7 @@
 		(dnp no)
 		(uuid "db61321c-512f-49c7-aef5-1f2ce6f65d27")
 		(property "Reference" "IR_LED_FR0"
-			(at 465.836 306.832 90)
+			(at 458.470 306.832 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -22806,7 +22721,7 @@
 			)
 		)
 		(property "Value" "LED3MM"
-			(at 467.995 306.832 90)
+			(at 466.090 306.832 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -24230,7 +24145,7 @@
 		(dnp no)
 		(uuid "feb9b187-a0b4-45df-bae1-cf5d127a5c53")
 		(property "Reference" "D3"
-			(at 398.6731 147.0959 0)
+			(at 396.24 142.24 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -24241,7 +24156,7 @@
 			)
 		)
 		(property "Value" "BAS16WT1GW"
-			(at 405.8184 147.3468 0)
+			(at 396.24 147.32 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -25593,7 +25508,7 @@
 		(uuid "1808e42b-4d54-444a-8d7a-abc9f2189554")
 	)
 	(symbol
-		(lib_id "Nightfall-Power:PMPB13XNE,115")
+		(lib_id "Nightfall-Power:IRLML6344TRPBF")
 		(at 398.78 119.38 0)
 		(unit 1)
 		(body_style 1)
@@ -25604,56 +25519,47 @@
 		(dnp no)
 		(uuid "32350066-59bb-4cd8-aa82-0a8412339343")
 		(property "Reference" "Q3"
-			(at 406.4 117.5 0)
+			(at 404.495 116.84 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Value" "PMPB13XNE,115"
-			(at 406.4 121 0)
+		(property "Value" "IRLML6344TRPBF"
+			(at 404.495 121.92 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
 				(font (size 1.27 1.27))
+				(justify left)
 			)
 		)
-		(property "Footprint" "Nightfall-Power:DFN2020MD-6_SOT1220"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
 			(at 398.78 119.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
-			(effects
-				(font (size 1.27 1.27))
-			)
+			(effects (font (size 1.27 1.27)))
 		)
-		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PMPB13XNE.pdf"
+		(property "Datasheet" "https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf"
 			(at 398.78 119.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
-			(effects
-				(font (size 1.27 1.27))
-			)
+			(effects (font (size 1.27 1.27)))
 		)
-		(property "Description" ""
+		(property "Description" "30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3."
 			(at 398.78 119.38 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
-			(effects
-				(font (size 1.27 1.27))
-			)
+			(effects (font (size 1.27 1.27)))
 		)
-		(pin "1" (uuid "ec11d9bf-4d97-4873-b7fa-1065256c4694"))
-		(pin "2" (uuid "51bec42d-ae64-418e-9683-dc66554af9a8"))
-		(pin "3" (uuid "e39fbb79-f0d0-40b2-9727-dca309977e2c"))
-		(pin "4" (uuid "9fecb2c1-de96-46b7-9b2a-1974a7b690b3"))
-		(pin "5" (uuid "9c6855cd-6a22-47f3-ae23-963806ca9ca7"))
-		(pin "6" (uuid "81dac9cc-26e0-4912-adfb-9a0b4f6bc7cb"))
-		(pin "7" (uuid "7a983147-2c5e-48dd-a22e-a110a6f86a63"))
-		(pin "8" (uuid "95f32424-26a2-46fd-bc94-a4f236258471"))
+		(pin "1" (uuid "e39fbb79-f0d0-40b2-9727-dca309977e2c"))
+		(pin "2" (uuid "9fecb2c1-de96-46b7-9b2a-1974a7b690b3"))
+		(pin "3" (uuid "ec11d9bf-4d97-4873-b7fa-1065256c4694"))
 		(instances
 			(project "HM_Nightfall-mini-3a_v0"
 				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
