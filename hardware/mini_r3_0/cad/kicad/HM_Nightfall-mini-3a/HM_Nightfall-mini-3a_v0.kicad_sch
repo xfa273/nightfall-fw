@@ -8260,18 +8260,6 @@
 				(name "AAM" (effects (font (size 1.016 1.016))))
 				(number "18" (effects (font (size 1.016 1.016))))
 			)
-			(pin no_connect line
-				(at -17.78 -5.08 0)
-				(length 5.08)
-				(name "NC" (effects (font (size 1.016 1.016))))
-				(number "19" (effects (font (size 1.016 1.016))))
-			)
-			(pin no_connect line
-				(at -17.78 -7.62 0)
-				(length 5.08)
-				(name "NC" (effects (font (size 1.016 1.016))))
-				(number "20" (effects (font (size 1.016 1.016))))
-			)
 			(pin power_out line
 				(at 17.78 7.62 180)
 				(length 5.08)
@@ -8471,7 +8459,7 @@
 		(symbol "VBAT_RAW_1_0"
 			(polyline (pts (xy 0 0) (xy -1.27 -1.905)) (stroke (width 0.254) (type solid)) (fill (type none)))
 			(polyline (pts (xy 1.27 -1.905) (xy 0 0)) (stroke (width 0.254) (type solid)) (fill (type none)))
-			(pin passive line (at 0 -2.54 90) (length 2.54) (name "VBAT_RAW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+			(pin power_in line (at 0 -2.54 90) (length 2.54) (name "VBAT_RAW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
 		)
 		(embedded_fonts no)
 	)
@@ -24647,7 +24635,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0805"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 365.76 33.02 0)
 			(hide yes)
 			(show_name no)
@@ -24714,7 +24702,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 375.92 33.02 0)
 			(hide yes)
 			(show_name no)
@@ -24779,7 +24767,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 431.8 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -24844,7 +24832,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 431.8 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -24909,7 +24897,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0805"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 449.58 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -25598,7 +25586,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 383.54 124.46 0)
 			(hide yes)
 			(show_name no)
@@ -25664,7 +25652,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:JST_PH2"
+		(property "Footprint" "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical"
 			(at 431.8 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -25731,7 +25719,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:SOT323"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-323_SC-70"
 			(at 373.38 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -25796,7 +25784,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0402"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 386.08 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -26138,7 +26126,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "Package_SO:PowerPAK_SO-8_Single"
+		(property "Footprint" "Nightfall-Power:PowerPAK_SO-8_FullPins"
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)

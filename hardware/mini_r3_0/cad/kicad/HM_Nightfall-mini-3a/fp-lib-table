@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name "HM_Nightfall-mini-2e_v1")(type "KiCad")(uri "${KIPRJMOD}/HM_Nightfall-mini-2e_v1.pretty")(options "")(descr "Legacy mini-2e footprints retained for schematic-to-PCB synchronization"))
+  (lib (name "Nightfall-Power")(type "KiCad")(uri "${KIPRJMOD}/Nightfall-Power.pretty")(options "")(descr "Project-local power footprints for HM_Nightfall-mini-3a"))
+)

@@ -630,7 +630,7 @@
 		(symbol "VBAT_RAW_1_0"
 			(polyline (pts (xy 0 0) (xy -1.27 -1.905)) (stroke (width 0.254) (type solid)) (fill (type none)))
 			(polyline (pts (xy 1.27 -1.905) (xy 0 0)) (stroke (width 0.254) (type solid)) (fill (type none)))
-			(pin passive line (at 0 -2.54 90) (length 2.54) (name "VBAT_RAW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
+			(pin power_in line (at 0 -2.54 90) (length 2.54) (name "VBAT_RAW" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
 		)
 		(embedded_fonts no)
 	)
