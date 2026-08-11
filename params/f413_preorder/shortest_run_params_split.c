@@ -7,10 +7,10 @@
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 28000.0f,
+    .alpha_turn90 = 10200.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 0.0f,
-    .dist_offset_out = 28.4f,
+    .dist_offset_in = 8.0f,
+    .dist_offset_out = 12.8f,
     .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
@@ -101,29 +101,29 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     },
     // case6 (index 5)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 2000.0f,
+        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 1000.0f,
         .velocity_straight = 1000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 2000.0f,
-        .velocity_d_straight = 1000.0f
+        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 1000.0f,
+        .velocity_d_straight = 800.0f
     },
     // case7 (index 6)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3500.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 3000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 1250.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 3000.0f,
-        .velocity_d_straight = 3000.0f
+        .acceleration_d_straight = 3000.0f, .acceleration_d_straight_dash = 3000.0f,
+        .velocity_d_straight = 900.0f
     },
     // case8 (index 7): diagonal use
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 2000.0f,
-        .velocity_straight = 1000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
+        .acceleration_straight = 4000.0f, .acceleration_straight_dash = 4000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 2000.0f,
+        .acceleration_d_straight = 4000.0f, .acceleration_d_straight_dash = 4000.0f,
         .velocity_d_straight = 1000.0f
     },
-    // case9 (index 8): diagonal use (same as case8 initial)
+    // case9 (index 8): legacy high-speed comparison profile
     {
         .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3500.0f,
         .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,

@@ -45,17 +45,20 @@ UART commands that are normally non-motor:
 - `c`: IMU acceleration observation
 - `[`: search state / FRAM map consistency display
 - `@`: FRAM search map dump
-- `K`: strict KERI #1--#5 shortest-route preview (`F413 mode2/case8`,
+- `K`: KERI #1--#5 plus execution-gated small90 shortest-route preview
+  (`F413 mode2/case8`,
   diagnostic 16x16 centre 2x2 goal independent of the compiled exploration
   goal).  It prefers a successfully loaded FRAM maze and, only if that read
   fails, uses a pinned 16MM2014CX fixture from program Flash.  UART identifies
   the source; the command only derives/prints a route and never seeds or saves
   the fixture to FRAM.
-- `+`: strict KERI #1--#5 saved-run route preview for F413 mode2 cases 6--9.
+- `+`: KERI #1--#5 plus execution-gated small90 saved-run route preview for
+  F413 mode2 cases 6--9.
   It requires the saved FRAM maze, uses the compiled `GOAL1..9` set and each
-  case's actual motion parameters, and prints the executable legacy path for
-  every case.  It never starts the path runner, motors, fan, trace capture, or
-  an NVM write.
+  case's PC-generated motion-time table, and prints the executable legacy path
+  for every case.  The small90 fallback is admitted only when a nominal
+  run-up/stoppable terminal is unavailable.  It never starts the path runner,
+  motors, fan, trace capture, or an NVM write.
 - `v`: bounded trace CSV dump
 - `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status

@@ -158,20 +158,20 @@ fi
 if [ "$matrix_selection_overridden" -eq 0 ]; then
   default_min_diagonal=230
   default_max_diagonal=230
-  default_min_legacy_compatible=65
-  default_max_legacy_compatible=65
-  default_min_legacy_terminal=165
-  default_max_legacy_terminal=165
+  default_min_legacy_compatible=91
+  default_max_legacy_compatible=91
+  default_min_legacy_terminal=139
+  default_max_legacy_terminal=139
   default_min_no_feasible_terminal=10
   default_max_no_feasible_terminal=10
-  default_min_zero_step=1303
-  default_max_zero_step=1303
-  default_min_reduced=268
-  default_max_reduced=268
-  default_min_low=219
-  default_max_low=219
-  default_min_crawl=49
-  default_max_crawl=49
+  default_min_zero_step=1309
+  default_max_zero_step=1309
+  default_min_reduced=264
+  default_max_reduced=264
+  default_min_low=203
+  default_max_low=203
+  default_min_crawl=61
+  default_max_crawl=61
 else
   default_min_diagonal=0
   default_max_diagonal=$configurations

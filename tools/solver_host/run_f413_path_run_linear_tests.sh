@@ -3,11 +3,7 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 OUT_DIR="$ROOT_DIR/build/solver_host"
-OUT_BIN="$OUT_DIR/f413_route_preview_host_tests"
-# Pinned copy of micromouse-maze-data revision
-# 762ed2b68735ea29148c6a1251a90ed0651ff26b/data/16MM2014CX.maze.
-FIXTURE="$ROOT_DIR/tools/solver_host/testdata/16MM2014CX_kerilab.maze"
-RUNUP_FIXTURE="$ROOT_DIR/tools/solver_host/testdata/f413_goal1_runup.search_dump"
+OUT_BIN="$OUT_DIR/f413_path_run_linear_tests"
 CC_BIN=${CC:-cc}
 SANITIZE=${SANITIZE:-1}
 
@@ -22,22 +18,11 @@ mkdir -p "$OUT_DIR"
 "$CC_BIN" -std=c11 -Wall -Wextra -Werror -Wpedantic -O1 -g \
   $SANITIZER_FLAGS \
   -I"$ROOT_DIR/common/route" \
-  -I"$ROOT_DIR/tools/solver_host" \
   -I"$ROOT_DIR/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc" \
   -I"$ROOT_DIR/platform/stm32f405/Core/Inc" \
-  -I"$ROOT_DIR/platform/trace" \
-  -I"$ROOT_DIR/nvm" \
   -I"$ROOT_DIR/params/f413_preorder" \
-  "$ROOT_DIR/tools/solver_host/f413_route_preview_host_tests.c" \
-  "$ROOT_DIR/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_motion_table.c" \
-  "$ROOT_DIR/tools/solver_host/slalom_time_plan_host.c" \
-  "$ROOT_DIR/tools/solver_host/slalom_profile_baseline.c" \
-  "$ROOT_DIR/tools/solver_host/maze_ascii.c" \
-  "$ROOT_DIR/common/route/slalom_time_planner.c" \
-  "$ROOT_DIR/common/route/slalom_plan_legacy_codec.c" \
+  "$ROOT_DIR/tools/solver_host/f413_path_run_linear_tests.c" \
   "$ROOT_DIR/common/route/legacy_path_codec.c" \
-  "$ROOT_DIR/common/route/route_clearance.c" \
-  "$ROOT_DIR/common/route/orthogonal_time_planner.c" \
   "$ROOT_DIR/common/route/motion_time.c" \
   "$ROOT_DIR/params/f413_preorder/shortest_run_params_split.c" \
   -lm -o "$OUT_BIN"
@@ -45,7 +30,7 @@ mkdir -p "$OUT_DIR"
 if [ "$SANITIZE" = "1" ]; then
   ASAN_OPTIONS=${ASAN_OPTIONS:-detect_leaks=0:halt_on_error=1} \
   UBSAN_OPTIONS=${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1} \
-    "$OUT_BIN" "$FIXTURE" "$RUNUP_FIXTURE"
+    "$OUT_BIN"
 else
-  "$OUT_BIN" "$FIXTURE" "$RUNUP_FIXTURE"
+  "$OUT_BIN"
 fi

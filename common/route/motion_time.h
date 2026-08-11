@@ -53,6 +53,20 @@ typedef struct {
     double total_time_s;
 } NfLinearPlan;
 
+/*
+ * The single constant-acceleration profile used by the F413 distance
+ * controller.  Unlike NfLinearPlan, this profile never inserts a peak-speed
+ * or cruise phase: acceleration is chosen so that the requested exit speed
+ * is reached exactly at distance_mm.
+ */
+typedef struct {
+    double distance_mm;
+    double entry_velocity_mm_s;
+    double exit_velocity_mm_s;
+    double acceleration_mm_s2;
+    double duration_s;
+} NfConstantAccelProfile;
+
 typedef struct {
     bool enabled;
     double velocity_mm_s;
@@ -99,6 +113,18 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
                                      double entry_velocity_mm_s,
                                      double exit_velocity_mm_s,
                                      NfLinearPlan *out);
+
+/*
+ * Build the exact continuous-time counterpart of
+ * f413_ctrl_set_velocity_profile().  The required acceleration must fit every
+ * low/high acceleration regime traversed between the two velocities.
+ */
+NfMotionStatus nf_motion_constant_accel_profile(
+    const NfLinearLimits *limits,
+    double distance_mm,
+    double entry_velocity_mm_s,
+    double exit_velocity_mm_s,
+    NfConstantAccelProfile *out);
 
 NfMotionStatus nf_motion_accelerating_exit_velocity(
     const NfLinearLimits *limits,

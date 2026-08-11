@@ -180,6 +180,108 @@ static void test_one_stage_layout_contract(void)
                0.632455532033676, 1.0e-12);
 }
 
+static void test_constant_accel_profile(void)
+{
+    const NfLinearLimits limits = {
+        .vmax_mm_s = 1500.0,
+        .switch_velocity_mm_s = 1000.0,
+        .accel_low_mm_s2 = 1000.0,
+        .accel_high_mm_s2 = 3000.0,
+    };
+    const NfLinearLimits high_is_tighter = {
+        .vmax_mm_s = 1500.0,
+        .switch_velocity_mm_s = 1000.0,
+        .accel_low_mm_s2 = 3000.0,
+        .accel_high_mm_s2 = 1000.0,
+    };
+    const NfLinearLimits invalid_two_stage = {
+        .vmax_mm_s = 1500.0,
+        .switch_velocity_mm_s = 1000.0,
+        .accel_low_mm_s2 = 0.0,
+        .accel_high_mm_s2 = 3000.0,
+    };
+    NfConstantAccelProfile profile;
+
+    check_status("constant profile low range",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 100.0, 300.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile low acceleration",
+               profile.acceleration_mm_s2, 888.888888888889, 1.0e-9);
+    check_near("constant profile low duration",
+               profile.duration_s, 0.225, 1.0e-12);
+
+    check_status("constant profile symmetric deceleration",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 300.0, 100.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile signed deceleration",
+               profile.acceleration_mm_s2, -888.888888888889, 1.0e-9);
+    check_near("constant profile deceleration duration",
+               profile.duration_s, 0.225, 1.0e-12);
+
+    check_status("constant profile low limit exceeded",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 100.0, 400.0, &profile),
+                 NF_MOTION_INFEASIBLE);
+    check_status("constant profile high range uses high limit",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 1100.0, 1200.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile high acceleration",
+               profile.acceleration_mm_s2, 2555.555555555556, 1.0e-9);
+    check_near("constant profile high duration",
+               profile.duration_s, 0.039130434782609, 1.0e-12);
+
+    check_status("constant profile crossing checks low limit",
+                 nf_motion_constant_accel_profile(
+                     &limits, 100.0, 900.0, 1100.0, &profile),
+                 NF_MOTION_INFEASIBLE);
+    check_status("constant profile crossing checks high limit",
+                 nf_motion_constant_accel_profile(
+                     &high_is_tighter, 100.0, 900.0, 1100.0, &profile),
+                 NF_MOTION_INFEASIBLE);
+    check_status("constant profile crossing within both limits",
+                 nf_motion_constant_accel_profile(
+                     &limits, 250.0, 900.0, 1100.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile crossing acceleration",
+               profile.acceleration_mm_s2, 800.0, 1.0e-12);
+    check_near("constant profile crossing duration",
+               profile.duration_s, 0.25, 1.0e-12);
+
+    check_status("constant profile cruise",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 500.0, 500.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile cruise acceleration",
+               profile.acceleration_mm_s2, 0.0, 0.0);
+    check_near("constant profile cruise duration",
+               profile.duration_s, 0.09, 1.0e-12);
+    check_status("constant profile zero-distance identity",
+                 nf_motion_constant_accel_profile(
+                     &limits, 0.0, 500.0, 500.0, &profile),
+                 NF_MOTION_OK);
+    check_near("constant profile zero-distance duration",
+               profile.duration_s, 0.0, 0.0);
+    check_status("constant profile zero-distance change",
+                 nf_motion_constant_accel_profile(
+                     &limits, 0.0, 500.0, 300.0, &profile),
+                 NF_MOTION_INFEASIBLE);
+    check_status("constant profile cannot travel while stopped",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 0.0, 0.0, &profile),
+                 NF_MOTION_INFEASIBLE);
+    check_status("constant profile rejects velocity above vmax",
+                 nf_motion_constant_accel_profile(
+                     &limits, 45.0, 1501.0, 1200.0, &profile),
+                 NF_MOTION_INVALID_ARGUMENT);
+    check_status("constant profile validates two-stage limits",
+                 nf_motion_constant_accel_profile(
+                     &invalid_two_stage, 45.0, 100.0, 300.0, &profile),
+                 NF_MOTION_INVALID_LIMITS);
+}
+
 static void test_accelerating_exit_velocity(void)
 {
     const NfLinearLimits limits = {
@@ -684,6 +786,7 @@ int main(void)
     test_single_stage_straight();
     test_two_stage_straight();
     test_one_stage_layout_contract();
+    test_constant_accel_profile();
     test_accelerating_exit_velocity();
     test_mode2_turns();
     test_turn_boundary_cross();

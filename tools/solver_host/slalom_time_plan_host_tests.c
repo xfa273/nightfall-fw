@@ -91,12 +91,16 @@ static void test_profile_case_mapping(void)
             CHECK_TRUE(close_value(config.low_speed_turn_velocity_mm_s,
                                    expected->current[NF_PRIMITIVE_SMALL_90]
                                        .velocity_mm_s));
-            CHECK_TRUE(close_value(config.turn_45_in.velocity_mm_s,
-                                   expected->seeds[NF_PRIMITIVE_45_IN]
-                                       .velocity_mm_s));
-            CHECK_TRUE(close_value(config.turn_45_in.alpha_deg_s2,
-                                   expected->seeds[NF_PRIMITIVE_45_IN]
-                                       .alpha_deg_s2));
+            CHECK_TRUE(close_value(
+                config.turn_45_in.velocity_mm_s,
+                expected->primary ?
+                    expected->current[NF_PRIMITIVE_45_IN].velocity_mm_s :
+                    expected->seeds[NF_PRIMITIVE_45_IN].velocity_mm_s));
+            CHECK_TRUE(close_value(
+                config.turn_45_in.alpha_deg_s2,
+                expected->primary ?
+                    expected->current[NF_PRIMITIVE_45_IN].alpha_deg_s2 :
+                    expected->seeds[NF_PRIMITIVE_45_IN].alpha_deg_s2));
             CHECK_TRUE(close_value(
                 config.geometry_turns[NF_PRIMITIVE_SMALL_90].alpha_deg_s2,
                 expected->seeds[NF_PRIMITIVE_SMALL_90].alpha_deg_s2));

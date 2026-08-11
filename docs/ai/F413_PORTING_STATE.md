@@ -25,12 +25,15 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Trace log schema is v6: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00060000`.
 - F413 reuses F405 solver/path/maze logic through `f413_solver_bridge.c`.
 - `tools/solver_host` can run solver and exploration simulation on the host.
-- The fixed-memory KERI #1--#5 time planner is connected to mode2 case6--9.
-  It requires a successfully loaded FRAM maze, uses the compiled `GOAL1..9`,
-  the selected case's straight limits, and the calibrated mode2 turn timing,
-  then transactionally converts a nominal-speed, cardinal-stop route into the
-  existing `path[]` runner grammar.  UART `K` remains a read-only case8
-  diagnostic with a centre 2x2 goal and a pinned 16MM2014CX fallback.
+- The fixed-memory KERI time planner is connected to mode2 case6--9.  Its turn
+  geometry, sampled poses, turn durations, and connector/approach durations are
+  generated on the PC into a const Flash table, so the MCU does not repeat the
+  expensive turn integration.  It uses #1--#5 normally and admits calibrated
+  small90 only when nominal run-up or a stoppable terminal is unavailable.
+  Run generation requires a successfully loaded FRAM maze and compiled
+  `GOAL1..9`, then transactionally converts the route into the existing
+  `path[]` runner grammar.  UART `K` remains a read-only case8 diagnostic with
+  a centre 2x2 goal and a pinned 16MM2014CX fallback.
 - F413 OP UI has F405-style mode/case/sub selection and UART `P`/`E` wrappers.
 - F413 run-session helpers and safe trace sessions have been split into `f413_run_session.c`.
 - Recent refactors split F413 helpers/diagnostics/UI/run-session code out of `main.c`.
@@ -73,10 +76,16 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   - F413 run-hook trace capture service and guarded idle-scratch lease used by
     foreground-only route preview.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_preview.c`
-  - Fixed-memory strict KERI #1--#5 time planner shared by the UART preview and
-    mode2 case6--9 path generation.  Run generation requires the FRAM maze and
-    compiled goals; preview alone may use the built-in diagnostic fixture.
-    This module builds but never starts motor/fan execution or writes NVM.
+  - Fixed-memory KERI time planner shared by the UART preview and mode2
+    case6--9 path generation.  It uses #1--#5 plus an execution-gated small90
+    fallback.  Run generation requires the FRAM maze and compiled goals;
+    preview alone may use the built-in diagnostic fixture.  This module builds
+    but never starts motor/fan execution or writes NVM.
+- `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_motion_table.c`
+  - PC-generated const geometry, pose, turn-time, connector-time, and
+    wall-end-approach tables for mode2 case6--9.
+- `tools/route_precompute/`
+  - Deterministic table generator, stale-input check, and numeric verifier.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_trace_diag.c`
   - Trace dump/selftest/CSV/bin diagnostic output.
 - `nvm/nvm.c`
@@ -125,5 +134,8 @@ Treat motor, fan, turn, search, shortest, and NVM-destructive operations as gate
    - UART `@` dump rendering
    - solver from search dump
 5. Validate diagonal shortest running in stages: inspect the generated path,
-   then run mode2 case6 on a known maze before increasing to case7--9.
+   then run the low profile mode2 case6 before case7 and case8.  Current
+   orthogonal/diagonal speed and acceleration ladders are
+   `1000/800 @ 1000`, `1250/900 @ 3000`, and `1500/1000 @ 4000`
+   (mm/s and mm/s^2).  Keep case9 as a later comparison profile.
 6. Only after basic tuning: floor low-speed one-step exploration, then short maze exploration.

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "f413_route_motion_table.h"
 #include "f413_trace_log.h"
 #include "legacy_path_codec.h"
 #include "motion_time.h"
@@ -21,12 +22,13 @@
 extern uint16_t path[ROUTE_MAX_LEN];
 
 /*
- * Fixed-memory 16x16 KERI #1--#5 planner shared by the read-only preview and
- * mode2 case6..9 path generation.  The preview may fall back to a pinned maze;
- * run-path generation requires the saved FRAM maze and compiled goals.  This
- * module never starts control/motors and never writes NVM.  Executable output
- * is additionally limited to nominal-speed turns and a cardinal stop tail so
- * it can be represented by the current legacy path runner without a sidecar.
+ * Fixed-memory 16x16 KERI #1--#5 planner with a gated pattern-#0 small90
+ * recovery, shared by the read-only preview and mode2 case6..9 path generation.
+ * The preview may fall back to a pinned maze; run-path generation requires the
+ * saved FRAM maze and compiled goals.  This module never starts control/motors
+ * and never writes NVM.  Executable output is limited to nominal-speed #1--#5
+ * turns, the tuned low-speed small90, and a cardinal stop tail, all of which
+ * the current legacy path runner represents without a sidecar.
  */
 
 #define F413_RP_WIDTH (16U)
@@ -38,7 +40,11 @@ extern uint16_t path[ROUTE_MAX_LEN];
    (F413_RP_WIDTH * (F413_RP_HEIGHT - 1U)))
 #define F413_RP_POSE_COUNT (F413_RP_CENTER_POSES + (F413_RP_INTERNAL_WALLS * 4U))
 #define F413_RP_SPEED_COUNT (3U)
-#define F413_RP_STATE_COUNT (F413_RP_POSE_COUNT * F413_RP_SPEED_COUNT)
+#define F413_RP_BASE_STATE_COUNT (F413_RP_POSE_COUNT * F413_RP_SPEED_COUNT)
+/* Only LOW-speed cardinal poses are needed while chaining small turns. */
+#define F413_RP_WALL_CARDINAL_STATE_COUNT (F413_RP_INTERNAL_WALLS * 2U)
+#define F413_RP_STATE_COUNT \
+  (F413_RP_BASE_STATE_COUNT + F413_RP_WALL_CARDINAL_STATE_COUNT)
 #define F413_RP_SETTLED_BYTES ((F413_RP_STATE_COUNT + 7U) / 8U)
 #define F413_RP_INF (UINT32_MAX)
 #define F413_RP_HALF_CELL_MM (45.0)
@@ -63,6 +69,8 @@ _Static_assert(MAZE_SIZE == F413_RP_WIDTH,
                "F413 compact route preview is fixed to a 16x16 maze");
 _Static_assert(F413_RP_POSE_COUNT == 2944U,
                "compact KERI pose count changed");
+_Static_assert(F413_RP_STATE_COUNT == 9792U,
+               "compact KERI state count changed");
 _Static_assert(F413_RP_STATE_COUNT < (1U << 14U),
                "packed parent state field is too small");
 _Static_assert(F413_RP_STATE_COUNT < UINT16_MAX,
@@ -91,8 +99,17 @@ typedef enum
   F413_RP_KIND_V90,
   F413_RP_KIND_135_IN,
   F413_RP_KIND_135_OUT,
+  /*
+   * Pattern #0 is kept last so the packed values of the established #1--#5
+   * actions do not change.  It is only enabled as a run-up fallback by the
+   * execution-compatible planner.
+   */
+  F413_RP_KIND_SMALL_90,
   F413_RP_KIND_COUNT,
 } f413_rp_kind_t;
+
+_Static_assert(F413_RP_KIND_COUNT <= 8U,
+               "packed parent kind field is too small");
 
 typedef enum
 {
@@ -100,6 +117,30 @@ typedef enum
   F413_RP_SPEED_LOW,
   F413_RP_SPEED_CRAWL,
 } f413_rp_speed_t;
+
+_Static_assert(F413_RP_SPEED_COUNT == F413_ROUTE_PRECOMPUTED_SPEED_COUNT,
+               "precomputed route speed count changed");
+_Static_assert(F413_RP_KIND_COUNT == F413_ROUTE_PRECOMPUTED_KIND_COUNT,
+               "precomputed route kind count changed");
+_Static_assert((unsigned int)F413_RP_KIND_LARGE_90 ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_LARGE_90 &&
+               (unsigned int)F413_RP_KIND_LARGE_180 ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_LARGE_180 &&
+               (unsigned int)F413_RP_KIND_45_IN ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_45_IN &&
+               (unsigned int)F413_RP_KIND_45_OUT ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_45_OUT &&
+               (unsigned int)F413_RP_KIND_V90 ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_V90 &&
+               (unsigned int)F413_RP_KIND_135_IN ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_135_IN &&
+               (unsigned int)F413_RP_KIND_135_OUT ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_135_OUT &&
+               (unsigned int)F413_RP_KIND_SMALL_90 ==
+                   (unsigned int)F413_ROUTE_PRECOMPUTED_SMALL_90,
+               "planner/precomputed kind order changed");
+_Static_assert(F413_ROUTE_PRECOMPUTED_MAX_CONNECTOR_STEPS >= 68U,
+               "precomputed connector table does not cover the maze ray");
 
 typedef enum
 {
@@ -141,16 +182,7 @@ typedef struct
 
 typedef struct
 {
-  NfTurnSpec timing[F413_RP_SPEED_COUNT][F413_RP_KIND_COUNT];
-  NfTurnPlan timing_plan[F413_RP_SPEED_COUNT][F413_RP_KIND_COUNT];
-  NfTurnSpec geometry[F413_RP_KIND_COUNT];
-  NfTurnPlan geometry_plan[F413_RP_KIND_COUNT];
-  NfTurnPose* geometry_poses[F413_RP_KIND_COUNT];
-  uint16_t geometry_intervals[F413_RP_KIND_COUNT];
-  NfLinearLimits orthogonal;
-  NfLinearLimits diagonal;
-  double speed_mm_s[F413_RP_SPEED_COUNT];
-  uint32_t start_time_us;
+  const F413RoutePrecomputedCase* precomputed;
 } f413_rp_motion_t;
 
 typedef struct
@@ -201,6 +233,8 @@ typedef struct
   uint32_t relaxed_edges;
   bool goal_cross_reachable;
   bool execution_compatible;
+  bool allow_small_fallback;
+  bool small_recovery_pass;
   f413_rp_goal_t goal;
 } f413_rp_context_t;
 
@@ -643,13 +677,53 @@ static bool f413_rp_pose_decode(uint16_t pose,
   return f413_rp_anchor_from_id(anchor_id, out_anchor);
 }
 
-static uint16_t f413_rp_state_index(f413_rp_anchor_t anchor,
-                                    f413_rp_heading_t heading,
-                                    f413_rp_speed_t speed)
+static bool f413_rp_state_index(f413_rp_anchor_t anchor,
+                                f413_rp_heading_t heading,
+                                f413_rp_speed_t speed,
+                                uint16_t* out_state)
 {
-  uint16_t pose = 0U;
-  (void)f413_rp_pose_index(anchor, heading, &pose);
-  return (uint16_t)((pose * F413_RP_SPEED_COUNT) + (uint16_t)speed);
+  uint16_t pose;
+  uint16_t anchor_id;
+  uint16_t direction_slot;
+
+  if ((out_state == NULL) || ((unsigned int)speed >= F413_RP_SPEED_COUNT))
+  {
+    return false;
+  }
+  if (f413_rp_pose_index(anchor, heading, &pose))
+  {
+    *out_state = (uint16_t)((pose * F413_RP_SPEED_COUNT) +
+                            (uint16_t)speed);
+    return true;
+  }
+  if ((speed != F413_RP_SPEED_LOW) || !f413_rp_is_cardinal(heading) ||
+      f413_rp_anchor_is_center(anchor) ||
+      !f413_rp_anchor_id(anchor, &anchor_id) ||
+      (anchor_id < F413_RP_CELL_COUNT))
+  {
+    return false;
+  }
+  if ((anchor.half_x & 1) == 0)
+  {
+    if ((heading != F413_RP_HEADING_EAST) &&
+        (heading != F413_RP_HEADING_WEST))
+    {
+      return false;
+    }
+    direction_slot = (heading == F413_RP_HEADING_EAST) ? 0U : 1U;
+  }
+  else
+  {
+    if ((heading != F413_RP_HEADING_NORTH) &&
+        (heading != F413_RP_HEADING_SOUTH))
+    {
+      return false;
+    }
+    direction_slot = (heading == F413_RP_HEADING_NORTH) ? 0U : 1U;
+  }
+  *out_state = (uint16_t)(F413_RP_BASE_STATE_COUNT +
+      ((anchor_id - F413_RP_CELL_COUNT) * 2U) + direction_slot);
+  return *out_state < F413_RP_STATE_COUNT;
 }
 
 static bool f413_rp_state_decode(uint16_t state,
@@ -657,9 +731,35 @@ static bool f413_rp_state_decode(uint16_t state,
                                  f413_rp_heading_t* out_heading,
                                  f413_rp_speed_t* out_speed)
 {
-  if ((state >= F413_RP_STATE_COUNT) || (out_speed == NULL))
+  if ((state >= F413_RP_STATE_COUNT) || (out_anchor == NULL) ||
+      (out_heading == NULL) || (out_speed == NULL))
   {
     return false;
+  }
+  if (state >= F413_RP_BASE_STATE_COUNT)
+  {
+    const uint16_t wall_state =
+        (uint16_t)(state - F413_RP_BASE_STATE_COUNT);
+    const uint16_t anchor_id = (uint16_t)(F413_RP_CELL_COUNT +
+                                          (wall_state / 2U));
+    const uint16_t direction_slot = (uint16_t)(wall_state % 2U);
+
+    if (!f413_rp_anchor_from_id(anchor_id, out_anchor))
+    {
+      return false;
+    }
+    if ((out_anchor->half_x & 1) == 0)
+    {
+      *out_heading = (direction_slot == 0U) ?
+          F413_RP_HEADING_EAST : F413_RP_HEADING_WEST;
+    }
+    else
+    {
+      *out_heading = (direction_slot == 0U) ?
+          F413_RP_HEADING_NORTH : F413_RP_HEADING_SOUTH;
+    }
+    *out_speed = F413_RP_SPEED_LOW;
+    return true;
   }
   *out_speed = (f413_rp_speed_t)(state % F413_RP_SPEED_COUNT);
   return f413_rp_pose_decode((uint16_t)(state / F413_RP_SPEED_COUNT),
@@ -858,6 +958,15 @@ static bool f413_rp_keri_turn_guard(const f413_rp_maze_t* maze,
   const f413_rp_pose_t wanted = f413_rp_keri_opposite(
       (f413_rp_pose_t){source, start_heading});
 
+  /*
+   * KERI pattern #0 has no extra wide-turn guard.  Its exact-closing
+   * trajectory is still replayed by f413_rp_trace_turn(), which verifies all
+   * crossed walls including the outgoing wall.
+   */
+  if (kind == F413_RP_KIND_SMALL_90)
+  {
+    return true;
+  }
   if (f413_rp_is_cardinal(focus.heading))
   {
     static const int deltas[2] = {-1, 1};
@@ -975,6 +1084,12 @@ static bool f413_rp_turn_source_valid(const f413_rp_maze_t* maze,
                                       f413_rp_heading_t heading,
                                       f413_rp_kind_t kind)
 {
+  if (kind == F413_RP_KIND_SMALL_90)
+  {
+    return f413_rp_travel_pose_valid(maze, anchor, heading) &&
+           !f413_rp_anchor_is_center(anchor) &&
+           f413_rp_is_cardinal(heading);
+  }
   if (!f413_rp_state_pose_valid(maze, anchor, heading))
   {
     return false;
@@ -992,6 +1107,9 @@ static bool f413_rp_turn_source_valid(const f413_rp_maze_t* maze,
     case F413_RP_KIND_135_OUT:
       return !f413_rp_anchor_is_center(anchor) &&
              !f413_rp_is_cardinal(heading);
+    case F413_RP_KIND_SMALL_90:
+      /* Handled above because wall/cardinal poses are not stored states. */
+      return false;
     default:
       return false;
   }
@@ -1018,6 +1136,13 @@ static bool f413_rp_turn_destination(const f413_rp_maze_t* maze,
   }
   switch (kind)
   {
+    case F413_RP_KIND_SMALL_90:
+      end_heading = f413_rp_heading_add(start_heading, 2 * sign);
+      dx = g_f413_rp_dx[(unsigned int)start_heading] +
+           g_f413_rp_dx[(unsigned int)end_heading];
+      dy = g_f413_rp_dy[(unsigned int)start_heading] +
+           g_f413_rp_dy[(unsigned int)end_heading];
+      break;
     case F413_RP_KIND_LARGE_90:
       end_heading = f413_rp_heading_add(start_heading, 2 * sign);
       dx = 2 * (g_f413_rp_dx[(unsigned int)start_heading] +
@@ -1070,7 +1195,9 @@ static bool f413_rp_turn_destination(const f413_rp_maze_t* maze,
   out_anchor->half_x = (int16_t)(source.half_x + dx);
   out_anchor->half_y = (int16_t)(source.half_y + dy);
   *out_heading = end_heading;
-  return f413_rp_state_pose_valid(maze, *out_anchor, *out_heading) &&
+  return ((kind == F413_RP_KIND_SMALL_90) ?
+          f413_rp_travel_pose_valid(maze, *out_anchor, *out_heading) :
+          f413_rp_state_pose_valid(maze, *out_anchor, *out_heading)) &&
          f413_rp_keri_turn_guard(maze, source, start_heading, kind,
                                  *out_anchor, *out_heading);
 }
@@ -1235,65 +1362,6 @@ static bool f413_rp_load_run_maze(f413_rp_maze_t* maze,
   return maze->goal_count != 0U;
 }
 
-static NfTurnSpec f413_rp_scaled_turn(const NfTurnSpec* source, double scale)
-{
-  NfTurnSpec result = *source;
-  result.velocity_mm_s *= scale;
-  result.alpha_deg_s2 *= scale * scale;
-  return result;
-}
-
-static void f413_rp_expected_closure(f413_rp_kind_t kind,
-                                     double* out_forward,
-                                     double* out_lateral,
-                                     double* out_angle)
-{
-  const double half = F413_RP_HALF_CELL_MM;
-  switch (kind)
-  {
-    case F413_RP_KIND_LARGE_90:
-      *out_forward = 2.0 * half;
-      *out_lateral = 2.0 * half;
-      *out_angle = 90.0;
-      break;
-    case F413_RP_KIND_LARGE_180:
-      *out_forward = 0.0;
-      *out_lateral = 2.0 * half;
-      *out_angle = 180.0;
-      break;
-    case F413_RP_KIND_45_IN:
-      *out_forward = 2.0 * half;
-      *out_lateral = half;
-      *out_angle = 45.0;
-      break;
-    case F413_RP_KIND_45_OUT:
-      *out_forward = 3.0 * half / sqrt(2.0);
-      *out_lateral = half / sqrt(2.0);
-      *out_angle = 45.0;
-      break;
-    case F413_RP_KIND_V90:
-      *out_forward = half * sqrt(2.0);
-      *out_lateral = half * sqrt(2.0);
-      *out_angle = 90.0;
-      break;
-    case F413_RP_KIND_135_IN:
-      *out_forward = half;
-      *out_lateral = 2.0 * half;
-      *out_angle = 135.0;
-      break;
-    case F413_RP_KIND_135_OUT:
-      *out_forward = half / sqrt(2.0);
-      *out_lateral = 3.0 * half / sqrt(2.0);
-      *out_angle = 135.0;
-      break;
-    default:
-      *out_forward = 0.0;
-      *out_lateral = 0.0;
-      *out_angle = 0.0;
-      break;
-  }
-}
-
 static bool f413_rp_seconds_to_us(double seconds, uint32_t* out_us)
 {
   uint64_t value = 0U;
@@ -1311,152 +1379,13 @@ static bool f413_rp_prepare_motion(f413_rp_motion_t* motion,
                                    f413_rp_arena_t* arena,
                                    uint8_t case_index)
 {
-  const ShortestRunModeParams_t* mode = &shortestRunModeParams2;
-  const ShortestRunCaseParams_t* run_case;
-  NfTurnSpec nominal_timing[F413_RP_KIND_COUNT] = {
-      {true, mode->velocity_l_turn_90, mode->alpha_l_turn_90, 90.0,
-       mode->dist_l_turn_in_90, mode->dist_l_turn_out_90},
-      {true, mode->velocity_l_turn_180, mode->alpha_l_turn_180, 180.0,
-       mode->dist_l_turn_in_180, mode->dist_l_turn_out_180},
-      {true, mode->velocity_turn45in, mode->alpha_turn45in, 45.0,
-       mode->dist_turn45in_in, mode->dist_turn45in_out},
-      {true, mode->velocity_turn45out, mode->alpha_turn45out, 45.0,
-       mode->dist_turn45out_in, mode->dist_turn45out_out},
-      {true, mode->velocity_turnV90, mode->alpha_turnV90, 90.0,
-       mode->dist_turnV90_in, mode->dist_turnV90_out},
-      {true, mode->velocity_turn135in, mode->alpha_turn135in, 135.0,
-       mode->dist_turn135in_in, mode->dist_turn135in_out},
-      {true, mode->velocity_turn135out, mode->alpha_turn135out, 135.0,
-       mode->dist_turn135out_in, mode->dist_turn135out_out},
-  };
-  const NfTurnSpec nominal_geometry[F413_RP_KIND_COUNT] = {
-      {true, mode->velocity_l_turn_90, 4700.0, 90.0,
-       0.352912418, 0.352912418},
-      {true, mode->velocity_l_turn_180, 4422.213141, 180.0, 15.500, 15.500},
-      {true, mode->velocity_turn45in, 7234.4, 45.0, 0.0, 18.640},
-      {true, mode->velocity_turn45out, 7234.4, 45.0, 18.640, 0.0},
-      {true, mode->velocity_turnV90, 12200.0, 90.0, 7.997, 7.997},
-      {true, mode->velocity_turn135in, 8500.0, 135.0, 18.932, 11.212},
-      {true, mode->velocity_turn135out, 8500.0, 135.0, 11.212, 18.932},
-  };
-  NfLinearPlan start_plan;
-  double crawl_velocity;
-
-  if ((motion == NULL) || (arena == NULL) ||
-      (case_index < 1U) || (case_index > 9U))
+  (void)arena;
+  if (motion == NULL)
   {
     return false;
   }
-  run_case = &shortestRunCaseParamsMode2[case_index - 1U];
-  memset(motion, 0, sizeof(*motion));
-  motion->orthogonal = (NfLinearLimits){
-      run_case->velocity_straight,
-      mode->accel_switch_velocity,
-      run_case->acceleration_straight,
-      run_case->acceleration_straight_dash,
-  };
-  motion->diagonal = (NfLinearLimits){
-      run_case->velocity_d_straight,
-      0.0,
-      run_case->acceleration_d_straight,
-      run_case->acceleration_d_straight_dash,
-  };
-  if ((motion->orthogonal.vmax_mm_s <= 0.0) ||
-      (motion->diagonal.vmax_mm_s <= 0.0) ||
-      (nf_motion_accelerating_exit_velocity(&motion->orthogonal, 5.0, 0.0,
-                                             &crawl_velocity) != NF_MOTION_OK) ||
-      (nf_motion_linear_plan(&motion->orthogonal, 5.0, 0.0,
-                             crawl_velocity, &start_plan) != NF_MOTION_OK) ||
-      !f413_rp_seconds_to_us(start_plan.total_time_s,
-                            &motion->start_time_us))
-  {
-    return false;
-  }
-  motion->speed_mm_s[F413_RP_SPEED_NOMINAL] =
-      nominal_timing[F413_RP_KIND_LARGE_90].velocity_mm_s;
-  motion->speed_mm_s[F413_RP_SPEED_LOW] = mode->velocity_turn90;
-  motion->speed_mm_s[F413_RP_SPEED_CRAWL] = crawl_velocity;
-  if ((motion->speed_mm_s[F413_RP_SPEED_NOMINAL] <=
-       motion->speed_mm_s[F413_RP_SPEED_LOW]) ||
-      (motion->speed_mm_s[F413_RP_SPEED_LOW] <=
-       motion->speed_mm_s[F413_RP_SPEED_CRAWL]))
-  {
-    return false;
-  }
-  for (size_t kind = 0U; kind < F413_RP_KIND_COUNT; kind++)
-  {
-    if (fabs(nominal_timing[kind].velocity_mm_s -
-             motion->speed_mm_s[F413_RP_SPEED_NOMINAL]) > F413_RP_EPS)
-    {
-      return false;
-    }
-    motion->geometry[kind] = nominal_geometry[kind];
-    {
-      const NfTurnEnvironment environment = {2200.0, 1.2};
-      double expected_forward;
-      double expected_lateral;
-      double expected_angle;
-      double residual;
-      double required_intervals;
-      uint16_t intervals;
-
-      if (nf_motion_turn_plan(&motion->geometry[kind], &environment,
-                              &motion->geometry_plan[kind]) != NF_MOTION_OK)
-      {
-        return false;
-      }
-      f413_rp_expected_closure((f413_rp_kind_t)kind, &expected_forward,
-                               &expected_lateral, &expected_angle);
-      residual = hypot(motion->geometry_plan[kind].displacement_forward_mm -
-                           expected_forward,
-                       motion->geometry_plan[kind].displacement_lateral_mm -
-                           expected_lateral);
-      if (!isfinite(residual) || (residual > 0.001 + F413_RP_EPS))
-      {
-        return false;
-      }
-      required_intervals = fmax(motion->geometry_plan[kind].travel_distance_mm,
-                                expected_angle / 2.0);
-      intervals = (uint16_t)ceil(required_intervals);
-      if (intervals < 2U)
-      {
-        intervals = 2U;
-      }
-      if (intervals > F413_RP_MAX_TURN_INTERVALS)
-      {
-        return false;
-      }
-      motion->geometry_poses[kind] = (NfTurnPose*)f413_rp_arena_alloc(
-          arena, ((size_t)intervals + 1U) * sizeof(NfTurnPose), 8U);
-      if ((motion->geometry_poses[kind] == NULL) ||
-          (nf_motion_turn_pose_uniform(&motion->geometry[kind],
-                                       &motion->geometry_plan[kind], intervals,
-                                       motion->geometry_poses[kind],
-                                       (size_t)intervals + 1U) != NF_MOTION_OK))
-      {
-        return false;
-      }
-      motion->geometry_poses[kind][intervals].forward_mm = expected_forward;
-      motion->geometry_poses[kind][intervals].lateral_mm = expected_lateral;
-      motion->geometry_poses[kind][intervals].heading_deg = expected_angle;
-      motion->geometry_intervals[kind] = intervals;
-    }
-    for (size_t speed = 0U; speed < F413_RP_SPEED_COUNT; speed++)
-    {
-      NfTurnEnvironment environment = {2200.0, 1.2};
-      const double scale = motion->speed_mm_s[speed] /
-                           motion->speed_mm_s[F413_RP_SPEED_NOMINAL];
-      motion->timing[speed][kind] =
-          f413_rp_scaled_turn(&nominal_timing[kind], scale);
-      environment.omega_cap_deg_s *= scale;
-      if (nf_motion_turn_plan(&motion->timing[speed][kind], &environment,
-                              &motion->timing_plan[speed][kind]) != NF_MOTION_OK)
-      {
-        return false;
-      }
-    }
-  }
-  return true;
+  motion->precomputed = f413_route_precomputed_find_case(case_index);
+  return motion->precomputed != NULL;
 }
 
 static const NfLinearLimits* f413_rp_connector_limits(
@@ -1464,13 +1393,72 @@ static const NfLinearLimits* f413_rp_connector_limits(
     f413_rp_heading_t heading)
 {
   return f413_rp_is_cardinal(heading) ?
-         &motion->orthogonal : &motion->diagonal;
+         &motion->precomputed->orthogonal : &motion->precomputed->diagonal;
 }
 
 static double f413_rp_connector_unit(f413_rp_heading_t heading)
 {
   return f413_rp_is_cardinal(heading) ?
          F413_RP_HALF_CELL_MM : F413_RP_DIAGONAL_COMMAND_MM;
+}
+
+static bool f413_rp_connector_time_us(const f413_rp_motion_t* motion,
+                                      f413_rp_heading_t heading,
+                                      f413_rp_speed_t entry_speed,
+                                      unsigned int exit_speed,
+                                      uint16_t steps,
+                                      uint32_t* out_us)
+{
+  const unsigned int heading_class = f413_rp_is_cardinal(heading) ?
+      F413_ROUTE_PRECOMPUTED_HEADING_ORTHOGONAL :
+      F413_ROUTE_PRECOMPUTED_HEADING_DIAGONAL;
+
+  if ((motion == NULL) || (motion->precomputed == NULL) ||
+      (out_us == NULL) ||
+      ((unsigned int)entry_speed >= F413_RP_SPEED_COUNT) ||
+      (exit_speed >= F413_ROUTE_PRECOMPUTED_EXIT_SPEED_COUNT) ||
+      (steps > F413_ROUTE_PRECOMPUTED_MAX_CONNECTOR_STEPS))
+  {
+    return false;
+  }
+  *out_us = motion->precomputed->connector_time_us[heading_class]
+      [(unsigned int)entry_speed][exit_speed][steps];
+  return true;
+}
+
+static bool f413_rp_turn_uses_orthogonal_approach(f413_rp_kind_t kind)
+{
+  return (kind == F413_RP_KIND_LARGE_90) ||
+         (kind == F413_RP_KIND_LARGE_180) ||
+         (kind == F413_RP_KIND_SMALL_90);
+}
+
+static bool f413_rp_turn_connector_time_us(
+    const f413_rp_motion_t* motion,
+    f413_rp_heading_t heading,
+    f413_rp_speed_t entry_speed,
+    f413_rp_speed_t exit_speed,
+    uint16_t steps,
+    f413_rp_kind_t kind,
+    uint32_t* out_us)
+{
+  if (f413_rp_is_cardinal(heading) &&
+      f413_rp_turn_uses_orthogonal_approach(kind))
+  {
+    if ((motion == NULL) || (motion->precomputed == NULL) ||
+        (out_us == NULL) ||
+        ((unsigned int)entry_speed >= F413_RP_SPEED_COUNT) ||
+        ((unsigned int)exit_speed >= F413_RP_SPEED_COUNT) ||
+        (steps > F413_ROUTE_PRECOMPUTED_MAX_CONNECTOR_STEPS))
+    {
+      return false;
+    }
+    *out_us = motion->precomputed->orthogonal_approach_time_us
+        [(unsigned int)entry_speed][(unsigned int)exit_speed][steps];
+    return true;
+  }
+  return f413_rp_connector_time_us(
+      motion, heading, entry_speed, (unsigned int)exit_speed, steps, out_us);
 }
 
 static bool f413_rp_scan_ray(const f413_rp_maze_t* maze,
@@ -1724,8 +1712,11 @@ static bool f413_rp_trace_turn(const f413_rp_context_t* context,
                                f413_rp_heading_t end_heading,
                                f413_rp_turn_trace_t* out)
 {
-  const uint16_t intervals = context->motion->geometry_intervals[kind];
-  const NfTurnPose* poses = context->motion->geometry_poses[kind];
+  const F413RoutePrecomputedGeometry* geometry =
+      &g_f413_route_precomputed_geometry[(unsigned int)kind];
+  const uint16_t intervals = geometry->intervals;
+  const NfTurnPose* poses =
+      &g_f413_route_precomputed_poses[geometry->pose_offset];
   const double start_x = source.half_x * F413_RP_HALF_CELL_MM;
   const double start_y = source.half_y * F413_RP_HALF_CELL_MM;
   const double start_heading_deg = 90.0 - (45.0 * (double)start_heading);
@@ -1792,9 +1783,12 @@ static bool f413_rp_turn_elapsed_us(const f413_rp_motion_t* motion,
                                     double geometry_fraction,
                                     uint32_t* out_us)
 {
-  const NfTurnSpec* timing = &motion->timing[speed][kind];
-  const NfTurnPlan* timing_plan = &motion->timing_plan[speed][kind];
-  const NfTurnPlan* geometry_plan = &motion->geometry_plan[kind];
+  const NfTurnSpec* timing =
+      &motion->precomputed->timing[speed][kind];
+  const NfTurnPlan* timing_plan =
+      &motion->precomputed->timing_plan[speed][kind];
+  const NfTurnPlan* geometry_plan =
+      &g_f413_route_precomputed_geometry[(unsigned int)kind].plan;
   const double duration_s = timing_plan->total_time_s;
   const double average_velocity = geometry_plan->travel_distance_mm /
                                   duration_s;
@@ -2076,7 +2070,7 @@ static bool f413_rp_goal_better(const f413_rp_goal_t* candidate,
 static bool f413_rp_brake_tail(const f413_rp_context_t* context,
                                f413_rp_anchor_t source,
                                f413_rp_heading_t heading,
-                               double entry_velocity,
+                               f413_rp_speed_t entry_speed,
                                uint16_t* out_steps,
                                uint32_t* out_us)
 {
@@ -2084,7 +2078,6 @@ static bool f413_rp_brake_tail(const f413_rp_context_t* context,
   f413_rp_anchor_t current = source;
   uint32_t best_us = UINT32_MAX;
   uint16_t best_steps = 0U;
-  const double unit = f413_rp_connector_unit(heading);
 
   if ((out_steps == NULL) || (out_us == NULL) ||
       !f413_rp_scan_ray(context->maze, source, heading, &ray) ||
@@ -2095,7 +2088,6 @@ static bool f413_rp_brake_tail(const f413_rp_context_t* context,
   for (uint16_t step = 1U; step <= ray.stop_steps; step++)
   {
     f413_rp_anchor_t next;
-    NfLinearPlan linear;
     uint32_t duration_us;
     if (!f413_rp_advance_connector(context->maze, current, heading, &next))
     {
@@ -2104,10 +2096,10 @@ static bool f413_rp_brake_tail(const f413_rp_context_t* context,
     current = next;
     if ((f413_rp_is_cardinal(heading) &&
          !f413_rp_anchor_is_center(current)) ||
-        (nf_motion_linear_plan(
-             f413_rp_connector_limits(context->motion, heading),
-             step * unit, entry_velocity, 0.0, &linear) != NF_MOTION_OK) ||
-        !f413_rp_seconds_to_us(linear.total_time_s, &duration_us))
+        !f413_rp_connector_time_us(
+             context->motion, heading, entry_speed,
+             F413_ROUTE_PRECOMPUTED_EXIT_STOP, step, &duration_us) ||
+        (duration_us == F413_RP_INF))
     {
       continue;
     }
@@ -2135,7 +2127,8 @@ static bool f413_rp_consider_direct_goal(f413_rp_context_t* context,
   f413_rp_ray_t ray;
   f413_rp_anchor_t current = source;
   const double unit = f413_rp_connector_unit(heading);
-  const double entry_velocity = context->motion->speed_mm_s[speed];
+  const double entry_velocity =
+      context->motion->precomputed->speed_mm_s[speed];
 
   if (!f413_rp_scan_ray(context->maze, source, heading, &ray))
   {
@@ -2176,7 +2169,10 @@ static bool f413_rp_consider_direct_goal(f413_rp_context_t* context,
              &linear, ray.first_goal.step * unit,
              &cross_time_s, &cross_velocity) != NF_MOTION_OK) ||
         !f413_rp_seconds_to_us(cross_time_s, &cross_us) ||
-        !f413_rp_seconds_to_us(linear.total_time_s, &duration_us))
+        !f413_rp_connector_time_us(
+             context->motion, heading, speed,
+             F413_ROUTE_PRECOMPUTED_EXIT_STOP, step, &duration_us) ||
+        (duration_us == F413_RP_INF))
     {
       continue;
     }
@@ -2261,14 +2257,11 @@ static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
   f413_rp_anchor_t destination;
   f413_rp_heading_t end_heading;
   f413_rp_turn_trace_t turn_trace;
-  NfLinearPlan connector_plan;
   uint32_t connector_us;
   uint32_t turn_us;
   uint32_t edge_us;
-  const double connector_distance = connector_steps *
-      f413_rp_connector_unit(start_heading);
-  const double entry_velocity = context->motion->speed_mm_s[source_speed];
-  const double turn_velocity = context->motion->speed_mm_s[turn_speed];
+  const double turn_velocity =
+      context->motion->precomputed->speed_mm_s[turn_speed];
 
   if (!f413_rp_turn_destination(context->maze, connector_end, start_heading,
                                  kind, side, &destination, &end_heading))
@@ -2280,19 +2273,19 @@ static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
   {
     return true;
   }
-  if (nf_motion_linear_plan(
-          f413_rp_connector_limits(context->motion, start_heading),
-          connector_distance, entry_velocity, turn_velocity,
-          &connector_plan) != NF_MOTION_OK)
+  if (!f413_rp_turn_connector_time_us(
+          context->motion, start_heading, source_speed, turn_speed,
+          connector_steps, kind, &connector_us))
+  {
+    return false;
+  }
+  if (connector_us == F413_RP_INF)
   {
     /* This speed realization simply needs more connector run-up. */
     return true;
   }
-  if (!f413_rp_seconds_to_us(connector_plan.total_time_s, &connector_us) ||
-      !f413_rp_seconds_to_us(
-          context->motion->timing_plan[turn_speed][kind].total_time_s,
-          &turn_us) ||
-      !f413_rp_u32_add(connector_us, turn_us, &edge_us) ||
+  turn_us = context->motion->precomputed->turn_time_us[turn_speed][kind];
+  if (!f413_rp_u32_add(connector_us, turn_us, &edge_us) ||
       !f413_rp_trace_turn(context, connector_end, start_heading, kind, side,
                           destination, end_heading, &turn_trace))
   {
@@ -2318,7 +2311,7 @@ static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
                                   turn_trace.goal_geometry_fraction,
                                   &turn_cross_us) ||
         !f413_rp_u32_add(connector_us, turn_cross_us, &cross_edge_us) ||
-        !f413_rp_brake_tail(context, destination, end_heading, turn_velocity,
+        !f413_rp_brake_tail(context, destination, end_heading, turn_speed,
                             &stop_steps, &stop_tail_us))
     {
       return true;
@@ -2353,11 +2346,280 @@ static bool f413_rp_build_turn_edge(f413_rp_context_t* context,
     return true;
   }
   {
-    const uint16_t destination_state = f413_rp_state_index(
-        destination, end_heading, turn_speed);
+    uint16_t destination_state;
+    if (!f413_rp_state_index(destination, end_heading, turn_speed,
+                              &destination_state))
+    {
+      return false;
+    }
     return f413_rp_relax(context, source_state, destination_state,
                           connector_steps, kind, side, turn_speed, edge_us);
   }
+}
+
+static bool f413_rp_large90_nominal_runup_insufficient(
+    const f413_rp_context_t* context,
+    f413_rp_heading_t start_heading,
+    f413_rp_speed_t source_speed,
+    uint16_t connector_steps,
+    f413_rp_anchor_t connector_end,
+    f413_rp_side_t side,
+    bool* out_comparable,
+    bool* out_insufficient)
+{
+  f413_rp_anchor_t destination;
+  f413_rp_heading_t end_heading;
+  uint32_t connector_us;
+  const double turn_velocity =
+      context->motion->precomputed->speed_mm_s[F413_RP_SPEED_NOMINAL];
+
+  if ((out_comparable == NULL) || (out_insufficient == NULL))
+  {
+    return false;
+  }
+  *out_comparable = false;
+  *out_insufficient = false;
+  if (!f413_rp_turn_destination(context->maze, connector_end, start_heading,
+                                 F413_RP_KIND_LARGE_90, side,
+                                 &destination, &end_heading) ||
+      (turn_velocity > f413_rp_connector_limits(
+          context->motion, start_heading)->vmax_mm_s + F413_RP_EPS))
+  {
+    return true;
+  }
+  *out_comparable = true;
+  if (!f413_rp_turn_connector_time_us(
+          context->motion, start_heading, source_speed,
+          F413_RP_SPEED_NOMINAL, connector_steps,
+          F413_RP_KIND_LARGE_90, &connector_us))
+  {
+    return false;
+  }
+  if (connector_us != F413_RP_INF)
+  {
+    return true;
+  }
+  *out_insufficient = true;
+  return true;
+}
+
+static bool f413_rp_small_required_for_goal_stop(
+    const f413_rp_context_t* context,
+    f413_rp_heading_t heading,
+    f413_rp_speed_t source_speed,
+    uint16_t large_connector_steps,
+    f413_rp_anchor_t large_source,
+    uint16_t small_connector_steps,
+    f413_rp_anchor_t small_source,
+    f413_rp_side_t side,
+    bool* out_required)
+{
+  f413_rp_anchor_t large_destination;
+  f413_rp_anchor_t small_destination;
+  f413_rp_heading_t large_end_heading;
+  f413_rp_heading_t small_end_heading;
+  f413_rp_turn_trace_t large_trace;
+  f413_rp_turn_trace_t small_trace;
+  uint32_t large_connector_us;
+  uint32_t small_connector_us;
+  uint16_t ignored_steps;
+  uint32_t ignored_us;
+
+  if (out_required == NULL)
+  {
+    return false;
+  }
+  *out_required = false;
+
+  if (!f413_rp_turn_destination(
+          context->maze, large_source, heading, F413_RP_KIND_LARGE_90,
+          side, &large_destination, &large_end_heading) ||
+      !f413_rp_turn_destination(
+          context->maze, small_source, heading, F413_RP_KIND_SMALL_90,
+          side, &small_destination, &small_end_heading))
+  {
+    return true;
+  }
+  if (!f413_rp_turn_connector_time_us(
+          context->motion, heading, source_speed, F413_RP_SPEED_NOMINAL,
+          large_connector_steps, F413_RP_KIND_LARGE_90,
+          &large_connector_us) ||
+      !f413_rp_turn_connector_time_us(
+          context->motion, heading, source_speed, F413_RP_SPEED_LOW,
+          small_connector_steps, F413_RP_KIND_SMALL_90,
+          &small_connector_us))
+  {
+    return false;
+  }
+  if ((large_connector_us == F413_RP_INF) ||
+      (small_connector_us == F413_RP_INF))
+  {
+    return true;
+  }
+  if (!f413_rp_trace_turn(
+          context, large_source, heading, F413_RP_KIND_LARGE_90, side,
+          large_destination, large_end_heading, &large_trace) ||
+      !f413_rp_trace_turn(
+          context, small_source, heading, F413_RP_KIND_SMALL_90, side,
+          small_destination, small_end_heading, &small_trace))
+  {
+    return false;
+  }
+
+  /*
+   * The runner always appends one implicit 45 mm stop segment.  At a dead-end
+   * goal, a large turn can reach the cell centre but leave no legal braking
+   * tail, while the geometrically corresponding small turn ends at the entry
+   * wall and can stop at the centre.  This is a terminal-feasibility fallback,
+   * not a time competitor: only this exact large-fails/small-succeeds case is
+   * admitted when nominal run-up itself was feasible.
+   */
+  if (large_trace.feasible && large_trace.has_goal &&
+      small_trace.feasible && small_trace.has_goal &&
+      f413_rp_is_cardinal(large_end_heading) &&
+      f413_rp_is_cardinal(small_end_heading) &&
+      !f413_rp_brake_tail(context, large_destination, large_end_heading,
+                           F413_RP_SPEED_NOMINAL, &ignored_steps,
+                           &ignored_us) &&
+      f413_rp_brake_tail(context, small_destination, small_end_heading,
+                          F413_RP_SPEED_LOW, &ignored_steps, &ignored_us))
+  {
+    *out_required = true;
+  }
+  return true;
+}
+
+static bool f413_rp_build_small_fallbacks(
+    f413_rp_context_t* context,
+    uint16_t source_state,
+    f413_rp_heading_t heading,
+    f413_rp_speed_t source_speed,
+    uint16_t connector_steps,
+    f413_rp_anchor_t connector_end,
+    int connector_region_x,
+    int connector_region_y)
+{
+  static const f413_rp_side_t sides[2] = {
+      F413_RP_SIDE_RIGHT, F413_RP_SIDE_LEFT};
+  f413_rp_anchor_t small_source;
+  int small_region_x;
+  int small_region_y;
+
+  if (!context->allow_small_fallback || !f413_rp_is_cardinal(heading))
+  {
+    return true;
+  }
+  if (!f413_rp_anchor_is_center(connector_end))
+  {
+    f413_rp_anchor_t large_source;
+
+    /*
+     * A wall/cardinal LOW source state can only be reached through an already
+     * gated small fallback.  Immediate R/L chaining at that same boundary is
+     * part of the fallback grammar.  After a straight, however, compare the
+     * small turn with the large turn from the preceding centre and leave the
+     * recovery lane as soon as nominal run-up is feasible again.
+     */
+    if (source_state < F413_RP_BASE_STATE_COUNT)
+    {
+      return true;
+    }
+    if (connector_steps == 0U)
+    {
+      for (size_t index = 0U; index < 2U; index++)
+      {
+        if (!f413_rp_build_turn_edge(
+                context, source_state, heading, source_speed, 0U,
+                connector_end, F413_RP_KIND_SMALL_90, sides[index],
+                F413_RP_SPEED_LOW))
+        {
+          return false;
+        }
+      }
+      return true;
+    }
+    large_source.half_x = (int16_t)(connector_end.half_x -
+        g_f413_rp_dx[(unsigned int)heading]);
+    large_source.half_y = (int16_t)(connector_end.half_y -
+        g_f413_rp_dy[(unsigned int)heading]);
+    if (!f413_rp_anchor_is_center(large_source))
+    {
+      return false;
+    }
+    for (size_t index = 0U; index < 2U; index++)
+    {
+      bool comparable = false;
+      bool insufficient = false;
+      bool required_for_goal_stop = false;
+      if (!f413_rp_large90_nominal_runup_insufficient(
+              context, heading, source_speed,
+              (uint16_t)(connector_steps - 1U), large_source,
+              sides[index], &comparable, &insufficient) ||
+          (!insufficient &&
+           !f413_rp_small_required_for_goal_stop(
+               context, heading, source_speed,
+               (uint16_t)(connector_steps - 1U), large_source,
+               connector_steps, connector_end, sides[index],
+               &required_for_goal_stop)))
+      {
+        return false;
+      }
+      if (comparable && (insufficient || required_for_goal_stop) &&
+          !f413_rp_build_turn_edge(
+              context, source_state, heading, source_speed, connector_steps,
+              connector_end, F413_RP_KIND_SMALL_90, sides[index],
+              F413_RP_SPEED_LOW))
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+  if ((connector_steps >= 63U) ||
+      !f413_rp_advance_connector(context->maze, connector_end, heading,
+                                  &small_source) ||
+      !f413_rp_anchor_region(context->maze, small_source, heading,
+                              &small_region_x, &small_region_y))
+  {
+    return true;
+  }
+
+  /* Do not start any turn after its leading O1 has entered a goal cell. */
+  if (!f413_rp_goal_at(context->maze, connector_region_x,
+                        connector_region_y) &&
+      f413_rp_goal_at(context->maze, small_region_x, small_region_y))
+  {
+    return true;
+  }
+
+  for (size_t index = 0U; index < 2U; index++)
+  {
+    bool comparable = false;
+    bool insufficient = false;
+    bool required_for_goal_stop = false;
+    if (!f413_rp_large90_nominal_runup_insufficient(
+            context, heading, source_speed, connector_steps, connector_end,
+            sides[index], &comparable, &insufficient) ||
+        (!insufficient &&
+         !f413_rp_small_required_for_goal_stop(
+             context, heading, source_speed, connector_steps, connector_end,
+             (uint16_t)(connector_steps + 1U), small_source, sides[index],
+             &required_for_goal_stop)))
+    {
+      return false;
+    }
+    if (comparable &&
+        (insufficient || required_for_goal_stop ||
+         context->small_recovery_pass) &&
+        !f413_rp_build_turn_edge(
+            context, source_state, heading, source_speed,
+            (uint16_t)(connector_steps + 1U), small_source,
+            F413_RP_KIND_SMALL_90, sides[index], F413_RP_SPEED_LOW))
+    {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool f413_rp_expand_state(f413_rp_context_t* context, uint16_t state)
@@ -2370,9 +2632,12 @@ static bool f413_rp_expand_state(f413_rp_context_t* context, uint16_t state)
   int current_y;
   bool connector_entered_goal;
   uint16_t connector_steps = 0U;
+  uint16_t roundtrip_state;
 
   if (!f413_rp_state_decode(state, &anchor, &heading, &speed) ||
-      !f413_rp_state_pose_valid(context->maze, anchor, heading) ||
+      !f413_rp_travel_pose_valid(context->maze, anchor, heading) ||
+      !f413_rp_state_index(anchor, heading, speed, &roundtrip_state) ||
+      (roundtrip_state != state) ||
       !f413_rp_anchor_region(context->maze, anchor, heading,
                               &current_x, &current_y) ||
       !f413_rp_consider_direct_goal(context, state, anchor, heading, speed))
@@ -2388,9 +2653,19 @@ static bool f413_rp_expand_state(f413_rp_context_t* context, uint16_t state)
     {
       break;
     }
+    if (!f413_rp_build_small_fallbacks(
+            context, state, heading, speed, connector_steps,
+            connector_anchor, current_x, current_y))
+    {
+      return false;
+    }
     for (f413_rp_kind_t kind = F413_RP_KIND_LARGE_90;
          kind < F413_RP_KIND_COUNT; kind++)
     {
+      if (kind == F413_RP_KIND_SMALL_90)
+      {
+        continue;
+      }
       if (!f413_rp_turn_source_valid(context->maze, connector_anchor,
                                       heading, kind))
       {
@@ -2441,14 +2716,13 @@ static bool f413_rp_expand_state(f413_rp_context_t* context, uint16_t state)
 }
 
 static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
-                                          uint16_t* out_start_state)
+                                           uint16_t* out_start_state)
 {
   const f413_rp_anchor_t start_anchor = {
       (int16_t)((2U * START_X) + 1U),
       (int16_t)((2U * START_Y) + 1U),
   };
-  const uint16_t start_state = f413_rp_state_index(
-      start_anchor, F413_RP_HEADING_NORTH, F413_RP_SPEED_CRAWL);
+  uint16_t start_state;
 
   if ((context == NULL) || (out_start_state == NULL) ||
       (context->maze == NULL) || (context->motion == NULL) ||
@@ -2456,7 +2730,8 @@ static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
       (context->parents == NULL) || (context->settled == NULL) ||
       (context->heap_states == NULL) ||
       (context->heap_positions == NULL) ||
-      (start_state >= F413_RP_STATE_COUNT) ||
+      !f413_rp_state_index(start_anchor, F413_RP_HEADING_NORTH,
+                            F413_RP_SPEED_CRAWL, &start_state) ||
       !f413_rp_state_pose_valid(context->maze, start_anchor,
                                  F413_RP_HEADING_NORTH))
   {
@@ -2477,7 +2752,8 @@ static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
   context->expanded_states = 0U;
   context->relaxed_edges = 0U;
   context->goal_cross_reachable = false;
-  context->distances[start_state] = context->motion->start_time_us;
+  context->distances[start_state] =
+      context->motion->precomputed->start_time_us;
   context->turn_counts[start_state] = 0U;
   *out_start_state = start_state;
   if (!f413_rp_heap_push_or_decrease(context, start_state))
@@ -2523,6 +2799,34 @@ static f413_rp_plan_status_t f413_rp_plan(f413_rp_context_t* context,
          F413_RP_PLAN_NO_FEASIBLE_TERMINAL : F413_RP_PLAN_NO_PATH;
 }
 
+static f413_rp_plan_status_t f413_rp_plan_execution(
+    f413_rp_context_t* context,
+    uint16_t* out_start_state)
+{
+  f413_rp_plan_status_t status;
+
+  if (context == NULL)
+  {
+    return F413_RP_PLAN_ERROR;
+  }
+  context->small_recovery_pass = false;
+  status = f413_rp_plan(context, out_start_state);
+  if (context->execution_compatible && context->allow_small_fallback &&
+      ((status == F413_RP_PLAN_NO_PATH) ||
+       (status == F413_RP_PLAN_NO_FEASIBLE_TERMINAL)))
+  {
+    /*
+     * The primary pass only admits small90 at a local nominal run-up failure.
+     * If that graph has no executable terminal at all, a second recovery pass
+     * may decelerate into a topologically equivalent small90 earlier.  This
+     * prevents small90 from competing on time with a complete nominal route.
+     */
+    context->small_recovery_pass = true;
+    status = f413_rp_plan(context, out_start_state);
+  }
+  return status;
+}
+
 static const char* f413_rp_heading_name(f413_rp_heading_t heading)
 {
   static const char* const names[8] = {
@@ -2541,7 +2845,8 @@ static const char* f413_rp_speed_name(f413_rp_speed_t speed)
 static const char* f413_rp_kind_name(f413_rp_kind_t kind)
 {
   static const char* const names[F413_RP_KIND_COUNT] = {
-      "large90", "large180", "45in", "45out", "V90", "135in", "135out"};
+      "large90", "large180", "45in", "45out", "V90", "135in", "135out",
+      "small90"};
   return ((unsigned int)kind < F413_RP_KIND_COUNT) ?
          names[(unsigned int)kind] : "?";
 }
@@ -2562,6 +2867,8 @@ static unsigned int f413_rp_pattern_number(f413_rp_kind_t kind)
       return 4U;
     case F413_RP_KIND_V90:
       return 5U;
+    case F413_RP_KIND_SMALL_90:
+      return 0U;
     default:
       return 0U;
   }
@@ -2571,7 +2878,8 @@ static bool f413_rp_action_is_diagonal(f413_rp_heading_t connector_heading,
                                         f413_rp_kind_t kind)
 {
   return !f413_rp_is_cardinal(connector_heading) ||
-         ((kind != F413_RP_KIND_LARGE_90) &&
+         ((kind != F413_RP_KIND_SMALL_90) &&
+          (kind != F413_RP_KIND_LARGE_90) &&
           (kind != F413_RP_KIND_LARGE_180));
 }
 
@@ -2606,6 +2914,7 @@ static uint16_t f413_rp_legacy_turn_code(f413_rp_kind_t kind,
       NF_LEGACY_PATH_RIGHT_V90,
       NF_LEGACY_PATH_RIGHT_135_IN,
       NF_LEGACY_PATH_RIGHT_135_OUT,
+      NF_LEGACY_PATH_SMALL_RIGHT_90,
   };
   static const uint16_t left_codes[F413_RP_KIND_COUNT] = {
       NF_LEGACY_PATH_LARGE_LEFT_90,
@@ -2615,6 +2924,7 @@ static uint16_t f413_rp_legacy_turn_code(f413_rp_kind_t kind,
       NF_LEGACY_PATH_LEFT_V90,
       NF_LEGACY_PATH_LEFT_135_IN,
       NF_LEGACY_PATH_LEFT_135_OUT,
+      NF_LEGACY_PATH_SMALL_LEFT_90,
   };
 
   if ((unsigned int)kind >= F413_RP_KIND_COUNT)
@@ -2711,11 +3021,16 @@ static bool f413_rp_emit_legacy_path(f413_rp_context_t* context,
     f413_rp_anchor_t source;
     f413_rp_heading_t heading;
     f413_rp_speed_t source_speed;
+    const f413_rp_kind_t kind = f413_rp_parent_kind(parent);
     const f413_rp_speed_t turn_speed = f413_rp_parent_speed(parent);
     const uint16_t turn_code = f413_rp_legacy_turn_code(
-        f413_rp_parent_kind(parent), f413_rp_parent_side(parent));
+        kind, f413_rp_parent_side(parent));
 
-    if ((turn_speed != F413_RP_SPEED_NOMINAL) || (turn_code == 0U) ||
+    if ((((kind == F413_RP_KIND_SMALL_90) &&
+          (turn_speed != F413_RP_SPEED_LOW)) ||
+         ((kind != F413_RP_KIND_SMALL_90) &&
+          (turn_speed != F413_RP_SPEED_NOMINAL))) ||
+        (turn_code == 0U) ||
         !f413_rp_state_decode(f413_rp_parent_previous(parent), &source,
                                &heading, &source_speed) ||
         !f413_rp_legacy_emit_connector(
@@ -2755,7 +3070,10 @@ static bool f413_rp_emit_legacy_path(f413_rp_context_t* context,
     const uint16_t turn_code = f413_rp_legacy_turn_code(
         context->goal.kind, context->goal.side);
 
-    if ((context->goal.speed != F413_RP_SPEED_NOMINAL) ||
+    if ((((context->goal.kind == F413_RP_KIND_SMALL_90) &&
+          (context->goal.speed != F413_RP_SPEED_LOW)) ||
+         ((context->goal.kind != F413_RP_KIND_SMALL_90) &&
+          (context->goal.speed != F413_RP_SPEED_NOMINAL))) ||
         (context->goal.stop_steps < 1U) || (turn_code == 0U) ||
         !f413_rp_state_decode(context->goal.source_state, &source,
                                &start_heading, &source_speed) ||
@@ -2810,7 +3128,6 @@ static bool f413_rp_print_turn_action(const f413_rp_context_t* context,
   f413_rp_heading_t start_heading;
   f413_rp_heading_t end_heading;
   f413_rp_speed_t source_speed;
-  NfLinearPlan connector_plan;
   uint32_t connector_us;
   uint32_t turn_us;
   uint32_t action_us;
@@ -2822,17 +3139,15 @@ static bool f413_rp_print_turn_action(const f413_rp_context_t* context,
                              connector_steps, &connector_end) ||
       !f413_rp_turn_destination(context->maze, connector_end, start_heading,
                                  kind, side, &destination, &end_heading) ||
-      (nf_motion_linear_plan(
-           f413_rp_connector_limits(context->motion, start_heading),
-           connector_steps * f413_rp_connector_unit(start_heading),
-           context->motion->speed_mm_s[source_speed],
-           context->motion->speed_mm_s[turn_speed],
-           &connector_plan) != NF_MOTION_OK) ||
-      !f413_rp_seconds_to_us(connector_plan.total_time_s, &connector_us) ||
-      !f413_rp_seconds_to_us(
-          context->motion->timing_plan[turn_speed][kind].total_time_s,
-          &turn_us) ||
-      !f413_rp_u32_add(connector_us, turn_us, &action_us))
+      !f413_rp_turn_connector_time_us(
+           context->motion, start_heading, source_speed, turn_speed,
+           connector_steps, kind, &connector_us) ||
+      (connector_us == F413_RP_INF))
+  {
+    return false;
+  }
+  turn_us = context->motion->precomputed->turn_time_us[turn_speed][kind];
+  if (!f413_rp_u32_add(connector_us, turn_us, &action_us))
   {
     return false;
   }
@@ -2847,7 +3162,7 @@ static bool f413_rp_print_turn_action(const f413_rp_context_t* context,
       diagonal_connector ? 'D' : 'O',
       (unsigned int)connector_steps,
       f413_rp_speed_name(turn_speed),
-      (unsigned long)context->motion->speed_mm_s[turn_speed],
+      (unsigned long)context->motion->precomputed->speed_mm_s[turn_speed],
       f413_rp_heading_name(start_heading),
       f413_rp_heading_name(end_heading),
       (int)source.half_x, (int)source.half_y,
@@ -2896,9 +3211,12 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
 
   trace_printf("[KERI-PREVIEW] A0 start-offset O=5.000mm speed=0->crawl(%lu) "
                "total=%lu.%06lu s\r\n",
-               (unsigned long)context->motion->speed_mm_s[F413_RP_SPEED_CRAWL],
-               (unsigned long)(context->motion->start_time_us / 1000000U),
-               (unsigned long)(context->motion->start_time_us % 1000000U));
+               (unsigned long)context->motion->precomputed
+                   ->speed_mm_s[F413_RP_SPEED_CRAWL],
+               (unsigned long)(context->motion->precomputed->start_time_us /
+                               1000000U),
+               (unsigned long)(context->motion->precomputed->start_time_us %
+                               1000000U));
 
   for (size_t cursor = chain_count; cursor > 1U; cursor--)
   {
@@ -2944,7 +3262,7 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
         (unsigned int)context->goal.connector_steps,
         (unsigned int)context->goal.goal_step,
         f413_rp_speed_name(speed),
-        (unsigned long)context->motion->speed_mm_s[speed],
+        (unsigned long)context->motion->precomputed->speed_mm_s[speed],
         f413_rp_heading_name(heading),
         (unsigned int)context->goal.goal_x,
         (unsigned int)context->goal.goal_y,
@@ -2998,7 +3316,8 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
         f413_rp_is_cardinal(end_heading) ? 'O' : 'D',
         (unsigned int)context->goal.stop_steps,
         f413_rp_speed_name(context->goal.speed),
-        (unsigned long)context->motion->speed_mm_s[context->goal.speed],
+        (unsigned long)context->motion->precomputed
+            ->speed_mm_s[context->goal.speed],
         f413_rp_heading_name(end_heading),
         (unsigned int)context->goal.goal_x,
         (unsigned int)context->goal.goal_y,
@@ -3043,7 +3362,7 @@ void f413_route_preview_run_once(void)
   bool ok = false;
 
   trace_printf("[KERI-PREVIEW] START read-only/no-motor mode=2 case=8 "
-               "patterns=#1..#5 "
+               "patterns=#1..#5+gated-small90 "
                "maze-policy=FRAM-first fallback=builtin-16MM2014CX "
                "goal-source=diagnostic-center-2x2\r\n");
   if (!f413_trace_log_try_borrow_idle_scratch(&scratch, &scratch_bytes))
@@ -3067,6 +3386,7 @@ void f413_route_preview_run_once(void)
   memset(&context, 0, sizeof(context));
   context.maze = maze;
   context.motion = motion;
+  context.allow_small_fallback = true;
   context.distances = (uint32_t*)f413_rp_arena_alloc(
       &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
   context.turn_counts = (uint16_t*)f413_rp_arena_alloc(
@@ -3119,15 +3439,19 @@ void f413_route_preview_run_once(void)
   }
   trace_printf("[KERI-PREVIEW] boundary-speeds nominal=%lu low=%lu crawl=%lu "
                "mm/s states=%u\r\n",
-               (unsigned long)motion->speed_mm_s[F413_RP_SPEED_NOMINAL],
-               (unsigned long)motion->speed_mm_s[F413_RP_SPEED_LOW],
-               (unsigned long)motion->speed_mm_s[F413_RP_SPEED_CRAWL],
+               (unsigned long)motion->precomputed
+                   ->speed_mm_s[F413_RP_SPEED_NOMINAL],
+               (unsigned long)motion->precomputed
+                   ->speed_mm_s[F413_RP_SPEED_LOW],
+               (unsigned long)motion->precomputed
+                   ->speed_mm_s[F413_RP_SPEED_CRAWL],
                (unsigned int)F413_RP_STATE_COUNT);
   plan_status = f413_rp_plan(&context, &start_state);
   if (plan_status == F413_RP_PLAN_NO_PATH)
   {
     trace_printf("[KERI-PREVIEW] NO-PATH expanded=%lu relaxed=%lu "
-                 "(strict KERI guards + stoppable tail)\r\n",
+                 "(KERI #1..#5 guards + gated small90 fallback + "
+                 "stoppable tail)\r\n",
                  (unsigned long)context.expanded_states,
                  (unsigned long)context.relaxed_edges);
     goto cleanup;
@@ -3183,6 +3507,7 @@ bool f413_route_build_mode2_path(uint8_t case_index)
   f413_rp_plan_status_t plan_status;
   uint16_t start_state;
   unsigned int diagonal_codes = 0U;
+  unsigned int diagonal_straights = 0U;
   const uint32_t start_ms = HAL_GetTick();
   bool ok = false;
 
@@ -3194,7 +3519,7 @@ bool f413_route_build_mode2_path(uint8_t case_index)
     return false;
   }
   trace_printf("[KERI-RUN-PATH] START mode=2 case=%u source=FRAM goals=compiled "
-               "turn-speed=nominal terminal=cardinal\r\n",
+               "turn-speed=nominal+gated-small90(low) terminal=cardinal\r\n",
                (unsigned int)case_index);
   if (!f413_trace_log_try_borrow_idle_scratch(&scratch, &scratch_bytes))
   {
@@ -3219,6 +3544,7 @@ bool f413_route_build_mode2_path(uint8_t case_index)
   context.maze = maze;
   context.motion = motion;
   context.execution_compatible = true;
+  context.allow_small_fallback = true;
   context.distances = (uint32_t*)f413_rp_arena_alloc(
       &arena, F413_RP_STATE_COUNT * sizeof(uint32_t), 4U);
   context.turn_counts = (uint16_t*)f413_rp_arena_alloc(
@@ -3251,7 +3577,7 @@ bool f413_route_build_mode2_path(uint8_t case_index)
                  (unsigned int)case_index);
     goto cleanup;
   }
-  plan_status = f413_rp_plan(&context, &start_state);
+  plan_status = f413_rp_plan_execution(&context, &start_state);
   if (plan_status != F413_RP_PLAN_OK)
   {
     trace_printf("[KERI-RUN-PATH] FAIL plan status=%u expanded=%lu relaxed=%lu\r\n",
@@ -3273,14 +3599,22 @@ bool f413_route_build_mode2_path(uint8_t case_index)
     {
       diagonal_codes++;
     }
+    if ((path[index] > NF_LEGACY_PATH_DIAGONAL_STRAIGHT_BASE) &&
+        (path[index] <= NF_LEGACY_PATH_DIAGONAL_STRAIGHT_MAX))
+    {
+      diagonal_straights++;
+    }
   }
-  trace_printf("[KERI-RUN-PATH] OK goal=G(%u,%u) codes=%u diagonal=%u "
-               "turns=%u expanded=%lu heap-peak=%u\r\n",
+  trace_printf("[KERI-RUN-PATH] OK goal=G(%u,%u) codes=%u "
+               "diagonal-turns=%u diagonal-straights=%u turns=%u "
+               "small-recovery=%u expanded=%lu heap-peak=%u\r\n",
                (unsigned int)context.goal.goal_x,
                (unsigned int)context.goal.goal_y,
                (unsigned int)path_count,
                diagonal_codes,
+               diagonal_straights,
                (unsigned int)context.goal.turn_count,
+               context.small_recovery_pass ? 1U : 0U,
                (unsigned long)context.expanded_states,
                (unsigned int)context.heap_peak);
   ok = true;

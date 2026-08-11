@@ -43,8 +43,8 @@ const NfPrimitiveGeometry
 
 /* F413 preorder mode 2 after overhead-video turn calibration. */
 static const NfCurrentPrimitive g_current_mode2[NF_PRIMITIVE_COUNT] = {
-    NF_CURRENT(300.0, 28000.0, 0.0, 28.4,
-               22.037247, 50.437247),
+    NF_CURRENT(300.0, 10200.0, 8.0, 12.8,
+               44.512055, 49.312055),
     NF_CURRENT(500.0, 9400.0, 0.0, 29.8,
                63.390064, 93.190064),
     NF_CURRENT(500.0, 4150.0, 6.5, 20.0,

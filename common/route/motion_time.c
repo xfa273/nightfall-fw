@@ -444,6 +444,93 @@ NfMotionStatus nf_motion_linear_plan(const NfLinearLimits *limits,
     return NF_MOTION_OK;
 }
 
+NfMotionStatus nf_motion_constant_accel_profile(
+    const NfLinearLimits *limits,
+    double distance_mm,
+    double entry_velocity_mm_s,
+    double exit_velocity_mm_s,
+    NfConstantAccelProfile *out)
+{
+    NfAccelLayout layout;
+    NfMotionStatus status;
+    double velocity_sum;
+    double acceleration_mm_s2;
+    double acceleration_limit_mm_s2;
+    double duration_s;
+
+    if (out == NULL || !nf_finite_nonnegative(distance_mm) ||
+        !nf_finite_nonnegative(entry_velocity_mm_s) ||
+        !nf_finite_nonnegative(exit_velocity_mm_s)) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+    memset(out, 0, sizeof(*out));
+
+    status = nf_accel_layout(limits, &layout);
+    if (status != NF_MOTION_OK) {
+        return status;
+    }
+    if (entry_velocity_mm_s > limits->vmax_mm_s ||
+        exit_velocity_mm_s > limits->vmax_mm_s) {
+        return NF_MOTION_INVALID_ARGUMENT;
+    }
+
+    out->distance_mm = distance_mm;
+    out->entry_velocity_mm_s = entry_velocity_mm_s;
+    out->exit_velocity_mm_s = exit_velocity_mm_s;
+
+    if (distance_mm <= NF_MOTION_EPS) {
+        if (fabs(entry_velocity_mm_s - exit_velocity_mm_s) > NF_MOTION_EPS) {
+            return NF_MOTION_INFEASIBLE;
+        }
+        return NF_MOTION_OK;
+    }
+
+    velocity_sum = entry_velocity_mm_s + exit_velocity_mm_s;
+    if (!isfinite(velocity_sum)) {
+        return NF_MOTION_OVERFLOW;
+    }
+    if (velocity_sum <= NF_MOTION_EPS) {
+        return NF_MOTION_INFEASIBLE;
+    }
+
+    duration_s = (2.0 * distance_mm) / velocity_sum;
+    acceleration_mm_s2 =
+        ((exit_velocity_mm_s - entry_velocity_mm_s) * velocity_sum) /
+        (2.0 * distance_mm);
+    if (!isfinite(duration_s) || !isfinite(acceleration_mm_s2)) {
+        return NF_MOTION_OVERFLOW;
+    }
+
+    if (layout == NF_ACCEL_LAYOUT_LOW_ONLY) {
+        acceleration_limit_mm_s2 = limits->accel_low_mm_s2;
+    } else if (layout == NF_ACCEL_LAYOUT_HIGH_ONLY) {
+        acceleration_limit_mm_s2 = limits->accel_high_mm_s2;
+    } else {
+        const double velocity_low =
+            fmin(entry_velocity_mm_s, exit_velocity_mm_s);
+        const double velocity_high =
+            fmax(entry_velocity_mm_s, exit_velocity_mm_s);
+
+        if (velocity_high <= limits->switch_velocity_mm_s) {
+            acceleration_limit_mm_s2 = limits->accel_low_mm_s2;
+        } else if (velocity_low >= limits->switch_velocity_mm_s) {
+            acceleration_limit_mm_s2 = limits->accel_high_mm_s2;
+        } else {
+            acceleration_limit_mm_s2 =
+                fmin(limits->accel_low_mm_s2, limits->accel_high_mm_s2);
+        }
+    }
+
+    if (fabs(acceleration_mm_s2) >
+        acceleration_limit_mm_s2 * (1.0 + NF_MOTION_ACCEL_SNAP_RELATIVE)) {
+        return NF_MOTION_INFEASIBLE;
+    }
+
+    out->acceleration_mm_s2 = acceleration_mm_s2;
+    out->duration_s = duration_s;
+    return NF_MOTION_OK;
+}
+
 NfMotionStatus nf_motion_accelerating_exit_velocity(
     const NfLinearLimits *limits,
     double distance_mm,

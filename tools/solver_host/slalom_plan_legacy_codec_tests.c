@@ -170,19 +170,30 @@ static void test_diagonal_terminal_and_start_goal(void)
     const NfSlalomLegacyContract contract = {255U, 1U};
     uint16_t output[64];
     NfSlalomLegacyResult result;
+    bool found_diagonal_terminal = false;
 
-    REQUIRE_TRUE(open_maze(&maze, 10U, 10U));
     /*
-     * Keep this fixture long enough that the calibrated F413 profile still
-     * selects a diagonal connector at the goal.  The former (2, 2) goal
-     * became an orthogonal terminal after the diagonal turn calibration was
-     * updated; that was a valid planner choice, not a codec regression.
+     * The fastest terminal heading can legitimately change when the calibrated
+     * F413 profile changes.  Find one open-maze goal that currently ends on a
+     * diagonal connector, then verify that the legacy codec rejects that
+     * unsupported execution shape transactionally.
      */
-    maze.goals[7][7] = true;
     REQUIRE_TRUE(make_config(&config));
-    REQUIRE_TRUE(nf_slalom_time_plan(&maze, &config, &request, &plan) ==
-                 NF_SLALOM_PLAN_OK);
-    REQUIRE_TRUE(plan.actions[plan.action_count - 1U].connector_is_diagonal);
+    for (uint8_t goal_y = 1U;
+         (goal_y < 10U) && !found_diagonal_terminal; goal_y++) {
+        for (uint8_t goal_x = 0U; goal_x < 10U; goal_x++) {
+            REQUIRE_TRUE(open_maze(&maze, 10U, 10U));
+            maze.goals[goal_y][goal_x] = true;
+            if ((nf_slalom_time_plan(&maze, &config, &request, &plan) ==
+                 NF_SLALOM_PLAN_OK) &&
+                (plan.action_count != 0U) &&
+                plan.actions[plan.action_count - 1U].connector_is_diagonal) {
+                found_diagonal_terminal = true;
+                break;
+            }
+        }
+    }
+    REQUIRE_TRUE(found_diagonal_terminal);
     output[0] = 0x55AAU;
     result = nf_slalom_plan_to_legacy(
         &maze, &config, &request, &plan, &contract, output,

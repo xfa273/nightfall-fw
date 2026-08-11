@@ -12,12 +12,8 @@ if [ "$SANITIZE" = "1" ]; then
   SANITIZER_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
 fi
 
-if ! cmp -s \
-  "$ROOT_DIR/params/f413_preorder/shortest_run_params_split.c" \
-  "$ROOT_DIR/params/mini_r1_0/shortest_run_params_split.c"; then
-  echo "F413/F405 mini shortest-run parameter tables diverged" >&2
-  exit 1
-fi
+# F413 mode2 is independently calibrated and its case6--8 speed/acceleration
+# ladder intentionally differs from the preserved F405 mini comparison table.
 
 mkdir -p "$OUT_DIR"
 # SANITIZER_FLAGS intentionally expands into separate compiler arguments.
