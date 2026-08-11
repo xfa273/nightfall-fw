@@ -7844,6 +7844,77 @@
 		)
 
 
+		(symbol "Nightfall-Power:IRLML6402TRPBF"
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "Q"
+				(at -5.08 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects (font (size 1.27 1.27)))
+			)
+			(property "Value" "IRLML6402TRPBF"
+				(at 5.08 -5.08 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(effects (font (size 1.27 1.27)) (justify right))
+			)
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects (font (size 1.27 1.27)))
+			)
+			(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf"
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects (font (size 1.27 1.27)))
+			)
+			(property "Description" "P-channel MOSFET used on mini-2e; SOT-23, G=1, S=2, D=3."
+				(at 0 0 0)
+				(show_name no)
+				(do_not_autoplace no)
+				(hide yes)
+				(effects (font (size 1.27 1.27)))
+			)
+			(symbol "IRLML6402TRPBF_1_0"
+				(rectangle
+					(start -3.81 -3.81)
+					(end 3.81 3.81)
+					(stroke (width 0.254) (type solid))
+					(fill (type background))
+				)
+				(text "P-MOS"
+					(at 0 0 0)
+					(effects (font (size 1.016 1.016)))
+				)
+				(pin input line
+					(at -5.08 2.54 0)
+					(length 5.08)
+					(name "G" (effects (font (size 1.016 1.016))))
+					(number "1" (effects (font (size 1.016 1.016))))
+				)
+				(pin passive line
+					(at 0 5.08 270)
+					(length 5.08)
+					(name "S" (effects (font (size 1.016 1.016))))
+					(number "2" (effects (font (size 1.016 1.016))))
+				)
+				(pin passive line
+					(at 0 -5.08 90)
+					(length 5.08)
+					(name "D" (effects (font (size 1.016 1.016))))
+					(number "3" (effects (font (size 1.016 1.016))))
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Nightfall-Power:SI7135DP-T1-GE3"
 			(exclude_from_sim no)
 			(in_bom yes)
@@ -25652,7 +25723,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "Connector_JST:JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical"
+		(property "Footprint" "HM_Nightfall-mini-2e_v1:FAN_WIRE_PADS_2P"
 			(at 431.8 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -26100,7 +26171,7 @@
 		(uuid "2e7e2211-ac8b-45ce-b546-055f98e2a3e4")
 	)
 	(symbol
-		(lib_id "Nightfall-Power:SI7135DP-T1-GE3")
+		(lib_id "Nightfall-Power:IRLML6402TRPBF")
 		(at 269.24 215.9 0)
 		(unit 1)
 		(body_style 1)
@@ -26118,7 +26189,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Value" "SI7135DP-T1-GE3"
+		(property "Value" "IRLML6402TRPBF"
 			(at 264.16 227.54 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26126,7 +26197,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "Nightfall-Power:PowerPAK_SO-8_FullPins"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26135,7 +26206,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Datasheet" "https://www.vishay.com/docs/73197/si7135dp.pdf"
+		(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf"
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26144,7 +26215,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Description" ""
+		(property "Description" "P-channel MOSFET used on mini-2e; SOT-23, G=1, S=2, D=3."
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26153,14 +26224,9 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(pin "1" (uuid "a2ac2a10-9918-48fc-b1a9-9d05c14f934f"))
-		(pin "2" (uuid "16485385-d716-4e8d-865b-56941b09a387"))
-		(pin "3" (uuid "b6addd29-3337-4238-98e7-b117c84e75cd"))
-		(pin "4" (uuid "e766f087-120d-46b9-878e-6b8a76f3aaa0"))
-		(pin "5" (uuid "1db44539-e351-46d9-9005-c2e20f1f8f80"))
-		(pin "6" (uuid "4a6c9422-aeb8-4253-8704-61b604e9e3af"))
-		(pin "7" (uuid "7a81a09b-d02c-4616-9513-855425cb9fbc"))
-		(pin "8" (uuid "fa771aef-7551-497f-ae36-3e4172ba6e68"))
+		(pin "1" (uuid "e766f087-120d-46b9-878e-6b8a76f3aaa0"))
+		(pin "2" (uuid "a2ac2a10-9918-48fc-b1a9-9d05c14f934f"))
+		(pin "3" (uuid "1db44539-e351-46d9-9005-c2e20f1f8f80"))
 		(instances
 			(project "HM_Nightfall-mini-3a_v0"
 				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"

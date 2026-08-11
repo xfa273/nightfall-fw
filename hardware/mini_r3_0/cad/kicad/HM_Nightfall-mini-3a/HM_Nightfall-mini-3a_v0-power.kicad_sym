@@ -227,6 +227,69 @@
 		)
 		(embedded_fonts no)
 	)
+	(symbol "IRLML6402TRPBF"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "Q"
+			(at -5.08 -5.08 0)
+			(show_name no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "IRLML6402TRPBF"
+			(at 5.08 -5.08 0)
+			(show_name no)
+			(effects (font (size 1.27 1.27)) (justify right))
+		)
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(at 0 0 0)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf"
+			(at 0 0 0)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "P-channel MOSFET used on mini-2e; SOT-23, G=1, S=2, D=3."
+			(at 0 0 0)
+			(hide yes)
+			(effects (font (size 1.27 1.27)))
+		)
+		(symbol "IRLML6402TRPBF_1_0"
+			(rectangle
+				(start -3.81 -3.81)
+				(end 3.81 3.81)
+				(stroke (width 0.254) (type solid))
+				(fill (type background))
+			)
+			(text "P-MOS"
+				(at 0 0 0)
+				(effects (font (size 1.016 1.016)))
+			)
+			(pin input line
+				(at -5.08 2.54 0)
+				(length 5.08)
+				(name "G" (effects (font (size 1.016 1.016))))
+				(number "1" (effects (font (size 1.016 1.016))))
+			)
+			(pin passive line
+				(at 0 5.08 270)
+				(length 5.08)
+				(name "S" (effects (font (size 1.016 1.016))))
+				(number "2" (effects (font (size 1.016 1.016))))
+			)
+			(pin passive line
+				(at 0 -5.08 90)
+				(length 5.08)
+				(name "D" (effects (font (size 1.016 1.016))))
+				(number "3" (effects (font (size 1.016 1.016))))
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "IRLML6344TRPBF"
 		(pin_names
 			(offset 0)
