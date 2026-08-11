@@ -8,6 +8,7 @@
 #include "f413_imu_diag.h"
 #include "f413_nvm_diag.h"
 #include "f413_op_ui.h"
+#include "f413_path_run.h"
 #include "f413_route_preview.h"
 #include "f413_search_step.h"
 #include "f413_test_run.h"
@@ -36,6 +37,7 @@ void f413_uart_cli_print_help(void)
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
   trace_printf("[ROUTE]    K=read-only/non-motor strict KERI #1..#5 route preview (FRAM maze, diagnostic center-2x2 goal, F413 mode2/case8)\r\n");
+  trace_printf("[ROUTE]    +=read-only/non-motor saved-FRAM route preview (compiled goals, F413 mode2/cases6..9)\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
   trace_printf("[HW-TEST]  w=wall, n=wall-distance, :=wall-distance-debug, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, ;=video-start3, ,=video-stop4, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
@@ -288,6 +290,36 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       else
       {
         f413_route_preview_run_once();
+      }
+      break;
+
+    case '+':
+      if (f413_ctrl_is_running() || f413_trace_log_auto_is_enabled() ||
+          f413_test_run_is_armed())
+      {
+        trace_printf("[KERI-RUN-SWEEP] REFUSED control/trace/test-arm active\r\n");
+      }
+      else
+      {
+        trace_printf("[KERI-RUN-SWEEP] START mode=2 cases=6..9 "
+                     "source=FRAM goals=compiled motors=off nvm=read-only\r\n");
+        for (uint8_t case_index = 6U; case_index <= 9U; case_index++)
+        {
+          trace_printf("[KERI-RUN-SWEEP] CASE %u begin\r\n",
+                       (unsigned int)case_index);
+          if (f413_route_build_mode2_path(case_index))
+          {
+            trace_printf("[KERI-RUN-SWEEP] CASE %u path follows\r\n",
+                         (unsigned int)case_index);
+            f413_path_run_print_preview();
+          }
+          else
+          {
+            trace_printf("[KERI-RUN-SWEEP] CASE %u failed\r\n",
+                         (unsigned int)case_index);
+          }
+        }
+        trace_printf("[KERI-RUN-SWEEP] END motors=off nvm=read-only\r\n");
       }
       break;
 

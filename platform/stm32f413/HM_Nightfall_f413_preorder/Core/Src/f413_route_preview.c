@@ -3183,6 +3183,7 @@ bool f413_route_build_mode2_path(uint8_t case_index)
   f413_rp_plan_status_t plan_status;
   uint16_t start_state;
   unsigned int diagonal_codes = 0U;
+  const uint32_t start_ms = HAL_GetTick();
   bool ok = false;
 
   memset(path, 0, ROUTE_MAX_LEN * sizeof(path[0]));
@@ -3295,9 +3296,10 @@ cleanup:
     path[0] = 0U;
   }
   trace_printf("[KERI-RUN-PATH] END status=%s scratch=released used=%lu/%lu "
-               "motors=off nvm=read-only\r\n",
+               "elapsed=%lu ms motors=off nvm=read-only\r\n",
                ok ? "ok" : "fail",
                (unsigned long)scratch_used,
-               (unsigned long)scratch_bytes);
+               (unsigned long)scratch_bytes,
+               (unsigned long)(HAL_GetTick() - start_ms));
   return ok;
 }

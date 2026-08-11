@@ -694,6 +694,7 @@ static bool f413_test_public_run_path_build(const char* maze_path)
     validation = nf_legacy_path_validate(path, ROUTE_MAX_LEN);
     CHECK(validation.status == NF_LEGACY_PATH_OK);
     CHECK(strstr(g_trace_output, "[KERI-RUN-PATH] OK ") != NULL);
+    CHECK(strstr(g_trace_output, "elapsed=0 ms") != NULL);
     CHECK(strstr(g_trace_output, "motors=off nvm=read-only") != NULL);
   }
 
