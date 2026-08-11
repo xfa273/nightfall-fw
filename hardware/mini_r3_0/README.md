@@ -5,7 +5,7 @@ STM32F413 系 mini の 2S–3S / 吸引ファン対応候補機体 (`mini_r3_0`)
 ## 状態
 
 - 回路図 v0: 作成済み
-- PCB: 未着手
+- PCB: 外形・機構シルク導入および部品配置済み（未配線、レビュー中）
 - BOM / 実装部品確定: 未着手
 - 実機電源評価: 未実施
 
@@ -14,6 +14,7 @@ STM32F413 系 mini の 2S–3S / 吸引ファン対応候補機体 (`mini_r3_0`)
 ## KiCad 編集原本
 
 - `cad/kicad/HM_Nightfall-mini-3a/HM_Nightfall-mini-3a_v0.kicad_sch`
+- `cad/kicad/HM_Nightfall-mini-3a/HM_Nightfall-mini-3a_v0.kicad_pcb`
 - `cad/kicad/HM_Nightfall-mini-3a/HM_Nightfall-mini-3a_v0.kicad_pro`
 - `cad/kicad/HM_Nightfall-mini-3a/HM_Nightfall-mini-3a_v0-power.kicad_sym`
 

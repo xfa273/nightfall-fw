@@ -1994,7 +1994,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "0d404b59-89ca-47dc-b750-81b74eb9f20b")
-		(at 164.630098 100.494598 173)
+		(at 164.630098 97.5 173)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "PT_FR0"
 			(at 1.904964 -0.381065 145)
@@ -2299,7 +2299,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:B1,27"
 		(layer "F.Cu")
 		(uuid "0e4333ab-c23d-4dcf-afe3-85225050e094")
-		(at 144.691098 123.545598)
+		(at 144.691098 123.8)
 		(descr "TEST PAD")
 		(property "Reference" "TP2"
 			(at -0.635 -1.016 0)
@@ -2612,7 +2612,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:B1,27"
 		(layer "F.Cu")
 		(uuid "0f7efce5-3f63-4730-983b-c00b8683b3a2")
-		(at 144.691098 121.259598)
+		(at 144.691098 122.3)
 		(descr "TEST PAD")
 		(property "Reference" "TP1"
 			(at -0.635 -1.016 0)
@@ -3058,7 +3058,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:B1,27"
 		(layer "F.Cu")
 		(uuid "13005c77-e122-4bcd-9a55-18577270c78c")
-		(at 144.691098 116.941598)
+		(at 144.691098 120.8)
 		(descr "TEST PAD")
 		(property "Reference" "TP3"
 			(at -0.635 -1.016 0)
@@ -3702,7 +3702,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "17883660-6a42-4285-bbd2-5cabbd62c7e4")
-		(at 148.501098 117.322598)
+		(at 148.501098 121)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R25"
 			(at -0.635 -0.635 0)
@@ -4570,7 +4570,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:CHIPLED_0603"
 		(layer "F.Cu")
 		(uuid "23baa28a-f49d-40bd-a787-964aa5d9fd6a")
-		(at 148.501098 118.973598 -90)
+		(at 148.501098 122.8 -90)
 		(descr "CHIPLED\n\nSource: http://www.osram.convergy.de/ ... LG_LY Q971.pdf")
 		(property "Reference" "P-LED0"
 			(at -0.635 1.27 90)
@@ -11363,7 +11363,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:C0402"
 		(layer "F.Cu")
 		(uuid "5bdaca35-4d92-4efc-b2fa-78a85f216dcb")
-		(at 146.5 116)
+		(at 144.3 110 -90)
 		(descr "CAPACITOR")
 		(property "Reference" "C_MCU0"
 			(at -0.635 -0.635 0)
@@ -13236,7 +13236,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "67d45170-5d2e-4213-a902-a13152a7cfc9")
-		(at 132.372098 100.494598 7)
+		(at 132.372098 97.5 7)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "PT_FL0"
 			(at 1.905009 -0.380994 263)
@@ -14489,7 +14489,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:UFQFPN-48_7X7X0P55MM-M"
 		(layer "F.Cu")
 		(uuid "6cea5636-084e-4cdf-8667-b332cb6c6adc")
-		(at 148.5 110.5 -45)
+		(at 148.501098 114.7 -45)
 		(property "Reference" "U5"
 			(at -3.276597 0.635002 315)
 			(unlocked yes)
@@ -17040,7 +17040,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:C0402"
 		(layer "F.Cu")
 		(uuid "6fb248c3-1a5f-45d3-8088-f1656f1931b5")
-		(at 156.1 116)
+		(at 154 116.5 -90)
 		(descr "CAPACITOR")
 		(property "Reference" "C_MCU3"
 			(at -0.635 -0.635 0)
@@ -17589,7 +17589,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "758a3324-694d-47d9-b216-e9ba59731b36")
-		(at 132.372098 96.494598 7)
+		(at 132.372098 95.7 7)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "IR_LED_FL0"
 			(at 1.905013 -0.380989 83)
@@ -17894,7 +17894,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:C0402"
 		(layer "F.Cu")
 		(uuid "771320de-c976-49a4-b896-972201244213")
-		(at 152.9 116)
+		(at 152.7 110 -90)
 		(descr "CAPACITOR")
 		(property "Reference" "C_MCU2"
 			(at -0.635 -0.635 0)
@@ -20049,7 +20049,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "8e65beb9-4edb-4ba7-89a5-da134a6681c2")
-		(at 164.630098 96.494598 173)
+		(at 164.630098 95.7 173)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "IR_LED_FR0"
 			(at 1.904964 -0.381065 145)
@@ -21169,7 +21169,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:SW_EG1215AA"
 		(layer "F.Cu")
 		(uuid "a393812e-501d-465c-ba95-7864baeddae2")
-		(at 148.501098 136)
+		(at 148.501098 136.903598)
 		(property "Reference" "POWER0"
 			(at -4.4 -3.496 0)
 			(unlocked yes)
@@ -22329,7 +22329,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:PQFN50P250X300X86-14N"
 		(layer "F.Cu")
 		(uuid "befb651b-3033-4856-8c92-90d9edfe5334")
-		(at 140 110)
+		(at 148.501098 108)
 		(property "Reference" "U4"
 			(at -1.5748 -1.9304 0)
 			(unlocked yes)
@@ -23528,7 +23528,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:C0402"
 		(layer "F.Cu")
 		(uuid "d9d00191-f5ad-4289-949c-b4e65e8c4c49")
-		(at 149.7 116)
+		(at 156 116.2 -90)
 		(descr "CAPACITOR")
 		(property "Reference" "C_MCU1"
 			(at -0.634996 -0.634996 0)
