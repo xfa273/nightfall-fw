@@ -1,6 +1,7 @@
 {
   "schema": "nightfall_turn_calibration_manifest_v1",
   "machine": "f413_preorder-mini_r2_0",
+  "default_clearance_footprint": "tools/tuning/data/mini_r2_0_footprint.json",
   "turn": {
     "mode": 2,
     "case": 0,
@@ -240,9 +241,10 @@
     }
   ],
   "known_limitations": [
-    "completed-machine front/rear/left/right dimensions from the blue-label centre are not recorded",
+    "the completed-machine footprint is recorded separately, but label height above the board plane is not recorded",
     "historical no-contact wall layouts are not recorded and cannot certify absolute clearance",
     "blue/red labels are above the floor homography plane and need position uncertainty or height correction",
-    "dist_in_mm equal to zero is a discrete execution regime and must not be interpolated with positive-entry runs"
+    "dist_in_mm equal to zero is a discrete execution regime and must not be interpolated with positive-entry runs",
+    "the legacy K=0.03303 endpoint fit, trajectory-start-corrected K=0.0261 endpoint fit, and K=0.0178 full-path fit disagree; historical data do not qualify one non-zero K as a swept-clearance safety model"
   ]
 }

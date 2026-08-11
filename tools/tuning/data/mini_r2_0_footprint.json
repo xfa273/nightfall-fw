@@ -1,0 +1,23 @@
+{
+  "schema": "nightfall_machine_footprint_v1",
+  "machine_name": "mini_r2_0",
+  "machine_unit": "mini_r2_0_unit001",
+  "reported_date": "2026-08-11",
+  "provenance": "user-confirmed completed-machine dimensions",
+  "reference_point": {
+    "name": "blue-label centre",
+    "coincident_with_machine_centre": true,
+    "coincident_with_turn_centre": true
+  },
+  "extents_mm": {
+    "front": 35.0,
+    "rear": 35.0,
+    "left": 19.5,
+    "right": 19.5
+  },
+  "overall_mm": {
+    "length": 70.0,
+    "width": 39.0
+  },
+  "usage": "default full-body envelope for tools/tuning/turn_clearance.py"
+}

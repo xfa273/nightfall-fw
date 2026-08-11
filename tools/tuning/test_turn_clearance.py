@@ -23,6 +23,46 @@ sys.modules[SPEC.name] = TURN_CLEARANCE
 SPEC.loader.exec_module(TURN_CLEARANCE)
 
 
+class MeasuredFootprintTest(unittest.TestCase):
+    def test_default_footprint_matches_measured_machine_artifact(self):
+        artifact_path = MODULE_PATH.parent / "data/mini_r2_0_footprint.json"
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        footprint = TURN_CLEARANCE.Footprint()
+
+        self.assertEqual(
+            artifact["schema"], "nightfall_machine_footprint_v1"
+        )
+        self.assertTrue(
+            artifact["reference_point"]["coincident_with_machine_centre"]
+        )
+        self.assertTrue(
+            artifact["reference_point"]["coincident_with_turn_centre"]
+        )
+        self.assertEqual(
+            artifact["extents_mm"],
+            {
+                "front": footprint.front_mm,
+                "rear": footprint.rear_mm,
+                "left": footprint.left_mm,
+                "right": footprint.right_mm,
+            },
+        )
+        self.assertAlmostEqual(
+            artifact["overall_mm"]["length"],
+            footprint.front_mm + footprint.rear_mm,
+        )
+        self.assertAlmostEqual(
+            artifact["overall_mm"]["width"],
+            footprint.left_mm + footprint.right_mm,
+        )
+        basis = TURN_CLEARANCE.footprint_basis(footprint)
+        self.assertTrue(basis["uses_measured_default"])
+        self.assertEqual(
+            basis["measurement_artifact"],
+            TURN_CLEARANCE.DEFAULT_FOOTPRINT_ARTIFACT,
+        )
+
+
 class PolygonDistanceTest(unittest.TestCase):
     def test_gap_touch_and_penetration_are_signed(self):
         square = ((0.0, 0.0), (2.0, 0.0), (2.0, 2.0), (0.0, 2.0))
@@ -373,8 +413,204 @@ class D135RegressionTest(unittest.TestCase):
         assert candidate is not None
         result = candidate[0]
         self.assertEqual(result.clearance_model_slip_angle_coefficient, 0.0)
-        self.assertTrue(result.model_scope_qualified)
+        self.assertFalse(result.model_scope_qualified)
+        self.assertIn(
+            "calibration artifact is not safety-qualified for swept-clearance recommendations",
+            result.model_scope_violations,
+        )
         self.assertFalse(result.clearance.margin_passed)
+
+    def test_fixed_alpha_search_explores_endpoint_tolerance_offset_neighborhood(self):
+        model_path = MODULE_PATH.parent / "data/mode2_d135_in_empirical_model.json"
+        parser = TURN_CLEARANCE.build_arg_parser()
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "fixed-alpha-search.json"
+            args = parser.parse_args(
+                [
+                    "search",
+                    "--mode",
+                    "2",
+                    "--code",
+                    "901",
+                    "--slip-angle-coefficient",
+                    "0.03303",
+                    "--slip-model-json",
+                    str(model_path),
+                    "--robust-slip-angle-coefficient",
+                    "0",
+                    "--alpha-min",
+                    "10250",
+                    "--alpha-max",
+                    "10250",
+                    "--alpha-step",
+                    "250",
+                    "--offset-quantum-mm",
+                    "0.5",
+                    "--report-json",
+                    str(report_path),
+                ]
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                return_code = TURN_CLEARANCE.command_search(args)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(return_code, 1)
+        self.assertEqual(report["search"]["evaluated_candidates"], 19)
+        self.assertFalse(report["safe_recommendation_available"])
+        self.assertIsNone(report["recommended"])
+        diagnostic = report["best_diagnostic"]
+        self.assertEqual(diagnostic["alpha_deg_s2"], 10250.0)
+        self.assertEqual(diagnostic["dist_in_mm"], 24.5)
+        self.assertEqual(diagnostic["dist_out_mm"], 33.0)
+        self.assertLess(diagnostic["endpoint_error_mm"], 1.0)
+        self.assertAlmostEqual(
+            diagnostic["clearance"]["raw_min_clearance_mm"],
+            4.781280561541932,
+        )
+        self.assertAlmostEqual(
+            diagnostic["clearance"]["effective_min_clearance_mm"],
+            0.6816424939947137,
+        )
+        self.assertFalse(diagnostic["clearance"]["margin_passed"])
+
+    def test_zero_slip_search_is_diagnostic_until_swept_path_is_validated(self):
+        parser = TURN_CLEARANCE.build_arg_parser()
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "zero-slip-search.json"
+            args = parser.parse_args(
+                [
+                    "search",
+                    "--mode",
+                    "2",
+                    "--code",
+                    "901",
+                    "--alpha-min",
+                    "10250",
+                    "--alpha-max",
+                    "10250",
+                    "--offset-quantum-mm",
+                    "0.5",
+                    "--report-json",
+                    str(report_path),
+                ]
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                return_code = TURN_CLEARANCE.command_search(args)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(return_code, 1)
+        self.assertGreater(report["search"]["margin_passing_candidates"], 0)
+        self.assertEqual(report["search"]["safety_qualified_candidates"], 0)
+        self.assertFalse(report["safe_recommendation_available"])
+        self.assertIsNone(report["recommended"])
+        self.assertIn(
+            "nominal zero-slip trajectory has no swept-path validation artifact",
+            report["best_diagnostic"]["model_scope_violations"],
+        )
+
+    def test_offset_neighborhood_contains_every_endpoint_valid_grid_pair(self):
+        args = TURN_CLEARANCE.build_arg_parser().parse_args(
+            [
+                "search",
+                "--mode",
+                "2",
+                "--code",
+                "901",
+                "--alpha-min",
+                "10250",
+                "--alpha-max",
+                "10250",
+                "--minimum-offset-mm",
+                "20",
+                "--maximum-offset-mm",
+                "35",
+                "--offset-quantum-mm",
+                "0.5",
+            ]
+        )
+        scene = TURN_CLEARANCE.canonical_scene(901)
+        _, _, core = TURN_CLEARANCE.resolve_simulation(
+            args, {"alpha": 10250.0, "dist_in": 0.0, "dist_out": 0.0}
+        )
+        enumerated = set(TURN_CLEARANCE._offset_pairs_for_alpha(args, scene, core))
+        valid = set()
+        for in_index in range(40, 71):
+            for out_index in range(40, 71):
+                dist_in = in_index * 0.5
+                dist_out = out_index * 0.5
+                _, _, simulation = TURN_CLEARANCE.resolve_simulation(
+                    args,
+                    {
+                        "alpha": 10250.0,
+                        "dist_in": dist_in,
+                        "dist_out": dist_out,
+                    },
+                )
+                endpoint_error = math.hypot(
+                    simulation.final_pose.x_mm - scene.target.x_right_mm,
+                    simulation.final_pose.y_mm - scene.target.y_forward_mm,
+                )
+                heading_error = abs(
+                    simulation.final_pose.theta_deg - scene.target.theta_deg
+                )
+                if (
+                    endpoint_error <= args.maximum_endpoint_error_mm
+                    and heading_error <= args.maximum_heading_error_deg
+                ):
+                    valid.add((dist_in, dist_out))
+        self.assertTrue(valid)
+        self.assertTrue(valid.issubset(enumerated))
+
+    def test_180_offset_neighborhood_contains_singular_grid_pairs(self):
+        args = TURN_CLEARANCE.build_arg_parser().parse_args(
+            [
+                "search",
+                "--mode",
+                "2",
+                "--code",
+                "502",
+                "--alpha-min",
+                "4400",
+                "--alpha-max",
+                "4400",
+                "--minimum-offset-mm",
+                "0",
+                "--maximum-offset-mm",
+                "10",
+                "--offset-quantum-mm",
+                "1",
+            ]
+        )
+        scene = TURN_CLEARANCE.canonical_scene(502)
+        _, _, core = TURN_CLEARANCE.resolve_simulation(
+            args, {"alpha": 4400.0, "dist_in": 0.0, "dist_out": 0.0}
+        )
+        enumerated = set(TURN_CLEARANCE._offset_pairs_for_alpha(args, scene, core))
+        valid = set()
+        for dist_in in range(11):
+            for dist_out in range(11):
+                _, _, simulation = TURN_CLEARANCE.resolve_simulation(
+                    args,
+                    {
+                        "alpha": 4400.0,
+                        "dist_in": float(dist_in),
+                        "dist_out": float(dist_out),
+                    },
+                )
+                endpoint_error = math.hypot(
+                    simulation.final_pose.x_mm - scene.target.x_right_mm,
+                    simulation.final_pose.y_mm - scene.target.y_forward_mm,
+                )
+                heading_error = abs(
+                    simulation.final_pose.theta_deg - scene.target.theta_deg
+                )
+                if (
+                    endpoint_error <= args.maximum_endpoint_error_mm
+                    and heading_error <= args.maximum_heading_error_deg
+                ):
+                    valid.add((float(dist_in), float(dist_out)))
+        self.assertTrue(valid)
+        self.assertTrue(valid.issubset(enumerated))
 
     def test_empirical_model_scope_blocks_unbound_and_extrapolated_search(self):
         parser = TURN_CLEARANCE.build_arg_parser()
@@ -425,7 +661,11 @@ class D135RegressionTest(unittest.TestCase):
         self.assertIsNotNone(in_scope)
         self.assertIsNotNone(out_of_scope)
         assert in_scope is not None and out_of_scope is not None
-        self.assertTrue(in_scope[0].model_scope_qualified)
+        self.assertFalse(in_scope[0].model_scope_qualified)
+        self.assertIn(
+            "calibration artifact is not safety-qualified for swept-clearance recommendations",
+            in_scope[0].model_scope_violations,
+        )
         self.assertFalse(out_of_scope[0].model_scope_qualified)
         self.assertIn(
             "angular acceleration is outside calibration",
@@ -433,6 +673,71 @@ class D135RegressionTest(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as directory:
+            qualified_model_path = Path(directory) / "qualified-model.json"
+            qualified_model = json.loads(model_path.read_text(encoding="utf-8"))
+            qualified_model["qualification"]["safety_qualified"] = True
+            qualified_model_path.write_text(
+                json.dumps(qualified_model), encoding="utf-8"
+            )
+            qualified = parser.parse_args(
+                [*common, "--slip-model-json", str(qualified_model_path)]
+            )
+            _, qualified_turn, _ = TURN_CLEARANCE.resolve_simulation(qualified)
+            qualified_in_scope = TURN_CLEARANCE._candidate_for_alpha(
+                qualified,
+                qualified_turn,
+                TURN_CLEARANCE.canonical_scene(901),
+                TURN_CLEARANCE.Footprint(),
+                TURN_CLEARANCE.ClearanceBudget(),
+                10250.0,
+            )
+            qualified_out_of_scope = TURN_CLEARANCE._candidate_for_alpha(
+                qualified,
+                qualified_turn,
+                TURN_CLEARANCE.canonical_scene(901),
+                TURN_CLEARANCE.Footprint(),
+                TURN_CLEARANCE.ClearanceBudget(),
+                11000.0,
+            )
+            self.assertIsNotNone(qualified_in_scope)
+            self.assertIsNotNone(qualified_out_of_scope)
+            assert qualified_in_scope is not None
+            assert qualified_out_of_scope is not None
+            self.assertTrue(qualified_in_scope[0].model_scope_qualified)
+            self.assertFalse(qualified_out_of_scope[0].model_scope_qualified)
+
+            qualified_nominal_path = Path(directory) / "qualified-nominal.json"
+            qualified_nominal = json.loads(
+                qualified_model_path.read_text(encoding="utf-8")
+            )
+            qualified_nominal["model"]["coefficient_s2_m"] = 0.0
+            qualified_nominal_path.write_text(
+                json.dumps(qualified_nominal), encoding="utf-8"
+            )
+            nominal_args = parser.parse_args(
+                [
+                    "search",
+                    "--mode",
+                    "2",
+                    "--code",
+                    "901",
+                    "--slip-model-json",
+                    str(qualified_nominal_path),
+                ]
+            )
+            _, nominal_turn, _ = TURN_CLEARANCE.resolve_simulation(nominal_args)
+            nominal_candidate = TURN_CLEARANCE._candidate_for_alpha(
+                nominal_args,
+                nominal_turn,
+                TURN_CLEARANCE.canonical_scene(901),
+                TURN_CLEARANCE.Footprint(),
+                TURN_CLEARANCE.ClearanceBudget(),
+                10250.0,
+            )
+            self.assertIsNotNone(nominal_candidate)
+            assert nominal_candidate is not None
+            self.assertTrue(nominal_candidate[0].model_scope_qualified)
+
             report_path = Path(directory) / "scope-search.json"
             command_args = parser.parse_args(
                 [
@@ -454,6 +759,32 @@ class D135RegressionTest(unittest.TestCase):
         self.assertFalse(report["safe_recommendation_available"])
         self.assertIsNone(report["recommended"])
         self.assertFalse(report["best_diagnostic"]["model_scope_qualified"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            report_path = Path(directory) / "diagnostic-only-search.json"
+            command_args = parser.parse_args(
+                [
+                    *common,
+                    "--slip-model-json",
+                    str(model_path),
+                    "--alpha-min",
+                    "10250",
+                    "--alpha-max",
+                    "10250",
+                    "--offset-quantum-mm",
+                    "0.5",
+                    "--report-json",
+                    str(report_path),
+                ]
+            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                return_code = TURN_CLEARANCE.command_search(command_args)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(return_code, 1)
+        self.assertGreater(report["search"]["margin_passing_candidates"], 0)
+        self.assertEqual(report["search"]["safety_qualified_candidates"], 0)
+        self.assertFalse(report["safe_recommendation_available"])
+        self.assertIsNone(report["recommended"])
 
     def test_current_d135_hits_inner_post_but_canonical_closure_clears_it(self):
         args = self._args()
@@ -503,6 +834,40 @@ class D135RegressionTest(unittest.TestCase):
         self.assertTrue(strict_report["acceptance"]["clearance_passed"])
         self.assertFalse(strict_report["acceptance"]["endpoint_passed"])
         self.assertFalse(strict_report["acceptance"]["passed"])
+
+    def test_aabb_pruning_matches_full_obstacle_scan(self):
+        args = self._args()
+        scene = TURN_CLEARANCE.canonical_scene(901)
+        footprint = TURN_CLEARANCE.Footprint()
+        zero_budget = TURN_CLEARANCE.ClearanceBudget(0.0, 0.0, 0.0, 0.0)
+        simulations = [
+            TURN_CLEARANCE.resolve_simulation(args)[2],
+            TURN_CLEARANCE.resolve_simulation(
+                args,
+                {"alpha": 10250.0, "dist_in": 29.0, "dist_out": 21.5},
+            )[2],
+        ]
+        for simulation in simulations:
+            samples = TURN_CLEARANCE.simulation_world_samples(simulation, scene)
+            optimized = TURN_CLEARANCE.evaluate_clearance(
+                samples,
+                scene,
+                footprint,
+                zero_budget,
+                0.0,
+                0.5,
+            )
+            dense = TURN_CLEARANCE.densify_poses(samples, footprint, 0.5)
+            brute_force = min(
+                TURN_CLEARANCE.polygon_signed_distance(
+                    footprint.polygon(pose), obstacle.polygon()
+                ).signed_distance_mm
+                for pose in dense
+                for obstacle in scene.obstacles
+            )
+            self.assertAlmostEqual(
+                optimized.raw_min_clearance_mm, brute_force, places=9
+            )
 
     def test_left_and_right_canonical_scenes_are_mirrored(self):
         results = []
@@ -692,6 +1057,10 @@ class CalibrationManifestTest(unittest.TestCase):
         path = MODULE_PATH.parent / "data/mode2_d135_in_manifest.json"
         manifest = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(manifest["schema"], "nightfall_turn_calibration_manifest_v1")
+        self.assertEqual(
+            manifest["default_clearance_footprint"],
+            TURN_CLEARANCE.DEFAULT_FOOTPRINT_ARTIFACT,
+        )
         self.assertEqual(len(manifest["datasets"]), 10)
         for dataset in manifest["datasets"]:
             params = dataset["params"]
@@ -756,6 +1125,10 @@ class CalibrationManifestTest(unittest.TestCase):
         self.assertEqual(
             model["schema"], "nightfall_turn_empirical_sideslip_model_v1"
         )
+        self.assertEqual(
+            model["default_clearance_footprint"],
+            TURN_CLEARANCE.DEFAULT_FOOTPRINT_ARTIFACT,
+        )
         self.assertEqual(model["turn"]["mode"], 2)
         self.assertEqual(model["turn"]["code"], 901)
         self.assertEqual(model["turn"]["side"], "right")
@@ -764,6 +1137,32 @@ class CalibrationManifestTest(unittest.TestCase):
         self.assertEqual(model["turn"]["effective_angle_deg"], 135.0)
         self.assertTrue(model["turn"]["positive_entry_regime_only"])
         self.assertEqual(model["model"]["coefficient_s2_m"], 0.03303)
+        self.assertFalse(model["qualification"]["safety_qualified"])
+        self.assertEqual(
+            model["fit"]["audit"][
+                "trajectory_start_corrected_endpoint_fit_coefficient_s2_m"
+            ],
+            0.0261,
+        )
+        self.assertEqual(
+            model["fit"]["audit"]["full_path_fit_coefficient_s2_m"],
+            0.0178,
+        )
+        self.assertEqual(
+            model["fit"]["audit"]["full_path_fit_rmse_mm"], 2.89
+        )
+        audit = model["fit"]["audit"]
+        self.assertEqual(
+            audit["corpus_manifest"],
+            "tools/tuning/data/mode2_d135_in_manifest.json",
+        )
+        self.assertEqual(
+            audit["non_contact_corpus_sha256"],
+            manifest["non_contact_corpus_sha256"],
+        )
+        self.assertEqual(audit["dataset_count"], 9)
+        self.assertEqual(audit["trajectory_count"], 27)
+        self.assertEqual(audit["full_path_heading_range_deg"], [10.0, 130.0])
         source = model["source"]
         self.assertEqual(
             source["manifest"],

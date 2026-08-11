@@ -1,6 +1,7 @@
 {
   "schema": "nightfall_turn_empirical_sideslip_model_v1",
   "machine": "f413_preorder-mini_r2_0",
+  "default_clearance_footprint": "tools/tuning/data/mini_r2_0_footprint.json",
   "turn": {
     "mode": 2,
     "code": 901,
@@ -13,10 +14,11 @@
   "model": {
     "name": "angular-rate-proportional velocity-heading lag",
     "formula": "velocity_heading_lag_deg = omega_deg_s * speed_m_s * coefficient_s2_m",
-    "coefficient_s2_m": 0.03303
+    "coefficient_s2_m": 0.03303,
+    "intended_use": "legacy endpoint-fit diagnostic only"
   },
   "fit": {
-    "method": "least-squares fit of simulated turn-core endpoint to the median of three normalized no-contact video trajectories",
+    "method": "legacy least-squares fit of simulated turn-core endpoint to the median of three normalized no-contact video trajectories",
     "observed_median_core_endpoint_mm": {
       "x_right_mm": 67.8935886918151,
       "y_forward_mm": 44.60608570325019
@@ -29,7 +31,32 @@
       "x_right_mm": 67.47158055574548,
       "y_forward_mm": 44.30013967339833
     },
-    "fitted_endpoint_residual_mm": 0.5212425923608616
+    "fitted_endpoint_residual_mm": 0.5212425923608616,
+    "audit": {
+      "audited_date": "2026-08-11",
+      "status": "single-coefficient trajectory model rejected",
+      "reported_values_are_rounded": true,
+      "method": "re-extract all indexed non-contact trajectories in the trajectory-start frame; fit endpoint separately from the 10..130 degree turn-core path",
+      "corpus_manifest": "tools/tuning/data/mode2_d135_in_manifest.json",
+      "non_contact_corpus_sha256": "0955902ea80dbd936401ff197d8de944897d6f89b7c53249818ac401991168cf",
+      "dataset_count": 9,
+      "trajectory_count": 27,
+      "full_path_heading_range_deg": [10.0, 130.0],
+      "trajectory_start_corrected_endpoint_fit_coefficient_s2_m": 0.0261,
+      "full_path_fit_coefficient_s2_m": 0.0178,
+      "full_path_fit_rmse_mm": 2.89,
+      "interpretation": "The endpoint-only, trajectory-start-corrected endpoint, and full-path fits disagree materially. No one coefficient is qualified as a swept-clearance trajectory model."
+    }
+  },
+  "qualification": {
+    "safety_qualified": false,
+    "status": "diagnostic_only_pending_new_calibration",
+    "reason": "The historical normalized trajectories do not support one angular-rate-proportional coefficient over the full swept path.",
+    "required_before_qualification": [
+      "new repeated trajectories captured with absolute board-coordinate scene registration",
+      "label-height/parallax calibration or an uncertainty bound that covers it",
+      "a full-path model validated on held-out repeats and both required turn sides"
+    ]
   },
   "source": {
     "manifest": "tools/tuning/data/mode2_d135_in_manifest.json",
@@ -39,9 +66,10 @@
     "trajectory_set_sha256": "05bb6460e344cf50f539e181ee5cff659290f35f13e1a1137879a0267108c664"
   },
   "limitations": [
-    "This is an empirical rough-design model, not a firmware execution parameter.",
-    "Only right D135-in at 500 mm/s and alpha 10250 deg/s^2 is calibrated.",
+    "This artifact is an empirical diagnostic, not a firmware execution parameter or a safety model.",
+    "The legacy K=0.03303 value fits one normalized core endpoint and must not qualify swept-clearance candidates.",
+    "Only right D135-in at 500 mm/s and alpha 10250 deg/s^2 was represented in the legacy endpoint fit.",
     "The mirrored left turn, other speeds/alphas, and zero-entry regime are not validated.",
-    "Final acceptance requires repeated video with measured body dimensions and absolute scene registration."
+    "Final acceptance uses the measured mini_r2_0 footprint and still requires repeated video with absolute scene registration."
   ]
 }

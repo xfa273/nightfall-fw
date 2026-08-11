@@ -65,19 +65,23 @@ The reported values are deliberately separated:
 - `effective_min_clearance_mm = raw - uncertainty`.
 - A candidate passes only when `effective_min_clearance_mm` is at least
   `required_margin_mm` (3 mm by default) and its endpoint and heading errors
-  are within the command-specific limits.
+  are within the command-specific limits, and every trajectory model is inside
+  an explicitly safety-qualified calibration scope.
 
-The default footprint is the existing provisional 70 x 39 mm rectangle:
-35 mm front/rear and 19.5 mm left/right from the blue-label/control reference.
-It is not a measured completed-machine safety envelope. Before accepting a
-turn, measure the actual front, rear, left and right extents including tires,
-sensors, battery and shell, then pass them with `--robot-*-mm`.
+The default footprint is the user-confirmed completed-machine 70 x 39 mm
+rectangle: 35 mm front/rear and 19.5 mm left/right from the blue-label centre.
+The user also confirmed that this reference coincides with the machine/turn
+centre. The measurement is recorded in
+`data/mini_r2_0_footprint.json`; use `--robot-*-mm` only when evaluating a
+different machine envelope or a later mechanical revision. These measurements
+exactly match the former bootstrap values, so confirming them changes their
+provenance but does not change previously calculated clearance numbers.
 The default 3 mm position/model uncertainty is a bootstrap value rounded up
 from the largest endpoint standard deviation (2.81 mm) in the final three-run
 R135-in batch. It is not universal; video validation of the known contact run
 misses physical contact by about 5.1 mm before uncertainty is deducted, so use
-`--position-uncertainty-mm 5` until the body dimensions and label-height pose
-calibration are measured for that camera/scene.
+`--position-uncertainty-mm 5` until label-height pose calibration and absolute
+scene registration are validated for that camera/scene.
 
 ### Recommended workflow
 
@@ -87,6 +91,7 @@ calibration are measured for that camera/scene.
    ```sh
    python3 tools/tuning/turn_clearance.py evaluate \
      --mode 2 --code 901 \
+     --position-uncertainty-mm 5 \
      --plot sessions/tuning/r135-current.png \
      --report-json sessions/tuning/r135-current.json
    ```
@@ -100,14 +105,26 @@ calibration are measured for that camera/scene.
      --mode 2 --code 901 \
      --alpha-min 6000 --alpha-max 14000 --alpha-step 250 \
      --offset-quantum-mm 0.5 \
+     --position-uncertainty-mm 5 \
      --plot sessions/tuning/r135-search.png \
      --report-json sessions/tuning/r135-search.json
    ```
 
-   R135-in at 500 mm/s also has an empirical velocity-heading-lag calibration
-   (`data/mode2_d135_in_empirical_model.json`, `K=0.03303 s^2/m`) fitted to the
-   final three no-contact videos. Use it as the endpoint model and retain the
-   zero-slip model as a conservative alternate clearance path:
+   With no calibrated full-path artifact, the zero-slip firmware model is a
+   rough-design diagnostic only. It may rank candidates, but it cannot set
+   `safe_recommendation_available`, emit C assignments, or return status 0.
+   This prevents the ideal model from bypassing a known measured trajectory
+   mismatch. The full 6000--14000/250 grid evaluates all endpoint-valid offset
+   pairs and currently takes about 70--90 seconds on the development Mac; a
+   fixed-alpha check takes about 2--3 seconds.
+
+   R135-in at 500 mm/s has a historical velocity-heading-lag artifact
+   (`data/mode2_d135_in_empirical_model.json`). Its legacy `K=0.03303 s^2/m`
+   value fits only the final normalized core endpoint. Re-auditing the same
+   trajectories gives `K=0.0261` after correcting the trajectory start and
+   `K=0.0178` with 2.89 mm RMSE for a full-path fit. This disagreement means a
+   single non-zero K is not a swept-clearance safety model. The following
+   command is retained only to reproduce the historical diagnostic comparison:
 
    ```sh
    python3 tools/tuning/turn_clearance.py search \
@@ -115,21 +132,24 @@ calibration are measured for that camera/scene.
      --slip-angle-coefficient 0.03303 \
      --slip-model-json tools/tuning/data/mode2_d135_in_empirical_model.json \
      --robust-slip-angle-coefficient 0 \
+     --position-uncertainty-mm 5 \
      --alpha-min 6000 --alpha-max 14000 --alpha-step 250
    ```
 
-   The provisional 70 x 39 mm footprint currently yields no candidate that
-   passes both models. In that case the tool prints
-   `best_diagnostic_do_not_apply`, omits C assignments, and returns status 1.
-   The empirical coefficient is not validated for the left turn, another
-   speed/alpha, or the zero-entry execution regime. A non-zero coefficient is
-   safety-qualified only when `--slip-model-json` binds it to a calibration
-   artifact and the candidate remains inside that artifact's declared scope;
-   extrapolated candidates remain diagnostics and cannot return a safe result.
+   No non-zero model in this artifact is safety-qualified, even when mode,
+   turn, speed and alpha match. The tool must therefore print
+   `best_diagnostic_do_not_apply`, omit C assignments, and return status 1.
+   `--slip-model-json` binds provenance and scope; it does not turn an artifact
+   whose `qualification.safety_qualified` is false into a safety model.
+   Extrapolated candidates and all candidates from this diagnostic-only
+   artifact cannot return a safe result.
 
-3. Apply only a margin-passing candidate. Any mode2 turn-param change must be
-   followed by regeneration and verification of the PC-generated route motion
-   table before building or running firmware:
+3. Apply only the `recommended` object when
+   `safe_recommendation_available=true`, and only after its absolute-scene
+   repeated-video validation. Never apply `best_diagnostic`, even when its
+   geometric `margin_passed` field is true. Any mode2 turn-param change must
+   be followed by regeneration and verification of the PC-generated route
+   motion table before building or running firmware:
 
    ```sh
    python3 tools/route_precompute/generate.py
@@ -203,14 +223,29 @@ python3 tools/tuning/test_turn_clearance.py
 
 ## Calibration data
 
-The current R135-in model can be bootstrapped without new runs. Nine historical
-parameter sets (27 non-contact videos) and the latest known-contact run are
-indexed in `data/mode2_d135_in_manifest.json`. Parameter records, reports,
-trajectory sets, and the explicit contact sources carry SHA-256 digests while
-the large raw session files remain ignored; clean-checkout tests validate the
-catalog and a populated local checkout also checks directly listed sources.
+The current R135-in corpus can support diagnostics without new runs, but it
+cannot safety-qualify a non-zero full-path model. Nine historical parameter
+sets (27 non-contact videos) and the latest known-contact run are indexed in
+`data/mode2_d135_in_manifest.json`. Parameter records, reports, trajectory
+sets, and the explicit contact sources carry SHA-256 digests while the large
+raw session files remain ignored; clean-checkout tests validate the catalog
+and a populated local checkout also checks directly listed sources.
 Historical reports are not safe to consume by filename alone: some older
 composite sub-mode reports retained a default turn code. New datasets should
 record exact params, effective runtime angle, firmware SHA/dirty state,
 mode/case/sub/path codes, scene/footprint, trajectory hash, and whether contact
 occurred.
+
+The next R135-in calibration must hold speed at 500 mm/s, use an exact runtime
+angle of 135 degrees, keep positive fixed entry/exit segments, and run in an
+open fixture with enough straight distance before and after the turn. Capture
+five right-turn repeats at each alpha of 8000, 10000, 12000 and
+14000 deg/s2; retain a 1 ms machine trace for at least one repeat at every
+alpha. Before interpreting absolute body-to-wall clearance, record the heights
+of the blue- and red-label tracking planes above the maze floor (one value is
+enough if they are equal), or provide stationary known-position samples across
+the camera field, so homography parallax can be corrected. Fit and validate the
+complete 10--130 degree swept path on held-out repeats, not only its endpoint.
+After selecting a simulator candidate, capture three to five right repeats and
+three to five mirrored left repeats in the representative walled scene before
+changing the production turn parameters.

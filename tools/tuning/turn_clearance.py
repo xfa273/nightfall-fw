@@ -35,6 +35,15 @@ EPS = 1.0e-9
 DEFAULT_CELL_PITCH_MM = 90.0
 DEFAULT_POST_SIZE_MM = 6.0
 DEFAULT_WALL_THICKNESS_MM = 6.0
+DEFAULT_ROBOT_FRONT_MM = 35.0
+DEFAULT_ROBOT_REAR_MM = 35.0
+DEFAULT_ROBOT_LEFT_MM = 19.5
+DEFAULT_ROBOT_RIGHT_MM = 19.5
+DEFAULT_FOOTPRINT_ARTIFACT = "tools/tuning/data/mini_r2_0_footprint.json"
+MAX_OFFSET_PAIR_EVALUATIONS_PER_ALPHA = 4096
+
+
+_TURN_TUNE_MODULE: Any = None
 
 
 @dataclass(frozen=True)
@@ -48,12 +57,16 @@ class PoseSample:
 
 @dataclass(frozen=True)
 class Footprint:
-    """Completed-machine extents from the tracked/control reference point."""
+    """Completed-machine extents from the tracked machine/turn centre.
 
-    front_mm: float = 35.0
-    rear_mm: float = 35.0
-    left_mm: float = 19.5
-    right_mm: float = 19.5
+    The defaults are the user-confirmed mini_r2_0 measurements recorded in
+    ``tools/tuning/data/mini_r2_0_footprint.json``.
+    """
+
+    front_mm: float = DEFAULT_ROBOT_FRONT_MM
+    rear_mm: float = DEFAULT_ROBOT_REAR_MM
+    left_mm: float = DEFAULT_ROBOT_LEFT_MM
+    right_mm: float = DEFAULT_ROBOT_RIGHT_MM
 
     @property
     def corner_radius_mm(self) -> float:
@@ -81,6 +94,24 @@ class Footprint:
             point(-self.left_mm, -self.rear_mm),
             point(self.right_mm, -self.rear_mm),
         )
+
+
+def footprint_basis(footprint: Footprint) -> dict[str, Any]:
+    """Describe whether a report uses the measured mini_r2_0 default."""
+
+    uses_measured_default = footprint == Footprint()
+    return {
+        "reference_point": "blue-label centre = machine/turn centre",
+        "uses_measured_default": uses_measured_default,
+        "measurement_artifact": (
+            DEFAULT_FOOTPRINT_ARTIFACT if uses_measured_default else None
+        ),
+        "provenance": (
+            "user-confirmed completed-machine measurement (2026-08-11)"
+            if uses_measured_default
+            else "command-line override; provenance not encoded by this report"
+        ),
+    }
 
 
 @dataclass(frozen=True)
@@ -199,6 +230,9 @@ class SearchCandidate:
 
 
 def _load_turn_tune_module() -> Any:
+    global _TURN_TUNE_MODULE
+    if _TURN_TUNE_MODULE is not None:
+        return _TURN_TUNE_MODULE
     path = Path(__file__).with_name("turn_tune.py")
     spec = importlib.util.spec_from_file_location("nightfall_turn_tune_clearance", path)
     if spec is None or spec.loader is None:
@@ -206,7 +240,8 @@ def _load_turn_tune_module() -> Any:
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
-    return module
+    _TURN_TUNE_MODULE = module
+    return _TURN_TUNE_MODULE
 
 
 def _canonical_geometry(
@@ -730,12 +765,12 @@ def densify_poses(
 
 
 def _aabb_lower_bound(
-    polygon: Sequence[tuple[float, float]], obstacle: ObstacleRect
+    min_x: float,
+    min_y: float,
+    max_x: float,
+    max_y: float,
+    obstacle: ObstacleRect,
 ) -> float:
-    min_x = min(point[0] for point in polygon)
-    max_x = max(point[0] for point in polygon)
-    min_y = min(point[1] for point in polygon)
-    max_y = max(point[1] for point in polygon)
     dx = max(obstacle.min_x_mm - max_x, min_x - obstacle.max_x_mm, 0.0)
     dy = max(obstacle.min_y_mm - max_y, min_y - obstacle.max_y_mm, 0.0)
     return math.hypot(dx, dy)
@@ -759,12 +794,48 @@ def evaluate_clearance(
     uncertainty = budget.total_mm(footprint)
     first_margin_violation: Optional[tuple[PoseSample, ObstacleRect, PairDistance]] = None
     first_collision: Optional[tuple[PoseSample, ObstacleRect, PairDistance]] = None
+    radius = footprint.corner_radius_mm
+    swept_min_x = min(pose.x_mm for pose in dense) - radius
+    swept_max_x = max(pose.x_mm for pose in dense) + radius
+    swept_min_y = min(pose.y_mm for pose in dense) - radius
+    swept_max_y = max(pose.y_mm for pose in dense) + radius
+    obstacles = sorted(
+        (
+            (
+                _aabb_lower_bound(
+                    swept_min_x,
+                    swept_min_y,
+                    swept_max_x,
+                    swept_max_y,
+                    obstacle,
+                ),
+                index,
+                obstacle,
+                obstacle.polygon(),
+            )
+            for index, obstacle in enumerate(scene.obstacles)
+        ),
+        key=lambda item: (item[0], item[1]),
+    )
     for pose in dense:
         robot = footprint.polygon(pose)
-        for obstacle in scene.obstacles:
-            if best_distance > 0.0 and _aabb_lower_bound(robot, obstacle) > best_distance:
+        robot_min_x = min(point[0] for point in robot)
+        robot_max_x = max(point[0] for point in robot)
+        robot_min_y = min(point[1] for point in robot)
+        robot_max_y = max(point[1] for point in robot)
+        for _, _, obstacle, obstacle_polygon in obstacles:
+            lower_bound = _aabb_lower_bound(
+                robot_min_x,
+                robot_min_y,
+                robot_max_x,
+                robot_max_y,
+                obstacle,
+            )
+            # Once overlap has been found, every AABB-separated obstacle has
+            # positive distance and therefore cannot improve a negative best.
+            if lower_bound > max(best_distance, 0.0):
                 continue
-            pair = polygon_signed_distance(robot, obstacle.polygon())
+            pair = polygon_signed_distance(robot, obstacle_polygon)
             if (
                 first_margin_violation is None
                 and pair.signed_distance_mm - uncertainty < required_margin_mm
@@ -919,25 +990,40 @@ def _slip_model_scope(
     slip_angle_coefficient: float,
 ) -> dict[str, Any]:
     """Return whether a trajectory model is inside a bound calibration scope."""
-    if abs(slip_angle_coefficient) <= EPS:
+    nominal_zero_slip = abs(slip_angle_coefficient) <= EPS
+    model_path = getattr(args, "slip_model_json", None)
+    if (
+        nominal_zero_slip
+        and getattr(args, "command", None) == "video"
+        and model_path is None
+    ):
         return {
             "qualified": True,
-            "kind": "nominal-zero-slip",
+            "kind": "nominal-video-extraction",
             "coefficient_s2_m": 0.0,
             "artifact": None,
             "violations": [],
         }
 
-    model_path = getattr(args, "slip_model_json", None)
     if model_path is None:
         return {
             "qualified": False,
-            "kind": "unbound-empirical",
+            "kind": (
+                "nominal-zero-slip-unvalidated"
+                if nominal_zero_slip
+                else "unbound-empirical"
+            ),
             "coefficient_s2_m": slip_angle_coefficient,
             "artifact": None,
-            "violations": [
-                "non-zero slip coefficient has no --slip-model-json calibration scope"
-            ],
+            "violations": (
+                [
+                    "nominal zero-slip trajectory has no swept-path validation artifact"
+                ]
+                if nominal_zero_slip
+                else [
+                    "non-zero slip coefficient has no --slip-model-json calibration scope"
+                ]
+            ),
         }
     model = json.loads(model_path.read_text(encoding="utf-8"))
     if model.get("schema") != "nightfall_turn_empirical_sideslip_model_v1":
@@ -947,9 +1033,18 @@ def _slip_model_scope(
         calibrated_coefficient = float(model["model"]["coefficient_s2_m"])
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError(f"{model_path}: invalid slip-model scope") from exc
+    qualification = model.get("qualification")
+    artifact_safety_qualified = (
+        isinstance(qualification, dict)
+        and qualification.get("safety_qualified") is True
+    )
 
     side = "right" if turn.signed_angle_deg < 0.0 else "left"
     checks = (
+        (
+            artifact_safety_qualified,
+            "calibration artifact is not safety-qualified for swept-clearance recommendations",
+        ),
         (
             abs(slip_angle_coefficient - calibrated_coefficient) <= 1.0e-9,
             "coefficient differs from the bound calibration",
@@ -979,10 +1074,11 @@ def _slip_model_scope(
     violations = [message for passed, message in checks if not passed]
     return {
         "qualified": not violations,
-        "kind": "bound-empirical",
+        "kind": "bound-nominal" if nominal_zero_slip else "bound-empirical",
         "coefficient_s2_m": slip_angle_coefficient,
         "artifact": str(model_path),
         "calibrated_turn": calibrated,
+        "qualification": qualification,
         "violations": violations,
     }
 
@@ -1090,6 +1186,7 @@ def _sim_report(
         },
         "scene": scene_to_dict(scene),
         "footprint": asdict(footprint),
+        "footprint_basis": footprint_basis(footprint),
         "uncertainty": {
             **budget.components(footprint),
             "total_mm": budget.total_mm(footprint),
@@ -1105,9 +1202,10 @@ def _sim_report(
             "rule": "clearance, endpoint, and heading gates must all pass",
         },
         "safety": (
-            "Host-side candidate only. Defaults are an unverified 70 x 39 mm "
-            "envelope; measure the completed mouse from the blue-label centre "
-            "before treating this as safety-qualified."
+            "Host-side candidate only. Defaults use the user-confirmed 70 x "
+            "39 mm completed-machine envelope centred on the coincident blue "
+            "label/machine/turn reference; physical qualification still "
+            "requires a calibrated absolute scene and repeated video."
         ),
     }
 
@@ -1304,18 +1402,13 @@ def command_evaluate(args: argparse.Namespace) -> int:
     return 0 if report["acceptance"]["passed"] else 1
 
 
-def _candidate_for_alpha(
-    args: argparse.Namespace,
+def _solve_offsets_for_core(
     current_turn: Any,
     scene: TurnScene,
-    footprint: Footprint,
-    budget: ClearanceBudget,
-    alpha_deg_s2: float,
-) -> Optional[tuple[SearchCandidate, Any, list[PoseSample]]]:
-    _, _, core = resolve_simulation(
-        args,
-        {"alpha": alpha_deg_s2, "dist_in": 0.0, "dist_out": 0.0},
-    )
+    core: Any,
+) -> tuple[float, float]:
+    """Solve the continuous in/out offsets that close the canonical endpoint."""
+
     theta = math.radians(core.final_pose.theta_deg)
     out_dx = -math.sin(theta)
     out_dy = math.cos(theta)
@@ -1330,13 +1423,25 @@ def _candidate_for_alpha(
         # current offsets onto the remaining y-closure constraint so the
         # proposed pair changes as little as possible.
         wanted = scene.target.y_forward_mm - core.final_pose.y_mm
-        current_projection = current_turn.dist_in_mm + out_dy * current_turn.dist_out_mm
+        current_projection = (
+            current_turn.dist_in_mm + out_dy * current_turn.dist_out_mm
+        )
         correction = (current_projection - wanted) / (1.0 + out_dy * out_dy)
         dist_in = current_turn.dist_in_mm - correction
         dist_out = current_turn.dist_out_mm - out_dy * correction
-    if args.offset_quantum_mm > 0.0:
-        dist_in = round(dist_in / args.offset_quantum_mm) * args.offset_quantum_mm
-        dist_out = round(dist_out / args.offset_quantum_mm) * args.offset_quantum_mm
+    return dist_in, dist_out
+
+
+def _candidate_for_offsets(
+    args: argparse.Namespace,
+    current_turn: Any,
+    scene: TurnScene,
+    footprint: Footprint,
+    budget: ClearanceBudget,
+    alpha_deg_s2: float,
+    dist_in: float,
+    dist_out: float,
+) -> Optional[tuple[SearchCandidate, Any, list[PoseSample]]]:
     if not (
         args.minimum_offset_mm <= dist_in <= args.maximum_offset_mm
         and args.minimum_offset_mm <= dist_out <= args.maximum_offset_mm
@@ -1423,6 +1528,184 @@ def _candidate_for_alpha(
     )
 
 
+def _candidate_for_alpha(
+    args: argparse.Namespace,
+    current_turn: Any,
+    scene: TurnScene,
+    footprint: Footprint,
+    budget: ClearanceBudget,
+    alpha_deg_s2: float,
+) -> Optional[tuple[SearchCandidate, Any, list[PoseSample]]]:
+    """Return the legacy nearest-closure candidate for one alpha.
+
+    Search uses :func:`_candidates_for_alpha` so that it also examines all
+    practical quantized offsets inside the configured endpoint tolerance.  The
+    singular helper remains useful to callers that explicitly want the closest
+    canonical closure.
+    """
+
+    _, _, core = resolve_simulation(
+        args,
+        {"alpha": alpha_deg_s2, "dist_in": 0.0, "dist_out": 0.0},
+    )
+    dist_in, dist_out = _solve_offsets_for_core(current_turn, scene, core)
+    if args.offset_quantum_mm > 0.0:
+        dist_in = round(dist_in / args.offset_quantum_mm) * args.offset_quantum_mm
+        dist_out = round(dist_out / args.offset_quantum_mm) * args.offset_quantum_mm
+    return _candidate_for_offsets(
+        args,
+        current_turn,
+        scene,
+        footprint,
+        budget,
+        alpha_deg_s2,
+        dist_in,
+        dist_out,
+    )
+
+
+def _quantized_offset_indices(
+    minimum_mm: float,
+    maximum_mm: float,
+    quantum_mm: float,
+) -> range:
+    first = math.ceil((minimum_mm - EPS) / quantum_mm)
+    last = math.floor((maximum_mm + EPS) / quantum_mm)
+    return range(first, last + 1)
+
+
+def _offset_pairs_for_alpha(
+    args: argparse.Namespace,
+    scene: TurnScene,
+    core: Any,
+) -> list[tuple[float, float]]:
+    """Enumerate a bounded superset of endpoint-feasible quantized offsets.
+
+    Straight phases stop on the first 1 ms tick at or beyond their requested
+    distance.  The continuous endpoint is therefore padded by two maximum
+    straight steps, then every returned pair is checked with the actual
+    discrete simulator by ``_candidate_for_offsets``.
+    """
+
+    quantum = args.offset_quantum_mm
+    if quantum <= 0.0:
+        return []
+
+    theta = math.radians(core.final_pose.theta_deg)
+    out_dx = -math.sin(theta)
+    out_dy = math.cos(theta)
+    maximum_speed_mm_s = max(
+        abs(core.entry_speed_mm_s),
+        abs(core.out_speed_mm_s),
+        abs(core.turn.velocity_mm_s),
+    )
+    turn_tune = _load_turn_tune_module()
+    discrete_endpoint_pad_mm = (
+        2.0 * maximum_speed_mm_s * float(turn_tune.DT_S)
+    )
+    continuous_limit_mm = (
+        args.maximum_endpoint_error_mm + discrete_endpoint_pad_mm
+    )
+
+    if abs(out_dx) > 1.0e-6:
+        nominal_out = (
+            scene.target.x_right_mm - core.final_pose.x_mm
+        ) / out_dx
+        out_radius = continuous_limit_mm / abs(out_dx)
+        out_min = max(args.minimum_offset_mm, nominal_out - out_radius)
+        out_max = min(args.maximum_offset_mm, nominal_out + out_radius)
+        out_indices = _quantized_offset_indices(out_min, out_max, quantum)
+    else:
+        lateral_error = abs(core.final_pose.x_mm - scene.target.x_right_mm)
+        if lateral_error > continuous_limit_mm + EPS:
+            return []
+        out_indices = _quantized_offset_indices(
+            args.minimum_offset_mm,
+            args.maximum_offset_mm,
+            quantum,
+        )
+        if len(out_indices) > MAX_OFFSET_PAIR_EVALUATIONS_PER_ALPHA:
+            raise ValueError(
+                "offset grid exceeds per-alpha evaluation limit; increase "
+                "--offset-quantum-mm or narrow the offset bounds"
+            )
+
+    pairs: list[tuple[float, float]] = []
+    for out_index in out_indices:
+        dist_out = out_index * quantum
+        nominal_in = (
+            scene.target.y_forward_mm
+            - core.final_pose.y_mm
+            - dist_out * out_dy
+        )
+        in_min = max(
+            args.minimum_offset_mm,
+            nominal_in - continuous_limit_mm,
+        )
+        in_max = min(
+            args.maximum_offset_mm,
+            nominal_in + continuous_limit_mm,
+        )
+        for in_index in _quantized_offset_indices(in_min, in_max, quantum):
+            dist_in = in_index * quantum
+            predicted_x = core.final_pose.x_mm + dist_out * out_dx
+            predicted_y = (
+                core.final_pose.y_mm + dist_in + dist_out * out_dy
+            )
+            if (
+                math.hypot(
+                    predicted_x - scene.target.x_right_mm,
+                    predicted_y - scene.target.y_forward_mm,
+                )
+                > continuous_limit_mm + EPS
+            ):
+                continue
+            pairs.append((dist_in, dist_out))
+            if len(pairs) > MAX_OFFSET_PAIR_EVALUATIONS_PER_ALPHA:
+                raise ValueError(
+                    "offset grid exceeds per-alpha evaluation limit; increase "
+                    "--offset-quantum-mm or narrow the offset bounds"
+                )
+    return sorted(set(pairs))
+
+
+def _candidates_for_alpha(
+    args: argparse.Namespace,
+    current_turn: Any,
+    scene: TurnScene,
+    footprint: Footprint,
+    budget: ClearanceBudget,
+    alpha_deg_s2: float,
+) -> list[tuple[SearchCandidate, Any, list[PoseSample]]]:
+    """Return every practical offset pair that passes endpoint/heading gates."""
+
+    if args.offset_quantum_mm <= 0.0:
+        candidate = _candidate_for_alpha(
+            args, current_turn, scene, footprint, budget, alpha_deg_s2
+        )
+        return [] if candidate is None else [candidate]
+
+    _, _, core = resolve_simulation(
+        args,
+        {"alpha": alpha_deg_s2, "dist_in": 0.0, "dist_out": 0.0},
+    )
+    candidates = []
+    for dist_in, dist_out in _offset_pairs_for_alpha(args, scene, core):
+        candidate = _candidate_for_offsets(
+            args,
+            current_turn,
+            scene,
+            footprint,
+            budget,
+            alpha_deg_s2,
+            dist_in,
+            dist_out,
+        )
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
 def command_search(args: argparse.Namespace) -> int:
     _, current_turn, current_sim = resolve_simulation(args)
     scene = _scene_from_args(args)
@@ -1465,11 +1748,11 @@ def command_search(args: argparse.Namespace) -> int:
     candidates: list[tuple[SearchCandidate, Any, list[PoseSample]]] = []
     alpha = alpha_min
     while alpha <= alpha_max + 0.5 * args.alpha_step:
-        candidate = _candidate_for_alpha(
-            args, current_turn, scene, footprint, budget, alpha
+        candidates.extend(
+            _candidates_for_alpha(
+                args, current_turn, scene, footprint, budget, alpha
+            )
         )
-        if candidate is not None:
-            candidates.append(candidate)
         alpha += args.alpha_step
     if not candidates:
         raise ValueError("no candidate satisfies endpoint and offset bounds")
@@ -1516,6 +1799,7 @@ def command_search(args: argparse.Namespace) -> int:
         "source": "firmware-nominal-simulation",
         "scene": scene_to_dict(scene),
         "footprint": asdict(footprint),
+        "footprint_basis": footprint_basis(footprint),
         "uncertainty": {
             **budget.components(footprint),
             "total_mm": budget.total_mm(footprint),
@@ -1549,7 +1833,7 @@ def command_search(args: argparse.Namespace) -> int:
         "shortlist": [asdict(item[0]) for item in ranked[: args.top]],
         "candidate_only": True,
         "next_steps": [
-            "measure the completed-machine footprint and validate the candidate in repeated video",
+            "validate the measured footprint against an absolute board-coordinate scene and repeated video",
             "after changing mode2 params, regenerate/check the PC motion table with tools/route_precompute/generate.py and tools/route_precompute/run_tests.sh",
             "do not run the candidate until the generated table and firmware builds pass",
         ],
@@ -2189,6 +2473,7 @@ def command_video(args: argparse.Namespace) -> int:
         "extraction_model_scope": model_scope,
         "scene": scene_to_dict(scene),
         "footprint": asdict(footprint),
+        "footprint_basis": footprint_basis(footprint),
         "uncertainty": {
             **budget.components(footprint),
             "total_mm": budget.total_mm(footprint),
@@ -2224,8 +2509,9 @@ def command_video(args: argparse.Namespace) -> int:
         "safety": (
             (
                 "Absolute scene registration preserves trial placement, but "
-                "clearance still depends on measured body extents and camera/"
-                "label-height calibration."
+                "clearance still depends on camera/label-height calibration; "
+                "the defaults already use the user-confirmed measured body "
+                "extents."
                 if args.registration_mode == "absolute"
                 else "Normalized registration evaluates turn shape/repeatability "
                 "but removes absolute trial placement; it is not an absolute "
@@ -2306,10 +2592,30 @@ def _add_clearance_args(
     parser.add_argument("--cell-pitch-mm", type=float, default=DEFAULT_CELL_PITCH_MM)
     parser.add_argument("--post-size-mm", type=float, default=DEFAULT_POST_SIZE_MM)
     parser.add_argument("--wall-thickness-mm", type=float, default=DEFAULT_WALL_THICKNESS_MM)
-    parser.add_argument("--robot-front-mm", type=float, default=35.0)
-    parser.add_argument("--robot-rear-mm", type=float, default=35.0)
-    parser.add_argument("--robot-left-mm", type=float, default=19.5)
-    parser.add_argument("--robot-right-mm", type=float, default=19.5)
+    parser.add_argument(
+        "--robot-front-mm",
+        type=float,
+        default=DEFAULT_ROBOT_FRONT_MM,
+        help="front extent from turn centre (measured mini_r2_0 default: 35 mm)",
+    )
+    parser.add_argument(
+        "--robot-rear-mm",
+        type=float,
+        default=DEFAULT_ROBOT_REAR_MM,
+        help="rear extent from turn centre (measured mini_r2_0 default: 35 mm)",
+    )
+    parser.add_argument(
+        "--robot-left-mm",
+        type=float,
+        default=DEFAULT_ROBOT_LEFT_MM,
+        help="left extent from turn centre (measured mini_r2_0 default: 19.5 mm)",
+    )
+    parser.add_argument(
+        "--robot-right-mm",
+        type=float,
+        default=DEFAULT_ROBOT_RIGHT_MM,
+        help="right extent from turn centre (measured mini_r2_0 default: 19.5 mm)",
+    )
     parser.add_argument("--required-margin-mm", type=float, default=3.0)
     parser.add_argument(
         "--maximum-endpoint-error-mm",

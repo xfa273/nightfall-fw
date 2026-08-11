@@ -54,11 +54,19 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Wall control and wall-end behavior need more floor/maze data.
 - Shortest-run UI flow from a real explored FRAM map needs careful validation.
 - Mode 2 individual turns were endpoint-calibrated, but full-body swept
-  clearance exposed the current R135-in entry as unsafe in a walled shortest
-  path.  The new case6--9 diagonal shortest flow therefore needs the
-  clearance-aware simulator -> repeated-video retune before staged case6--8
-  floor validation.  Modes 3-7 remain parameter baselines and are constrained
-  by explicit F413 straight/diagonal/turn speed caps.
+  clearance with the user-confirmed 70 x 39 mm envelope (35 mm front/rear and
+  19.5 mm left/right from the coincident blue-label/turn centre) exposed the
+  current R135-in entry as unsafe in a walled shortest path.  The new case6--9
+  diagonal shortest flow therefore needs the clearance-aware simulator ->
+  absolute-scene repeated-video retune before staged case6--8 floor validation.
+  The historical non-zero lag artifact is diagnostic only: its endpoint-only
+  `K=0.03303`, trajectory-start-corrected endpoint `K=0.0261`, and full-path
+  `K=0.0178` (2.89 mm RMSE) disagree, so new absolute-scene data are required
+  before any non-zero model may qualify a clearance recommendation.  The
+  zero-slip firmware model is likewise limited to rough-design diagnostics
+  until a measured swept-path artifact validates it.
+  Modes 3-7 remain parameter baselines and are constrained by explicit F413
+  straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
 - `board/mini_r2_0` does not exist yet; board separation is incomplete.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.
