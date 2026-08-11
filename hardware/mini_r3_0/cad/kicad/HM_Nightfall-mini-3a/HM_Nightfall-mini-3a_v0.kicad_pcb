@@ -13544,7 +13544,7 @@
 		(at 142.5 114.5)
 		(descr "CAPACITOR")
 		(property "Reference" "C21"
-			(at -0.635 -0.635 45)
+			(at -0.635 -0.635 0)
 			(unlocked yes)
 			(layer "F.SilkS")
 			(uuid "327d4038-bf74-4b82-a1c9-94fb88f58461")
@@ -13557,7 +13557,7 @@
 			)
 		)
 		(property "Value" "0.1u"
-			(at -0.634997 1.905002 45)
+			(at -0.635 1.905 0)
 			(unlocked yes)
 			(layer "F.Fab")
 			(uuid "5e899da3-1dd1-48ea-b985-b2062a2449a8")
@@ -13570,7 +13570,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 0 0 45)
+			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "2affa9a4-d1f0-49bc-9060-6cc7733aa2b5")
@@ -13581,7 +13581,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 0 0 45)
+			(at 0 0 180)
 			(layer "F.Fab")
 			(hide yes)
 			(uuid "1f8833ea-ec6b-4ca7-ad4a-659e8152bfe8")
@@ -13698,7 +13698,7 @@
 			(uuid "8971ed7f-0deb-4697-acef-004f330cf5e7")
 		)
 		(pad "1" smd rect
-			(at -0.649999 0 45)
+			(at -0.65 0 180)
 			(size 0.7 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(net "/NRST")
@@ -13710,7 +13710,7 @@
 			(uuid "10d57c07-bdf5-446e-9304-af4fa7cf045a")
 		)
 		(pad "2" smd rect
-			(at 0.649999 0 45)
+			(at 0.65 0 180)
 			(size 0.7 0.9)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(net "GND")
