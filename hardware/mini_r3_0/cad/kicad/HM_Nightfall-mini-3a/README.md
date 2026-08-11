@@ -14,24 +14,27 @@
 
 ## DXF と外形
 
-指定された OneDrive フォルダ名そのものは Mac 側に無かったため、同じ 39 mm × 70 mm 外形を持つ次の同期済みデータを使用した。
+同期済みの最終 DXF として次のデータを使用した。
 
-`/Users/xfa273/Library/CloudStorage/OneDrive-個人用/MicroMouse/Half-Mouse/Nightfall-mini-2e_v1/CAD/DXF`
+`/Users/xfa273/Library/CloudStorage/OneDrive-個人用/MicroMouse/Half-Mouse/Nightfall-mini-2_v1/CAD/DXF`
 
-- `Main-PCB.DXF`: `Edge.Cuts` の外形・後部開口・取付穴が 1:1 で一致することを寸法確認
-- `Main-PCB_Silk.DXF`: mm / scale 1.0 / line width 0.15 mm、DXF 原点を基板中心 `(148.501098, 105.003598)` に合わせて `F.Silkscreen` へ取込み
+- `Main-PCB.DXF`: 39 mm × 70 mm の後部開口なし外形、吸引口、4 個の取付穴を `Edge.Cuts` へ 1:1 で取込み
+- `Main-PCB_Silk.DXF`: 機構部品位置を示す 40 直線＋1 円を `F.Silkscreen` へ取込み
+- 両 DXF とも mm / scale 1.0 / line width 0.15 mm、DXF 原点を基板中心 `(148.501098, 105.003598)` に合わせた。
 
 ## 配置方針
 
 - 全 97 フットプリントを表面へ配置し、配線・ビア・ゾーンはまだ追加していない。
 - MODE tact switch は `(138.214098, 138.150598)`、RESET tact switch は `(158.788098, 138.150598)`、POWER slide switch は `(151.168098, 123.037598)` に維持した。
 - SWD コネクタ K1 は後部右側 `(165.265098, 121.640598, -90°)` の従来位置・向きを維持した。
-- P1 と PowerPAK Q2 を後部左側で隣接させ、MPM3610 U7 と入力／出力／FB 部品を中央左側へまとめた。3.3 V LDO U1 は機構レールを避けて中央右側へ移した。
+- 吸引口と 4 個の取付穴から銅箔・部品を退避させ、STM32F413 U5、IMU U4、FRAM U6 と周辺部品を吸引ファン外周の後方へまとめた。
+- P1 と PowerPAK Q2 を後部左側で隣接させ、MPM3610 U7 と入力／出力／FB 部品を後部中央へまとめた。3.3 V LDO U1 とデカップリング部品も後部の増加領域へ移した。
+- ブザー SPK1 と駆動部品は後部左側へ移し、操作部品や基板端とのクリアランスを確保した。
 - ファン用 J2 は後部右端、SOT-23 Q3・D4・C24・R32 はその下側へまとめ、ファン電流ループを短くできる並びにした。
 - MPM3610 の SW / OUT 複合ランドは、Classic Eagle 原本の形状を複数の同一番号矩形パッドで表現し、重複カスタムパッドによる異ネット短絡を避けた。
 
 ## 現在の確認状態
 
-KiCad 10.0.3 CLI で回路図ネットリスト、PCB ロード、基板統計、DRC を確認した。回路図と PCB は 97 reference / 97 footprint で一致し、割当フットプリント名も全て一致している。新規配置について `courtyards_overlap`、`copper_edge_clearance`、`padstack_invalid`、異ネット短絡は無い。
+KiCad 10.0.3 CLI で回路図ネットリスト、PCB ロード、基板統計、DRC を確認した。回路図と PCB は 97 reference / 97 footprint で一致し、割当フットプリント名も全て一致している。新しい DXF と配置について `courtyards_overlap`、`copper_edge_clearance`、`clearance`、`padstack_invalid`、新規の異ネット短絡は無い。
 
 未配線段階なので 221 個の未接続が残る。さらに mini-2e Eagle インポート由来の IR センサフットプリント内短絡 2 件、ライブラリコピー差分、既存 no-connect pin の回路図等価性警告がベースラインとして残る。配置承認後に配線・ゾーン作成とこれらのベースライン整理へ進む。
