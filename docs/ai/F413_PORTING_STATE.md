@@ -32,8 +32,10 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   small90 only when nominal run-up or a stoppable terminal is unavailable.
   Run generation requires a successfully loaded FRAM maze and compiled
   `GOAL1..9`, then transactionally converts the route into the existing
-  `path[]` runner grammar.  UART `K` remains a read-only case8 diagnostic with
-  a centre 2x2 goal and a pinned 16MM2014CX fallback.
+  `path[]` runner grammar.  Read-only UART `+` HIL on the saved `G(1,0)` maze
+  produced executable diagonal paths for cases 6--9 in 4.3--7.2 seconds
+  (formerly about 115 seconds and no path).  UART `K` remains a read-only case8
+  diagnostic with a centre 2x2 goal and a pinned 16MM2014CX fallback.
 - F413 OP UI has F405-style mode/case/sub selection and UART `P`/`E` wrappers.
 - F413 run-session helpers and safe trace sessions have been split into `f413_run_session.c`.
 - Recent refactors split F413 helpers/diagnostics/UI/run-session code out of `main.c`.
