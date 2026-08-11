@@ -890,6 +890,108 @@ class TurnProposalSafetyGateTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate trajectory content"):
                 TURN.validate_args(args)
 
+    def test_parameter_proposal_requires_height_corrected_trajectory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "trial.csv"
+            path.write_text(
+                "video_pts_s,x_mm,y_mm,yaw_deg\n",
+                encoding="ascii",
+            )
+            with mock.patch.object(
+                sys,
+                "argv",
+                ["turn_video_tune.py", str(path), "--propose-fit"],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(ValueError, "height-correction sidecar"):
+                TURN.validate_args(args)
+
+    def test_parameter_proposal_requires_blue_centre_anchor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectory = root / "trial.csv"
+            sidecar = root / "trial.calibration.json"
+            trajectory.write_text(
+                "video_pts_s,x_mm,y_mm,yaw_deg\n",
+                encoding="ascii",
+            )
+            sidecar.write_text("{}\n", encoding="ascii")
+            with mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "turn_video_tune.py",
+                    str(trajectory),
+                    "--propose-fit",
+                    "--height-correction-sidecar",
+                    str(sidecar),
+                    "--anchor-right-mm",
+                    "1",
+                ],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(ValueError, "zero anchor"):
+                TURN.validate_args(args)
+
+    def test_parameter_proposal_safety_gates_cannot_be_weakened(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectory = root / "trial.csv"
+            sidecar = root / "trial.calibration.json"
+            trajectory.write_text(
+                "video_pts_s,x_mm,y_mm,yaw_deg\n",
+                encoding="ascii",
+            )
+            sidecar.write_text("{}\n", encoding="ascii")
+            with mock.patch.object(
+                sys,
+                "argv",
+                [
+                    "turn_video_tune.py",
+                    str(trajectory),
+                    "--propose-fit",
+                    "--height-correction-sidecar",
+                    str(sidecar),
+                    "--minimum-fit-trials",
+                    "1",
+                ],
+            ):
+                args = TURN.parse_args()
+            with self.assertRaisesRegex(ValueError, "five-trial safety floor"):
+                TURN.validate_args(args)
+
+    def test_height_correction_set_must_share_calibration_digests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectories = [root / "trial01.csv", root / "trial02.csv"]
+            sidecars = [root / "trial01.json", root / "trial02.json"]
+            for index, path in enumerate(trajectories):
+                path.write_text(f"trial,{index}\n", encoding="ascii")
+            for index, path in enumerate(sidecars):
+                path.write_text(f"{{\"trial\": {index}}}\n", encoding="ascii")
+            verified = [
+                {
+                    "bindings": {
+                        "board_layout_sha256": "11" * 32,
+                        "tracking_geometry_sha256": "22" * 32,
+                        "label_plane_geometry_sha256": "33" * 32,
+                    }
+                },
+                {
+                    "bindings": {
+                        "board_layout_sha256": "11" * 32,
+                        "tracking_geometry_sha256": "22" * 32,
+                        "label_plane_geometry_sha256": "44" * 32,
+                    }
+                },
+            ]
+            with self.assertRaisesRegex(ValueError, "different calibration"):
+                TURN._validate_height_correction_set(
+                    trajectories,
+                    sidecars,
+                    verified,
+                )
+
     def test_wrong_turn_sign_is_rejected_before_fit(self):
         endpoint = {
             "x_right_mm": {"median": 90.0, "std": 0.5},

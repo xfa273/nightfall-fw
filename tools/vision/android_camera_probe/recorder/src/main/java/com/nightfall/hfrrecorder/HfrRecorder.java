@@ -3,6 +3,7 @@ package com.nightfall.hfrrecorder;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -26,6 +27,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Range;
 import android.util.Size;
+import android.util.SizeF;
 import android.view.Surface;
 import android.view.TextureView;
 
@@ -241,6 +243,12 @@ final class HfrRecorder {
         final Long rollingShutterSkewNs;
         final Integer sensitivityIso;
         final Float focusDistanceDiopters;
+        final Float lensFocalLengthMm;
+        final float[] lensIntrinsicCalibration;
+        final float[] lensDistortion;
+        final Rect scalerCropRegion;
+        final Float controlZoomRatio;
+        final String activePhysicalCameraId;
         final Integer aeMode;
         final Integer videoStabilizationMode;
         final Integer opticalStabilizationMode;
@@ -265,6 +273,26 @@ final class HfrRecorder {
             );
             focusDistanceDiopters = result.get(
                     CaptureResult.LENS_FOCUS_DISTANCE
+            );
+            lensFocalLengthMm = result.get(
+                    CaptureResult.LENS_FOCAL_LENGTH
+            );
+            lensIntrinsicCalibration = copyFloatArray(
+                    result.get(CaptureResult.LENS_INTRINSIC_CALIBRATION)
+            );
+            lensDistortion = copyFloatArray(
+                    result.get(CaptureResult.LENS_DISTORTION)
+            );
+            Rect cropRegion = result.get(CaptureResult.SCALER_CROP_REGION);
+            scalerCropRegion = cropRegion == null
+                    ? null
+                    : new Rect(cropRegion);
+            controlZoomRatio = result.get(
+                    CaptureResult.CONTROL_ZOOM_RATIO
+            );
+            activePhysicalCameraId = result.get(
+                    CaptureResult
+                            .LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID
             );
             aeMode = result.get(CaptureResult.CONTROL_AE_MODE);
             videoStabilizationMode = result.get(
@@ -295,6 +323,33 @@ final class HfrRecorder {
                     object,
                     "focus_distance_diopters",
                     focusDistanceDiopters
+            );
+            putNullable(
+                    object,
+                    "lens_focal_length_mm",
+                    lensFocalLengthMm
+            );
+            object.put(
+                    "lens_intrinsic_calibration",
+                    floatArrayToJson(lensIntrinsicCalibration)
+            );
+            object.put(
+                    "lens_distortion",
+                    floatArrayToJson(lensDistortion)
+            );
+            object.put(
+                    "scaler_crop_region",
+                    rectToJson(scalerCropRegion)
+            );
+            putNullable(
+                    object,
+                    "control_zoom_ratio",
+                    controlZoomRatio
+            );
+            putNullable(
+                    object,
+                    "active_physical_camera_id",
+                    activePhysicalCameraId
             );
             putNullable(object, "ae_mode", aeMode);
             putNullable(
@@ -1299,6 +1354,7 @@ final class HfrRecorder {
         report.put("error", error == null ? JSONObject.NULL : error);
         report.put("device", buildDevice());
         report.put("config", config.toJson());
+        report.put("camera_static_geometry", buildCameraStaticGeometry());
         report.put("orientation_hint_deg", orientationHintDeg);
         report.put(
                 "recording_elapsed_s",
@@ -1534,6 +1590,98 @@ final class HfrRecorder {
         return device;
     }
 
+    private JSONObject buildCameraStaticGeometry() throws Exception {
+        JSONObject geometry = new JSONObject();
+        geometry.put("camera_id", config.cameraId);
+        if (characteristics == null) {
+            geometry.put("physical_camera_ids", JSONObject.NULL);
+            geometry.put("sensor_orientation_deg", JSONObject.NULL);
+            geometry.put("active_array", JSONObject.NULL);
+            geometry.put("pre_correction_active_array", JSONObject.NULL);
+            geometry.put("pixel_array_size", JSONObject.NULL);
+            geometry.put("sensor_physical_size_mm", JSONObject.NULL);
+            geometry.put("available_focal_lengths_mm", JSONObject.NULL);
+            geometry.put("lens_intrinsic_calibration", JSONObject.NULL);
+            geometry.put("lens_distortion", JSONObject.NULL);
+            return geometry;
+        }
+
+        JSONArray physicalIds = new JSONArray();
+        for (String physicalId
+                : new TreeSet<>(characteristics.getPhysicalCameraIds())) {
+            physicalIds.put(physicalId);
+        }
+        geometry.put("physical_camera_ids", physicalIds);
+        putNullable(
+                geometry,
+                "sensor_orientation_deg",
+                characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION)
+        );
+        geometry.put(
+                "active_array",
+                rectToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .SENSOR_INFO_ACTIVE_ARRAY_SIZE
+                        )
+                )
+        );
+        geometry.put(
+                "pre_correction_active_array",
+                rectToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .SENSOR_INFO_PRE_CORRECTION_ACTIVE_ARRAY_SIZE
+                        )
+                )
+        );
+        geometry.put(
+                "pixel_array_size",
+                sizeToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .SENSOR_INFO_PIXEL_ARRAY_SIZE
+                        )
+                )
+        );
+        geometry.put(
+                "sensor_physical_size_mm",
+                sizeFToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .SENSOR_INFO_PHYSICAL_SIZE
+                        )
+                )
+        );
+        geometry.put(
+                "available_focal_lengths_mm",
+                floatArrayToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .LENS_INFO_AVAILABLE_FOCAL_LENGTHS
+                        )
+                )
+        );
+        geometry.put(
+                "lens_intrinsic_calibration",
+                floatArrayToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .LENS_INTRINSIC_CALIBRATION
+                        )
+                )
+        );
+        geometry.put(
+                "lens_distortion",
+                floatArrayToJson(
+                        characteristics.get(
+                                CameraCharacteristics.LENS_DISTORTION
+                        )
+                )
+        );
+        return geometry;
+    }
+
     private JSONObject buildCaptureSummary() throws Exception {
         List<CaptureMetadata> snapshot;
         synchronized (captureMetadata) {
@@ -1758,6 +1906,55 @@ final class HfrRecorder {
             Object value
     ) throws Exception {
         object.put(name, value == null ? JSONObject.NULL : value);
+    }
+
+    private static float[] copyFloatArray(float[] source) {
+        return source == null ? null : Arrays.copyOf(source, source.length);
+    }
+
+    private static Object floatArrayToJson(float[] values) throws Exception {
+        if (values == null) {
+            return JSONObject.NULL;
+        }
+        JSONArray result = new JSONArray();
+        for (float value : values) {
+            result.put(value);
+        }
+        return result;
+    }
+
+    private static Object rectToJson(Rect value) throws Exception {
+        if (value == null) {
+            return JSONObject.NULL;
+        }
+        JSONObject result = new JSONObject();
+        result.put("left", value.left);
+        result.put("top", value.top);
+        result.put("right", value.right);
+        result.put("bottom", value.bottom);
+        result.put("width", value.width());
+        result.put("height", value.height());
+        return result;
+    }
+
+    private static Object sizeToJson(Size value) throws Exception {
+        if (value == null) {
+            return JSONObject.NULL;
+        }
+        JSONObject result = new JSONObject();
+        result.put("width", value.getWidth());
+        result.put("height", value.getHeight());
+        return result;
+    }
+
+    private static Object sizeFToJson(SizeF value) throws Exception {
+        if (value == null) {
+            return JSONObject.NULL;
+        }
+        JSONObject result = new JSONObject();
+        result.put("width", value.getWidth());
+        result.put("height", value.getHeight());
+        return result;
     }
 
     private static void moveReplace(

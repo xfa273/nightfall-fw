@@ -34,6 +34,30 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 
+VISION_ROOT = Path(__file__).resolve().parents[1] / "vision"
+if str(VISION_ROOT) not in sys.path:
+    sys.path.insert(0, str(VISION_ROOT))
+
+import trajectory_calibration  # noqa: E402
+
+
+PROPOSAL_MINIMUM_TRIALS = 5
+PROPOSAL_MINIMUM_VALID_FRACTION = 0.99
+PROPOSAL_MINIMUM_HEADING_VALID_FRACTION = 0.99
+PROPOSAL_MINIMUM_POSE_WINDOW_COVERAGE = 0.80
+PROPOSAL_MINIMUM_TRAJECTORY_HEADING_SPAN_MM = 30.0
+PROPOSAL_MAXIMUM_POSE_WINDOW_SPEED_MM_S = 10.0
+PROPOSAL_MAXIMUM_TRAJECTORY_HEADING_RESIDUAL_MM = 3.0
+PROPOSAL_MAXIMUM_ENDPOINT_STD_MM = 2.0
+PROPOSAL_MAXIMUM_YAW_STD_DEG = 1.0
+PROPOSAL_MAXIMUM_TURN_YAW_ERROR_DEG = 30.0
+PROPOSAL_MAXIMUM_FEEDBACK_GAIN = 0.5
+PROPOSAL_MAXIMUM_ANGLE_STEP_DEG = 5.0
+PROPOSAL_MAXIMUM_OFFSET_STEP_MM = 5.0
+PROPOSAL_MAXIMUM_VELOCITY_STEP_MM_S = 250.0
+PROPOSAL_MAXIMUM_ALPHA_STEP_DEG_S2 = 5000.0
+
+
 @dataclass
 class Pose:
     x_right_mm: float
@@ -211,6 +235,16 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="write the complete machine-readable report",
+    )
+    parser.add_argument(
+        "--height-correction-sidecar",
+        type=Path,
+        action="append",
+        default=[],
+        help=(
+            "provenance sidecar for one height-corrected trajectory; repeat "
+            "in the same order as trajectory_csv"
+        ),
     )
     parser.add_argument(
         "--propose-fit",
@@ -1139,12 +1173,153 @@ def validate_args(args: argparse.Namespace) -> None:
                     f"duplicate trajectory content: {hashes[digest]} and {path}"
                 )
             hashes[digest] = path
+    sidecars = list(getattr(args, "height_correction_sidecar", []))
+    if sidecars and len(sidecars) != len(args.trajectory_csv):
+        raise ValueError(
+            "repeat --height-correction-sidecar once per trajectory CSV"
+        )
+    if args.propose_fit and len(sidecars) != len(args.trajectory_csv):
+        raise ValueError(
+            "--propose-fit requires a verified height-correction sidecar "
+            "for every trajectory"
+        )
+    if args.propose_fit:
+        if args.anchor_right_mm != 0.0 or args.anchor_forward_mm != 0.0:
+            raise ValueError(
+                "--propose-fit requires zero anchor offsets because the "
+                "height-corrected blue label is the machine/turn centre"
+            )
+        hard_limits = (
+            (
+                args.minimum_fit_trials >= PROPOSAL_MINIMUM_TRIALS,
+                "--minimum-fit-trials cannot weaken the five-trial safety floor",
+            ),
+            (
+                args.minimum_valid_fraction >= PROPOSAL_MINIMUM_VALID_FRACTION,
+                "--minimum-valid-fraction cannot weaken the safety floor",
+            ),
+            (
+                args.minimum_heading_valid_fraction
+                >= PROPOSAL_MINIMUM_HEADING_VALID_FRACTION,
+                "--minimum-heading-valid-fraction cannot weaken the safety floor",
+            ),
+            (
+                args.minimum_pose_window_coverage
+                >= PROPOSAL_MINIMUM_POSE_WINDOW_COVERAGE,
+                "--minimum-pose-window-coverage cannot weaken the safety floor",
+            ),
+            (
+                args.minimum_trajectory_heading_span_mm
+                >= PROPOSAL_MINIMUM_TRAJECTORY_HEADING_SPAN_MM,
+                "--minimum-trajectory-heading-span-mm cannot weaken the safety floor",
+            ),
+            (
+                args.maximum_pose_window_speed_mm_s
+                <= PROPOSAL_MAXIMUM_POSE_WINDOW_SPEED_MM_S,
+                "--maximum-pose-window-speed-mm-s cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_trajectory_heading_residual_mm
+                <= PROPOSAL_MAXIMUM_TRAJECTORY_HEADING_RESIDUAL_MM,
+                "--maximum-trajectory-heading-residual-mm cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_endpoint_std_mm <= PROPOSAL_MAXIMUM_ENDPOINT_STD_MM,
+                "--maximum-endpoint-std-mm cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_yaw_std_deg <= PROPOSAL_MAXIMUM_YAW_STD_DEG,
+                "--maximum-yaw-std-deg cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_turn_yaw_error_deg
+                <= PROPOSAL_MAXIMUM_TURN_YAW_ERROR_DEG,
+                "--maximum-turn-yaw-error-deg cannot weaken the safety ceiling",
+            ),
+            (
+                args.feedback_gain <= PROPOSAL_MAXIMUM_FEEDBACK_GAIN,
+                "--feedback-gain cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_angle_step_deg <= PROPOSAL_MAXIMUM_ANGLE_STEP_DEG,
+                "--maximum-angle-step-deg cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_offset_step_mm <= PROPOSAL_MAXIMUM_OFFSET_STEP_MM,
+                "--maximum-offset-step-mm cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_velocity_step_mm_s
+                <= PROPOSAL_MAXIMUM_VELOCITY_STEP_MM_S,
+                "--maximum-velocity-step-mm-s cannot weaken the safety ceiling",
+            ),
+            (
+                args.maximum_alpha_step_deg_s2
+                <= PROPOSAL_MAXIMUM_ALPHA_STEP_DEG_S2,
+                "--maximum-alpha-step-deg-s2 cannot weaken the safety ceiling",
+            ),
+        )
+        for valid, message in hard_limits:
+            if not valid:
+                raise ValueError(message)
+
+
+def _validate_height_correction_set(
+    trajectories: Sequence[Path],
+    sidecars: Sequence[Path],
+    verified: Sequence[dict[str, Any]],
+) -> list[dict[str, str]]:
+    """Require one coherent camera/board/tracking calibration across trials."""
+
+    if not verified:
+        return []
+    fields = (
+        "board_layout_sha256",
+        "tracking_geometry_sha256",
+        "label_plane_geometry_sha256",
+    )
+    expected = {
+        field: str(verified[0]["bindings"][field]).lower() for field in fields
+    }
+    sources: list[dict[str, str]] = []
+    for trajectory, sidecar, item in zip(trajectories, sidecars, verified):
+        bindings = item["bindings"]
+        for field, digest in expected.items():
+            if str(bindings[field]).lower() != digest:
+                raise ValueError(
+                    "height-correction sidecars use different calibration "
+                    f"bindings ({field})"
+                )
+        sources.append(
+            {
+                "trajectory_csv": str(trajectory.resolve()),
+                "trajectory_sha256": _sha256(trajectory),
+                "height_correction_sidecar": str(sidecar.resolve()),
+                "height_correction_sidecar_sha256": _sha256(sidecar),
+            }
+        )
+    return sources
 
 
 def main() -> int:
     args = parse_args()
     try:
         validate_args(args)
+        height_corrections = [
+            trajectory_calibration.verify_height_corrected_trajectory(
+                trajectory,
+                sidecar,
+            )
+            for trajectory, sidecar in zip(
+                args.trajectory_csv,
+                getattr(args, "height_correction_sidecar", []),
+            )
+        ]
+        height_correction_sources = _validate_height_correction_set(
+            args.trajectory_csv,
+            getattr(args, "height_correction_sidecar", []),
+            height_corrections,
+        )
         trials = [analyze_trial(path, args) for path in args.trajectory_csv]
         aggregate = summarize_trials(trials)
         report: dict[str, Any] = {
@@ -1156,6 +1331,16 @@ def main() -> int:
             },
             "analysis": {
                 "heading_source": args.heading_source,
+                "height_correction": {
+                    "verified_for_all_trials": (
+                        len(height_corrections) == len(args.trajectory_csv)
+                    ),
+                    "sidecars": [
+                        str(path.resolve())
+                        for path in getattr(args, "height_correction_sidecar", [])
+                    ],
+                    "sources": height_correction_sources,
+                },
                 "motion_threshold_mm_s": args.motion_threshold_mm_s,
                 "pose_window_ms": args.pose_window_ms,
                 "maximum_pose_window_speed_mm_s": (args.maximum_pose_window_speed_mm_s),

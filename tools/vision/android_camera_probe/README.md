@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.5` of
+The collector installs version `0.5.6` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -94,6 +94,20 @@ The collector installs version `0.5.5` of
 - `encoder_samples.jsonl`
 - `hfr_report.json`
 - `ffprobe_stream.json`
+
+Recorder 0.5.6 adds calibration metadata without changing or removing the
+existing report and sidecar fields. Every `capture_results.jsonl` row now
+stores nullable Camera2 results for focal length, the five-element intrinsic
+calibration and lens-distortion arrays, scaler crop region, zoom ratio, and
+the active physical camera ID. `hfr_report.json` also contains
+`camera_static_geometry`, including the configured logical camera ID,
+physical-camera IDs, sensor orientation, active and pre-correction active
+arrays, pixel-array and physical-sensor sizes, available focal lengths, and
+the static intrinsic/distortion arrays. Rectangles use
+`left`/`top`/`right`/`bottom` plus derived `width`/`height`; unavailable
+Camera2 values are JSON `null`. These values preserve the coordinate-system
+inputs needed by future camera calibration and PnP, but do not themselves
+constitute a completed calibration.
 
 The recorder enables a simultaneous `TextureView` preview by default and
 disables EIS and OIS for measurement use. Automatic exposure is the default.

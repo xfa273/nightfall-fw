@@ -181,16 +181,27 @@ scene registration are validated for that camera/scene.
    retain placement with:
 
    ```sh
-   python3 tools/tuning/turn_clearance.py video path/to/run{1,2,3}/trajectory.csv \
+   python3 tools/tuning/turn_clearance.py video \
+     path/to/run1/trajectory_height_corrected.csv \
+     path/to/run2/trajectory_height_corrected.csv \
+     path/to/run3/trajectory_height_corrected.csv \
      --mode 2 --code 901 \
      --registration-mode absolute \
      --scene-json path/to/measured-scene.json \
+     --height-correction-sidecar \
+       path/to/run1/trajectory_height_corrected.calibration.json \
+     --height-correction-sidecar \
+       path/to/run2/trajectory_height_corrected.calibration.json \
+     --height-correction-sidecar \
+       path/to/run3/trajectory_height_corrected.calibration.json \
      --position-uncertainty-mm 5
    ```
 
    Vision yaw zero points along +board-x, whereas scene theta zero points along
    +world-y, so absolute mode adds `--absolute-yaw-offset-deg -90` by default.
    Change that option only if the supplied trajectory uses another convention.
+   The sidecars bind each corrected CSV to the measured 10 mm blue / 2 mm red
+   label planes, board layout, and qualified stationary camera calibration.
 
 5. Accept a parameter set only when every repeat passes clearance, endpoint and
    heading checks on both sides required by the intended route. Use the worst
@@ -200,11 +211,20 @@ scene registration are validated for that camera/scene.
 The built-in scene places all nearby 6 x 6 mm posts explicitly and adds a
 conservative local set of inner/outer wall panels. For a specific test maze,
 provide `--scene-json`. The schema is the same as the `scene` object in a JSON
-report: `start_pose`, `target_local`, `target_pose`, and axis-aligned obstacle
-rectangles with `id`, `kind`, `min_x_mm`, `min_y_mm`, `max_x_mm`, and
-`max_y_mm`. Small-90 uses the union of every local wall compatible with its
-required approach/exit openings. Its actual wall-end placement is still
-run-time dependent, so a measured scene is required for final acceptance.
+report plus `schema: nightfall_turn_clearance_scene_v1`,
+`coordinate_system: board_x_right_y_forward_mm`, and
+`bindings.board_layout_sha256` matching every corrected trajectory. It must
+also bind an existing `bindings.maze_topology_path` and its SHA-256, and set
+both `qualification.safety_qualified` and
+`qualification.obstacle_inventory_complete` explicitly true after checking
+that every nearby wall and post is represented. It contains
+`start_pose`, `target_local`, `target_pose`, and axis-aligned obstacle rectangles
+with `id`, `kind`, `min_x_mm`, `min_y_mm`, `max_x_mm`, and `max_y_mm`.
+Small-90 uses the union of every local wall compatible with its required
+approach/exit openings. Its actual wall-end placement is still run-time
+dependent, so a measured scene is required for final acceptance. Absolute
+qualification also refuses a body envelope smaller than the measured 70 x
+39 mm or uncertainty/margin inputs below the documented safety defaults.
 
 The evaluator adaptively interpolates every centre pose until the maximum
 possible body-corner motion is below `--max-corner-step-mm`. This matters for
@@ -241,11 +261,19 @@ angle of 135 degrees, keep positive fixed entry/exit segments, and run in an
 open fixture with enough straight distance before and after the turn. Capture
 five right-turn repeats at each alpha of 8000, 10000, 12000 and
 14000 deg/s2; retain a 1 ms machine trace for at least one repeat at every
-alpha. Before interpreting absolute body-to-wall clearance, record the heights
-of the blue- and red-label tracking planes above the maze floor (one value is
-enough if they are equal), or provide stationary known-position samples across
-the camera field, so homography parallax can be corrected. Fit and validate the
-complete 10--130 degree swept path on held-out repeats, not only its endpoint.
+alpha. The measured label planes are now recorded as blue 10 mm and red 2 mm
+above the maze floor. Before interpreting absolute body-to-wall clearance,
+measure the ArUco marker top-surface height and capture the five stationary
+known poses described in `tools/vision/README.md`; use the resulting qualified
+label-plane geometry to create height-corrected trajectories and pass one
+`--height-correction-sidecar` per input. An uncorrected CSV may still be used
+for diagnostics, but `turn_video_tune.py --propose-fit` and
+`turn_clearance.py video --registration-mode absolute` reject it. Fit and
+validate the complete 10--130 degree swept path on held-out repeats, not only
+its endpoint. Until automatic camera-rig fingerprinting is added, generating
+an eligible sidecar also requires the explicit
+`--confirm-unchanged-camera-board-setup` assertion; never use it after moving
+the camera, board markers, crop, or physical lens.
 After selecting a simulator candidate, capture three to five right repeats and
 three to five mirrored left repeats in the representative walled scene before
 changing the production turn parameters.

@@ -64,7 +64,14 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   `K=0.0178` (2.89 mm RMSE) disagree, so new absolute-scene data are required
   before any non-zero model may qualify a clearance recommendation.  The
   zero-slip firmware model is likewise limited to rough-design diagnostics
-  until a measured swept-path artifact validates it.
+  until a measured swept-path artifact validates it.  The tracking reference
+  is now fully measured: the blue centre is 10 mm and the red front label is
+  2 mm above the maze floor, with a 24 mm horizontal baseline.  Because those
+  planes differ, absolute video acceptance additionally requires a qualified
+  stationary camera/label-plane calibration and a hash-bound corrected-CSV
+  sidecar; uncorrected video remains diagnostic only.  The remaining physical
+  input for that calibration is the ArUco top-surface height above the maze
+  floor, followed by four spanning stationary poses and one held-out pose.
   Modes 3-7 remain parameter baselines and are constrained by explicit F413
   straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
@@ -106,7 +113,13 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
     gaps, pre/post-roll, and endpoint/heading closure; incomplete captures fail
     analysis rather than being treated as clear.  Normalized video registration
     is limited to shape/repeatability; only board-coordinate absolute registration
-    with a matching measured scene can qualify physical body-to-maze clearance.
+    with a matching measured scene and verified blue/red height-correction
+    sidecar can qualify physical body-to-maze clearance.
+- `tools/vision/label_plane_geometry.py`, `fit_label_plane_camera.py`, and
+  `apply_label_plane_geometry.py`
+  - Fit a held-out-qualified stationary camera geometry from the 10 mm blue and
+    2 mm red label planes, correct retained trajectory label centres without
+    re-decoding video, and bind each result to its board/tracking/camera inputs.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_trace_diag.c`
   - Trace dump/selftest/CSV/bin diagnostic output.
 - `nvm/nvm.c`

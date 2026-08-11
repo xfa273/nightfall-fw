@@ -11,7 +11,15 @@ Reusable tools in this directory are:
 - `markerless_trajectory.py`: fixed board markers plus blue centre and red front
   labels; no vehicle ArUco marker is used
 - `fit_front_label_heading.py`: fits the fixed image-space bias caused by a
-  height difference between the two vehicle labels
+  height difference between the two vehicle labels; local diagnostic only
+- `label_plane_geometry.py`: validated ray/plane correction shared by fit,
+  application, and downstream safety gates
+- `fit_label_plane_camera.py`: fits fixed-camera centre/height from four
+  stationary board-spanning poses plus one independent held-out pose
+- `apply_label_plane_geometry.py`: creates blue-10-mm/red-2-mm corrected
+  trajectories without overwriting the apparent floor-plane CSV
+- `trajectory_calibration.py`: verifies the corrected trajectory and every
+  bound board/tracking/camera-calibration SHA before safety analysis
 - `desk_green_pair_probe.py`: raw-pixel feasibility probe that tracks the two
   separated green PCB regions before a marked maze fixture is available
 - `generate_fixed_aruco_print_pack.py`: print-ready A4 PDF and vector SVG
@@ -25,9 +33,10 @@ Reusable tools in this directory are:
 - `../tuning/turn_video_tune.py`: converts video endpoints to the firmware turn
   frame and prints a bounded candidate without editing source files
 
-The Android real-time HFR recorder and redundant F413 five-flash START/six-flash
-STOP optical trigger are implemented. The Pixel decodes after three/four valid
-rises, while markerless body motion is diagnostic rather than a hard gate.
+The Android real-time HFR recorder and framed F413 optical START/STOP protocol
+are implemented. The Pixel classifies the complete synchronized five-slot
+short/long codeword before applying the expected recorder state; markerless
+body motion remains diagnostic rather than a hard gate.
 Pixel 8 has passed a preview plus 1080p/240
 manual-exposure recording trial with per-frame-rate CaptureResult metadata,
 and both optical edges passed a stationary no-motor integration trial;
@@ -140,11 +149,12 @@ label material, camera processing, or illumination. Maximum yaw rate gates
 both label detection rates, areas, observed baseline, selected heading source,
 and the applied heading calibration.
 
-Place the blue and red label surfaces at the same height when practical. A
-height difference makes floor-plane rectification add a position-dependent
-parallax vector to the observed blue-to-red baseline. It biases yaw even when
-both centres are detected accurately. The following constant-bias fit is only
-a local calibration; validate it at held-out board positions:
+The measured `mini_r2_0_unit001` label surfaces are not coplanar: the blue
+centre label is 10 mm above the maze floor and the red front label is 2 mm
+above it. A floor-plane homography therefore moves the two centres by different
+amounts. The blue position itself is displaced and the blue-to-red yaw error
+changes across the field of view. The following older constant-bias fit is only
+a local diagnostic; it is not an absolute-clearance calibration:
 
 ```sh
 ./.venv-vision/bin/python tools/vision/fit_front_label_heading.py \
@@ -154,10 +164,72 @@ a local calibration; validate it at held-out board positions:
   --output /path/to/front_label_heading_calibration.json
 ```
 
-Repeat the calibration after changing camera position, rectification layout,
-or either label height. For full-board accuracy, put both labels at the same
-height or use camera intrinsics and the two label heights for ray-plane
-correction.
+For full-board correction, use the measured heights and a stationary known-pose
+calibration. Keep the camera and markers fixed, measure the top surface height
+of the ArUco markers above the maze floor, then record at least five stationary
+poses spanning the camera field. A practical 8x8 set is:
+
+- fit: blue centre `(45,45)` mm, heading `0 deg`;
+- fit: `(675,45)` mm, heading `180 deg`;
+- fit: `(45,675)` mm, heading `0 deg`;
+- fit: `(675,675)` mm, heading `180 deg`;
+- held-out validation: `(315,405)` mm, heading `90 deg`.
+
+Use a placement jig so the blue centre and cardinal heading are known. One
+continuous ordinary video is sufficient if every pose is held still for at
+least two seconds and its `start_s`/`end_s` interval is recorded in a manifest.
+The manifest schema is `nightfall_label_plane_known_pose_manifest_v1`; it names
+the committed board layout, the measured footprint/tracking geometry, the
+absolute ArUco reference-plane height, and each trajectory interval. Fit the
+camera geometry with:
+
+```sh
+./.venv-vision/bin/python tools/vision/fit_label_plane_camera.py \
+  path/to/known_pose_manifest.json \
+  --output path/to/label_plane_geometry.json
+```
+
+Copy `tools/vision/data/label_plane_known_pose_manifest.template.json`, replace
+its deliberately-null reference-plane height and trajectory path, and adjust
+the five time windows to the actual stationary holds. All five windows must be
+non-overlapping parts of one continuous extracted trajectory.
+
+The fit requires four spatially distinct non-collinear positions spanning at
+least 400 mm in both axes and 120000 mm² of convex-hull area, plus an independent
+held-out position inside that hull. It fails closed unless stationary
+stability, fit residual, and held-out error are
+within the recorded limits. It implements the ray/plane relationship
+`P=C+(H-h)/(H-h_ref)*(Q-C)` separately for blue and red. The committed board
+layout corresponding byte-for-byte to the current 60 mm-marker setup is
+`tools/vision/data/board_layout_8x8_60mm.json`.
+
+After qualification, existing trajectory CSVs can be corrected without
+decoding their videos again because they retain both rectified label centres:
+
+```sh
+./.venv-vision/bin/python tools/vision/apply_label_plane_geometry.py \
+  path/to/trajectory.csv \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --tracking-geometry tools/tuning/data/mini_r2_0_footprint.json \
+  --label-plane-geometry path/to/label_plane_geometry.json \
+  --confirm-unchanged-camera-board-setup
+```
+
+This writes a new `*_height_corrected.csv` and a hash-bound calibration
+sidecar; it never overwrites the apparent floor-plane trajectory. Parameter
+proposals and absolute-clearance checks require the matching sidecar. Repeat
+the stationary calibration after moving the camera or markers, changing crop
+or lens selection, or changing either label height. The confirmation option is
+an explicit operator assertion: the input trajectory's sibling
+`calibration.json` proves the board-layout/canonical mapping, while the current
+pipeline cannot automatically prove that the rigid camera/board pose remained
+unchanged. Do not use it across a moved rig.
+
+For a parameter proposal, all five repeats must use height-correction sidecars
+that bind the same board layout, tracking geometry, and label-plane geometry.
+The proposal path fixes the tracked anchor at zero (the blue centre is the
+machine/turn centre) and does not allow its five-repeat, valid-fraction,
+repeatability, or bounded-step limits to be weakened from the command line.
 
 Without `--background-video`, the median background assumes that the vehicle
 does not occupy the same pixel in half or more of the sampled run frames.
@@ -204,7 +276,9 @@ Print exactly one page at `100%` / `Actual Size`; do not mix sizes. Verify the
 printed 100 mm scale line and measure the black outer square. The four distinct
 `DICT_4X4_50` markers are ID 5 top-left, ID 7 top-right, ID 4 bottom-right, and
 ID 6 bottom-left. Keep at least the supplied white quiet zone and place all
-four on the same plane as the maze floor.
+four marker faces coplanar. Measure their common top-surface height above the
+maze floor and use that value as the label-plane reference height; it is zero
+only when the printed face is truly flush with the floor.
 
 For 1080-pixel short-side video, aim for at least 40 pixels across a marker's
 black side:
@@ -264,10 +338,12 @@ while starting the vehicle. In that case, set both
 tracker reuses the last marker-supported transform during that interval. Keep
 the default five-frame consecutive limit when the camera can move.
 
-The transform does not remove lens distortion or height parallax. Before using
-millimetre results for parameter changes, calibrate the exact HFR crop,
-undistort it, compensate the known cue height, and validate position/yaw across
-the field with a temporary ground-truth fixture.
+The board transform alone does not remove lens distortion or height parallax.
+The qualified label-plane workflow above corrects the measured 10/2 mm height
+planes and uses full-board fit plus held-out residual gates; any residual lens
+distortion is included in those measured errors and the downstream position
+uncertainty. A future explicit lens-undistortion stage must be recalibrated as
+a different pipeline rather than mixed with an existing geometry artifact.
 
 On `IMG_1592.mov`, fixed board markers were the only pose-estimation markers and
 ID 3 was used only as post-hoc ground truth. The prototype tracked all 515
@@ -321,11 +397,23 @@ period.
 ```sh
 ./.venv-vision/bin/python \
   tools/tuning/turn_video_tune.py \
-  trial01/trajectory.csv trial02/trajectory.csv \
-  trial03/trajectory.csv trial04/trajectory.csv \
-  trial05/trajectory.csv \
+  trial01/trajectory_height_corrected.csv \
+  trial02/trajectory_height_corrected.csv \
+  trial03/trajectory_height_corrected.csv \
+  trial04/trajectory_height_corrected.csv \
+  trial05/trajectory_height_corrected.csv \
+  --height-correction-sidecar \
+    trial01/trajectory_height_corrected.calibration.json \
+  --height-correction-sidecar \
+    trial02/trajectory_height_corrected.calibration.json \
+  --height-correction-sidecar \
+    trial03/trajectory_height_corrected.calibration.json \
+  --height-correction-sidecar \
+    trial04/trajectory_height_corrected.calibration.json \
+  --height-correction-sidecar \
+    trial05/trajectory_height_corrected.calibration.json \
   --runner shortest --mode 2 --code 501 \
-  --anchor-forward-mm -23.0 --anchor-right-mm 0.7 \
+  --anchor-forward-mm 0 --anchor-right-mm 0 \
   --minimum-valid-fraction 0.99 \
   --minimum-heading-valid-fraction 0.99 \
   --maximum-pose-window-speed-mm-s 10 \
@@ -339,12 +427,12 @@ period.
   --report-json turn_report.json
 ```
 
-The anchor numbers are examples from `IMG_1592.mov`; measure and replace them
-for the selected cue and control reference. `--vary angle` intentionally
-overrides the fitter's multi-parameter default for the first staged tuning
-pass. The fitter prints an experiment candidate only. It does not edit params,
-build, flash, spin the fan, or start a run. Any floor/maze trial requires
-explicit authorization for that specific motion under
+The zero anchor is exact for the user-confirmed blue label at the coincident
+machine/turn centre. `--vary angle` intentionally overrides the fitter's
+multi-parameter default for the first staged tuning pass. The fitter prints an
+experiment candidate only. It does not edit params, build, flash, spin the fan,
+or start a run. Any floor/maze trial requires explicit authorization for that
+specific motion under
 `docs/ai/HIL_SAFETY.md`.
 
 When unequal label heights make heading depend on board position, trials with

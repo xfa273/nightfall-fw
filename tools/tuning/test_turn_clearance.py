@@ -181,6 +181,93 @@ class ClearanceEvaluationTest(unittest.TestCase):
 
 
 class CanonicalSceneTest(unittest.TestCase):
+    def test_absolute_video_requires_one_height_sidecar_per_trajectory(self):
+        parser = TURN_CLEARANCE.build_arg_parser()
+        args = parser.parse_args(
+            [
+                "video",
+                "trajectory-1.csv",
+                "trajectory-2.csv",
+                "--mode",
+                "2",
+                "--code",
+                "901",
+                "--registration-mode",
+                "absolute",
+                "--scene-json",
+                "scene.json",
+            ]
+        )
+        with self.assertRaisesRegex(ValueError, "height-correction sidecar"):
+            TURN_CLEARANCE._validate_args(args)
+
+        args.height_correction_sidecar = [Path("one.calibration.json")]
+        with self.assertRaisesRegex(ValueError, "once per trajectory"):
+            TURN_CLEARANCE._validate_args(args)
+
+    def test_absolute_video_cannot_weaken_geometry_or_completeness_gates(self):
+        parser = TURN_CLEARANCE.build_arg_parser()
+        base = [
+            "video",
+            "trajectory.csv",
+            "--height-correction-sidecar",
+            "trajectory.calibration.json",
+            "--mode",
+            "2",
+            "--code",
+            "901",
+            "--registration-mode",
+            "absolute",
+            "--scene-json",
+            "scene.json",
+        ]
+        cases = (
+            ("--maximum-endpoint-error-mm", "5.1", "cannot exceed 5"),
+            ("--maximum-heading-error-deg", "2.1", "cannot exceed 2"),
+            ("--maximum-angle-shortfall-deg", "3.1", "cannot exceed 3"),
+            ("--maximum-pose-gap-s", "0.051", "cannot exceed 0.050"),
+            ("--max-corner-step-mm", "0.51", "cannot exceed 0.5"),
+            ("--minimum-preroll-s", "0.039", "cannot be below 0.040"),
+            ("--minimum-postroll-s", "0.019", "cannot be below 0.020"),
+            ("--absolute-yaw-offset-deg", "-89", "require.*-90"),
+        )
+        for option, value, message in cases:
+            with self.subTest(option=option):
+                args = parser.parse_args([*base, option, value])
+                with self.assertRaisesRegex(ValueError, message):
+                    TURN_CLEARANCE._validate_args(args)
+
+    def test_absolute_scene_binds_complete_topology_source(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            topology = root / "maze-topology.txt"
+            topology.write_text("known maze revision\n", encoding="utf-8")
+            raw = TURN_CLEARANCE.scene_to_dict(
+                TURN_CLEARANCE.canonical_scene(901)
+            )
+            raw["bindings"] = {
+                "board_layout_sha256": "12" * 32,
+                "maze_topology_path": topology.name,
+                "maze_topology_sha256": hashlib.sha256(
+                    topology.read_bytes()
+                ).hexdigest(),
+            }
+            raw["qualification"] = {
+                "safety_qualified": True,
+                "obstacle_inventory_complete": True,
+            }
+            scene_path = root / "scene.json"
+            scene_path.write_text(json.dumps(raw), encoding="utf-8")
+            result = TURN_CLEARANCE._absolute_scene_binding(scene_path)
+            self.assertEqual(result["board_layout_sha256"], "12" * 32)
+            self.assertEqual(
+                result["maze_topology_path"], str(topology.resolve())
+            )
+
+            topology.write_text("tampered\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "does not match"):
+                TURN_CLEARANCE._absolute_scene_binding(scene_path)
+
     def test_scene_report_round_trips_as_scene_input(self):
         original = TURN_CLEARANCE.canonical_scene(901)
         with tempfile.TemporaryDirectory() as directory:
@@ -917,6 +1004,9 @@ class D135RegressionTest(unittest.TestCase):
                 simulation,
                 turn_index=1,
                 omega_threshold_deg_s=80.0,
+            )
+            self.assertEqual(
+                metadata["sha256"], hashlib.sha256(path.read_bytes()).hexdigest()
             )
         measured = TURN_CLEARANCE.evaluate_clearance(
             measured_samples,

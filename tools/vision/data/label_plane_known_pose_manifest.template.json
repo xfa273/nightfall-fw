@@ -1,0 +1,55 @@
+{
+  "schema": "nightfall_label_plane_known_pose_manifest_v1",
+  "board_layout": "board_layout_8x8_60mm.json",
+  "tracking_geometry": "../../tuning/data/mini_r2_0_footprint.json",
+  "canonical_size_px": 900,
+  "reference_plane_absolute_height_mm": null,
+  "replace_before_use": "Measure the common ArUco top surface above the maze floor and replace null.",
+  "placements": [
+    {
+      "id": "fit-south-west",
+      "role": "fit",
+      "trajectory_csv": "path/to/known_pose/trajectory.csv",
+      "start_s": 0.5,
+      "end_s": 2.5,
+      "true_blue_center_mm": [45.0, 45.0],
+      "true_heading_deg": 0.0
+    },
+    {
+      "id": "fit-south-east",
+      "role": "fit",
+      "trajectory_csv": "path/to/known_pose/trajectory.csv",
+      "start_s": 3.0,
+      "end_s": 5.0,
+      "true_blue_center_mm": [675.0, 45.0],
+      "true_heading_deg": 180.0
+    },
+    {
+      "id": "fit-north-west",
+      "role": "fit",
+      "trajectory_csv": "path/to/known_pose/trajectory.csv",
+      "start_s": 5.5,
+      "end_s": 7.5,
+      "true_blue_center_mm": [45.0, 675.0],
+      "true_heading_deg": 0.0
+    },
+    {
+      "id": "fit-north-east",
+      "role": "fit",
+      "trajectory_csv": "path/to/known_pose/trajectory.csv",
+      "start_s": 8.0,
+      "end_s": 10.0,
+      "true_blue_center_mm": [675.0, 675.0],
+      "true_heading_deg": 180.0
+    },
+    {
+      "id": "held-out-centre",
+      "role": "validation",
+      "trajectory_csv": "path/to/known_pose/trajectory.csv",
+      "start_s": 10.5,
+      "end_s": 12.5,
+      "true_blue_center_mm": [315.0, 405.0],
+      "true_heading_deg": 90.0
+    }
+  ]
+}

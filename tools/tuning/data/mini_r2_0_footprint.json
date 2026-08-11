@@ -19,5 +19,16 @@
     "length": 70.0,
     "width": 39.0
   },
+  "tracking_labels": {
+    "height_reference": "maze floor",
+    "blue_centre": {
+      "surface_height_mm": 10.0,
+      "coincident_with_reference_point": true
+    },
+    "red_front": {
+      "surface_height_mm": 2.0,
+      "horizontal_distance_from_blue_centre_mm": 24.0
+    }
+  },
   "usage": "default full-body envelope for tools/tuning/turn_clearance.py"
 }

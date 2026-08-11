@@ -31,6 +31,13 @@ from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
 
 
+VISION_ROOT = Path(__file__).resolve().parents[1] / "vision"
+if str(VISION_ROOT) not in sys.path:
+    sys.path.insert(0, str(VISION_ROOT))
+
+import trajectory_calibration  # noqa: E402
+
+
 EPS = 1.0e-9
 DEFAULT_CELL_PITCH_MM = 90.0
 DEFAULT_POST_SIZE_MM = 6.0
@@ -41,6 +48,8 @@ DEFAULT_ROBOT_LEFT_MM = 19.5
 DEFAULT_ROBOT_RIGHT_MM = 19.5
 DEFAULT_FOOTPRINT_ARTIFACT = "tools/tuning/data/mini_r2_0_footprint.json"
 MAX_OFFSET_PAIR_EVALUATIONS_PER_ALPHA = 4096
+SCENE_SCHEMA = "nightfall_turn_clearance_scene_v1"
+SCENE_COORDINATE_SYSTEM = "board_x_right_y_forward_mm"
 
 
 _TURN_TUNE_MODULE: Any = None
@@ -597,6 +606,8 @@ def load_scene(path: Path) -> TurnScene:
 
 def scene_to_dict(scene: TurnScene) -> dict[str, Any]:
     return {
+        "schema": SCENE_SCHEMA,
+        "coordinate_system": SCENE_COORDINATE_SYSTEM,
         "name": scene.name,
         "start_pose": {
             "x_mm": scene.start_x_mm,
@@ -621,6 +632,66 @@ def scene_to_dict(scene: TurnScene) -> dict[str, Any]:
             for item in scene.obstacles
         ],
         "notes": scene.notes,
+    }
+
+
+def _absolute_scene_binding(path: Path) -> dict[str, Any]:
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("absolute scene root must be an object")
+    if raw.get("schema") != SCENE_SCHEMA:
+        raise ValueError(f"absolute scene schema must be {SCENE_SCHEMA}")
+    if raw.get("coordinate_system") != SCENE_COORDINATE_SYSTEM:
+        raise ValueError(
+            f"absolute scene coordinate_system must be {SCENE_COORDINATE_SYSTEM}"
+        )
+    try:
+        bindings = raw["bindings"]
+        qualification = raw["qualification"]
+        digest = str(bindings["board_layout_sha256"]).lower()
+        topology_path_value = bindings["maze_topology_path"]
+        topology_digest = str(bindings["maze_topology_sha256"]).lower()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(
+            "absolute scene must bind its board layout and maze topology"
+        ) from exc
+    if len(digest) != 64 or any(
+        character not in "0123456789abcdef" for character in digest
+    ):
+        raise ValueError("absolute scene board-layout SHA-256 is invalid")
+    if len(topology_digest) != 64 or any(
+        character not in "0123456789abcdef" for character in topology_digest
+    ):
+        raise ValueError("absolute scene maze-topology SHA-256 is invalid")
+    if not isinstance(topology_path_value, str) or not topology_path_value:
+        raise ValueError("absolute scene maze_topology_path is invalid")
+    topology_path = Path(topology_path_value)
+    if not topology_path.is_absolute():
+        topology_path = path.resolve().parent / topology_path
+    topology_path = topology_path.resolve()
+    if not topology_path.is_file():
+        raise ValueError(
+            f"absolute scene maze topology does not exist: {topology_path}"
+        )
+    actual_topology_digest = trajectory_calibration.sha256_file(topology_path)
+    if actual_topology_digest != topology_digest:
+        raise ValueError("absolute scene maze-topology SHA-256 does not match")
+    if not isinstance(qualification, dict):
+        raise ValueError("absolute scene qualification must be an object")
+    if qualification.get("safety_qualified") is not True:
+        raise ValueError(
+            "absolute scene qualification.safety_qualified must be true"
+        )
+    if qualification.get("obstacle_inventory_complete") is not True:
+        raise ValueError(
+            "absolute scene must explicitly qualify its obstacle inventory"
+        )
+    return {
+        "board_layout_sha256": digest,
+        "maze_topology_path": str(topology_path),
+        "maze_topology_sha256": topology_digest,
+        "qualification": qualification,
+        "artifact": raw,
     }
 
 
@@ -2305,6 +2376,7 @@ def extract_video_turn(
         raise ValueError(f"unknown video registration mode: {registration_mode}")
     metadata = {
         "path": str(path.resolve()),
+        "sha256": trajectory_calibration.sha256_file(path),
         "turn_index": turn_index,
         "valid_rows": len(valid_rows),
         "active_region_count": len(regions),
@@ -2351,6 +2423,95 @@ def command_video(args: argparse.Namespace) -> int:
     scene = _scene_from_args(args)
     footprint = _footprint_from_args(args)
     budget = _budget_from_args(args)
+    height_corrections = [
+        trajectory_calibration.verify_height_corrected_trajectory(
+            trajectory,
+            sidecar,
+        )
+        for trajectory, sidecar in zip(
+            args.trajectory_csv,
+            args.height_correction_sidecar,
+        )
+    ]
+    height_correction_qualified = (
+        len(height_corrections) == len(args.trajectory_csv)
+    )
+    scene_binding_qualified = True
+    same_calibration_qualified = True
+    footprint_qualified = True
+    safety_budget_qualified = True
+    scene_board_digest: Optional[str] = None
+    scene_binding: Optional[dict[str, Any]] = None
+    if args.registration_mode == "absolute":
+        scene_binding = _absolute_scene_binding(args.scene_json)
+        scene_board_digest = scene_binding["board_layout_sha256"]
+        sidecar_board_digests = {
+            str(item["bindings"]["board_layout_sha256"]).lower()
+            for item in height_corrections
+        }
+        scene_binding_qualified = sidecar_board_digests == {scene_board_digest}
+        if not scene_binding_qualified:
+            raise ValueError(
+                "absolute scene and corrected trajectories use different "
+                "board layouts"
+            )
+        same_calibration_qualified = (
+            len(
+                {
+                    item["bindings"]["tracking_geometry_sha256"]
+                    for item in height_corrections
+                }
+            )
+            == 1
+            and len(
+                {
+                    item["bindings"]["label_plane_geometry_sha256"]
+                    for item in height_corrections
+                }
+            )
+            == 1
+        )
+        measured_footprint_digest = trajectory_calibration.sha256_file(
+            Path(__file__).resolve().parent / "data/mini_r2_0_footprint.json"
+        )
+        same_calibration_qualified = (
+            same_calibration_qualified
+            and {
+                str(item["bindings"]["tracking_geometry_sha256"]).lower()
+                for item in height_corrections
+            }
+            == {measured_footprint_digest}
+        )
+        if not same_calibration_qualified:
+            raise ValueError(
+                "all absolute trials must use the same tracking and camera "
+                "geometry"
+            )
+        footprint_qualified = (
+            footprint.front_mm >= DEFAULT_ROBOT_FRONT_MM
+            and footprint.rear_mm >= DEFAULT_ROBOT_REAR_MM
+            and footprint.left_mm >= DEFAULT_ROBOT_LEFT_MM
+            and footprint.right_mm >= DEFAULT_ROBOT_RIGHT_MM
+        )
+        safety_budget_qualified = (
+            args.required_margin_mm >= 3.0
+            and args.mechanical_uncertainty_mm >= 0.5
+            and args.position_uncertainty_mm >= 3.0
+            and args.heading_uncertainty_deg >= 0.5
+        )
+    absolute_input_gate_passed = (
+        args.registration_mode != "absolute"
+        or (
+            height_correction_qualified
+            and scene_binding_qualified
+            and same_calibration_qualified
+            and footprint_qualified
+            and safety_budget_qualified
+        )
+    )
+    height_gate_passed = (
+        args.registration_mode != "absolute" or height_correction_qualified
+    )
     trials: list[dict[str, Any]] = []
     measured_paths: list[tuple[str, list[PoseSample], ClearanceResult, str]] = []
     heading = math.radians(scene.start_heading_deg)
@@ -2359,6 +2520,21 @@ def command_video(args: argparse.Namespace) -> int:
             "[TURN-CLEARANCE] registration={} absolute_clearance_gate={}".format(
                 args.registration_mode,
                 int(args.registration_mode == "absolute"),
+            )
+        )
+        print(
+            "[TURN-CLEARANCE] height_correction_qualified={}".format(
+                int(height_correction_qualified)
+            )
+        )
+        print(
+            "[TURN-CLEARANCE] absolute_input_gate={} scene={} calibration={} "
+            "footprint={} budget={}".format(
+                int(absolute_input_gate_passed),
+                int(scene_binding_qualified),
+                int(same_calibration_qualified),
+                int(footprint_qualified),
+                int(safety_budget_qualified),
             )
         )
         print(
@@ -2428,11 +2604,18 @@ def command_video(args: argparse.Namespace) -> int:
                     and endpoint_passed
                     and heading_passed
                     and model_scope["qualified"]
+                    and height_gate_passed
+                    and absolute_input_gate_passed
                 ),
                 "clearance_passed": clearance.margin_passed,
                 "endpoint_passed": endpoint_passed,
                 "heading_passed": heading_passed,
                 "model_scope_qualified": model_scope["qualified"],
+                "height_correction_qualified": height_correction_qualified,
+                "height_correction_required": (
+                    args.registration_mode == "absolute"
+                ),
+                "absolute_input_gate_passed": absolute_input_gate_passed,
                 "maximum_endpoint_error_mm": args.maximum_endpoint_error_mm,
                 "maximum_heading_error_deg": args.maximum_heading_error_deg,
                 "gate_kind": (
@@ -2446,10 +2629,12 @@ def command_video(args: argparse.Namespace) -> int:
                     and endpoint_passed
                     and heading_passed
                     and model_scope["qualified"]
+                    and height_correction_qualified
+                    and absolute_input_gate_passed
                 ),
                 "rule": (
-                    "clearance, endpoint, heading, and extraction-model scope "
-                    "gates must all pass"
+                    "clearance, endpoint, heading, extraction-model scope, "
+                    "and required height-correction gates must all pass"
                 ),
             },
         }
@@ -2471,7 +2656,55 @@ def command_video(args: argparse.Namespace) -> int:
         "registration_mode": args.registration_mode,
         "turn": asdict(turn),
         "extraction_model_scope": model_scope,
+        "height_correction": {
+            "qualified_for_all_trials": height_correction_qualified,
+            "required_for_absolute_clearance": True,
+            "sidecars": [
+                str(path.resolve()) for path in args.height_correction_sidecar
+            ],
+            "sources": [
+                {
+                    "trajectory_csv": str(trajectory.resolve()),
+                    "trajectory_sha256": (
+                        trajectory_calibration.sha256_file(trajectory)
+                    ),
+                    "height_correction_sidecar": str(sidecar.resolve()),
+                    "height_correction_sidecar_sha256": (
+                        trajectory_calibration.sha256_file(sidecar)
+                    ),
+                }
+                for trajectory, sidecar in zip(
+                    args.trajectory_csv,
+                    args.height_correction_sidecar,
+                )
+            ],
+        },
+        "absolute_inputs": {
+            "scene_board_layout_qualified": scene_binding_qualified,
+            "same_tracking_and_camera_geometry": same_calibration_qualified,
+            "footprint_contains_measured_envelope": footprint_qualified,
+            "minimum_safety_budget_qualified": safety_budget_qualified,
+            "passed": absolute_input_gate_passed,
+        },
         "scene": scene_to_dict(scene),
+        "scene_input": (
+            {
+                "path": str(args.scene_json.resolve()),
+                "sha256": trajectory_calibration.sha256_file(args.scene_json),
+                "board_layout_sha256": scene_board_digest,
+                "maze_topology_path": scene_binding["maze_topology_path"],
+                "maze_topology_sha256": scene_binding[
+                    "maze_topology_sha256"
+                ],
+            }
+            if args.registration_mode == "absolute"
+            else None
+        ),
+        "scene_source_artifact": (
+            scene_binding["artifact"]
+            if args.registration_mode == "absolute"
+            else None
+        ),
         "footprint": asdict(footprint),
         "footprint_basis": footprint_basis(footprint),
         "uncertainty": {
@@ -2503,15 +2736,16 @@ def command_video(args: argparse.Namespace) -> int:
             "maximum_heading_error_deg": args.maximum_heading_error_deg,
             "rule": (
                 "every repeated trial must pass clearance, endpoint, heading, "
-                "trajectory-completeness, and extraction-model scope gates"
+                "trajectory-completeness, extraction-model scope, and required "
+                "height-correction/absolute-input gates"
             ),
         },
         "safety": (
             (
-                "Absolute scene registration preserves trial placement, but "
-                "clearance still depends on camera/label-height calibration; "
-                "the defaults already use the user-confirmed measured body "
-                "extents."
+                "Absolute scene registration preserves trial placement and is "
+                "qualified only when every trajectory is bound to a verified "
+                "blue/red label-height correction; the defaults use the "
+                "user-confirmed measured body extents."
                 if args.registration_mode == "absolute"
                 else "Normalized registration evaluates turn shape/repeatability "
                 "but removes absolute trial placement; it is not an absolute "
@@ -2689,6 +2923,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "video", help="apply the same footprint clearance gate to a trajectory CSV"
     )
     video.add_argument("trajectory_csv", type=Path, nargs="+")
+    video.add_argument(
+        "--height-correction-sidecar",
+        type=Path,
+        action="append",
+        default=[],
+        help=(
+            "provenance sidecar for one height-corrected trajectory; repeat "
+            "in trajectory_csv order (required for absolute clearance)"
+        ),
+    )
     _add_turn_selection(video)
     _add_clearance_args(
         video, endpoint_error_default_mm=5.0, heading_error_default_deg=2.0
@@ -2778,6 +3022,67 @@ def _validate_args(args: argparse.Namespace) -> None:
         and getattr(args, "scene_json", None) is None
     ):
         raise ValueError("--registration-mode absolute requires --scene-json")
+    if (
+        getattr(args, "registration_mode", "normalized") == "absolute"
+        and not math.isclose(
+            getattr(args, "absolute_yaw_offset_deg", -90.0),
+            -90.0,
+            abs_tol=1e-9,
+            rel_tol=0.0,
+        )
+    ):
+        raise ValueError(
+            "height-corrected vision trajectories require "
+            "--absolute-yaw-offset-deg -90"
+        )
+    if getattr(args, "registration_mode", "normalized") == "absolute":
+        absolute_limits = (
+            (
+                args.maximum_endpoint_error_mm <= 5.0,
+                "--maximum-endpoint-error-mm cannot exceed 5 in absolute mode",
+            ),
+            (
+                args.maximum_heading_error_deg <= 2.0,
+                "--maximum-heading-error-deg cannot exceed 2 in absolute mode",
+            ),
+            (
+                args.maximum_angle_shortfall_deg <= 3.0,
+                "--maximum-angle-shortfall-deg cannot exceed 3 in absolute mode",
+            ),
+            (
+                args.maximum_pose_gap_s <= 0.050,
+                "--maximum-pose-gap-s cannot exceed 0.050 in absolute mode",
+            ),
+            (
+                args.max_corner_step_mm <= 0.5,
+                "--max-corner-step-mm cannot exceed 0.5 in absolute mode",
+            ),
+            (
+                args.minimum_preroll_s >= 0.040,
+                "--minimum-preroll-s cannot be below 0.040 in absolute mode",
+            ),
+            (
+                args.minimum_postroll_s >= 0.020,
+                "--minimum-postroll-s cannot be below 0.020 in absolute mode",
+            ),
+        )
+        for valid, message in absolute_limits:
+            if not valid:
+                raise ValueError(message)
+    sidecars = getattr(args, "height_correction_sidecar", [])
+    trajectories = getattr(args, "trajectory_csv", [])
+    if sidecars and len(sidecars) != len(trajectories):
+        raise ValueError(
+            "repeat --height-correction-sidecar once per trajectory CSV"
+        )
+    if (
+        getattr(args, "registration_mode", "normalized") == "absolute"
+        and len(sidecars) != len(trajectories)
+    ):
+        raise ValueError(
+            "absolute registration requires a verified height-correction "
+            "sidecar for every trajectory"
+        )
 
 
 def main() -> int:
