@@ -82,6 +82,7 @@ class SimResult:
     entry_speed_mm_s: float
     out_speed_mm_s: float
     final_speed_mm_s: float
+    slip_angle_coefficient: float
     final_pose: Pose
     duration_ms: int
     samples: list[PathSample]
@@ -271,6 +272,21 @@ def shortest_turn_from_code(code: int, params: dict[str, float]) -> TurnSpec:
     )
 
 
+def shortest_runtime_angle_deg(code: int) -> float:
+    """Return the angle used by the F413 shortest-run angle accumulator."""
+    if code in (300, 400, 501, 601):
+        return 90.0
+    if code in (502, 602):
+        return 180.0
+    if code in (701, 702, 703, 704):
+        return 45.0
+    if code in (801, 802):
+        return 90.0
+    if code in (901, 902, 903, 904):
+        return 135.0
+    raise ValueError(f"unsupported shortest path turn code: {code}")
+
+
 def search_turn_from_params(index: int, side: str, params: dict[str, float]) -> TurnSpec:
     right = side == "right"
     angle_abs = _field(params, "angle_turn_90", 90.0)
@@ -322,7 +338,23 @@ def resolve_turn(args: argparse.Namespace) -> TurnSpec:
         modes = parse_shortest_modes(path)
         if args.mode not in modes:
             raise ValueError(f"shortest mode {args.mode} not found in {path}")
-        return apply_overrides(shortest_turn_from_code(args.code, modes[args.mode]), args)
+        turn = apply_overrides(shortest_turn_from_code(args.code, modes[args.mode]), args)
+        angle_policy = getattr(args, "angle_policy", "configured")
+        if args.angle is None and angle_policy == "runtime":
+            angle_abs = shortest_runtime_angle_deg(args.code)
+            turn = TurnSpec(
+                runner=turn.runner,
+                label=turn.label,
+                signed_angle_deg=(
+                    -angle_abs if turn.signed_angle_deg < 0.0 else angle_abs
+                ),
+                alpha_deg_s2=turn.alpha_deg_s2,
+                velocity_mm_s=turn.velocity_mm_s,
+                dist_in_mm=turn.dist_in_mm,
+                dist_out_mm=turn.dist_out_mm,
+                source_fields=turn.source_fields,
+            )
+        return turn
 
     if args.runner == "search":
         path = Path(args.search_params) if args.search_params else root / "params/f413_preorder/search_run_params_split.c"
@@ -380,18 +412,35 @@ def sample_omega_deg_s(profile: SmoothProfile, signed_peak_deg_s: float, t_s: fl
     return -omega_abs if signed_peak_deg_s < 0.0 else omega_abs
 
 
-def advance_pose(pose: Pose, velocity_mm_s: float, omega_deg_s: float, dt_s: float) -> Pose:
+def advance_pose(
+    pose: Pose,
+    velocity_mm_s: float,
+    omega_deg_s: float,
+    dt_s: float,
+    slip_angle_coefficient: float = 0.0,
+) -> Pose:
     theta = pose.theta_rad
     omega_rad_s = math.radians(omega_deg_s)
+    # Empirical understeer model used only when explicitly requested.  Positive
+    # K makes the velocity vector lag body yaw on both left and right turns:
+    # beta[deg] = omega[deg/s] * speed[m/s] * K[s^2/m].
+    beta_rad = math.radians(
+        omega_deg_s * (velocity_mm_s / 1000.0) * slip_angle_coefficient
+    )
+    velocity_heading = theta - beta_rad
     if abs(omega_rad_s) < 1e-12:
-        dx = -velocity_mm_s * math.sin(theta) * dt_s
-        dy = velocity_mm_s * math.cos(theta) * dt_s
+        dx = -velocity_mm_s * math.sin(velocity_heading) * dt_s
+        dy = velocity_mm_s * math.cos(velocity_heading) * dt_s
         dtheta = 0.0
     else:
         dtheta = omega_rad_s * dt_s
-        theta_next = theta + dtheta
-        dx = (velocity_mm_s / omega_rad_s) * (math.cos(theta_next) - math.cos(theta))
-        dy = (velocity_mm_s / omega_rad_s) * (math.sin(theta_next) - math.sin(theta))
+        velocity_heading_next = velocity_heading + dtheta
+        dx = (velocity_mm_s / omega_rad_s) * (
+            math.cos(velocity_heading_next) - math.cos(velocity_heading)
+        )
+        dy = (velocity_mm_s / omega_rad_s) * (
+            math.sin(velocity_heading_next) - math.sin(velocity_heading)
+        )
     return Pose(pose.x_mm + dx, pose.y_mm + dy, theta + dtheta)
 
 
@@ -446,7 +495,10 @@ def simulate_turn(
     constants: Constants,
     entry_speed_mm_s: Optional[float] = None,
     out_speed_mm_s: Optional[float] = None,
+    slip_angle_coefficient: float = 0.0,
 ) -> SimResult:
+    if not math.isfinite(slip_angle_coefficient) or slip_angle_coefficient < 0.0:
+        raise ValueError("slip angle coefficient must be finite and non-negative")
     entry_speed = turn.velocity_mm_s if entry_speed_mm_s is None else entry_speed_mm_s
     if out_speed_mm_s is None:
         out_speed = entry_speed if turn.runner == "search" else turn.velocity_mm_s
@@ -473,7 +525,13 @@ def simulate_turn(
     loop_elapsed = 0.0
     while loop_elapsed < profile.t_total_s - 1e-12:
         omega = sample_omega_deg_s(profile, signed_peak, profile_elapsed)
-        pose = advance_pose(pose, turn.velocity_mm_s, omega, DT_S)
+        pose = advance_pose(
+            pose,
+            turn.velocity_mm_s,
+            omega,
+            DT_S,
+            slip_angle_coefficient,
+        )
         profile_elapsed += DT_S
         loop_elapsed += DT_S
         time_s += DT_S
@@ -495,6 +553,7 @@ def simulate_turn(
         entry_speed_mm_s=entry_speed,
         out_speed_mm_s=out_speed,
         final_speed_mm_s=speed,
+        slip_angle_coefficient=slip_angle_coefficient,
         final_pose=pose,
         duration_ms=int(round(time_s * 1000.0)),
         samples=samples,
@@ -743,6 +802,7 @@ def sim_to_dict(result: SimResult, include_samples: bool = False) -> dict[str, o
         "entry_speed_mm_s": result.entry_speed_mm_s,
         "out_speed_mm_s": result.out_speed_mm_s,
         "final_speed_mm_s": result.final_speed_mm_s,
+        "slip_angle_coefficient": result.slip_angle_coefficient,
         "final_pose": pose_to_dict(result.final_pose),
         "duration_ms": result.duration_ms,
     }
@@ -776,7 +836,8 @@ def print_sim_summary(result: SimResult) -> None:
     print(
         "[TURN-SIM] params "
         f"v={turn.velocity_mm_s:.3f}mm/s alpha={turn.alpha_deg_s2:.3f}deg/s^2 "
-        f"angle={turn.signed_angle_deg:.3f}deg in={turn.dist_in_mm:.3f}mm out={turn.dist_out_mm:.3f}mm"
+        f"angle={turn.signed_angle_deg:.3f}deg in={turn.dist_in_mm:.3f}mm "
+        f"out={turn.dist_out_mm:.3f}mm slip_k={result.slip_angle_coefficient:.6f}s^2/m"
     )
     print(
         "[TURN-SIM] profile "
@@ -1089,7 +1150,13 @@ def fit_turn(args: argparse.Namespace, turn: TurnSpec, constants: Constants) -> 
 
     def cost_for(candidate_values: dict[str, float]) -> float:
         candidate = _turn_with_values(turn, candidate_values)
-        sim = simulate_turn(candidate, constants, args.entry_speed, args.out_speed)
+        sim = simulate_turn(
+            candidate,
+            constants,
+            args.entry_speed,
+            args.out_speed,
+            args.slip_angle_coefficient,
+        )
         err = pose_error(sim.final_pose, target_pose)
         pose_cost = (
             err["dx_mm"] * err["dx_mm"]
@@ -1122,8 +1189,20 @@ def fit_turn(args: argparse.Namespace, turn: TurnSpec, constants: Constants) -> 
             if all(steps[name] <= args.min_step for name in vary):
                 break
 
-    initial_sim = simulate_turn(turn, constants, args.entry_speed, args.out_speed)
-    fitted_sim = simulate_turn(_turn_with_values(turn, values), constants, args.entry_speed, args.out_speed)
+    initial_sim = simulate_turn(
+        turn,
+        constants,
+        args.entry_speed,
+        args.out_speed,
+        args.slip_angle_coefficient,
+    )
+    fitted_sim = simulate_turn(
+        _turn_with_values(turn, values),
+        constants,
+        args.entry_speed,
+        args.out_speed,
+        args.slip_angle_coefficient,
+    )
     return initial_sim, fitted_sim, values
 
 
@@ -1173,10 +1252,28 @@ def add_turn_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--velocity", type=float, default=None, help="override turn velocity [mm/s]")
     parser.add_argument("--alpha", type=float, default=None, help="override angular acceleration [deg/s^2]")
     parser.add_argument("--angle", type=float, default=None, help="override signed turn angle [deg]")
+    parser.add_argument(
+        "--angle-policy",
+        choices=("runtime", "configured"),
+        default="configured",
+        help=(
+            "shortest-run angle source: configured uses the params field; "
+            "runtime reproduces an angle-accumulator run (45/90/135/180 deg)"
+        ),
+    )
     parser.add_argument("--dist-in", type=float, default=None, help="override front/in offset [mm]")
     parser.add_argument("--dist-out", type=float, default=None, help="override rear/out offset [mm]")
     parser.add_argument("--entry-speed", type=float, default=None, help="speed before in-offset [mm/s]")
     parser.add_argument("--out-speed", type=float, default=None, help="speed after out-offset [mm/s]")
+    parser.add_argument(
+        "--slip-angle-coefficient",
+        type=float,
+        default=0.0,
+        help=(
+            "optional empirical understeer K [s^2/m], where velocity-heading "
+            "lag is omega[deg/s] * speed[m/s] * K"
+        ),
+    )
 
 
 def add_json_arg(parser: argparse.ArgumentParser) -> None:
@@ -1186,7 +1283,13 @@ def add_json_arg(parser: argparse.ArgumentParser) -> None:
 def command_simulate(args: argparse.Namespace) -> int:
     constants = load_constants(args)
     turn = resolve_turn(args)
-    sim = simulate_turn(turn, constants, args.entry_speed, args.out_speed)
+    sim = simulate_turn(
+        turn,
+        constants,
+        args.entry_speed,
+        args.out_speed,
+        args.slip_angle_coefficient,
+    )
     if args.export_csv:
         export_samples_csv(Path(args.export_csv), sim.samples)
     if args.json:
@@ -1211,7 +1314,13 @@ def command_replay(args: argparse.Namespace) -> int:
             _, selected = select_records(records, args.phase, args.start_ms, args.end_ms, args.omega_threshold)
             if selected:
                 entry_speed = selected[0].target_velocity_mm_s
-        sim = simulate_turn(turn, constants, entry_speed, args.out_speed)
+        sim = simulate_turn(
+            turn,
+            constants,
+            entry_speed,
+            args.out_speed,
+            args.slip_angle_coefficient,
+        )
     if args.json:
         payload = replay_to_dict(replay)
         if sim is not None:

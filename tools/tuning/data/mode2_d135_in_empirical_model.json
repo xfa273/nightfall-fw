@@ -1,0 +1,47 @@
+{
+  "schema": "nightfall_turn_empirical_sideslip_model_v1",
+  "machine": "f413_preorder-mini_r2_0",
+  "turn": {
+    "mode": 2,
+    "code": 901,
+    "side": "right",
+    "velocity_mm_s": 500.0,
+    "alpha_deg_s2": 10250.0,
+    "effective_angle_deg": 135.0,
+    "positive_entry_regime_only": true
+  },
+  "model": {
+    "name": "angular-rate-proportional velocity-heading lag",
+    "formula": "velocity_heading_lag_deg = omega_deg_s * speed_m_s * coefficient_s2_m",
+    "coefficient_s2_m": 0.03303
+  },
+  "fit": {
+    "method": "least-squares fit of simulated turn-core endpoint to the median of three normalized no-contact video trajectories",
+    "observed_median_core_endpoint_mm": {
+      "x_right_mm": 67.8935886918151,
+      "y_forward_mm": 44.60608570325019
+    },
+    "nominal_zero_slip_core_endpoint_mm": {
+      "x_right_mm": 74.91513598191362,
+      "y_forward_mm": 31.031596979200785
+    },
+    "fitted_core_endpoint_mm": {
+      "x_right_mm": 67.47158055574548,
+      "y_forward_mm": 44.30013967339833
+    },
+    "fitted_endpoint_residual_mm": 0.5212425923608616
+  },
+  "source": {
+    "manifest": "tools/tuning/data/mode2_d135_in_manifest.json",
+    "dataset_id": "mode2-sub6-1786342957398",
+    "params_record_sha256": "d28388f245b0d7579a871ae13fc238677a0e59276d35ffac8dda8776c132ac26",
+    "report_sha256": "9d6c3c9c1ffcd8ea5a433c3ef180eaa1b251bd6659a2365f374d3617a5f4550a",
+    "trajectory_set_sha256": "05bb6460e344cf50f539e181ee5cff659290f35f13e1a1137879a0267108c664"
+  },
+  "limitations": [
+    "This is an empirical rough-design model, not a firmware execution parameter.",
+    "Only right D135-in at 500 mm/s and alpha 10250 deg/s^2 is calibrated.",
+    "The mirrored left turn, other speeds/alphas, and zero-entry regime are not validated.",
+    "Final acceptance requires repeated video with measured body dimensions and absolute scene registration."
+  ]
+}

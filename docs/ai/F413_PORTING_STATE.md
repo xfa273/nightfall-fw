@@ -53,10 +53,12 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - Real maze exploration is not finished as a trusted competition flow.
 - Wall control and wall-end behavior need more floor/maze data.
 - Shortest-run UI flow from a real explored FRAM map needs careful validation.
-- Mode 2 individual turns are calibrated; the new case6--9 diagonal shortest
-  flow still needs staged floor validation on a known saved maze.  Modes 3-7
-  remain parameter baselines and are constrained by explicit F413
-  straight/diagonal/turn speed caps.
+- Mode 2 individual turns were endpoint-calibrated, but full-body swept
+  clearance exposed the current R135-in entry as unsafe in a walled shortest
+  path.  The new case6--9 diagonal shortest flow therefore needs the
+  clearance-aware simulator -> repeated-video retune before staged case6--8
+  floor validation.  Modes 3-7 remain parameter baselines and are constrained
+  by explicit F413 straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
 - `board/mini_r2_0` does not exist yet; board separation is incomplete.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.
@@ -88,6 +90,15 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
     wall-end-approach tables for mode2 case6--9.
 - `tools/route_precompute/`
   - Deterministic table generator, stale-input check, and numeric verifier.
+- `tools/tuning/turn_clearance.py`
+  - Host-only full-body wall/post clearance evaluator and candidate search.
+    It uses the actual shortest-run turn profile, keeps uncertainty separate
+    from free margin, and applies the same envelope gate to video trajectories.
+    Video acceptance also requires a complete angle/out-offset, bounded tracking
+    gaps, pre/post-roll, and endpoint/heading closure; incomplete captures fail
+    analysis rather than being treated as clear.  Normalized video registration
+    is limited to shape/repeatability; only board-coordinate absolute registration
+    with a matching measured scene can qualify physical body-to-maze clearance.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_trace_diag.c`
   - Trace dump/selftest/CSV/bin diagnostic output.
 - `nvm/nvm.c`

@@ -1,0 +1,248 @@
+{
+  "schema": "nightfall_turn_calibration_manifest_v1",
+  "machine": "f413_preorder-mini_r2_0",
+  "turn": {
+    "mode": 2,
+    "case": 0,
+    "sub": 6,
+    "path_codes": [203, 901, 1001],
+    "turn_code": 901,
+    "side": "right",
+    "angle_policy": "angle_accum_exact"
+  },
+  "parameter_hash_format": "sha256 of velocity|alpha|configured_angle|effective_angle|dist_in|dist_out, each formatted with .9g",
+  "source_hash_format": "sha256 of exact file bytes; trajectory_set_sha256 hashes the sorted trajectory file-hash/path records used for the dataset; non_contact_corpus_sha256 hashes sorted '<id>  <report_sha256>  <trajectory_set_sha256>\\n' records",
+  "non_contact_corpus_sha256": "0955902ea80dbd936401ff197d8de944897d6f89b7c53249818ac401991168cf",
+  "datasets": [
+    {
+      "id": "mode2-sub6-1786258819565",
+      "params_source_commit": "0e0c3ea",
+      "params_provenance": "exact-source-content-and-timeline-pairing",
+      "params_record_sha256": "bf1155bea6da2c37f0f731a8ec9e48483f61d4b56c115e6118c68edf41706e6a",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 6888.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 9.0,
+        "dist_out_mm": 17.0
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786258819565-sub6.json",
+      "report_sha256": "fcf9f6780fc3396a58367de48b566c82b0c22020e006209ce0352c22de334d4d",
+      "trajectory_set_sha256": "5143d836f81c2ae21861dd571a603244c1ce2382062f4592c5d0d3c491016c5a",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "legacy-two-label-heading; reprocess absolute x_mm/y_mm before fitting",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-after-reprocessing",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786261570767",
+      "params_source_commit": "e84d158",
+      "params_provenance": "exact-source-content-and-timeline-pairing",
+      "params_record_sha256": "9c6ccb3147aaada6c444c059f070004db28fc88efc9abe4e533b98d1679d25e4",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9150.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 3.5,
+        "dist_out_mm": 22.0
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786261570767-sub6.json",
+      "report_sha256": "a4089b485a480dc89aa6f11ec12697e5e5f2c95f899385f83a125a4f8cd8c55f",
+      "trajectory_set_sha256": "9fc5280df8cf582e1cb6ea7f61b683e0331acc826edabd69119876ada2411b62",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "legacy-two-label-heading; reprocess absolute x_mm/y_mm before fitting",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-after-reprocessing",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786262696226",
+      "params_source_commit": "c59393d",
+      "params_provenance": "exact-source-content-and-timeline-pairing",
+      "params_record_sha256": "7127538f8ac412bffbde7dc9fc7e60fbc8fff5a02fc81d1650707e9c12f01c63",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9750.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 0.0,
+        "dist_out_mm": 25.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786262696226-sub6.json",
+      "report_sha256": "2e004b1adb9f88be4da24b203364e48019cb8a314fd0a481df42c20149daeadc",
+      "trajectory_set_sha256": "51220025761bcaa0a99e743abd81147cb67b15e55b6e1f713b590b279ef6c62a",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "legacy-two-label-heading; reprocess absolute x_mm/y_mm before fitting",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-after-reprocessing; zero-entry is a discrete execution regime",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786328511127",
+      "params_source_commit": "682576a",
+      "params_provenance": "exact-source-content-and-timeline-pairing",
+      "params_record_sha256": "bcba6a2abbb748ac6c4f3347dfe5ea88643f7667d9980bb328473c2c89615215",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9750.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 4.0,
+        "dist_out_mm": 17.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786328511127-sub6.json",
+      "report_sha256": "9787042c8cecc83f59b69ac9eb27f42ea71a39937d156fa0feb8c30844fbbb81",
+      "trajectory_set_sha256": "f751fe9b81bc0a1d285c77c6ae763f67cab93cd90fd01389fd636af749ade923",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "legacy-two-label-heading; reprocess absolute x_mm/y_mm before fitting",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-after-reprocessing",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786331386662",
+      "params_source_commit": "9ef4f6a",
+      "params_provenance": "exact-worklog-content",
+      "params_record_sha256": "50d22d01d5237e49d50870c4072a418dd4d968a0bd17f98b9d206deec26b7ef9",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9750.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 1.5,
+        "dist_out_mm": 19.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786331386662-sub6-trajectory-heading.json",
+      "report_sha256": "3c36156bbaa76816e0ce0eb5d280b0a6419ad264522c0aeb5421835206ee7210",
+      "trajectory_set_sha256": "6332a723f22432ac237d58de1a52e37e96759da171243523796787974a62a3b4",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "straight-trajectory-heading",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-core-residual-only",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786335760",
+      "params_source_commit": "b669ad3",
+      "params_provenance": "exact-worklog-content",
+      "params_record_sha256": "4585113fd25fbaa29f0da66dea6d30af790a93b2be2cde562a17ffee227b3144",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9750.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 0.0,
+        "dist_out_mm": 19.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786335760-sub6-trajectory-heading.json",
+      "report_sha256": "9ced80f01520cbfc8789188f963b856de1dff138164b02ce49f7dfb93e4c22ac",
+      "trajectory_set_sha256": "a6c2dfca269b5ea168a275e06a143986512ff5b6964316bb0bc154e66d54f026",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "straight-trajectory-heading",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-separate-zero-entry-regime",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786337965",
+      "params_source_commit": "0bdcdbf",
+      "params_provenance": "exact-worklog-content",
+      "params_record_sha256": "50d22d01d5237e49d50870c4072a418dd4d968a0bd17f98b9d206deec26b7ef9",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 9750.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 1.5,
+        "dist_out_mm": 19.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786337965-sub6-trajectory-heading.json",
+      "report_sha256": "9df1cdffd037f214d832c9c10801a671ebedb359af66de94daa3dd322a16e1dc",
+      "trajectory_set_sha256": "0fe3bac43c156753860a787520b872b0942895d39dc8af56990f6196dcf376af",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "straight-trajectory-heading",
+      "wall_layout": "not-recorded",
+      "fit_role": "repeatability-validation",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786340681607",
+      "params_source_commit": "3bc4b6f",
+      "params_provenance": "exact-worklog-content",
+      "params_record_sha256": "935a8de152de59d6c7b16d70efb1d3f8233b0ed58d60a119e139b1fbecd7810e",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 10250.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 3.5,
+        "dist_out_mm": 19.5
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786340681607-sub6-trajectory-heading.json",
+      "report_sha256": "0847d485b85584d90ba7b8fe83febbc5149540fe2690a9d0abb72a50529b5ad5",
+      "trajectory_set_sha256": "fa41f3c3e13aa095584516ae700e8574e808f381f9f9aa4a5dc4077078de8422",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "straight-trajectory-heading",
+      "wall_layout": "not-recorded",
+      "fit_role": "train-core-residual-only",
+      "contact": false
+    },
+    {
+      "id": "mode2-sub6-1786342957398",
+      "params_source_commit": "6b4403d",
+      "params_provenance": "exact-flash-read-and-trace",
+      "params_record_sha256": "d28388f245b0d7579a871ae13fc238677a0e59276d35ffac8dda8776c132ac26",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 10250.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 3.5,
+        "dist_out_mm": 22.0
+      },
+      "report": "sessions/hfr-tests/pixel8/manual-runs/analysis-1786342957398-sub6-trajectory-heading.json",
+      "report_sha256": "9d6c3c9c1ffcd8ea5a433c3ef180eaa1b251bd6659a2365f374d3617a5f4550a",
+      "trajectory_set_sha256": "05bb6460e344cf50f539e181ee5cff659290f35f13e1a1137879a0267108c664",
+      "trajectory_paths_from_report": "trials[].path",
+      "coordinate_method": "straight-trajectory-heading",
+      "wall_layout": "not-recorded",
+      "fit_role": "current-no-contact-core-residual",
+      "contact": false
+    },
+    {
+      "id": "mode2-case6-1786426379761-contact",
+      "params_source_commit": "3d15557",
+      "params_provenance": "exact-current-content-and-1ms-trace",
+      "params_record_sha256": "d28388f245b0d7579a871ae13fc238677a0e59276d35ffac8dda8776c132ac26",
+      "params": {
+        "velocity_mm_s": 500.0,
+        "alpha_deg_s2": 10250.0,
+        "configured_angle_deg": 133.9,
+        "effective_angle_deg": 135.0,
+        "dist_in_mm": 3.5,
+        "dist_out_mm": 22.0
+      },
+      "video": "sessions/hfr-tests/pixel8/manual-runs/Pixel_8_wifi-b8b3b035-731_manual-1786426379761-run0001/hfr_capture.mp4",
+      "video_sha256": "4f296369fcdcbe945a1494d446aad04892434c73084bb677cc0fdb02c11e1537",
+      "hfr_report": "sessions/hfr-tests/pixel8/manual-runs/Pixel_8_wifi-b8b3b035-731_manual-1786426379761-run0001/hfr_report.json",
+      "hfr_report_sha256": "ba30ce04888943087c8dd1defd14b10c956bc16d380de033a2218cfd352714ae",
+      "trajectory": "sessions/hfr-tests/pixel8/manual-runs/Pixel_8_wifi-b8b3b035-731_manual-1786426379761-run0001/analysis_case6_first_turn/trajectory_120fps_two_marker/trajectory.csv",
+      "trajectory_sha256": "91f1afd7d51b0f30a4bc1db69b522adf0bae173a4e05fd2b29ac6378989aa079",
+      "trace": "tools/logging/logs/trace_bin_20260811_143737.csv",
+      "trace_sha256": "3fa5c4e887ffaff71de005c6b09619cba5d0565eff454bda525177541ab5e8a7",
+      "coordinate_method": "two-marker-heading; local core extraction",
+      "wall_layout": "saved maze, first D135-in; right-side wall/post contact visible",
+      "fit_role": "exclude-from-no-contact-fit; contact-location-validation",
+      "contact": true
+    }
+  ],
+  "known_limitations": [
+    "completed-machine front/rear/left/right dimensions from the blue-label centre are not recorded",
+    "historical no-contact wall layouts are not recorded and cannot certify absolute clearance",
+    "blue/red labels are above the floor homography plane and need position uncertainty or height correction",
+    "dist_in_mm equal to zero is a discrete execution regime and must not be interpolated with positive-entry runs"
+  ]
+}
