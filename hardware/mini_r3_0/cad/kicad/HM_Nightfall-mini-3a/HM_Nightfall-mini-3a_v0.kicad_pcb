@@ -533,7 +533,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:SOT50P160X90-3N"
 		(layer "F.Cu")
 		(uuid "04f2f6e7-04e5-486b-b223-b2b4b53dc8e3")
-		(at 131.8 89.5 90)
+		(at 131.8 87.5 90)
 		(property "Reference" "UL0"
 			(at -3.456619 -2.541632 0)
 			(unlocked yes)
@@ -1809,7 +1809,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "0cf0b7f5-ab7b-4696-8a70-39c7b416c34e")
-		(at 164 93 180)
+		(at 164.5 81.8 180)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R1FR0"
 			(at -0.635 -0.635 0)
@@ -1994,7 +1994,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "0d404b59-89ca-47dc-b750-81b74eb9f20b")
-		(at 164.630098 97.5 173)
+		(at 164.849463 97.486583 173)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "PT_FR0"
 			(at 1.904964 -0.381065 145)
@@ -5578,7 +5578,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "278d798a-d531-4610-8023-f3b0843de9f7")
-		(at 162.4 88.5 90)
+		(at 162.4 87.8 90)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R2R0"
 			(at -0.635 -0.635 90)
@@ -8006,7 +8006,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "3a4f3782-e946-4a8c-bfbd-439d82b71917")
-		(at 134.6 88.5 90)
+		(at 134.6 87.8 90)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R2L0"
 			(at -0.635 -0.635 90)
@@ -9811,7 +9811,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:SOT50P160X90-3N"
 		(layer "F.Cu")
 		(uuid "4773e99a-40df-4082-97cf-3e39accdbb7a")
-		(at 165.2 89.5 90)
+		(at 165.2 87.5 90)
 		(property "Reference" "UR0"
 			(at -3.456619 -2.541632 90)
 			(unlocked yes)
@@ -10668,7 +10668,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "4d51d5d4-59e2-4f88-a676-5ba9339dc011")
-		(at 162.4 90.7 180)
+		(at 161 81 180)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R4R0"
 			(at -0.635 -0.635 0)
@@ -13236,7 +13236,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:LED3MM"
 		(layer "F.Cu")
 		(uuid "67d45170-5d2e-4213-a902-a13152a7cfc9")
-		(at 132.372098 97.5 7)
+		(at 132.152733 97.486583 7)
 		(descr "LED\n\n3 mm, round")
 		(property "Reference" "PT_FL0"
 			(at 1.905009 -0.380994 263)
@@ -17223,7 +17223,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "6fef0ca1-5090-4d8c-a827-6008cd172ef1")
-		(at 134.6 90.7 180)
+		(at 136 81 180)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R4L0"
 			(at -0.635 -0.635 0)
@@ -19636,7 +19636,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:R0402"
 		(layer "F.Cu")
 		(uuid "8a00132f-e73e-4c19-9499-3f9c49fafb2f")
-		(at 133 93)
+		(at 132.5 81.8)
 		(descr "Chip RESISTOR 0402 EIA (1005 Metric)")
 		(property "Reference" "R1FL0"
 			(at -0.635 -0.635 0)
@@ -24201,7 +24201,7 @@
 	(footprint "HM_Nightfall-mini-2e_v1:FAN_WIRE_PADS_2P"
 		(layer "F.Cu")
 		(uuid "f12aa50b-8c6a-412f-b53b-f29ec7fe18e6")
-		(at 132 104.5)
+		(at 137.8 84.2 -51)
 		(descr "Two direct-solder wire pads using the mini-2e motor-pad geometry")
 		(tags "fan wire solder pad mini-2e")
 		(property "Reference" "J2"
