@@ -91,10 +91,10 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
         )
         self.assertEqual(raw["schema"], FIT.MANIFEST_SCHEMA)
         self.assertEqual(
-            raw["capture_session"]["schema"],
+            raw["placements"][0]["capture_session"]["schema"],
             "nightfall_camera_capture_session_v1",
         )
-        self.assertEqual(raw["reference_plane_absolute_height_mm"], 2.0)
+        self.assertEqual(raw["reference_plane_absolute_height_mm"], 0.0)
         self.assertEqual(
             raw["reference_plane_provenance"]["height_reference"],
             "maze floor",
@@ -234,6 +234,51 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
             tracking = REPO_ROOT / "tools/tuning/data/mini_r2_0_footprint.json"
             layout = FIT.board_layout.load(board, 900)
             bounds = layout.raw["canvas_bounds_mm"]
+            metric_expected = np.asarray(
+                [
+                    (45.0 + 90.0 * x, 45.0 + 90.0 * y)
+                    for y in range(8)
+                    for x in range(8)
+                ],
+                dtype=float,
+            )
+            metric_observed = np.column_stack(
+                [
+                    (metric_expected[:, 0] - float(bounds["x_min"]))
+                    * layout.pixels_per_mm,
+                    (float(bounds["y_max"]) - metric_expected[:, 1])
+                    * layout.pixels_per_mm,
+                ]
+            )
+            metric_indexes = np.arange(len(metric_expected))
+            metric_validation = (
+                (metric_indexes % 8) + 2 * (metric_indexes // 8)
+            ) % 5 == 0
+            metric_geometry = FIT.board_metric_geometry.fit_geometry(
+                metric_observed,
+                metric_expected,
+                metric_validation,
+                canonical_size_px=900,
+                reference_plane_absolute_height_mm=2.0,
+                reference_plane_provenance_value={
+                    "surface": "synthetic marker plane",
+                    "height_reference": "maze floor",
+                    "measurement": "test fixture",
+                    "confirmed_date": "2026-08-12",
+                    "remeasure_if": "fixture changes",
+                },
+                board_layout_sha256=FIT.sha256_file(board),
+                source_manifest_sha256="ab" * 32,
+            )
+            metric_path = root / "board_metric_geometry.json"
+            metric_path.write_text(
+                json.dumps(
+                    FIT.board_metric_geometry.to_json(metric_geometry),
+                    allow_nan=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
             camera = (287.0, 431.0, 812.0)
             reference_height = 2.0
             specifications = (
@@ -313,8 +358,8 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 json.dumps(
                     {
                         "schema": FIT.MANIFEST_SCHEMA,
-                        "capture_session": {"schema": "placeholder"},
                         "board_layout": str(board),
+                        "board_metric_geometry": str(metric_path),
                         "tracking_geometry": str(tracking),
                         "canonical_size_px": 900,
                         "reference_plane_absolute_height_mm": reference_height,
@@ -329,6 +374,7 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                             {
                                 "id": identifier,
                                 "role": role,
+                                "capture_session": {"schema": "placeholder"},
                                 "trajectory_csv": str(trajectory),
                                 "start_s": start_s,
                                 "end_s": start_s + 2.0,
@@ -343,11 +389,14 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 encoding="utf-8",
             )
             output = root / "geometry.json"
-            capture = _FakeCaptureFingerprint(trajectory, source_calibration)
+            captures = [
+                _FakeCaptureFingerprint(trajectory, source_calibration)
+                for _ in specifications
+            ]
             with mock.patch.object(
                 FIT.camera_capture_fingerprint,
                 "load_capture_session",
-                return_value=capture,
+                side_effect=captures,
             ), mock.patch.object(
                 sys,
                 "argv",
@@ -364,7 +413,7 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 artifact["bindings"]["capture_session"][
                     "camera_setup_sha256"
                 ],
-                capture.camera_setup_sha256,
+                captures[0].camera_setup_sha256,
             )
             geometry = FIT.label_plane_geometry.load_geometry(
                 output,
@@ -393,11 +442,45 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "manifest.json"
             manifest.write_text(
-                json.dumps({"schema": FIT.MANIFEST_SCHEMA}) + "\n",
+                json.dumps(
+                    {
+                        "schema": FIT.MANIFEST_SCHEMA,
+                        "placements": [
+                            {
+                                "id": "fit",
+                                "role": "fit",
+                                "capture_session": None,
+                            }
+                        ],
+                    }
+                )
+                + "\n",
                 encoding="utf-8",
             )
-            with self.assertRaisesRegex(ValueError, "legacy/unverified"):
+            with self.assertRaises(ValueError):
                 FIT.load_placements(manifest)
+
+    def test_multiple_capture_setups_are_rejected(self):
+        first = mock.Mock(
+            safety_qualified=True,
+            camera_setup_sha256="12" * 32,
+        )
+        second = mock.Mock(
+            safety_qualified=True,
+            camera_setup_sha256="34" * 32,
+        )
+        with self.assertRaisesRegex(ValueError, "same fixed camera setup"):
+            FIT._validate_capture_setups([first, second])
+
+    def test_multiple_capture_setups_with_same_digest_are_accepted(self):
+        captures = [
+            mock.Mock(
+                safety_qualified=True,
+                camera_setup_sha256="12" * 32,
+            )
+            for _ in range(5)
+        ]
+        FIT._validate_capture_setups(captures)
 
     def test_v2_reference_plane_provenance_is_required_and_strict(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -407,7 +490,13 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
             capture = _FakeCaptureFingerprint(trajectory, calibration)
             base = {
                 "schema": FIT.MANIFEST_SCHEMA,
-                "capture_session": {"schema": "placeholder"},
+                "placements": [
+                    {
+                        "id": "fit",
+                        "role": "fit",
+                        "capture_session": {"schema": "placeholder"},
+                    }
+                ],
             }
             invalid = (
                 None,

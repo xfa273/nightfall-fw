@@ -27,11 +27,12 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 import board_layout
+import board_metric_geometry
 import camera_capture_fingerprint
 import label_plane_geometry
 
 
-MANIFEST_SCHEMA = "nightfall_label_plane_known_pose_manifest_v2"
+MANIFEST_SCHEMA = "nightfall_label_plane_known_pose_manifest_v3"
 CALIBRATION_SCHEMA = "nightfall_label_plane_camera_fit_v1"
 SAFETY_MINIMUM_FIT_SPAN_MM = 400.0
 SAFETY_MINIMUM_FIT_HULL_AREA_MM2 = 120000.0
@@ -56,6 +57,26 @@ class Placement:
     source: dict[str, Any]
     stability_p95_mm: float
     stationary_duration_s: float
+
+
+def _validate_capture_setups(
+    captures: Sequence[
+        camera_capture_fingerprint.CameraCaptureFingerprint
+    ],
+) -> None:
+    if not captures:
+        raise ValueError("at least one placement capture_session is required")
+    if any(not capture.safety_qualified for capture in captures):
+        raise ValueError(
+            "every placement capture_session must be safety-qualified"
+        )
+    camera_setup_digests = {
+        capture.camera_setup_sha256 for capture in captures
+    }
+    if None in camera_setup_digests or len(camera_setup_digests) != 1:
+        raise ValueError(
+            "all stationary placements must use the same fixed camera setup"
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -242,6 +263,7 @@ def _canonical_to_board(
 def _trajectory_label_centres(
     path: Path,
     layout: board_layout.BoardLayout,
+    metric_geometry: Optional[board_metric_geometry.BoardMetricGeometry] = None,
     start_s: Optional[float] = None,
     end_s: Optional[float] = None,
 ) -> tuple[np.ndarray, np.ndarray, float, int, float]:
@@ -297,8 +319,12 @@ def _trajectory_label_centres(
                 selected_times.append(time_s)
     if len(blue_px) < 100:
         raise ValueError(f"{path} has fewer than 100 simultaneous label samples")
-    blue_mm = _canonical_to_board(np.asarray(blue_px), layout)
-    red_mm = _canonical_to_board(np.asarray(red_px), layout)
+    if metric_geometry is None:
+        blue_mm = _canonical_to_board(np.asarray(blue_px), layout)
+        red_mm = _canonical_to_board(np.asarray(red_px), layout)
+    else:
+        blue_mm = metric_geometry.map_points(np.asarray(blue_px, dtype=float))
+        red_mm = metric_geometry.map_points(np.asarray(red_px, dtype=float))
     blue_median = np.median(blue_mm, axis=0)
     red_median = np.median(red_mm, axis=0)
     blue_distance = np.linalg.norm(blue_mm - blue_median, axis=1)
@@ -352,14 +378,6 @@ def load_placements(
     if manifest.get("schema") != MANIFEST_SCHEMA:
         raise ValueError(f"manifest schema must be {MANIFEST_SCHEMA}")
     base = manifest_path.resolve().parent
-    capture = camera_capture_fingerprint.load_capture_session(
-        base, manifest.get("capture_session")
-    )
-    if not capture.safety_qualified:
-        raise ValueError(
-            "known-pose capture_session is legacy/unverified and cannot fit "
-            "safety-qualified geometry"
-        )
     reference_provenance = _reference_plane_provenance(
         manifest.get("reference_plane_provenance")
     )
@@ -370,6 +388,24 @@ def load_placements(
     canonical_size = int(_finite(manifest.get("canonical_size_px", 900), "canonical_size_px"))
     layout = board_layout.load(board_path, canonical_size)
     board_digest = sha256_file(board_path)
+    metric_path: Optional[Path] = None
+    metric_geometry: Optional[board_metric_geometry.BoardMetricGeometry] = None
+    if manifest.get("board_metric_geometry") is not None:
+        metric_path = _resolve(
+            base,
+            manifest.get("board_metric_geometry"),
+            "board_metric_geometry",
+        )
+        metric_geometry = board_metric_geometry.load_geometry(
+            metric_path,
+            expected_board_layout_sha256=board_digest,
+            expected_canonical_size_px=canonical_size,
+            require_safety_qualified=True,
+        )
+    if metric_geometry is None:
+        raise ValueError(
+            "board_metric_geometry is required before label-plane calibration"
+        )
     tracking = _load_json(tracking_path, "tracking geometry")
     blue_height, red_height, front_distance = _tracking_values(tracking)
     reference_height = _finite(
@@ -378,10 +414,23 @@ def load_placements(
     )
     if reference_height < 0.0:
         raise ValueError("reference-plane height must be non-negative")
+    if metric_geometry is not None and not math.isclose(
+        reference_height,
+        metric_geometry.reference_plane_absolute_height_mm,
+        rel_tol=0.0,
+        abs_tol=1e-6,
+    ):
+        raise ValueError(
+            "known-pose reference-plane height does not match "
+            "board_metric_geometry"
+        )
     items = manifest.get("placements")
     if not isinstance(items, list) or not items:
         raise ValueError("placements must be a non-empty array")
     placements: list[Placement] = []
+    captures: list[
+        camera_capture_fingerprint.CameraCaptureFingerprint
+    ] = []
     ids: set[str] = set()
     for index, item in enumerate(items):
         field = f"placements[{index}]"
@@ -396,6 +445,16 @@ def load_placements(
         role = item.get("role")
         if role not in ("fit", "validation"):
             raise ValueError(f"{field}.role must be fit or validation")
+        capture = camera_capture_fingerprint.load_capture_session(
+            base,
+            item.get("capture_session"),
+        )
+        if not capture.safety_qualified:
+            raise ValueError(
+                f"{field}.capture_session is legacy/unverified and cannot "
+                "fit safety-qualified geometry"
+            )
+        captures.append(capture)
         true_blue = _pair(item.get("true_blue_center_mm"), f"{field}.true_blue_center_mm")
         heading_deg = _finite(item.get("true_heading_deg"), f"{field}.true_heading_deg")
         start_s = (
@@ -449,7 +508,7 @@ def load_placements(
             expected_canonical_size=canonical_size,
         )
         blue, red, stability, sample_count, duration = _trajectory_label_centres(
-            trajectory, layout, start_s, end_s
+            trajectory, layout, metric_geometry, start_s, end_s
         )
         placements.append(
             Placement(
@@ -474,14 +533,7 @@ def load_placements(
                 stationary_duration_s=duration,
             )
         )
-    source_trajectories = {
-        item.source["trajectory_csv"] for item in placements
-    }
-    if len(source_trajectories) != 1:
-        raise ValueError(
-            "all stationary placements must be non-overlapping intervals from "
-            "one continuous trajectory"
-        )
+    _validate_capture_setups(captures)
     for first_index, first in enumerate(placements):
         for second in placements[first_index + 1 :]:
             if first.source["trajectory_csv"] != second.source["trajectory_csv"]:
@@ -521,7 +573,7 @@ def load_placements(
         red_height,
         front_distance,
         placements,
-        capture,
+        captures,
     )
 
 
@@ -731,10 +783,31 @@ def main() -> int:
             red_height,
             front_distance,
             placements,
-            capture,
+            captures,
         ) = load_placements(args.manifest.resolve())
         reference_provenance = _reference_plane_provenance(
             manifest.get("reference_plane_provenance")
+        )
+        metric_path = (
+            _resolve(
+                args.manifest.resolve().parent,
+                manifest.get("board_metric_geometry"),
+                "board_metric_geometry",
+            )
+            if manifest.get("board_metric_geometry") is not None
+            else None
+        )
+        metric_geometry = (
+            board_metric_geometry.load_geometry(
+                metric_path,
+                expected_board_layout_sha256=sha256_file(board_path),
+                expected_canonical_size_px=int(
+                    _finite(manifest.get("canonical_size_px", 900), "canonical_size_px")
+                ),
+                require_safety_qualified=True,
+            )
+            if metric_path is not None
+            else None
         )
         fit = [item for item in placements if item.role == "fit"]
         validation = [item for item in placements if item.role == "validation"]
@@ -824,13 +897,32 @@ def main() -> int:
             "front_label_distance_mm": front_distance,
             "bindings": {
                 "board_layout_sha256": board_digest,
+                "board_metric_geometry": (
+                    {
+                        "path": str(metric_path),
+                        "sha256": sha256_file(metric_path),
+                        "reference_plane_absolute_height_mm": (
+                            metric_geometry.reference_plane_absolute_height_mm
+                        ),
+                    }
+                    if metric_path is not None and metric_geometry is not None
+                    else None
+                ),
                 "tracking_calibration_sha256": tracking_digest,
-                "capture_session": capture.to_json(),
+                # The first fingerprint is the canonical setup binding used
+                # by existing target-trajectory consumers.  Every placement
+                # fingerprint is also retained for reproducibility, and the
+                # loader above requires their camera_setup_sha256 values to
+                # match exactly.
+                "capture_session": captures[0].to_json(),
+                "capture_sessions": [
+                    capture.to_json() for capture in captures
+                ],
             },
             "qualification": {
                 "safety_qualified": qualified,
                 "capture_session_safety_qualified": (
-                    capture.safety_qualified
+                    all(capture.safety_qualified for capture in captures)
                 ),
                 "failures": failures,
             },

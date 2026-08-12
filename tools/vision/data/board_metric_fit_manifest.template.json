@@ -1,0 +1,22 @@
+{
+  "schema": "nightfall_board_metric_fit_manifest_v1",
+  "board_layout": "board_layout_8x8_60mm.json",
+  "canonical_size_px": 900,
+  "reference_plane_absolute_height_mm": 0.0,
+  "reference_plane_provenance": {
+    "surface": "matte circular marks flush with the maze floor",
+    "height_reference": "maze floor",
+    "measurement": "paint or inlay at the floor plane; enter the measured top height instead when using vinyl",
+    "confirmed_date": "REPLACE",
+    "remeasure_if": "the floor overlay, mark material, board surface, or mounting changes"
+  },
+  "observations_csv": "board_metric_observations.csv",
+  "target": {
+    "kind": "flush_cell_centre_lattice",
+    "pitch_mm": 90.0,
+    "coordinates_mm": "x=45+90*i, y=45+90*j, i,j=0..7",
+    "minimum_detected_points": 32,
+    "held_out_rule": "(i + 2*j) modulo 5 equals zero",
+    "notes": "Use matte, flush marks on one measured plane. Do not use wall tops."
+  }
+}

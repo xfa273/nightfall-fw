@@ -70,15 +70,23 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   planes differ, absolute video acceptance additionally requires a qualified
   stationary camera/label-plane calibration and a hash-bound corrected-CSV
   sidecar; uncorrected video remains diagnostic only.  The current 3D-printed
-  ArUco top surface is user-confirmed 2 mm above the maze floor, equal to the
-  red-label plane, so that physical input is resolved; only the 10 mm blue
-  plane receives the 8 mm relative-height correction.  Absolute qualification
+  ArUco top surface is user-confirmed 2 mm above the maze floor and is retained
+  only for image registration.  The dense metric reference is the flush maze
+  floor at 0 mm, so red 2 mm and blue 10 mm are both plane-corrected.  Absolute qualification
   requires HFR Recorder 0.5.7 or newer with AF off at fixed 1.05-diopter focus,
   stationary per-frame lens metadata, same-run report/video/Camera2-sidecar
   SHA/integrity, and matching calibration/run camera-setup fingerprints.
   Recorder 0.5.6 introduced geometry metadata but does not meet that final
-  contract.  The remaining action is one qualifying fixed-rig capture
-  containing four spanning stationary poses and one held-out pose.
+  contract.  The first fixed-rig five-pose attempt exposed a more fundamental
+  board-coordinate problem before label-plane fitting: four ruler-placed
+  corner positions were observed 26--30 mm inward, with an almost uniform
+  `1.066 x / 1.071 y` correction and only about 1 mm attributable to Camera2
+  lens distortion.  Four outer markers therefore remain registration anchors,
+  not metric qualification.  Absolute work is blocked on a distributed flush
+  board lattice (32+ points with 8+ held out), a qualified dense metric map
+  with <=1.0 mm held-out p95 and <=1.5 mm maximum error, and only then a new
+  label-plane five-pose fit.  The failed five-pose set remains diagnostic and
+  must not change turn parameters.
   Modes 3-7 remain parameter baselines and are constrained by explicit F413
   straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.

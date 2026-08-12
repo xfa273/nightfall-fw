@@ -16,6 +16,7 @@ import numpy as np
 
 import aruco_trajectory as aruco
 import board_layout
+import board_metric_geometry
 import camera_capture_fingerprint
 import label_plane_geometry
 
@@ -32,6 +33,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("trajectory_csv", type=Path)
     parser.add_argument("--board-layout", type=Path, required=True)
+    parser.add_argument(
+        "--board-metric-geometry",
+        type=Path,
+        default=None,
+        help=(
+            "qualified dense board map used by the source trajectory; "
+            "required when the label-plane calibration binds one"
+        ),
+    )
     parser.add_argument("--tracking-geometry", type=Path, required=True)
     parser.add_argument("--label-plane-geometry", type=Path, required=True)
     parser.add_argument(
@@ -223,6 +233,7 @@ def correct_rows(
     layout: board_layout.BoardLayout,
     geometry: label_plane_geometry.LabelPlaneGeometry,
     smooth_window: int,
+    metric_geometry: board_metric_geometry.BoardMetricGeometry | None = None,
 ) -> tuple[list[dict[str, str]], dict[str, Any]]:
     blue_px_x = _column(rows, "label_x_px")
     blue_px_y = _column(rows, "label_y_px")
@@ -235,12 +246,32 @@ def correct_rows(
         raise ValueError("trajectory has invalid video/time timestamps")
     if not np.all(np.diff(time_s) > 0.0):
         raise ValueError("trajectory timestamps must be strictly increasing")
-    apparent_blue_x, apparent_blue_y = _canonical_to_board(
-        blue_px_x, blue_px_y, layout
-    )
-    apparent_red_x, apparent_red_y = _canonical_to_board(
-        red_px_x, red_px_y, layout
-    )
+    if metric_geometry is None:
+        apparent_blue_x, apparent_blue_y = _canonical_to_board(
+            blue_px_x, blue_px_y, layout
+        )
+        apparent_red_x, apparent_red_y = _canonical_to_board(
+            red_px_x, red_px_y, layout
+        )
+    else:
+        apparent_blue_x = np.full(len(rows), np.nan, dtype=float)
+        apparent_blue_y = np.full(len(rows), np.nan, dtype=float)
+        apparent_red_x = np.full(len(rows), np.nan, dtype=float)
+        apparent_red_y = np.full(len(rows), np.nan, dtype=float)
+        blue_finite = np.isfinite(blue_px_x) & np.isfinite(blue_px_y)
+        red_finite = np.isfinite(red_px_x) & np.isfinite(red_px_y)
+        if np.any(blue_finite):
+            apparent_blue = metric_geometry.map_points(
+                np.column_stack([blue_px_x[blue_finite], blue_px_y[blue_finite]])
+            )
+            apparent_blue_x[blue_finite], apparent_blue_y[blue_finite] = (
+                apparent_blue.T
+            )
+        if np.any(red_finite):
+            apparent_red = metric_geometry.map_points(
+                np.column_stack([red_px_x[red_finite], red_px_y[red_finite]])
+            )
+            apparent_red_x[red_finite], apparent_red_y[red_finite] = apparent_red.T
     source_pose_valid = _column(rows, "pose_valid")
     source_heading_valid = _column(rows, "heading_valid")
     if not np.any(np.isfinite(source_pose_valid)):
@@ -415,6 +446,13 @@ def main() -> int:
         ):
             if not path.is_file():
                 raise ValueError(f"input does not exist: {path}")
+        if (
+            args.board_metric_geometry is not None
+            and not args.board_metric_geometry.is_file()
+        ):
+            raise ValueError(
+                f"input does not exist: {args.board_metric_geometry}"
+            )
         if args.canonical_size < 400:
             raise ValueError("--canonical-size must be at least 400")
         if args.smooth_window < 5 or args.smooth_window % 2 == 0:
@@ -429,6 +467,16 @@ def main() -> int:
             )
         layout = board_layout.load(args.board_layout, args.canonical_size)
         board_digest = sha256_file(args.board_layout)
+        dense_metric = (
+            board_metric_geometry.load_geometry(
+                args.board_metric_geometry,
+                expected_board_layout_sha256=board_digest,
+                expected_canonical_size_px=args.canonical_size,
+                require_safety_qualified=True,
+            )
+            if args.board_metric_geometry is not None
+            else None
+        )
         source_calibration_path = (
             args.source_calibration_json
             if args.source_calibration_json is not None
@@ -475,6 +523,29 @@ def main() -> int:
             expected_board_layout_sha256=board_digest,
             expected_tracking_calibration_sha256=tracking_digest,
         )
+        try:
+            geometry_raw = json.loads(
+                args.label_plane_geometry.read_text(encoding="utf-8")
+            )
+            metric_binding = geometry_raw["bindings"].get(
+                "board_metric_geometry"
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise ValueError("label-plane geometry has invalid bindings") from exc
+        if metric_binding is None:
+            if dense_metric is not None:
+                raise ValueError(
+                    "label-plane calibration did not use board_metric_geometry"
+                )
+        else:
+            if dense_metric is None:
+                raise ValueError(
+                    "label-plane calibration requires --board-metric-geometry"
+                )
+            if not isinstance(metric_binding, dict) or metric_binding.get(
+                "sha256"
+            ) != sha256_file(args.board_metric_geometry):
+                raise ValueError("board_metric_geometry binding mismatch")
         labels = tracking["tracking_labels"]
         expected = (
             float(labels["blue_centre"]["surface_height_mm"]),
@@ -513,7 +584,7 @@ def main() -> int:
                 )
             rows = list(reader)
         corrected, correction = correct_rows(
-            rows, layout, geometry, args.smooth_window
+            rows, layout, geometry, args.smooth_window, dense_metric
         )
         if (
             correction["corrected_front_label_error_abs_mm"]["p95"]
@@ -545,6 +616,8 @@ def main() -> int:
                 source_calibration_path,
             )
         }
+        if args.board_metric_geometry is not None:
+            source_paths.add(args.board_metric_geometry.resolve())
         if output.resolve() in source_paths or sidecar.resolve() in source_paths:
             raise ValueError("refusing to overwrite a calibration input")
         if output.resolve() == sidecar.resolve():
@@ -563,6 +636,16 @@ def main() -> int:
             "bindings": {
                 "board_layout": str(args.board_layout.resolve()),
                 "board_layout_sha256": board_digest,
+                "board_metric_geometry": (
+                    str(args.board_metric_geometry.resolve())
+                    if args.board_metric_geometry is not None
+                    else None
+                ),
+                "board_metric_geometry_sha256": (
+                    sha256_file(args.board_metric_geometry)
+                    if args.board_metric_geometry is not None
+                    else None
+                ),
                 "tracking_geometry": str(args.tracking_geometry.resolve()),
                 "tracking_geometry_sha256": tracking_digest,
                 "label_plane_geometry": str(args.label_plane_geometry.resolve()),

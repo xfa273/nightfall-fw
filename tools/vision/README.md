@@ -10,6 +10,12 @@ Reusable tools in this directory are:
   8×8 test board
 - `markerless_trajectory.py`: fixed board markers plus blue centre and red front
   labels; no vehicle ArUco marker is used
+- `extract_board_metric_lattice.py`: detects the full-board flush calibration
+  dot lattice after four-marker frame registration
+- `fit_board_metric_geometry.py` / `board_metric_geometry.py`: fit and apply a
+  held-out-qualified canonical-pixel to board-mm map
+- `verify_board_metric_geometry.py`: rejects a moved or changed rig by checking
+  a new lattice observation against the qualified map
 - `fit_front_label_heading.py`: fits the fixed image-space bias caused by a
   height difference between the two vehicle labels; local diagnostic only
 - `label_plane_geometry.py`: validated ray/plane correction shared by fit,
@@ -140,6 +146,92 @@ pipeline is:
 7. the legacy red body-centroid cue and gated foreground principal axis as
    heading fallbacks.
 
+### Full-board metric calibration
+
+The four outer markers are a registration frame, not a dense metric
+calibration. A homography can make all four marker centres exact while the
+interior remains wrong because of a measured-layout scale error, lens
+distortion, or a non-flat support. This failure was observed on the current
+8x8 rig: four ruler-placed blue-label positions were reported 26--30 mm inward
+near the corners. The error was highly symmetric (approximately `x*1.066` and
+`y*1.071` after the old mapping), so it must not be attributed to placement
+noise or corrected by tuning a turn.
+
+Install a distributed reference pattern before using the camera for absolute
+turn clearance. The preferred permanent pattern is one matte white circular
+mark, 8 mm diameter, centred in every 90 mm half-cell: `(45+90*i,45+90*j)` mm
+for `i,j=0..7`. Use a flush vinyl/paint/inlay surface; a raised calibration
+piece changes parallax and must declare its measured absolute height. Cell
+centres stay 45 mm from maze walls and are less likely to merge with white wall
+tops than boundary lines. Periodic lines can also work, but equal lines have
+ambiguous correspondences, are occluded by walls, and their elevated wall-top
+edges are not coplanar. If lines are used, retain the four unique ArUco anchors
+and add indexed/double marks so every detected intersection has a unique grid
+coordinate.
+
+Capture one stationary, empty-board 0.5.7 clip without moving the camera or
+outer markers. Extract at least 32 of the 64 dots, including at least eight
+automatically reserved held-out points:
+
+```sh
+./.venv-vision/bin/python tools/vision/extract_board_metric_lattice.py \
+  path/to/lattice.mp4 \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --output-csv path/to/board_metric_observations.csv
+```
+
+Inspect the generated overlay: every label must name the actual cell centre.
+Then copy `tools/vision/data/board_metric_fit_manifest.template.json`, point it
+at the observations, set the physical reference-plane height, and fit:
+
+```sh
+./.venv-vision/bin/python tools/vision/fit_board_metric_geometry.py \
+  path/to/board_metric_fit_manifest.json \
+  --output path/to/board_metric_geometry.json
+```
+
+The output is safety-qualified only with 32+ full-board points, 8+ independent
+held-out points, fit p95 <=0.75 mm, held-out p95 <=1.0 mm, and held-out maximum
+<=1.5 mm. Four corner mouse placements are useful for diagnosing the present
+scale error but cannot qualify this map. Pass the qualified artifact to normal
+extraction:
+
+```sh
+./.venv-vision/bin/python tools/vision/markerless_trajectory.py \
+  path/to/capture.mp4 \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --board-metric-geometry path/to/board_metric_geometry.json \
+  --position-source label --label-colour blue \
+  --front-label-colour red --cue-colour none
+```
+
+The corrected `x_mm/y_mm` and their derivatives then come from the dense map;
+canonical pixels remain in the CSV for audit. Add the same
+`board_metric_geometry` path to the known-pose label-plane manifest and pass
+`--board-metric-geometry` to `apply_label_plane_geometry.py`. Metric mapping
+must be qualified before the 10/2 mm label-height fit; otherwise camera-plane
+parameters absorb a board scale error and become physically meaningless.
+If the dots remain on the maze, extract them from an empty/background clip
+after any camera or maze handling and compare against the stored map:
+
+```sh
+./.venv-vision/bin/python tools/vision/verify_board_metric_geometry.py \
+  path/to/board_metric_geometry.json \
+  path/to/current_board_metric_observations.csv \
+  --output-json path/to/board_metric_verification.json
+```
+
+This requires 32 matched points including eight held out and rejects p95 above
+1.0 mm or maximum error above 1.5 mm. Treat failure as a moved rig/board/marker
+or damaged pattern and recalibrate before accepting trajectories.
+
+For a future removable target, a rigid ChArUco/dot plate covering the full
+board is preferable to hand-drawn lines. It must lie on a measured plane and
+the rig must not move after removal. A dedicated low-distortion global-shutter
+camera is the next hardware step if calibrated Pixel data still fail the 1 mm
+held-out gate; it reduces rolling-shutter and focus-breathing risk, but does not
+remove the need for the same full-board calibration.
+
 The blue label is the default position source. Its position and the two-label
 heading stay valid even when green-PCB or body extraction fails. This is still
 not a general colour tracker: the HSV/channel gates were measured for the
@@ -151,19 +243,21 @@ and the applied heading calibration.
 
 The measured `mini_r2_0_unit001` label surfaces are not coplanar: the blue
 centre label is 10 mm above the maze floor and the red front label is 2 mm
-above it. The current homography reference is the 3D-printed ArUco top surface,
-also 2 mm above the floor. It therefore leaves the red centre unchanged but
-displaces the blue centre; the blue-to-red yaw error changes across the field
-of view. `fit_front_label_heading.py` can still fit an older constant
+above it. The old homography reference was the 3D-printed ArUco top surface,
+also 2 mm above the floor; it left red unchanged but displaced blue. The new
+dense board metric reference is the flush maze floor at 0 mm, so both red and
+blue are corrected from their measured 2/10 mm planes. The blue-to-red yaw
+error changes across the field of view. `fit_front_label_heading.py` can still fit an older constant
 image-space bias, but that result is a local diagnostic only. Do not apply it
 in the absolute position/yaw or swept-clearance workflow below.
 
 For full-board correction, use the measured heights and a stationary known-pose
 calibration. The current 3D-printed ArUco markers have a user-confirmed common
-top surface 2.0 mm above the maze floor. This is the homography reference plane:
-the red label is also at 2.0 mm and therefore needs no plane correction, while
-the blue label at 10.0 mm is corrected for its 8.0 mm relative height. Remeasure
-the reference height if the marker fixture or mounting changes. Keep the camera
+top surface 2.0 mm above the maze floor, but they are registration anchors only.
+With flush painted/inlaid lattice dots, set the qualified board-metric reference
+plane to the maze floor at 0.0 mm; the red label is corrected by 2.0 mm and the
+blue label by 10.0 mm. A raised removable target must instead declare its own
+measured absolute height. Keep the camera
 and markers fixed, then record at least five stationary poses spanning the
 camera field. A practical 8x8 set is:
 
@@ -173,9 +267,10 @@ camera field. A practical 8x8 set is:
 - fit: `(675,675)` mm, heading `180 deg`;
 - held-out validation: `(315,405)` mm, heading `90 deg`.
 
-Use a placement jig so the blue centre and cardinal heading are known. One
-continuous video is sufficient if every pose is held still for at least three
-seconds and its `start_s`/`end_s` interval is recorded in a manifest. Use the
+Use a placement jig so the blue centre and cardinal heading are known. The
+poses may be non-overlapping holds in one continuous video or five independent
+manual one-shot captures. Every pose must be held still for at least three
+seconds and its `start_s`/`end_s` interval must be recorded. Use the
 same fixed camera, marker layout, Camera2 physical lens/crop/zoom, fixed
 1.05-diopter focus, and recording profile as the runs the calibration will
 qualify. Absolute qualification requires HFR Recorder 0.5.7 or newer. Recorder
@@ -184,7 +279,7 @@ the final same-run SHA/integrity and fixed-focus contract; 0.5.6 and earlier
 captures remain diagnostic-only. A qualified 0.5.7 capture must report AF off,
 the requested 1.05-diopter focus, stationary and unchanged per-frame lens
 metadata, and a matching camera-setup fingerprint.
-The manifest schema is `nightfall_label_plane_known_pose_manifest_v2`; it names
+The manifest schema is `nightfall_label_plane_known_pose_manifest_v3`; it names
 the committed board layout, the measured footprint/tracking geometry, the
 absolute ArUco reference-plane height, each trajectory interval, and the
 `nightfall_camera_capture_session_v1` artifact set used to prove the camera,
@@ -198,13 +293,13 @@ Fit the camera geometry with:
 ```
 
 Copy `tools/vision/data/label_plane_known_pose_manifest.template.json`, replace
-all six paths in `capture_session`, use that same trajectory path for every
-placement, and adjust the five time windows to the actual stationary holds. Its
-2.0 mm reference height is valid for the current 3D-printed marker fixture only.
-All five windows must be non-overlapping parts of one continuous extracted
-trajectory. Start the 0.5.7 manual one-shot first, wait at least one second for
-the fixed-focus camera pipeline and scene to settle, and only then begin the
-first three-second pose window.
+the qualified `board_metric_geometry`, the six paths in every placement's
+`capture_session`, its matching trajectory, and the five time windows. Its
+0.0 mm reference is valid only for a flush floor pattern. If separate captures are used, all five
+fingerprints must have the same `camera_setup_sha256`; the fit fails closed on
+any camera, lens, focus, crop, zoom, or recording-profile difference. Start each
+0.5.7 manual one-shot first, wait at least one second for the fixed-focus camera
+pipeline and scene to settle, and only then begin its three-second pose hold.
 
 The fit requires four spatially distinct non-collinear positions spanning at
 least 400 mm in both axes and 120000 mm² of convex-hull area, plus an independent
@@ -222,6 +317,7 @@ decoding their videos again because they retain both rectified label centres:
 ./.venv-vision/bin/python tools/vision/apply_label_plane_geometry.py \
   path/to/trajectory.csv \
   --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --board-metric-geometry path/to/board_metric_geometry.json \
   --tracking-geometry tools/tuning/data/mini_r2_0_footprint.json \
   --label-plane-geometry path/to/label_plane_geometry.json \
   --capture-session-manifest path/to/this_run_capture_session.json \

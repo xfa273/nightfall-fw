@@ -268,11 +268,11 @@ legacy方式は、画角全域に90 mm間隔の明るい校正線が見えるこ
 
 ### 3.3 レンズ歪みと高さ
 
-homographyは平面射影だけを表し、レンズの非線形歪みを除去しない。また
-盤面homographyは固定ARマーカの上面を表す。現在の3D造形マーカ上面と
-赤ラベル面は床から2 mm、青ラベル面は10 mmであるため、赤は基準面上で
-不変だが青には相対8 mmの位置依存視差が生じる。homographyの再投影残差
-が小さくても、画角内部のmm精度が正しいとは限らない。
+homographyは平面射影だけを表し、レンズの非線形歪みを除去しない。旧来の
+盤面homographyは固定ARマーカ上面（床上2 mm）を表していたが、新しいdense
+metric mapは床へflushな格子点を基準面0 mmとする。したがって赤ラベル面2 mm
+と青ラベル面10 mmをそれぞれ補正する。homographyの再投影残差が小さくても、
+画角内部のmm精度が正しいとは限らない。
 
 2 mm級の調整へ進む前に、実際の解像度・fps・cropを固定し、盤面の4位置
 と独立した中央1位置へ機体を静置する。`fit_label_plane_camera.py`で
@@ -315,8 +315,8 @@ fallbackとする。最大yaw rateなどを検査し、`heading_valid`を位置�
 `pose_valid`と別にCSVへ出す。`--position-only`ではheading不良を終了
 コードの失敗条件から外すが、推定yawが高精度になるわけではない。
 
-青と赤のラベル面は異なり、現在は青10 mm、赤2 mm、AR基準面2 mmである。
-したがって赤は基準面上で不変だが、青→赤ベクトルの視差は画面位置に
+青と赤のラベル面は異なり、現在は青10 mm、赤2 mm、dense map基準面0 mmである。
+したがって両方に高さ補正が必要で、青→赤ベクトルの視差は画面位置に
 よって変化する。`fit_front_label_heading.py`の定数bias較正は同じ局所画角
 での診断に限る。全画角の絶対判定には、4 fit姿勢＋1 held-out姿勢で作る
 label-plane geometryと各動画の0.5.7 capture fingerprintを用いる。両者の
@@ -570,6 +570,33 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
 次は、標準180 mmセルを4×4区画、90 mm解析pitchで映し、実測layoutと
 空迷路clipを使う例である。
 
+四隅ARマーカだけのhomographyは盤面内部のmetric精度を保証しない。現8x8
+fixtureでは、定規で±2 mm以内に置いた四隅近傍の機体中心が一様に26--30 mm
+内側へ観測された。現layoutに対する補正は概ねX 1.066倍/Y 1.071倍であり、
+レンズ補正単独の寄与は約1 mmなので、主因は固定マーカ実配置とlayout設定の
+縮尺不整合である。これはターンパラメータへ吸収してはいけない。
+
+実運用では盤面の各90 mm half-cell中心 `(45+90*i,45+90*j)` に直径8 mmの
+つや消し白円を、走行を乱さない薄いシール・塗装・埋込みで64点配置する。
+壁上の周期線は遮蔽・高さ視差・周期対応の曖昧性があるため補助に留める。
+空盤面動画から次を実行し、overlayの対応を目視確認する。
+
+```sh
+./.venv-vision/bin/python tools/vision/extract_board_metric_lattice.py \
+  "$session_dir/lattice.mp4" \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --output-csv "$session_dir/board_metric_observations.csv"
+
+./.venv-vision/bin/python tools/vision/fit_board_metric_geometry.py \
+  "$session_dir/board_metric_fit_manifest.json" \
+  --output "$session_dir/board_metric_geometry.json"
+```
+
+fitに24点以上、未使用held-outに8点以上、全体32点以上を要求する。
+合格条件はfit p95<=0.75 mm、held-out p95<=1.0 mm、max<=1.5 mmである。
+四隅4点だけのaffine補正は今回の縮尺原因の診断には使えるが安全認定には
+使わない。通常抽出にはqualified mapを必ず指定する。
+
 `fit_front_label_heading.py`のconstant-biasは旧来の局所診断専用であり、
 以下の通常抽出へ適用しない。絶対位置・yaw・車体と壁のクリアランスには
 5姿勢label-plane校正とheight-corrected CSVだけを使用する。
@@ -580,6 +607,7 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
   "$session_dir/capture.mp4" \
   --output-dir "$session_dir/analysis" \
   --board-layout "$session_dir/board_layout.json" \
+  --board-metric-geometry "$session_dir/board_metric_geometry.json" \
   --background-video "$session_dir/empty_background.mp4" \
   --position-source label \
   --label-colour blue \
@@ -593,13 +621,15 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
 
 絶対位置を使う場合は、Recorder 0.5.7の手動one-shotを開始し、録画表示後
 1秒以上rigと画面を静止させてから、4 fit姿勢＋1 held-out姿勢を各3秒以上
-保持する。同じ動画からv2 manifestを作り、同一runのSHA/integrityを検証する
-Camera2 capture-sessionを含めてgeometryを生成する。
+保持する。1本の連続動画または5本の独立one-shotからv3 manifestを作り、
+各runのSHA/integrityを検証するCamera2 capture-sessionをplacementごとに
+含めてgeometryを生成する。独立撮影時は5本のcamera_setup_sha256が完全一致
+しなければ校正を拒否する。
 
 ```sh
 cp tools/vision/data/label_plane_known_pose_manifest.template.json \
   "$session_dir/known_pose_manifest.json"
-# capture_sessionの6パス、trajectory path、5つの静止時間窓を実値へ変更する。
+# 各placementのcapture_session 6パス、trajectory、静止時間窓を実値へ変更する。
 # 全frameがAF off、fixed focus 1.05 D、stationary lens stateであることも
 # capture fingerprintが検査する。
 ./.venv-vision/bin/python tools/vision/fit_label_plane_camera.py \
@@ -609,6 +639,7 @@ cp tools/vision/data/label_plane_known_pose_manifest.template.json \
 ./.venv-vision/bin/python tools/vision/apply_label_plane_geometry.py \
   "$trial_dir/trajectory.csv" \
   --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --board-metric-geometry "$session_dir/board_metric_geometry.json" \
   --tracking-geometry tools/tuning/data/mini_r2_0_footprint.json \
   --label-plane-geometry "$session_dir/label_plane_geometry.json" \
   --capture-session-manifest "$trial_dir/capture_session.json" \

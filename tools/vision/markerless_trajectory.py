@@ -33,6 +33,7 @@ import numpy as np
 
 import aruco_trajectory as aruco
 import board_layout
+import board_metric_geometry
 
 
 BLUE_LABEL_HSV_LOW = (88, 50, 50)
@@ -90,6 +91,15 @@ def parse_args() -> argparse.Namespace:
         help=(
             "measured marker/grid layout JSON; when supplied it defines "
             "the metric transform and grid"
+        ),
+    )
+    parser.add_argument(
+        "--board-metric-geometry",
+        type=Path,
+        default=None,
+        help=(
+            "qualified dense canonical-pixel to board-mm correction; "
+            "requires --board-layout and replaces its linear metric scale"
         ),
     )
     parser.add_argument(
@@ -354,7 +364,12 @@ def validate_args(args: argparse.Namespace) -> None:
             raise ValueError(f"--{name.replace('_', '-')} must be finite")
     if not args.video.is_file():
         raise ValueError(f"video does not exist: {args.video}")
-    for name in ("board_layout", "background_video", "front_label_calibration"):
+    for name in (
+        "board_layout",
+        "board_metric_geometry",
+        "background_video",
+        "front_label_calibration",
+    ):
         path = getattr(args, name)
         if path is not None and not path.is_file():
             raise ValueError(f"--{name.replace('_', '-')} does not exist: {path}")
@@ -377,6 +392,8 @@ def validate_args(args: argparse.Namespace) -> None:
         and args.board_layout is None
     ):
         raise ValueError("--cell-size-confirmed requires --cell-size-mm")
+    if args.board_metric_geometry is not None and args.board_layout is None:
+        raise ValueError("--board-metric-geometry requires --board-layout")
     if args.background_samples < 5:
         raise ValueError("--background-samples must be at least 5")
     for name in ("foreground_blur", "morph_open", "morph_close"):
@@ -1429,6 +1446,7 @@ def convert_track(
     cell_size_mm: Optional[float],
     position_only: bool = False,
     initial_yaw_deg: Optional[float] = None,
+    metric_geometry: Optional[board_metric_geometry.BoardMetricGeometry] = None,
 ) -> dict[str, np.ndarray]:
     raw_xy, raw_yaw, valid, heading_valid = interpolate_detections(
         detections,
@@ -1464,9 +1482,27 @@ def convert_track(
         "pose_valid": valid.astype(int),
         "heading_valid": heading_valid.astype(int),
     }
-    if cell_size_mm is not None:
+    if metric_geometry is not None:
+        mapped_raw = metric_geometry.map_points(raw_xy)
+        mapped = metric_geometry.map_points(np.column_stack([smooth_x, smooth_y]))
+        vx_mm = np.gradient(mapped[:, 0], timestamps)
+        vy_mm = np.gradient(mapped[:, 1], timestamps)
         result.update(
             {
+                "x_mm_raw": mapped_raw[:, 0],
+                "y_mm_raw": mapped_raw[:, 1],
+                "x_mm": mapped[:, 0],
+                "y_mm": mapped[:, 1],
+                "vx_mm_s": vx_mm,
+                "vy_mm_s": vy_mm,
+                "speed_mm_s": np.hypot(vx_mm, vy_mm),
+            }
+        )
+    elif cell_size_mm is not None:
+        result.update(
+            {
+                "x_mm_raw": x_cell_raw * cell_size_mm,
+                "y_mm_raw": y_cell_raw * cell_size_mm,
                 "x_mm": x_cell * cell_size_mm,
                 "y_mm": y_cell * cell_size_mm,
                 "vx_mm_s": vx_cell * cell_size_mm,
@@ -1504,6 +1540,8 @@ def write_csv(
         "y_cell",
         "x_mm",
         "y_mm",
+        "x_mm_raw",
+        "y_mm_raw",
         "yaw_deg_raw_unwrapped",
         "yaw_deg_unwrapped",
         "yaw_deg",
@@ -1598,6 +1636,8 @@ def write_csv(
             ):
                 row[key] = _fmt(converted[key][index])
             for key in (
+                "x_mm_raw",
+                "y_mm_raw",
                 "x_mm",
                 "y_mm",
                 "vx_mm_s",
@@ -1773,11 +1813,19 @@ def main() -> int:
     try:
         validate_args(args)
         measured_layout: Optional[board_layout.BoardLayout] = None
+        dense_metric: Optional[board_metric_geometry.BoardMetricGeometry] = None
         if args.board_layout is not None:
             measured_layout = board_layout.load(
                 args.board_layout,
                 args.canonical_size,
             )
+            if args.board_metric_geometry is not None:
+                dense_metric = board_metric_geometry.load_geometry(
+                    args.board_metric_geometry,
+                    expected_board_layout_sha256=sha256_file(args.board_layout),
+                    expected_canonical_size_px=args.canonical_size,
+                    require_safety_qualified=True,
+                )
             if (
                 args.grid_cells is not None
                 and args.grid_cells != measured_layout.grid.cells
@@ -2117,6 +2165,7 @@ def main() -> int:
             args.cell_size_mm,
             args.position_only,
             args.initial_yaw_deg,
+            dense_metric,
         )
         csv_path = output_dir / "trajectory.csv"
         plot_path = output_dir / "trajectory.png"
@@ -2368,8 +2417,24 @@ def main() -> int:
                     if args.board_layout is not None
                     else None
                 ),
+                "board_metric_geometry": (
+                    {
+                        "path": str(args.board_metric_geometry.resolve()),
+                        "sha256": sha256_file(args.board_metric_geometry),
+                        "schema": board_metric_geometry.SCHEMA,
+                        "fit_p95_mm": dense_metric.fit_stats["p95_mm"],
+                        "held_out_p95_mm": dense_metric.validation_stats["p95_mm"],
+                        "held_out_max_mm": dense_metric.validation_stats["max_mm"],
+                        "safety_qualified": dense_metric.safety_qualified,
+                    }
+                    if dense_metric is not None
+                    and args.board_metric_geometry is not None
+                    else None
+                ),
                 "is_assumed": (
-                    args.cell_size_mm is not None and not args.cell_size_confirmed
+                    dense_metric is None
+                    and args.cell_size_mm is not None
+                    and not args.cell_size_confirmed
                 ),
             },
             "outputs": {
