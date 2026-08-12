@@ -24,6 +24,7 @@
 #include "build_info.h"
 #include "nvm.h"
 #include "nvm_identity.h"
+#include "f413_battery.h"
 #include "f413_control.h"
 #include "f413_control_tune_run.h"
 #include "f413_hw.h"
@@ -188,6 +189,65 @@ static void nightfall_run_fan_pwm_test_once(void);
 static void nightfall_run_encoder_test_once(void);
 static void nightfall_op_busy_delay_ms(uint32_t duration_ms);
 
+static bool nightfall_op_action_requires_battery(f413_op_ui_action_t action)
+{
+  switch (action)
+  {
+    case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
+    case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
+    case F413_OP_UI_ACTION_TEST_RUN_1:
+    case F413_OP_UI_ACTION_TEST_RUN_2:
+    case F413_OP_UI_ACTION_TEST_RUN_3:
+    case F413_OP_UI_ACTION_TEST_RUN_5:
+    case F413_OP_UI_ACTION_FAN_PWM_TEST:
+    case F413_OP_UI_ACTION_CONTROL_TUNE_SUB:
+    case F413_OP_UI_ACTION_PATH_CASE0_SUB:
+    case F413_OP_UI_ACTION_SEARCH_CASE0_SUB:
+    case F413_OP_UI_ACTION_SEARCH_RUN_CASE:
+      return true;
+    case F413_OP_UI_ACTION_NONE:
+    default:
+      return false;
+  }
+}
+
+static void nightfall_battery_report_boot(void)
+{
+  f413_battery_status_t status;
+  bool ready = f413_battery_wait_boot_ready(300U);
+  uint32_t voltage_mv = f413_battery_get_voltage_mv();
+  uint8_t cells = f413_battery_get_cell_count();
+
+  status = f413_battery_get_status();
+  trace_printf("[BAT] ADC=%u voltage=%lu.%03luV cells=%u source=%s status=%s\r\n",
+               (unsigned int)f413_battery_get_adc_raw(),
+               (unsigned long)(voltage_mv / 1000U),
+               (unsigned long)(voltage_mv % 1000U),
+               (unsigned int)cells,
+               (NIGHTFALL_F413_BATTERY_CELL_COUNT == 0U) ? "auto" : "params",
+               f413_battery_status_text(status));
+
+  if (!ready || !f413_battery_run_allowed())
+  {
+    trace_printf("[SAFE] battery run inhibit active; diagnostics remain available\r\n");
+    for (uint8_t i = 0U; i < 3U; i++)
+    {
+      f413_hw_buzzer_beep_ms(2500U, 100U);
+      HAL_Delay(60U);
+    }
+  }
+  else if (status == F413_BATTERY_STATUS_WARNING)
+  {
+    trace_printf("[WARN] battery below %lumV/cell warning threshold\r\n",
+                 (unsigned long)NIGHTFALL_F413_BATTERY_WARN_MV_PER_CELL);
+    for (uint8_t i = 0U; i < 2U; i++)
+    {
+      f413_hw_buzzer_beep_ms(2200U, 80U);
+      HAL_Delay(50U);
+    }
+  }
+}
+
 static void nightfall_run_search_trace_entry_once(void)
 {
 #if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
@@ -346,6 +406,12 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)wall.fr_on,
                (unsigned int)wall.fl_on,
                (unsigned int)wall.vbat_on);
+  trace_printf("[HW-TEST][Battery] %lu.%03luV cells=%u status=%s run=%u\r\n",
+               (unsigned long)(f413_battery_get_voltage_mv() / 1000U),
+               (unsigned long)(f413_battery_get_voltage_mv() % 1000U),
+               (unsigned int)f413_battery_get_cell_count(),
+               f413_battery_status_text(f413_battery_get_status()),
+               (unsigned int)f413_battery_run_allowed());
   trace_printf("[HW-TEST][Wall] delta: R=%ld L=%ld FR=%ld FL=%ld\r\n",
                (long)wall.r_delta,
                (long)wall.l_delta,
@@ -585,6 +651,15 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
   uint8_t set = 0U;
   uint8_t pattern = F413_CTRL_TUNE_PATTERN_STEP;
 
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[BAT] tune blocked: %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
+
   switch (sub)
   {
     case 0U:
@@ -672,6 +747,15 @@ static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 
 static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode, uint8_t op_case, uint8_t sub)
 {
+  if (nightfall_op_action_requires_battery(action) && !f413_battery_run_allowed())
+  {
+    trace_printf("[BAT] OP action blocked: %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
+
   switch (action)
   {
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
@@ -1169,10 +1253,12 @@ int main(void)
   if (nightfall_wall_sensor_start_async())
   {
     trace_printf("[WALL] async ADC DMA sensor scheduler started\r\n");
+    nightfall_battery_report_boot();
   }
   else
   {
     trace_printf("[WALL] FAIL(start async ADC DMA sensor scheduler)\r\n");
+    trace_printf("[SAFE] battery ADC unavailable; motor/fan run inhibited\r\n");
   }
 
   f413_ctrl_init();
@@ -1367,6 +1453,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_8;
   sConfig.Rank = 9;
+  sConfig.SamplingTime = ADC_SAMPLETIME_56CYCLES;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();

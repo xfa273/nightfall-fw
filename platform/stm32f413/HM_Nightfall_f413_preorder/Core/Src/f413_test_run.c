@@ -2,6 +2,7 @@
 
 #include <math.h>
 
+#include "f413_battery.h"
 #include "f413_control.h"
 #include "f413_hw.h"
 #include "trace.h"
@@ -35,6 +36,21 @@ static uint32_t f413_test_run_tick(void)
     return g_config.get_tick_ms();
   }
   return 0U;
+}
+
+static bool f413_test_run_delay_battery_guarded(uint32_t ms)
+{
+  uint32_t deadline = f413_test_run_tick() + ms;
+
+  while ((int32_t)(f413_test_run_tick() - deadline) < 0)
+  {
+    if (!f413_battery_run_allowed())
+    {
+      return false;
+    }
+    f413_test_run_delay(10U);
+  }
+  return f413_battery_run_allowed();
 }
 
 static void f413_test_run_set_flags(uint16_t flags)
@@ -252,7 +268,10 @@ static void f413_test_run_single_motor(uint8_t test_id, const char* test_name)
     }
   }
 
-  f413_test_run_delay(F413_TEST_RUN_MOTOR_MS);
+  if (!f413_test_run_delay_battery_guarded(F413_TEST_RUN_MOTOR_MS))
+  {
+    trace_printf("[TEST] motor aborted: battery low or adc stale\r\n");
+  }
   if (g_config.motor_set != NULL)
   {
     g_config.motor_set(false, true, true, 0U, 0U);
@@ -307,6 +326,15 @@ void f413_test_run_run_now(uint8_t test_id)
   }
 
   trace_printf("[TEST] === %s === start\r\n", test_name);
+
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[TEST] canceled: battery %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
 
   if ((test_id >= (uint8_t)'6') && (test_id <= (uint8_t)'9'))
   {

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "f413_battery.h"
 #include "f413_hw.h"
 #include "stm32f4xx_hal.h"
 #include "trace.h"
@@ -59,6 +60,15 @@ void f413_hw_diag_run_fan_pwm_test_once(void)
   uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim10);
   uint8_t i;
 
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[HW-TEST][Fan] blocked: battery %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
+
   if (HAL_TIM_PWM_Start(&htim10, TIM_CHANNEL_1) != HAL_OK)
   {
     trace_printf("[HW-TEST][Fan] PWM start failed\r\n");
@@ -73,7 +83,17 @@ void f413_hw_diag_run_fan_pwm_test_once(void)
     trace_printf("[HW-TEST][Fan] duty=%u/1000 compare=%lu\r\n",
                  (unsigned int)duties[i],
                  (unsigned long)compare);
-    HAL_Delay(1200U);
+    for (uint32_t elapsed_ms = 0U; elapsed_ms < 1200U; elapsed_ms += 10U)
+    {
+      if (!f413_battery_run_allowed())
+      {
+        __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, 0U);
+        (void)HAL_TIM_PWM_Stop(&htim10, TIM_CHANNEL_1);
+        trace_printf("[HW-TEST][Fan] aborted: battery low or adc stale\r\n");
+        return;
+      }
+      HAL_Delay(10U);
+    }
   }
   __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, 0U);
   (void)HAL_TIM_PWM_Stop(&htim10, TIM_CHANNEL_1);
@@ -82,6 +102,15 @@ void f413_hw_diag_run_fan_pwm_test_once(void)
 
 void f413_hw_diag_run_motor_driver_test_once(void)
 {
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[HW-TEST][Motor] blocked: battery %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
+
   trace_printf("[HW-TEST][Motor] start short drive (lift robot before test)\r\n");
 
   f413_hw_motor_set(true, true, true, 120U, 120U);

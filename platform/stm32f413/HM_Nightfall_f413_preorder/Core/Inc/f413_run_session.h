@@ -10,6 +10,7 @@ typedef enum {
   F413_RUN_SESSION_ABORT_WALL_FAULT,
   F413_RUN_SESSION_ABORT_ENCODER_FAULT,
   F413_RUN_SESSION_ABORT_IMU_FAULT,
+  F413_RUN_SESSION_ABORT_BATTERY_LOW,
 } f413_run_session_abort_reason_t;
 
 typedef struct {
@@ -17,6 +18,7 @@ typedef struct {
   int16_t prev_encoder_r;
   uint32_t next_wall_check_ms;
   uint32_t next_imu_check_ms;
+  uint32_t next_battery_check_ms;
 } f413_run_session_guard_t;
 
 typedef bool (*f413_run_session_bool_fn)(void);

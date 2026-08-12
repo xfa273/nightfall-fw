@@ -1,5 +1,6 @@
 #include "f413_hw.h"
 
+#include "f413_battery.h"
 #include "main.h"
 
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
@@ -152,6 +153,14 @@ void f413_hw_motor_set(bool enable,
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0U);
     (void)HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
     (void)HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_3);
+    return;
+  }
+
+  if (!f413_battery_run_allowed())
+  {
+    HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_RESET);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0U);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0U);
     return;
   }
 

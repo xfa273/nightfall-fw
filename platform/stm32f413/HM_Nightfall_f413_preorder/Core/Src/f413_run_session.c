@@ -3,16 +3,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "f413_battery.h"
 #include "stm32f4xx_hal.h"
 #include "trace.h"
 
 #define F413_RUN_SESSION_GUARD_WALL_CHECK_MS (20U)
 #define F413_RUN_SESSION_GUARD_IMU_CHECK_MS (100U)
+#define F413_RUN_SESSION_GUARD_BATTERY_CHECK_MS (20U)
 #define F413_RUN_SESSION_GUARD_ENCODER_DELTA_MAX (6000)
 #define F413_RUN_SESSION_TRACE_ABORT_SWITCH_FLAG (0x0100U)
 #define F413_RUN_SESSION_TRACE_ABORT_WALL_FAULT_FLAG (0x0200U)
 #define F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG (0x0400U)
 #define F413_RUN_SESSION_TRACE_ABORT_IMU_FAULT_FLAG (0x0800U)
+#define F413_RUN_SESSION_TRACE_ABORT_BATTERY_LOW_FLAG (0x8000U)
 
 static f413_run_session_config_t s_config;
 
@@ -161,12 +164,21 @@ bool f413_run_session_guard_prepare(f413_run_session_guard_t* guard)
   {
     return false;
   }
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[BAT] run canceled before motor enable: %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return false;
+  }
 
   memset(guard, 0, sizeof(*guard));
   guard->prev_encoder_l = f413_run_session_encoder_l_count();
   guard->prev_encoder_r = f413_run_session_encoder_r_count();
   guard->next_wall_check_ms = HAL_GetTick();
   guard->next_imu_check_ms = HAL_GetTick();
+  guard->next_battery_check_ms = HAL_GetTick();
   return true;
 }
 
@@ -222,6 +234,15 @@ f413_run_session_abort_reason_t f413_run_session_guard_check(f413_run_session_gu
     if (!f413_run_session_imu_ok())
     {
       return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
+  }
+
+  if ((int32_t)(now - guard->next_battery_check_ms) >= 0)
+  {
+    guard->next_battery_check_ms = now + F413_RUN_SESSION_GUARD_BATTERY_CHECK_MS;
+    if (!f413_battery_run_allowed())
+    {
+      return F413_RUN_SESSION_ABORT_BATTERY_LOW;
     }
   }
 
@@ -289,6 +310,15 @@ void f413_run_session_run_motor_trace_once(uint16_t motor_fwd_flag,
 {
   bool enc_started_l = false;
   bool enc_started_r = false;
+
+  if (!f413_battery_run_allowed())
+  {
+    trace_printf("[RUN-TEST] motor trace canceled: battery %s, %lumV, cells=%u\r\n",
+                 f413_battery_status_text(f413_battery_get_status()),
+                 (unsigned long)f413_battery_get_voltage_mv(),
+                 (unsigned int)f413_battery_get_cell_count());
+    return;
+  }
 
   if (f413_run_session_trace_auto_is_enabled())
   {
@@ -589,6 +619,8 @@ uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reas
       return F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG;
     case F413_RUN_SESSION_ABORT_IMU_FAULT:
       return F413_RUN_SESSION_TRACE_ABORT_IMU_FAULT_FLAG;
+    case F413_RUN_SESSION_ABORT_BATTERY_LOW:
+      return F413_RUN_SESSION_TRACE_ABORT_BATTERY_LOW_FLAG;
     case F413_RUN_SESSION_ABORT_NONE:
     default:
       return 0U;
@@ -607,6 +639,8 @@ const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_
       return "encoder jump fault";
     case F413_RUN_SESSION_ABORT_IMU_FAULT:
       return "imu fault";
+    case F413_RUN_SESSION_ABORT_BATTERY_LOW:
+      return "battery low or adc stale";
     case F413_RUN_SESSION_ABORT_NONE:
     default:
       return "none";

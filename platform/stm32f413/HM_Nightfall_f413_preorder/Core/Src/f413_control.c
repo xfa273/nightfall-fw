@@ -12,6 +12,7 @@
  */
 
 #include "f413_control.h"
+#include "f413_battery.h"
 #include "main.h"
 #include "params.h"
 #include <math.h>
@@ -903,6 +904,15 @@ void f413_ctrl_init(void)
 
 void f413_ctrl_start(void)
 {
+    if (!f413_battery_run_allowed())
+    {
+        s_running = false;
+        HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_RESET);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0U);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0U);
+        return;
+    }
+
     /* 走行直前に IMU オフセットを再取得（静止状態で校正） */
     if (s_imu_ok)
     {
@@ -1210,6 +1220,19 @@ void f413_ctrl_tick(void)
 
     if (!s_running)
     {
+        return;
+    }
+    if (!f413_battery_run_allowed())
+    {
+        s_running = false;
+        s_tune_active = false;
+        s_motor_out_l = 0;
+        s_motor_out_r = 0;
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0U);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, 0U);
+        HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_RESET);
         return;
     }
 

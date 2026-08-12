@@ -93,6 +93,7 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/maze_grid.c
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/shortest_run_params_split.c
     ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_battery.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c

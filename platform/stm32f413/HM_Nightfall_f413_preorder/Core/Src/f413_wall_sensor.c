@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "f413_battery.h"
 #include "f413_hw.h"
 #include "main.h"
 #include "nvm_params.h"
@@ -179,6 +180,7 @@ static void f413_ir_emitters_set(GPIO_PinState fr,
 
 bool f413_wall_sensor_start_async(void)
 {
+  f413_battery_init();
   f413_wall_sensor_load_params();
   g_wall_sensor_adc_phase = 0U;
   g_wall_sensor_adc_inflight = 0U;
@@ -513,6 +515,7 @@ void f413_wall_sensor_adc_complete(ADC_HandleTypeDef* hadc)
       g_wall_adc_fr = f413_wall_sensor_subtract_u16(fr_on, fr_off, g_wall_offset_fr);
       g_wall_adc_fl = f413_wall_sensor_subtract_u16(fl_on, fl_off, g_wall_offset_fl);
       g_wall_adc_vbat = g_wall_adc_dma_off[8];
+      f413_battery_feed_adc_raw(g_wall_adc_vbat);
       HAL_GPIO_WritePin(IR_FR_GPIO_Port, IR_FR_Pin, GPIO_PIN_RESET);
       HAL_GPIO_WritePin(IR_FL_GPIO_Port, IR_FL_Pin, GPIO_PIN_RESET);
       g_wall_sensor_ready_mask |= 0x02U;
