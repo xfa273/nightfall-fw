@@ -1,53 +1,69 @@
 {
-  "schema": "nightfall_label_plane_known_pose_manifest_v1",
+  "schema": "nightfall_label_plane_known_pose_manifest_v2",
+  "capture_session": {
+    "schema": "nightfall_camera_capture_session_v1",
+    "hfr_report": "path/to/capture/hfr_report.json",
+    "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+    "qa_report": "path/to/analysis/qa_report.json",
+    "raw_video": "path/to/capture/hfr_capture.mp4",
+    "trajectory_csv": "path/to/analysis/trajectory.csv",
+    "source_board_calibration": "path/to/analysis/calibration.json"
+  },
   "board_layout": "board_layout_8x8_60mm.json",
   "tracking_geometry": "../../tuning/data/mini_r2_0_footprint.json",
   "canonical_size_px": 900,
-  "reference_plane_absolute_height_mm": null,
-  "replace_before_use": "Measure the common ArUco top surface above the maze floor and replace null.",
+  "reference_plane_absolute_height_mm": 2.0,
+  "reference_plane_provenance": {
+    "surface": "common top face of the current 3D-printed ArUco markers",
+    "height_reference": "maze floor",
+    "measurement": "user-confirmed marker thickness",
+    "confirmed_date": "2026-08-12",
+    "remeasure_if": "the marker fixture, mounting, or top-surface height changes"
+  },
+  "replace_before_use": "Copy this template for the capture session, replace the trajectory path, and set every time window to the actual stationary hold. Keep 2.0 mm only for the current marker fixture.",
   "placements": [
     {
       "id": "fit-south-west",
       "role": "fit",
-      "trajectory_csv": "path/to/known_pose/trajectory.csv",
-      "start_s": 0.5,
-      "end_s": 2.5,
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 1.0,
+      "end_s": 4.0,
       "true_blue_center_mm": [45.0, 45.0],
       "true_heading_deg": 0.0
     },
     {
       "id": "fit-south-east",
       "role": "fit",
-      "trajectory_csv": "path/to/known_pose/trajectory.csv",
-      "start_s": 3.0,
-      "end_s": 5.0,
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 7.0,
+      "end_s": 10.0,
       "true_blue_center_mm": [675.0, 45.0],
       "true_heading_deg": 180.0
     },
     {
       "id": "fit-north-west",
       "role": "fit",
-      "trajectory_csv": "path/to/known_pose/trajectory.csv",
-      "start_s": 5.5,
-      "end_s": 7.5,
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 13.0,
+      "end_s": 16.0,
       "true_blue_center_mm": [45.0, 675.0],
       "true_heading_deg": 0.0
     },
     {
       "id": "fit-north-east",
       "role": "fit",
-      "trajectory_csv": "path/to/known_pose/trajectory.csv",
-      "start_s": 8.0,
-      "end_s": 10.0,
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 19.0,
+      "end_s": 22.0,
       "true_blue_center_mm": [675.0, 675.0],
       "true_heading_deg": 180.0
     },
     {
       "id": "held-out-centre",
       "role": "validation",
-      "trajectory_csv": "path/to/known_pose/trajectory.csv",
-      "start_s": 10.5,
-      "end_s": 12.5,
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 25.0,
+      "end_s": 28.0,
       "true_blue_center_mm": [315.0, 405.0],
       "true_heading_deg": 90.0
     }

@@ -72,11 +72,17 @@ public final class MainActivity extends Activity {
     private static final long MANUAL_REARM_DELAY_MS = 2000L;
     private static final long MINIMUM_FREE_STORAGE_BYTES =
             1024L * 1024L * 1024L;
+    private static final String CAPTURE_MODE_IDLE = "idle";
+    private static final String CAPTURE_MODE_CONTINUOUS_OPTICAL =
+            "continuous_optical";
+    private static final String CAPTURE_MODE_MANUAL_ONE_SHOT =
+            "manual_one_shot";
 
     private TextureView preview;
     private TextView status;
     private TextView wifiStatus;
     private Button startButton;
+    private Button manualOneShotButton;
     private Button finishRunButton;
     private Button stopButton;
     private Button wifiPairButton;
@@ -102,11 +108,13 @@ public final class MainActivity extends Activity {
     private String manualSessionNonce;
     private int manualRunSequence;
     private int manualCompletedRuns;
+    private String activeCaptureMode = CAPTURE_MODE_IDLE;
     private WifiTransferServer wifiTransferServer;
     private boolean wifiCaptureSlotOwned;
     private volatile WifiTransferServer.CaptureControlState captureControlState =
             new WifiTransferServer.CaptureControlState(
                     "idle",
+                    CAPTURE_MODE_IDLE,
                     false,
                     false,
                     0,
@@ -154,6 +162,18 @@ public final class MainActivity extends Activity {
                     public WifiTransferServer.CaptureControlResult
                     finishCurrentRecording() {
                         return runRemoteFinishCurrentRecording();
+                    }
+
+                    @Override
+                    public WifiTransferServer.CaptureControlResult
+                    startManualOneShot() {
+                        return runRemoteManualOneShotControl(true);
+                    }
+
+                    @Override
+                    public WifiTransferServer.CaptureControlResult
+                    stopManualOneShot() {
+                        return runRemoteManualOneShotControl(false);
                     }
 
                     @Override
@@ -278,6 +298,13 @@ public final class MainActivity extends Activity {
                 view -> startManualContinuousStandby()
         );
         controls.addView(startButton);
+
+        manualOneShotButton = new Button(this);
+        manualOneShotButton.setText("手動録画開始 (240 fps)");
+        manualOneShotButton.setOnClickListener(
+                view -> startManualOneShot()
+        );
+        controls.addView(manualOneShotButton);
 
         finishRunButton = new Button(this);
         finishRunButton.setText("この撮影だけ終了");
@@ -474,6 +501,10 @@ public final class MainActivity extends Activity {
         if (manualContinuousStandby) {
             return true;
         }
+        if (!CAPTURE_MODE_IDLE.equals(activeCaptureMode)) {
+            setStatus("別の撮影モードが動作中です", false);
+            return false;
+        }
         if (recorder != null && recorder.isActive()) {
             setStatus("別の撮影セッションが動作中です", false);
             return false;
@@ -493,6 +524,7 @@ public final class MainActivity extends Activity {
         }
         manualContinuousStandby = true;
         manualStopRequested = false;
+        activeCaptureMode = CAPTURE_MODE_CONTINUOUS_OPTICAL;
         manualSessionNonce = "manual-" + System.currentTimeMillis();
         manualRunSequence = 0;
         manualCompletedRuns = 0;
@@ -503,6 +535,42 @@ public final class MainActivity extends Activity {
         );
         startRecording(false);
         return manualContinuousStandby;
+    }
+
+    private boolean startManualOneShot() {
+        if (CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)) {
+            return true;
+        }
+        if (!CAPTURE_MODE_IDLE.equals(activeCaptureMode)
+                || manualContinuousStandby
+                || (recorder != null && recorder.isActive())) {
+            setStatus("別の撮影セッションが動作中です", false);
+            return false;
+        }
+        if (wifiTransferServer != null
+                && wifiTransferServer.isTransferActive()) {
+            setStatus("Wi-Fi転送の完了後に手動録画を開始してください", false);
+            publishCaptureControlState(
+                    "idle",
+                    false,
+                    "Wi-Fi転送の完了後に手動録画を開始してください"
+            );
+            return false;
+        }
+        manualContinuousStandby = false;
+        manualStopRequested = false;
+        activeCaptureMode = CAPTURE_MODE_MANUAL_ONE_SHOT;
+        manualSessionNonce = "manual-" + System.currentTimeMillis()
+                + "-one-shot";
+        manualRunSequence = 0;
+        manualCompletedRuns = 0;
+        publishCaptureControlState(
+                "starting",
+                false,
+                "1080p/240手動録画を開始しています"
+        );
+        startRecording(false);
+        return CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode);
     }
 
     private WifiTransferServer.CaptureControlResult runRemoteCaptureControl(
@@ -634,6 +702,101 @@ public final class MainActivity extends Activity {
         return acceptedRemoteControl();
     }
 
+    private WifiTransferServer.CaptureControlResult
+    runRemoteManualOneShotControl(boolean start) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            return applyRemoteManualOneShotControl(start);
+        }
+        AtomicReference<WifiTransferServer.CaptureControlResult> result =
+                new AtomicReference<>();
+        CountDownLatch completed = new CountDownLatch(1);
+        uiHandler.post(() -> {
+            try {
+                result.set(applyRemoteManualOneShotControl(start));
+            } finally {
+                completed.countDown();
+            }
+        });
+        try {
+            if (!completed.await(5L, TimeUnit.SECONDS)) {
+                return new WifiTransferServer.CaptureControlResult(
+                        false,
+                        "Pixel UI did not respond to manual recording control",
+                        captureControlState
+                );
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return new WifiTransferServer.CaptureControlResult(
+                    false,
+                    "manual recording control was interrupted",
+                    captureControlState
+            );
+        }
+        return result.get();
+    }
+
+    private WifiTransferServer.CaptureControlResult
+    applyRemoteManualOneShotControl(boolean start) {
+        if (isFinishing() || isDestroyed()) {
+            return rejectedRemoteControl("HFR Recorder is closing");
+        }
+        if (start) {
+            if (CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)) {
+                if ("starting".equals(captureControlState.state)
+                        || "recording".equals(captureControlState.state)) {
+                    return acceptedRemoteControl();
+                }
+                return rejectedRemoteControl(
+                        "手動ワンショット録画を終了処理中です"
+                );
+            }
+            if (!CAPTURE_MODE_IDLE.equals(activeCaptureMode)
+                    || manualContinuousStandby
+                    || (recorder != null && recorder.isActive())) {
+                return rejectedRemoteControl(
+                        "別の撮影セッションが動作中です"
+                );
+            }
+            if (checkSelfPermission(Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED) {
+                return rejectedRemoteControl(
+                        "Pixelでカメラ権限を許可してください"
+                );
+            }
+            if (preview == null || !preview.isAvailable()) {
+                return rejectedRemoteControl(
+                        "カメラプレビューの準備ができていません"
+                );
+            }
+            if (!startManualOneShot()) {
+                return rejectedRemoteControl(captureControlState.message);
+            }
+            return acceptedRemoteControl();
+        }
+        if (CAPTURE_MODE_IDLE.equals(activeCaptureMode)
+                && (recorder == null || !recorder.isActive())) {
+            return acceptedRemoteControl();
+        }
+        if (!CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)) {
+            return rejectedRemoteControl(
+                    "手動ワンショット録画中ではありません"
+            );
+        }
+        if ("stopping".equals(captureControlState.state)) {
+            return acceptedRemoteControl();
+        }
+        if (!"recording".equals(captureControlState.state)
+                || recorder == null
+                || !recorder.isActive()) {
+            return rejectedRemoteControl(
+                    "手動録画の開始完了後に停止してください"
+            );
+        }
+        stopManualOneShot();
+        return acceptedRemoteControl();
+    }
+
     private WifiTransferServer.CaptureControlResult acceptedRemoteControl() {
         return new WifiTransferServer.CaptureControlResult(
                 true,
@@ -653,6 +816,10 @@ public final class MainActivity extends Activity {
     }
 
     private void stopFromPixel() {
+        if (CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)) {
+            stopManualOneShot();
+            return;
+        }
         boolean stoppingContinuous = manualContinuousStandby;
         if (stoppingContinuous) {
             manualContinuousStandby = false;
@@ -695,6 +862,24 @@ public final class MainActivity extends Activity {
         }
     }
 
+    private void stopManualOneShot() {
+        if (!CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)
+                || recorder == null
+                || !recorder.isActive()
+                || !"recording".equals(captureControlState.state)) {
+            setStatus("現在手動録画中の動画はありません", false);
+            return;
+        }
+        opticalDetectionEnabled = false;
+        manualOneShotButton.setEnabled(false);
+        finishRunButton.setEnabled(false);
+        stopButton.setEnabled(false);
+        String message = "手動録画を終了し、1本の動画を保存しています";
+        setStatus(message, true);
+        publishCaptureControlState("stopping", true, message);
+        recorder.stop();
+    }
+
     private void finishCurrentRecording() {
         if (!manualContinuousStandby
                 || recorder == null
@@ -733,7 +918,9 @@ public final class MainActivity extends Activity {
         try {
             config = useIntentConfig
                     ? readConfig(getIntent())
-                    : createManualOpticalConfig();
+                    : (CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)
+                    ? createManualOneShotConfig()
+                    : createManualOpticalConfig());
         } catch (IllegalArgumentException exception) {
             manualContinuousStandby = false;
             resetControlsAfterRun();
@@ -802,6 +989,7 @@ public final class MainActivity extends Activity {
                                 opticalDetector.reset();
                             }
                             startButton.setEnabled(false);
+                            manualOneShotButton.setEnabled(false);
                             finishRunButton.setEnabled(false);
                             stopButton.setText(
                                     config.retainRunOutput
@@ -839,19 +1027,31 @@ public final class MainActivity extends Activity {
                                 );
                             }
                             startButton.setEnabled(false);
+                            manualOneShotButton.setEnabled(false);
                             finishRunButton.setEnabled(
                                     config.retainRunOutput
+                                            && manualContinuousStandby
                             );
                             stopButton.setText(
-                                    config.retainRunOutput
+                                    CAPTURE_MODE_MANUAL_ONE_SHOT.equals(
+                                            activeCaptureMode
+                                    )
+                                            ? "手動録画を終了"
+                                            : (config.retainRunOutput
                                             ? "連続待機を終了"
-                                            : "録画を停止"
+                                            : "録画を停止")
                             );
                             stopButton.setEnabled(true);
+                            String statusMessage =
+                                    CAPTURE_MODE_MANUAL_ONE_SHOT.equals(
+                                            activeCaptureMode
+                                    )
+                                            ? "1080p/240手動録画中"
+                                            : "走行を録画しています";
                             publishCaptureControlState(
                                     "recording",
                                     true,
-                                    "走行を録画しています"
+                                    statusMessage
                             );
                         });
                     }
@@ -883,6 +1083,10 @@ public final class MainActivity extends Activity {
                     public void onFinished(String message) {
                         runOnUiThread(() -> {
                             finishRunButton.setEnabled(false);
+                            boolean completedManualOneShot =
+                                    CAPTURE_MODE_MANUAL_ONE_SHOT.equals(
+                                            activeCaptureMode
+                                    );
                             if (config.retainRunOutput) {
                                 manualCompletedRuns += 1;
                             }
@@ -905,13 +1109,22 @@ public final class MainActivity extends Activity {
                                 );
                             } else {
                                 resetControlsAfterRun();
-                                String statusMessage = config.retainRunOutput
-                                        && manualStopRequested
-                                        ? String.format(
+                                String statusMessage;
+                                if (completedManualOneShot
+                                        && config.retainRunOutput) {
+                                    statusMessage = String.format(
+                                            "手動録画を保存しました（%d本）",
+                                            manualCompletedRuns
+                                    );
+                                } else if (config.retainRunOutput
+                                        && manualStopRequested) {
+                                    statusMessage = String.format(
                                         "連続撮影を終了しました（%d本保存）",
                                         manualCompletedRuns
-                                )
-                                        : message;
+                                    );
+                                } else {
+                                    statusMessage = message;
+                                }
                                 setStatus(statusMessage, true);
                                 publishCaptureControlState(
                                         "idle",
@@ -947,10 +1160,15 @@ public final class MainActivity extends Activity {
                 }
         );
         startButton.setEnabled(false);
+        manualOneShotButton.setEnabled(false);
         finishRunButton.setEnabled(false);
         stopButton.setEnabled(false);
         if (config.retainRunOutput) {
-            stopButton.setText("連続待機を終了");
+            stopButton.setText(
+                    CAPTURE_MODE_MANUAL_ONE_SHOT.equals(activeCaptureMode)
+                            ? "手動録画を終了"
+                            : "連続待機を終了"
+            );
         }
         activeConfig = config;
         if (config.opticalTrigger) {
@@ -1001,14 +1219,43 @@ public final class MainActivity extends Activity {
         return config;
     }
 
+    private HfrRecorder.Config createManualOneShotConfig() {
+        manualRunSequence += 1;
+        HfrRecorder.Config config = new HfrRecorder.Config(
+                String.format(
+                        "%s-run%04d",
+                        manualSessionNonce,
+                        manualRunSequence
+                ),
+                "0",
+                MANUAL_WIDTH,
+                MANUAL_HEIGHT,
+                MANUAL_FPS,
+                MANUAL_DURATION_SECONDS,
+                MANUAL_BITRATE,
+                MANUAL_EXPOSURE_US,
+                MANUAL_ISO,
+                true,
+                false,
+                MANUAL_OPTICAL_TRIGGER_SCORE,
+                MANUAL_OPTICAL_TRIGGER_HOT_PIXELS,
+                MANUAL_OPTICAL_STOP_TAIL_MS,
+                true
+        );
+        config.validate();
+        return config;
+    }
+
     private void resetControlsAfterRun() {
         opticalDetectionEnabled = false;
         opticalWaitingForStart = false;
         opticalWaitingForMotion = false;
         manualContinuousStandby = false;
+        activeCaptureMode = CAPTURE_MODE_IDLE;
         uiHandler.removeCallbacks(manualRearmRunnable);
         startButton.setEnabled(true);
         startButton.setText("連続撮影スタンバイ (240 fps)");
+        manualOneShotButton.setEnabled(true);
         finishRunButton.setEnabled(false);
         stopButton.setText("待機をキャンセル");
         stopButton.setEnabled(false);
@@ -1023,6 +1270,7 @@ public final class MainActivity extends Activity {
         opticalWaitingForStart = false;
         opticalWaitingForMotion = false;
         startButton.setEnabled(false);
+        manualOneShotButton.setEnabled(false);
         finishRunButton.setEnabled(false);
         stopButton.setText("連続待機を終了");
         stopButton.setEnabled(true);
@@ -1066,6 +1314,7 @@ public final class MainActivity extends Activity {
     ) {
         captureControlState = new WifiTransferServer.CaptureControlState(
                 state,
+                activeCaptureMode,
                 manualContinuousStandby,
                 recording,
                 manualCompletedRuns,
@@ -1244,6 +1493,7 @@ public final class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         manualContinuousStandby = false;
+        activeCaptureMode = CAPTURE_MODE_IDLE;
         uiHandler.removeCallbacks(manualRearmRunnable);
         opticalDetectionEnabled = false;
         if (recorder != null) {

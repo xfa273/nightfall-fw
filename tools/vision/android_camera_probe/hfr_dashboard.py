@@ -33,11 +33,18 @@ from collect_wifi_runs import (
     save_config,
 )
 from hfr_control import (
+    CAPTURE_MODE_IDLE,
+    CAPTURE_MODE_MANUAL_ONE_SHOT,
     CONTROL_FINISH_RUN_PATH,
+    CONTROL_MANUAL_START_PATH,
+    CONTROL_MANUAL_STOP_PATH,
     CONTROL_START_PATH,
+    CONTROL_STATUS_PATH,
     CONTROL_STOP_PATH,
     capture_state,
     read_status,
+    wait_for_manual_start,
+    wait_for_manual_stop,
     wait_for_start,
     wait_for_stop,
     wait_for_current_run_finish,
@@ -53,6 +60,8 @@ STATIC_FILES = {
 }
 VALID_ACTIONS = {
     "start",
+    "manual-start",
+    "manual-stop",
     "finish-run",
     "stop",
     "collect",
@@ -334,6 +343,47 @@ class PixelDashboard:
                 messages.append(
                     f"連続撮影スタンバイ開始: {capture_state(response)['state']}"
                 )
+            if action == "manual-start":
+                client.json_request("POST", CONTROL_MANUAL_START_PATH, {})
+                response = wait_for_manual_start(client, self.wait_seconds)
+                messages.append(
+                    "1080p/240手動録画開始: "
+                    f"{capture_state(response)['state']}"
+                )
+            if action == "manual-stop":
+                before_response = read_status(client)
+                before = capture_state(before_response)
+                if (
+                    before.get("capture_mode") == CAPTURE_MODE_IDLE
+                    and before["state"] == "idle"
+                    and not before_response.get("capture_busy")
+                ):
+                    messages.append("手動録画は既に停止済み")
+                else:
+                    if (
+                        before.get("capture_mode")
+                        != CAPTURE_MODE_MANUAL_ONE_SHOT
+                    ):
+                        raise WifiCollectorError(
+                            "手動ワンショット録画中ではありません: "
+                            f"capture_mode={before.get('capture_mode')!r}, "
+                            f"state={before['state']}"
+                        )
+                    completed_before = int(before.get("completed_runs", 0))
+                    client.json_request(
+                        "POST",
+                        CONTROL_MANUAL_STOP_PATH,
+                        {},
+                    )
+                    response = wait_for_manual_stop(
+                        client,
+                        self.wait_seconds,
+                        completed_before,
+                    )
+                    messages.append(
+                        "手動動画を保存して撮影終了"
+                        f"（{capture_state(response).get('completed_runs', 0)}本）"
+                    )
             if action == "finish-run":
                 before = capture_state(read_status(client))
                 completed_before = int(before.get("completed_runs", 0))
@@ -380,6 +430,8 @@ class PixelDashboard:
     def _action_label(action: str) -> str:
         return {
             "start": "待機開始",
+            "manual-start": "手動録画開始",
+            "manual-stop": "手動録画終了",
             "finish-run": "現在の撮影だけ終了",
             "stop": "待機終了",
             "collect": "Macへ転送",

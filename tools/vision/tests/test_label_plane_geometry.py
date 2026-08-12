@@ -174,6 +174,32 @@ def _artifact() -> dict[str, object]:
 
 
 class LabelPlaneProjectionTest(unittest.TestCase):
+    def test_red_label_on_two_mm_marker_plane_is_unchanged(self):
+        camera_center = (-200.0, 360.0, 700.0)
+        camera = SyntheticCamera(
+            camera_center,
+            (360.0, 360.0, 2.0),
+            2.0,
+        )
+        geometry = _geometry(
+            camera_center,
+            reference_height_mm=2.0,
+            blue_height_mm=10.0,
+            red_height_mm=2.0,
+        )
+        physical_blue = (270.0, 450.0)
+        physical_red = (294.0, 450.0)
+        apparent_blue = camera.apparent_floor_xy(physical_blue, 10.0)
+        apparent_red = camera.apparent_floor_xy(physical_red, 2.0)
+
+        np.testing.assert_allclose(apparent_red, physical_red, atol=1e-8)
+        self.assertGreater(np.linalg.norm(apparent_blue - physical_blue), 1.0)
+        corrected = geometry.correct_pair(apparent_blue, apparent_red)
+        np.testing.assert_allclose(corrected.blue_xy_mm, physical_blue, atol=1e-8)
+        np.testing.assert_allclose(corrected.red_xy_mm, physical_red, atol=1e-8)
+        self.assertAlmostEqual(corrected.baseline_mm, 24.0, places=8)
+        self.assertAlmostEqual(corrected.yaw_deg, 0.0, places=8)
+
     def test_oblique_camera_recovers_blue10_red2_baseline_and_yaw90(self):
         camera_center = (-200.0, 360.0, 700.0)
         camera = SyntheticCamera(camera_center, (360.0, 360.0, 0.0))

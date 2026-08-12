@@ -58,11 +58,16 @@ final class WifiTransferServer implements AutoCloseable {
 
         CaptureControlResult finishCurrentRecording();
 
+        CaptureControlResult startManualOneShot();
+
+        CaptureControlResult stopManualOneShot();
+
         CaptureControlState captureControlState();
     }
 
     static final class CaptureControlState {
         final String state;
+        final String captureMode;
         final boolean continuousStandby;
         final boolean recording;
         final int completedRuns;
@@ -71,6 +76,7 @@ final class WifiTransferServer implements AutoCloseable {
 
         CaptureControlState(
                 String state,
+                String captureMode,
                 boolean continuousStandby,
                 boolean recording,
                 int completedRuns,
@@ -78,6 +84,7 @@ final class WifiTransferServer implements AutoCloseable {
                 String message
         ) {
             this.state = state;
+            this.captureMode = captureMode;
             this.continuousStandby = continuousStandby;
             this.recording = recording;
             this.completedRuns = completedRuns;
@@ -88,6 +95,7 @@ final class WifiTransferServer implements AutoCloseable {
         JSONObject toJson() throws JSONException {
             JSONObject result = new JSONObject();
             result.put("state", state);
+            result.put("capture_mode", captureMode);
             result.put("continuous_standby", continuousStandby);
             result.put("recording", recording);
             result.put("completed_runs", completedRuns);
@@ -503,6 +511,16 @@ final class WifiTransferServer implements AutoCloseable {
                 handleCurrentRecordingStop(output);
                 return;
             }
+            if ("POST".equals(method)
+                    && "/api/v1/control/manual/start".equals(path)) {
+                handleManualOneShotControl(true, output);
+                return;
+            }
+            if ("POST".equals(method)
+                    && "/api/v1/control/manual/stop".equals(path)) {
+                handleManualOneShotControl(false, output);
+                return;
+            }
             if (path.startsWith("/api/v1/runs/")) {
                 handleRunRequest(method, path, headers, output);
                 return;
@@ -555,6 +573,33 @@ final class WifiTransferServer implements AutoCloseable {
                     409,
                     result.error == null
                             ? "recording stop request was rejected"
+                            : result.error
+            );
+            return;
+        }
+        JSONObject response = infoJson();
+        response.put("control_accepted", true);
+        response.put("capture_control", result.state.toJson());
+        sendJson(output, 200, response);
+    }
+
+    private void handleManualOneShotControl(
+            boolean start,
+            OutputStream output
+    ) throws IOException, JSONException {
+        if (captureControlHandler == null) {
+            sendError(output, 503, "capture control is unavailable");
+            return;
+        }
+        CaptureControlResult result = start
+                ? captureControlHandler.startManualOneShot()
+                : captureControlHandler.stopManualOneShot();
+        if (!result.accepted) {
+            sendError(
+                    output,
+                    409,
+                    result.error == null
+                            ? "manual one-shot request was rejected"
                             : result.error
             );
             return;

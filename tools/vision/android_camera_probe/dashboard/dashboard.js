@@ -9,14 +9,15 @@ const elements = Object.fromEntries([
   "heroDetail", "sessionRuns", "completedRuns", "savedRuns", "pendingRuns",
   "freshness", "validationBadge", "validationMessage", "latestRunName",
   "latestRunSize", "latestRunTransfer", "operationMessage", "deviceInfo",
-  "startButton", "finishRunButton", "stopButton", "collectButton",
-  "stopCollectButton",
+  "startButton", "manualStartButton", "manualStopButton", "finishRunButton",
+  "stopButton", "collectButton", "stopCollectButton",
   "eventList", "clearEventsButton",
 ].map((id) => [id, document.getElementById(id)]));
 
 let previousCompleted = null;
 let previousSaved = null;
 let previousState = null;
+let previousCaptureMode = null;
 let recordingStartedAt = null;
 let lastSaveDetectedAt = null;
 let lastStatusAt = null;
@@ -131,6 +132,8 @@ function renderOffline(data) {
   });
   const running = renderOperation(data.operation);
   elements.startButton.disabled = true;
+  elements.manualStartButton.disabled = true;
+  elements.manualStopButton.disabled = true;
   elements.finishRunButton.disabled = true;
   elements.stopButton.disabled = true;
   elements.collectButton.disabled = true;
@@ -144,6 +147,11 @@ function renderOnline(data) {
   const pixel = data.pixel;
   const capture = data.capture;
   const state = capture.state;
+  const captureMode = capture.capture_mode
+    || (capture.continuous_standby ? "continuous_optical" : "legacy");
+  const manualOneShot = captureMode === "manual_one_shot";
+  const continuousOptical = captureMode === "continuous_optical"
+    || (captureMode === "legacy" && capture.continuous_standby);
   const completed = Number(capture.completed_runs || 0);
   const saved = Number(pixel.saved_runs || 0);
   const acknowledged = Number(pixel.acknowledged_runs || 0);
@@ -161,9 +169,12 @@ function renderOnline(data) {
   }
 
   if (state === "recording") {
-    if (previousState !== "recording" || recordingStartedAt === null) {
+    if (previousState !== "recording" || previousCaptureMode !== captureMode
+        || recordingStartedAt === null) {
       recordingStartedAt = Date.now();
-      addEvent("START信号を検出し、録画を開始");
+      addEvent(manualOneShot
+        ? "Macから1080p/240手動録画を開始"
+        : "START信号を検出し、録画を開始");
     }
   } else {
     recordingStartedAt = null;
@@ -186,14 +197,18 @@ function renderOnline(data) {
       "warning",
       "STOP SIGNAL WARNING",
       "録画が長時間継続中",
-      `${Math.floor(recordingSeconds)}秒録画しています。STOP信号の見逃しや走行連結を確認してください。`,
+      manualOneShot
+        ? `${Math.floor(recordingSeconds)}秒録画しています。必要なら「手動録画を終了」で保存してください。`
+        : `${Math.floor(recordingSeconds)}秒録画しています。STOP信号の見逃しや走行連結を確認してください。`,
     );
   } else if (state === "recording") {
     setHero(
       "recording",
       "RECORDING 240 FPS",
-      "走行を録画中",
-      "走行終了後の4パルスSTOP信号を待っています。",
+      manualOneShot ? "手動録画中" : "走行を録画中",
+      manualOneShot
+        ? "「手動録画を終了」でこの1本を保存し、撮影停止へ戻ります。"
+        : "走行終了後の4パルスSTOP信号を待っています。",
     );
   } else if (state === "rearming") {
     setHero(
@@ -222,7 +237,9 @@ function renderOnline(data) {
     setHero(
       "transition",
       state === "starting" ? "STARTING CAMERA" : "STOPPING CAMERA",
-      state === "starting" ? "カメラを準備中" : "待機を終了中",
+      state === "starting"
+        ? (manualOneShot ? "手動録画を開始中" : "カメラを準備中")
+        : (manualOneShot ? "手動動画を保存中" : "待機を終了中"),
       capture.message || "Pixelの処理完了を待っています。",
     );
   } else if (state === "error") {
@@ -232,7 +249,8 @@ function renderOnline(data) {
       "transition",
       "STANDBY STOPPED",
       "撮影待機は停止中",
-      capture.message || "「連続待機を開始」で撮影準備を始めます。",
+      capture.message
+        || "連続光学待機または1080p/240手動録画を開始できます。",
     );
   }
 
@@ -252,14 +270,22 @@ function renderOnline(data) {
     "starting", "armed", "recording", "finishing-run", "rearming", "stopping",
   ].includes(state);
   elements.startButton.disabled = actionRunning || activeCapture;
+  elements.manualStartButton.disabled = actionRunning || activeCapture;
+  elements.manualStopButton.disabled = actionRunning
+    || !manualOneShot
+    || state !== "recording";
   elements.finishRunButton.disabled = actionRunning
     || state !== "recording"
+    || !continuousOptical
     || !capture.continuous_standby;
   elements.stopButton.disabled = actionRunning
+    || !continuousOptical
     || !capture.continuous_standby
     || state === "finishing-run";
   elements.collectButton.disabled = actionRunning || captureBusy;
   elements.stopCollectButton.disabled = actionRunning
+    || !continuousOptical
+    || !capture.continuous_standby
     || !captureBusy
     || state === "finishing-run";
 
@@ -270,6 +296,7 @@ function renderOnline(data) {
   previousCompleted = completed;
   previousSaved = saved;
   previousState = state;
+  previousCaptureMode = captureMode;
 }
 
 async function pollStatus() {
@@ -290,8 +317,9 @@ async function pollStatus() {
 
 async function performAction(action) {
   const buttons = [
-    elements.startButton, elements.finishRunButton, elements.stopButton,
-    elements.collectButton, elements.stopCollectButton,
+    elements.startButton, elements.manualStartButton, elements.manualStopButton,
+    elements.finishRunButton, elements.stopButton, elements.collectButton,
+    elements.stopCollectButton,
   ];
   buttons.forEach((button) => { button.disabled = true; });
   elements.operationMessage.className = "operation-message";

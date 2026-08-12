@@ -35,6 +35,34 @@ FIT = _load_module(
 )
 
 
+class _FakeArtifact:
+    def __init__(self, path: Path):
+        self.path = path.resolve()
+
+
+class _FakeCaptureFingerprint:
+    safety_qualified = True
+    camera_setup_sha256 = "12" * 32
+
+    def __init__(self, trajectory: Path, calibration: Path):
+        self._artifacts = {
+            "trajectory_csv": _FakeArtifact(trajectory),
+            "source_board_calibration": _FakeArtifact(calibration),
+        }
+
+    def artifact(self, name: str):
+        return self._artifacts[name]
+
+    def to_json(self):
+        return {
+            "schema": "nightfall_camera_capture_fingerprint_v1",
+            "safety_qualified": True,
+            "fingerprint_sha256": "34" * 32,
+            "camera_setup_sha256": self.camera_setup_sha256,
+            "artifacts": {},
+        }
+
+
 def _apparent(
     physical_xy: tuple[float, float],
     absolute_height_mm: float,
@@ -62,7 +90,19 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
             ).read_text(encoding="utf-8")
         )
         self.assertEqual(raw["schema"], FIT.MANIFEST_SCHEMA)
-        self.assertIsNone(raw["reference_plane_absolute_height_mm"])
+        self.assertEqual(
+            raw["capture_session"]["schema"],
+            "nightfall_camera_capture_session_v1",
+        )
+        self.assertEqual(raw["reference_plane_absolute_height_mm"], 2.0)
+        self.assertEqual(
+            raw["reference_plane_provenance"]["height_reference"],
+            "maze floor",
+        )
+        self.assertEqual(
+            raw["reference_plane_provenance"]["confirmed_date"],
+            "2026-08-12",
+        )
         self.assertEqual(
             [item["role"] for item in raw["placements"]].count("fit"),
             4,
@@ -195,7 +235,7 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
             layout = FIT.board_layout.load(board, 900)
             bounds = layout.raw["canvas_bounds_mm"]
             camera = (287.0, 431.0, 812.0)
-            reference_height = 3.0
+            reference_height = 2.0
             specifications = (
                 ("fit-sw", "fit", (45.0, 45.0), 0.0, 0.0),
                 ("fit-se", "fit", (675.0, 45.0), 180.0, 2.5),
@@ -230,6 +270,7 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                     apparent_red = _apparent(
                         red, 2.0, camera, reference_height
                     )
+                    np.testing.assert_allclose(apparent_red, red, atol=1e-12)
 
                     def canonical(point):
                         return (
@@ -272,10 +313,18 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 json.dumps(
                     {
                         "schema": FIT.MANIFEST_SCHEMA,
+                        "capture_session": {"schema": "placeholder"},
                         "board_layout": str(board),
                         "tracking_geometry": str(tracking),
                         "canonical_size_px": 900,
                         "reference_plane_absolute_height_mm": reference_height,
+                        "reference_plane_provenance": {
+                            "surface": "marker top face",
+                            "height_reference": "maze floor",
+                            "measurement": "measured 2 mm",
+                            "confirmed_date": "2026-08-12",
+                            "remeasure_if": "marker fixture changes",
+                        },
                         "placements": [
                             {
                                 "id": identifier,
@@ -294,7 +343,12 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 encoding="utf-8",
             )
             output = root / "geometry.json"
+            capture = _FakeCaptureFingerprint(trajectory, source_calibration)
             with mock.patch.object(
+                FIT.camera_capture_fingerprint,
+                "load_capture_session",
+                return_value=capture,
+            ), mock.patch.object(
                 sys,
                 "argv",
                 [
@@ -305,6 +359,13 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 ],
             ):
                 self.assertEqual(FIT.main(), 0)
+            artifact = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(
+                artifact["bindings"]["capture_session"][
+                    "camera_setup_sha256"
+                ],
+                capture.camera_setup_sha256,
+            )
             geometry = FIT.label_plane_geometry.load_geometry(
                 output,
                 expected_board_layout_sha256=FIT.sha256_file(board),
@@ -319,6 +380,63 @@ class LabelPlaneCameraFitTest(unittest.TestCase):
                 camera,
                 atol=1e-6,
             )
+            self.assertEqual(geometry.reference_plane_height_mm, 2.0)
+            self.assertEqual(geometry.blue_label_height_mm, 10.0)
+            self.assertEqual(geometry.red_label_height_mm, 2.0)
+            np.testing.assert_allclose(
+                geometry.correct_red((123.0, 456.0)),
+                (123.0, 456.0),
+                atol=1e-12,
+            )
+
+    def test_manifest_without_capture_session_is_legacy_and_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "manifest.json"
+            manifest.write_text(
+                json.dumps({"schema": FIT.MANIFEST_SCHEMA}) + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "legacy/unverified"):
+                FIT.load_placements(manifest)
+
+    def test_v2_reference_plane_provenance_is_required_and_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectory = root / "trajectory.csv"
+            calibration = root / "calibration.json"
+            capture = _FakeCaptureFingerprint(trajectory, calibration)
+            base = {
+                "schema": FIT.MANIFEST_SCHEMA,
+                "capture_session": {"schema": "placeholder"},
+            }
+            invalid = (
+                None,
+                {},
+                {
+                    "surface": "marker top",
+                    "height_reference": "marker base",
+                    "measurement": "2 mm",
+                    "confirmed_date": "2026-08-12",
+                    "remeasure_if": "fixture changes",
+                },
+            )
+            for provenance in invalid:
+                with self.subTest(provenance=provenance):
+                    raw = dict(base)
+                    if provenance is not None:
+                        raw["reference_plane_provenance"] = provenance
+                    manifest = root / "manifest.json"
+                    manifest.write_text(
+                        json.dumps(raw) + "\n", encoding="utf-8"
+                    )
+                    with mock.patch.object(
+                        FIT.camera_capture_fingerprint,
+                        "load_capture_session",
+                        return_value=capture,
+                    ), self.assertRaisesRegex(
+                        ValueError, "reference_plane_provenance"
+                    ):
+                        FIT.load_placements(manifest)
 
 
 if __name__ == "__main__":

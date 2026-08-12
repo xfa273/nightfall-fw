@@ -36,12 +36,14 @@ import org.json.JSONObject;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +54,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 final class HfrRecorder {
     private static final boolean ENABLE_RECORDING_SURFACE = true;
+    private static final float FIXED_FOCUS_DISTANCE_DIOPTERS = 1.05f;
+    private static final float FOCUS_REQUEST_TOLERANCE_DIOPTERS = 0.05f;
+    private static final float FOCUS_STABILITY_TOLERANCE_DIOPTERS = 0.0001f;
+    private static final long FOCUS_SETTLE_MINIMUM_NS = 250_000_000L;
+    private static final long FOCUS_SETTLE_TIMEOUT_MS = 2_000L;
 
     static final String REPORT_FILENAME = "hfr_report.json";
     static final String VIDEO_FILENAME = "hfr_capture.mp4";
@@ -176,6 +183,11 @@ final class HfrRecorder {
                         "optical trigger requires preview"
                 );
             }
+            if (!enablePreview) {
+                throw new IllegalArgumentException(
+                        "fixed-focus settling requires preview"
+                );
+            }
             if (opticalTriggerScore < 1
                     || opticalTriggerHotPixels < 1) {
                 throw new IllegalArgumentException(
@@ -211,6 +223,20 @@ final class HfrRecorder {
             );
             object.put("video_stabilization_requested", "OFF");
             object.put("optical_stabilization_requested", "OFF");
+            object.put("focus_mode", "fixed");
+            object.put("autofocus_mode_requested", "OFF");
+            object.put(
+                    "requested_focus_distance_diopters",
+                    FIXED_FOCUS_DISTANCE_DIOPTERS
+            );
+            object.put(
+                    "focus_settle_minimum_ms",
+                    FOCUS_SETTLE_MINIMUM_NS / 1_000_000L
+            );
+            object.put(
+                    "focus_settle_timeout_ms",
+                    FOCUS_SETTLE_TIMEOUT_MS
+            );
             object.put(
                     "preview_surface_enabled",
                     enablePreview
@@ -250,6 +276,8 @@ final class HfrRecorder {
         final Float controlZoomRatio;
         final String activePhysicalCameraId;
         final Integer aeMode;
+        final Integer controlAfMode;
+        final Integer lensState;
         final Integer videoStabilizationMode;
         final Integer opticalStabilizationMode;
 
@@ -295,6 +323,8 @@ final class HfrRecorder {
                             .LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID
             );
             aeMode = result.get(CaptureResult.CONTROL_AE_MODE);
+            controlAfMode = result.get(CaptureResult.CONTROL_AF_MODE);
+            lensState = result.get(CaptureResult.LENS_STATE);
             videoStabilizationMode = result.get(
                     CaptureResult.CONTROL_VIDEO_STABILIZATION_MODE
             );
@@ -352,6 +382,8 @@ final class HfrRecorder {
                     activePhysicalCameraId
             );
             putNullable(object, "ae_mode", aeMode);
+            putNullable(object, "control_af_mode", controlAfMode);
+            putNullable(object, "lens_state", lensState);
             putNullable(
                     object,
                     "video_stabilization_mode",
@@ -412,7 +444,17 @@ final class HfrRecorder {
     private volatile boolean mediaRecorderStarted;
     private volatile boolean opticalArmed;
     private volatile boolean cancelledBeforeRecording;
+    private volatile boolean waitingForFocusSettle;
+    private volatile boolean focusSettled;
     private int orientationHintDeg;
+    private long focusSettleStartedElapsedNs;
+    private long focusStableSinceElapsedNs;
+    private long focusSettledElapsedNs;
+    private int focusSettleObservationCount;
+    private int focusStableObservationCount;
+    private Float appliedFocusDistanceDiopters;
+    private Integer focusSettleAfMode;
+    private Integer focusSettleLensState;
     private long recordingStartElapsedNs;
     private long recordingStopElapsedNs;
     private long opticalStartDetectedElapsedNs;
@@ -444,6 +486,7 @@ final class HfrRecorder {
     private File captureSidecarFile;
     private File encoderSidecarFile;
     private String outputRelativeDirectory;
+    private final Runnable focusSettleTimeoutRunnable;
 
     HfrRecorder(
             Activity activity,
@@ -455,6 +498,21 @@ final class HfrRecorder {
         this.preview = preview;
         this.cameraHandler = cameraHandler;
         this.listener = listener;
+        focusSettleTimeoutRunnable = () ->
+                this.cameraHandler.post(this::onFocusSettleTimeout);
+    }
+
+    private void onFocusSettleTimeout() {
+        if (active.get()
+                && !stopping.get()
+                && waitingForFocusSettle
+                && !focusSettled) {
+            fail(
+                    "fixed focus did not settle within "
+                            + FOCUS_SETTLE_TIMEOUT_MS + " ms",
+                    null
+            );
+        }
     }
 
     boolean isActive() {
@@ -473,6 +531,16 @@ final class HfrRecorder {
         mediaRecorderStarted = false;
         opticalArmed = false;
         cancelledBeforeRecording = false;
+        waitingForFocusSettle = false;
+        focusSettled = false;
+        focusSettleStartedElapsedNs = 0;
+        focusStableSinceElapsedNs = 0;
+        focusSettledElapsedNs = 0;
+        focusSettleObservationCount = 0;
+        focusStableObservationCount = 0;
+        appliedFocusDistanceDiopters = null;
+        focusSettleAfMode = null;
+        focusSettleLensState = null;
         recordingStartElapsedNs = 0;
         recordingStopElapsedNs = 0;
         opticalStartDetectedElapsedNs = 0;
@@ -765,7 +833,83 @@ final class HfrRecorder {
                 );
             }
         }
+        if (!hasCapability(
+                characteristics,
+                CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR
+        )) {
+            throw new IllegalArgumentException(
+                    "camera does not expose MANUAL_SENSOR capability"
+            );
+        }
+        Float minimumFocusDistance = characteristics.get(
+                CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE
+        );
+        if (minimumFocusDistance == null
+                || minimumFocusDistance <= 0.0f
+                || FIXED_FOCUS_DISTANCE_DIOPTERS
+                > minimumFocusDistance) {
+            throw new IllegalArgumentException(
+                    "camera cannot apply the fixed focus distance "
+                            + FIXED_FOCUS_DISTANCE_DIOPTERS + " D"
+            );
+        }
+        int[] autofocusModes = characteristics.get(
+                CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES
+        );
+        if (!containsInt(
+                autofocusModes,
+                CameraCharacteristics.CONTROL_AF_MODE_OFF
+        )) {
+            throw new IllegalArgumentException(
+                    "camera does not expose fixed-focus control"
+            );
+        }
+        Integer focusCalibration = characteristics.get(
+                CameraCharacteristics.LENS_INFO_FOCUS_DISTANCE_CALIBRATION
+        );
+        if (focusCalibration == null
+                || (focusCalibration
+                != CameraCharacteristics
+                .LENS_INFO_FOCUS_DISTANCE_CALIBRATION_APPROXIMATE
+                && focusCalibration
+                != CameraCharacteristics
+                .LENS_INFO_FOCUS_DISTANCE_CALIBRATION_CALIBRATED)) {
+            throw new IllegalArgumentException(
+                    "camera focus distance is not calibrated"
+            );
+        }
+        List<CaptureRequest.Key<?>> requestKeys =
+                characteristics.getAvailableCaptureRequestKeys();
+        if (requestKeys == null
+                || !requestKeys.contains(CaptureRequest.LENS_FOCUS_DISTANCE)
+                || !requestKeys.contains(CaptureRequest.CONTROL_AF_MODE)) {
+            throw new IllegalArgumentException(
+                    "camera lacks fixed-focus request metadata"
+            );
+        }
+        List<CaptureResult.Key<?>> resultKeys =
+                characteristics.getAvailableCaptureResultKeys();
+        if (resultKeys == null
+                || !resultKeys.contains(CaptureResult.LENS_FOCUS_DISTANCE)
+                || !resultKeys.contains(CaptureResult.CONTROL_AF_MODE)
+                || !resultKeys.contains(CaptureResult.LENS_STATE)) {
+            throw new IllegalArgumentException(
+                    "camera lacks fixed-focus result metadata"
+            );
+        }
         orientationHintDeg = calculateOrientationHint(characteristics);
+    }
+
+    private static boolean containsInt(int[] values, int target) {
+        if (values == null) {
+            return false;
+        }
+        for (int value : values) {
+            if (value == target) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasCapability(
@@ -938,22 +1082,127 @@ final class HfrRecorder {
 
     private void startRepeatingBurst() {
         try {
-            if (config.opticalTrigger) {
-                submitRepeatingBurst(false);
-                opticalArmed = true;
-                listener.onArmed();
-                listener.onStatus(
-                        "ARMED: waiting for F413 LED token"
-                );
-            } else {
-                startEncodedRecording();
-            }
+            startFocusSettling();
         } catch (Exception exception) {
             fail("unable to start high-speed burst", exception);
         }
     }
 
+    private void startFocusSettling() throws Exception {
+        if (previewSurface == null) {
+            throw new IllegalStateException(
+                    "fixed-focus settling requires a preview surface"
+            );
+        }
+        waitingForFocusSettle = true;
+        focusSettled = false;
+        focusSettleStartedElapsedNs = SystemClock.elapsedRealtimeNanos();
+        focusStableSinceElapsedNs = 0;
+        focusSettledElapsedNs = 0;
+        focusSettleObservationCount = 0;
+        focusStableObservationCount = 0;
+        appliedFocusDistanceDiopters = null;
+        focusSettleAfMode = null;
+        focusSettleLensState = null;
+        listener.onStatus(
+                String.format(
+                        "Settling fixed focus at %.2f D...",
+                        FIXED_FOCUS_DISTANCE_DIOPTERS
+                )
+        );
+        submitRepeatingBurst(false);
+        mainHandler.postAtTime(
+                focusSettleTimeoutRunnable,
+                this,
+                SystemClock.uptimeMillis() + FOCUS_SETTLE_TIMEOUT_MS
+        );
+    }
+
+    private void observeFocusSettling(
+            long callbackElapsedNs,
+            TotalCaptureResult result
+    ) {
+        if (!waitingForFocusSettle
+                || focusSettled
+                || stopping.get()) {
+            return;
+        }
+        focusSettleObservationCount += 1;
+        Float focusDistance = result.get(CaptureResult.LENS_FOCUS_DISTANCE);
+        Integer afMode = result.get(CaptureResult.CONTROL_AF_MODE);
+        Integer lensState = result.get(CaptureResult.LENS_STATE);
+        focusSettleAfMode = afMode;
+        focusSettleLensState = lensState;
+
+        boolean usable = focusDistance != null
+                && !Float.isNaN(focusDistance)
+                && !Float.isInfinite(focusDistance)
+                && focusDistance >= 0.0f
+                && Math.abs(
+                focusDistance - FIXED_FOCUS_DISTANCE_DIOPTERS
+        ) <= FOCUS_REQUEST_TOLERANCE_DIOPTERS
+                && afMode != null
+                && afMode == CaptureResult.CONTROL_AF_MODE_OFF
+                && lensState != null
+                && lensState == CaptureResult.LENS_STATE_STATIONARY;
+        if (!usable) {
+            resetStableFocusWindow();
+            return;
+        }
+
+        boolean stableWithPrior = appliedFocusDistanceDiopters != null
+                && Math.abs(
+                focusDistance - appliedFocusDistanceDiopters
+        ) <= FOCUS_STABILITY_TOLERANCE_DIOPTERS;
+        if (!stableWithPrior || focusStableSinceElapsedNs == 0) {
+            focusStableSinceElapsedNs = callbackElapsedNs;
+            focusStableObservationCount = 1;
+        } else {
+            focusStableObservationCount += 1;
+        }
+        appliedFocusDistanceDiopters = focusDistance;
+        if (callbackElapsedNs - focusStableSinceElapsedNs
+                < FOCUS_SETTLE_MINIMUM_NS) {
+            return;
+        }
+        completeFocusSettling(callbackElapsedNs);
+    }
+
+    private void resetStableFocusWindow() {
+        focusStableSinceElapsedNs = 0;
+        focusStableObservationCount = 0;
+        appliedFocusDistanceDiopters = null;
+    }
+
+    private void completeFocusSettling(long callbackElapsedNs) {
+        waitingForFocusSettle = false;
+        focusSettled = true;
+        focusSettledElapsedNs = callbackElapsedNs;
+        mainHandler.removeCallbacks(focusSettleTimeoutRunnable);
+        try {
+            if (config.opticalTrigger) {
+                opticalArmed = true;
+                listener.onArmed();
+                listener.onStatus(
+                        String.format(
+                                "ARMED: focus %.4f D; waiting for F413 LED token",
+                                appliedFocusDistanceDiopters
+                        )
+                );
+            } else {
+                startEncodedRecording();
+            }
+        } catch (Exception exception) {
+            fail("unable to continue after fixed-focus settling", exception);
+        }
+    }
+
     private void startEncodedRecording() throws Exception {
+        if (!focusSettled || waitingForFocusSettle) {
+            throw new IllegalStateException(
+                    "fixed focus is not settled"
+            );
+        }
         captureMetadata.clear();
         captureFailureCount = 0;
         submitRepeatingBurst(true);
@@ -991,6 +1240,7 @@ final class HfrRecorder {
         if (includeEncoder && ENABLE_RECORDING_SURFACE) {
             request.addTarget(encoderSurface);
         }
+        request.setTag(includeEncoder);
         request.set(
                 CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE,
                 new Range<>(config.fps, config.fps)
@@ -1005,7 +1255,11 @@ final class HfrRecorder {
         );
         request.set(
                 CaptureRequest.CONTROL_AF_MODE,
-                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_VIDEO
+                CaptureRequest.CONTROL_AF_MODE_OFF
+        );
+        request.set(
+                CaptureRequest.LENS_FOCUS_DISTANCE,
+                FIXED_FOCUS_DISTANCE_DIOPTERS
         );
         request.set(
                 CaptureRequest.CONTROL_AWB_MODE,
@@ -1053,14 +1307,19 @@ final class HfrRecorder {
                         CaptureRequest request,
                         TotalCaptureResult result
                 ) {
-                    if (mediaRecorderStarted) {
+                    long callbackElapsedNs =
+                            SystemClock.elapsedRealtimeNanos();
+                    if (mediaRecorderStarted
+                            && Boolean.TRUE.equals(request.getTag())) {
                         captureMetadata.add(
                                 new CaptureMetadata(
                                         result.getFrameNumber(),
-                                        SystemClock.elapsedRealtimeNanos(),
+                                        callbackElapsedNs,
                                         result
                                 )
                         );
+                    } else if (waitingForFocusSettle) {
+                        observeFocusSettling(callbackElapsedNs, result);
                     }
                 }
 
@@ -1114,6 +1373,8 @@ final class HfrRecorder {
 
     private void closeCameraPipeline() {
         opticalArmed = false;
+        waitingForFocusSettle = false;
+        mainHandler.removeCallbacks(focusSettleTimeoutRunnable);
         try {
             if (captureSession != null) {
                 captureSession.stopRepeating();
@@ -1343,6 +1604,7 @@ final class HfrRecorder {
     private JSONObject buildReport(String error) throws Exception {
         JSONObject report = new JSONObject();
         report.put("schema", "nightfall_android_hfr_recording_v1");
+        report.put("app_version", resolveAppVersion());
         report.put("generated_at_utc", Instant.now().toString());
         report.put("record_nonce", config.nonce);
         report.put(
@@ -1355,6 +1617,8 @@ final class HfrRecorder {
         report.put("device", buildDevice());
         report.put("config", config.toJson());
         report.put("camera_static_geometry", buildCameraStaticGeometry());
+        report.put("focus_settle", buildFocusSettleReport());
+        report.put("artifact_integrity", buildArtifactIntegrity());
         report.put("orientation_hint_deg", orientationHintDeg);
         report.put(
                 "recording_elapsed_s",
@@ -1590,6 +1854,16 @@ final class HfrRecorder {
         return device;
     }
 
+    private String resolveAppVersion() {
+        try {
+            return activity.getPackageManager()
+                    .getPackageInfo(activity.getPackageName(), 0)
+                    .versionName;
+        } catch (Exception exception) {
+            return "unknown";
+        }
+    }
+
     private JSONObject buildCameraStaticGeometry() throws Exception {
         JSONObject geometry = new JSONObject();
         geometry.put("camera_id", config.cameraId);
@@ -1601,6 +1875,18 @@ final class HfrRecorder {
             geometry.put("pixel_array_size", JSONObject.NULL);
             geometry.put("sensor_physical_size_mm", JSONObject.NULL);
             geometry.put("available_focal_lengths_mm", JSONObject.NULL);
+            geometry.put(
+                    "minimum_focus_distance_diopters",
+                    JSONObject.NULL
+            );
+            geometry.put("focus_distance_calibration", JSONObject.NULL);
+            geometry.put("autofocus_modes", JSONObject.NULL);
+            geometry.put("manual_sensor_supported", false);
+            geometry.put("focus_distance_request_supported", false);
+            geometry.put("autofocus_mode_request_supported", false);
+            geometry.put("focus_distance_result_supported", false);
+            geometry.put("autofocus_mode_result_supported", false);
+            geometry.put("lens_state_result_supported", false);
             geometry.put("lens_intrinsic_calibration", JSONObject.NULL);
             geometry.put("lens_distortion", JSONObject.NULL);
             return geometry;
@@ -1662,6 +1948,72 @@ final class HfrRecorder {
                         )
                 )
         );
+        putNullable(
+                geometry,
+                "minimum_focus_distance_diopters",
+                characteristics.get(
+                        CameraCharacteristics
+                                .LENS_INFO_MINIMUM_FOCUS_DISTANCE
+                )
+        );
+        putNullable(
+                geometry,
+                "focus_distance_calibration",
+                characteristics.get(
+                        CameraCharacteristics
+                                .LENS_INFO_FOCUS_DISTANCE_CALIBRATION
+                )
+        );
+        geometry.put(
+                "autofocus_modes",
+                intArrayToJson(
+                        characteristics.get(
+                                CameraCharacteristics
+                                        .CONTROL_AF_AVAILABLE_MODES
+                        )
+                )
+        );
+        geometry.put(
+                "manual_sensor_supported",
+                hasCapability(
+                        characteristics,
+                        CameraCharacteristics
+                                .REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR
+                )
+        );
+        List<CaptureRequest.Key<?>> requestKeys =
+                characteristics.getAvailableCaptureRequestKeys();
+        List<CaptureResult.Key<?>> resultKeys =
+                characteristics.getAvailableCaptureResultKeys();
+        geometry.put(
+                "focus_distance_request_supported",
+                requestKeys != null
+                        && requestKeys.contains(
+                        CaptureRequest.LENS_FOCUS_DISTANCE
+                )
+        );
+        geometry.put(
+                "autofocus_mode_request_supported",
+                requestKeys != null
+                        && requestKeys.contains(CaptureRequest.CONTROL_AF_MODE)
+        );
+        geometry.put(
+                "focus_distance_result_supported",
+                resultKeys != null
+                        && resultKeys.contains(
+                        CaptureResult.LENS_FOCUS_DISTANCE
+                )
+        );
+        geometry.put(
+                "autofocus_mode_result_supported",
+                resultKeys != null
+                        && resultKeys.contains(CaptureResult.CONTROL_AF_MODE)
+        );
+        geometry.put(
+                "lens_state_result_supported",
+                resultKeys != null
+                        && resultKeys.contains(CaptureResult.LENS_STATE)
+        );
         geometry.put(
                 "lens_intrinsic_calibration",
                 floatArrayToJson(
@@ -1682,6 +2034,99 @@ final class HfrRecorder {
         return geometry;
     }
 
+    private JSONObject buildArtifactIntegrity() throws Exception {
+        JSONObject integrity = new JSONObject();
+        integrity.put("video", artifactIdentity(videoFile));
+        integrity.put(
+                "capture_results_jsonl",
+                artifactIdentity(captureSidecarFile)
+        );
+        integrity.put(
+                "encoder_samples_jsonl",
+                artifactIdentity(encoderSidecarFile)
+        );
+        return integrity;
+    }
+
+    private JSONObject buildFocusSettleReport() throws Exception {
+        JSONObject report = new JSONObject();
+        report.put("required", true);
+        report.put("settled", focusSettled);
+        report.put(
+                "requested_distance_diopters",
+                FIXED_FOCUS_DISTANCE_DIOPTERS
+        );
+        putNullable(
+                report,
+                "applied_distance_diopters",
+                appliedFocusDistanceDiopters
+        );
+        report.put(
+                "minimum_stable_ms",
+                FOCUS_SETTLE_MINIMUM_NS / 1_000_000L
+        );
+        report.put("timeout_ms", FOCUS_SETTLE_TIMEOUT_MS);
+        report.put("observation_count", focusSettleObservationCount);
+        report.put(
+                "stable_observation_count",
+                focusStableObservationCount
+        );
+        putNullable(report, "control_af_mode", focusSettleAfMode);
+        putNullable(report, "lens_state", focusSettleLensState);
+        report.put(
+                "started_elapsed_realtime_ns",
+                focusSettleStartedElapsedNs > 0
+                        ? focusSettleStartedElapsedNs
+                        : JSONObject.NULL
+        );
+        report.put(
+                "settled_elapsed_realtime_ns",
+                focusSettledElapsedNs > 0
+                        ? focusSettledElapsedNs
+                        : JSONObject.NULL
+        );
+        report.put(
+                "settle_elapsed_ms",
+                focusSettleStartedElapsedNs > 0
+                        && focusSettledElapsedNs >= focusSettleStartedElapsedNs
+                        ? (focusSettledElapsedNs
+                        - focusSettleStartedElapsedNs) / 1_000_000.0
+                        : JSONObject.NULL
+        );
+        return report;
+    }
+
+    private static Object artifactIdentity(File file) throws Exception {
+        if (file == null || !file.isFile()) {
+            return JSONObject.NULL;
+        }
+        JSONObject identity = new JSONObject();
+        identity.put("filename", file.getName());
+        identity.put("size_bytes", file.length());
+        identity.put("sha256", sha256(file));
+        return identity;
+    }
+
+    private static String sha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] buffer = new byte[64 * 1024];
+        try (FileInputStream stream = new FileInputStream(file)) {
+            int count;
+            while ((count = stream.read(buffer)) >= 0) {
+                if (count > 0) {
+                    digest.update(buffer, 0, count);
+                }
+            }
+        }
+        StringBuilder output = new StringBuilder(64);
+        for (byte value : digest.digest()) {
+            int unsigned = value & 0xff;
+            output.append(Character.forDigit(unsigned >>> 4, 16));
+            output.append(Character.forDigit(unsigned & 0x0f, 16));
+        }
+        return output.toString();
+    }
+
     private JSONObject buildCaptureSummary() throws Exception {
         List<CaptureMetadata> snapshot;
         synchronized (captureMetadata) {
@@ -1692,6 +2137,8 @@ final class HfrRecorder {
         List<Long> frameDurations = new ArrayList<>();
         List<Long> rollingShutterSkews = new ArrayList<>();
         List<Long> sensitivities = new ArrayList<>();
+        List<Long> autofocusModes = new ArrayList<>();
+        List<Long> lensStates = new ArrayList<>();
         List<Long> videoStabilizationModes = new ArrayList<>();
         List<Long> opticalStabilizationModes = new ArrayList<>();
         for (CaptureMetadata item : snapshot) {
@@ -1704,6 +2151,12 @@ final class HfrRecorder {
             );
             if (item.sensitivityIso != null) {
                 sensitivities.add(item.sensitivityIso.longValue());
+            }
+            if (item.controlAfMode != null) {
+                autofocusModes.add(item.controlAfMode.longValue());
+            }
+            if (item.lensState != null) {
+                lensStates.add(item.lensState.longValue());
             }
             if (item.videoStabilizationMode != null) {
                 videoStabilizationModes.add(
@@ -1743,6 +2196,8 @@ final class HfrRecorder {
                 statistics(rollingShutterSkews)
         );
         summary.put("sensitivity_iso", statistics(sensitivities));
+        summary.put("control_af_mode", statistics(autofocusModes));
+        summary.put("lens_state", statistics(lensStates));
         summary.put(
                 "video_stabilization_mode",
                 statistics(videoStabilizationModes)
@@ -1918,6 +2373,17 @@ final class HfrRecorder {
         }
         JSONArray result = new JSONArray();
         for (float value : values) {
+            result.put(value);
+        }
+        return result;
+    }
+
+    private static Object intArrayToJson(int[] values) throws Exception {
+        if (values == null) {
+            return JSONObject.NULL;
+        }
+        JSONArray result = new JSONArray();
+        for (int value : values) {
             result.put(value);
         }
         return result;

@@ -16,6 +16,7 @@ import numpy as np
 
 import aruco_trajectory as aruco
 import board_layout
+import camera_capture_fingerprint
 import label_plane_geometry
 
 
@@ -25,7 +26,7 @@ SIDECAR_SCHEMA = "nightfall_height_corrected_trajectory_v1"
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Reproject apparent floor-homography blue/red label coordinates "
+            "Reproject apparent reference-plane blue/red label coordinates "
             "onto their measured physical planes."
         )
     )
@@ -33,6 +34,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--board-layout", type=Path, required=True)
     parser.add_argument("--tracking-geometry", type=Path, required=True)
     parser.add_argument("--label-plane-geometry", type=Path, required=True)
+    parser.add_argument(
+        "--capture-session-manifest",
+        type=Path,
+        required=True,
+        help=(
+            "JSON object containing capture_session, or a direct "
+            "nightfall_camera_capture_session_v1 object"
+        ),
+    )
     parser.add_argument("--canonical-size", type=int, default=900)
     parser.add_argument("--smooth-window", type=int, default=9)
     parser.add_argument(
@@ -118,6 +128,44 @@ def _load_source_calibration(
     if canonical_size != expected_canonical_size:
         raise ValueError("source trajectory used a different canonical size")
     return raw
+
+
+def _load_target_capture(
+    manifest_path: Path,
+) -> camera_capture_fingerprint.CameraCaptureFingerprint:
+    try:
+        raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid capture-session manifest JSON: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError("capture-session manifest root must be an object")
+    block = raw.get("capture_session")
+    if block is None and raw.get("schema") == (
+        camera_capture_fingerprint.CAPTURE_SESSION_SCHEMA
+    ):
+        block = raw
+    result = camera_capture_fingerprint.load_capture_session(
+        manifest_path.resolve().parent, block
+    )
+    if not result.safety_qualified:
+        raise ValueError(
+            "target capture_session is legacy/unverified and cannot produce "
+            "an absolute-scene trajectory"
+        )
+    return result
+
+
+def _load_calibration_capture(
+    geometry_path: Path,
+) -> camera_capture_fingerprint.CameraCaptureFingerprint:
+    try:
+        raw = json.loads(geometry_path.read_text(encoding="utf-8"))
+        block = raw["bindings"]["capture_session"]
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError(
+            "label-plane geometry lacks a bound calibration capture_session"
+        ) from exc
+    return camera_capture_fingerprint.revalidate_capture_fingerprint(block)
 
 
 def _column(rows: Sequence[dict[str, str]], name: str) -> np.ndarray:
@@ -363,6 +411,7 @@ def main() -> int:
             args.board_layout,
             args.tracking_geometry,
             args.label_plane_geometry,
+            args.capture_session_manifest,
         ):
             if not path.is_file():
                 raise ValueError(f"input does not exist: {path}")
@@ -395,6 +444,31 @@ def main() -> int:
             expected_board_sha256=board_digest,
             expected_canonical_size=args.canonical_size,
         )
+        target_capture = _load_target_capture(args.capture_session_manifest)
+        if (
+            target_capture.artifact("trajectory_csv").path
+            != args.trajectory_csv.resolve()
+        ):
+            raise ValueError(
+                "target capture_session does not bind the input trajectory"
+            )
+        if (
+            target_capture.artifact("source_board_calibration").path
+            != source_calibration_path.resolve()
+        ):
+            raise ValueError(
+                "target capture_session does not bind the source calibration"
+            )
+        calibration_capture = _load_calibration_capture(
+            args.label_plane_geometry
+        )
+        if (
+            target_capture.camera_setup_sha256
+            != calibration_capture.camera_setup_sha256
+        ):
+            raise ValueError(
+                "target camera setup does not match label-plane calibration"
+            )
         tracking_digest, tracking = _load_tracking_digest(args.tracking_geometry)
         geometry = label_plane_geometry.load_geometry(
             args.label_plane_geometry,
@@ -467,6 +541,7 @@ def main() -> int:
                 args.board_layout,
                 args.tracking_geometry,
                 args.label_plane_geometry,
+                args.capture_session_manifest,
                 source_calibration_path,
             )
         }
@@ -501,10 +576,13 @@ def main() -> int:
                     source_calibration_path
                 ),
             },
+            "capture_session": target_capture.to_json(),
             "qualification": {
                 "height_correction_applied": True,
                 "source_geometry_safety_qualified": geometry.safety_qualified,
                 "source_board_layout_verified": True,
+                "target_capture_session_safety_qualified": True,
+                "camera_setup_matches_calibration": True,
                 "operator_confirmed_unchanged_camera_board_setup": (
                     args.confirm_unchanged_camera_board_setup
                 ),

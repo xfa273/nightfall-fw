@@ -69,9 +69,16 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   2 mm above the maze floor, with a 24 mm horizontal baseline.  Because those
   planes differ, absolute video acceptance additionally requires a qualified
   stationary camera/label-plane calibration and a hash-bound corrected-CSV
-  sidecar; uncorrected video remains diagnostic only.  The remaining physical
-  input for that calibration is the ArUco top-surface height above the maze
-  floor, followed by four spanning stationary poses and one held-out pose.
+  sidecar; uncorrected video remains diagnostic only.  The current 3D-printed
+  ArUco top surface is user-confirmed 2 mm above the maze floor, equal to the
+  red-label plane, so that physical input is resolved; only the 10 mm blue
+  plane receives the 8 mm relative-height correction.  Absolute qualification
+  requires HFR Recorder 0.5.7 or newer with AF off at fixed 1.05-diopter focus,
+  stationary per-frame lens metadata, same-run report/video/Camera2-sidecar
+  SHA/integrity, and matching calibration/run camera-setup fingerprints.
+  Recorder 0.5.6 introduced geometry metadata but does not meet that final
+  contract.  The remaining action is one qualifying fixed-rig capture
+  containing four spanning stationary poses and one held-out pose.
   Modes 3-7 remain parameter baselines and are constrained by explicit F413
   straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.

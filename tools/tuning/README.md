@@ -262,18 +262,28 @@ open fixture with enough straight distance before and after the turn. Capture
 five right-turn repeats at each alpha of 8000, 10000, 12000 and
 14000 deg/s2; retain a 1 ms machine trace for at least one repeat at every
 alpha. The measured label planes are now recorded as blue 10 mm and red 2 mm
-above the maze floor. Before interpreting absolute body-to-wall clearance,
-measure the ArUco marker top-surface height and capture the five stationary
-known poses described in `tools/vision/README.md`; use the resulting qualified
-label-plane geometry to create height-corrected trajectories and pass one
+above the maze floor. The current 3D-printed ArUco top surface is also 2 mm
+above the maze floor, so the red label is already on the homography reference
+plane and only the blue label needs the 8 mm relative-height correction.
+Before interpreting absolute body-to-wall clearance, capture the five
+stationary known poses described in `tools/vision/README.md`; use the resulting
+qualified label-plane geometry to create height-corrected trajectories and pass one
 `--height-correction-sidecar` per input. An uncorrected CSV may still be used
 for diagnostics, but `turn_video_tune.py --propose-fit` and
 `turn_clearance.py video --registration-mode absolute` reject it. Fit and
 validate the complete 10--130 degree swept path on held-out repeats, not only
-its endpoint. Until automatic camera-rig fingerprinting is added, generating
-an eligible sidecar also requires the explicit
+its endpoint. The capture fingerprint automatically binds the physical camera,
+lens, crop, zoom, fixed focus, raw video, QA and trajectory, but it cannot prove
+that the rigid camera-to-board transform was not physically moved. Generating
+an eligible sidecar therefore also requires the explicit
 `--confirm-unchanged-camera-board-setup` assertion; never use it after moving
-the camera, board markers, crop, or physical lens.
+the camera or board markers.
+Absolute qualification requires recorder 0.5.7 or newer, a fixed
+1.05-diopter/AF-off capture whose per-frame lens state is stationary, same-run
+report/video/Camera2-sidecar SHA/integrity validation, and a camera-setup
+fingerprint matching the stationary calibration. Recorder 0.5.6 introduced
+Camera2 geometry metadata but lacks this final integrity/fixed-focus contract;
+0.5.6 and earlier captures remain diagnostic-only.
 After selecting a simulator candidate, capture three to five right repeats and
 three to five mirrored left repeats in the representative walled scene before
 changing the production turn parameters.

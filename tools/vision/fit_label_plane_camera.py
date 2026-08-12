@@ -27,10 +27,11 @@ from typing import Any, Optional, Sequence
 import numpy as np
 
 import board_layout
+import camera_capture_fingerprint
 import label_plane_geometry
 
 
-MANIFEST_SCHEMA = "nightfall_label_plane_known_pose_manifest_v1"
+MANIFEST_SCHEMA = "nightfall_label_plane_known_pose_manifest_v2"
 CALIBRATION_SCHEMA = "nightfall_label_plane_camera_fit_v1"
 SAFETY_MINIMUM_FIT_SPAN_MM = 400.0
 SAFETY_MINIMUM_FIT_HULL_AREA_MM2 = 120000.0
@@ -103,6 +104,25 @@ def _pair(value: Any, field: str) -> tuple[float, float]:
     if not isinstance(value, list) or len(value) != 2:
         raise ValueError(f"{field} must be a two-element array")
     return (_finite(value[0], f"{field}[0]"), _finite(value[1], f"{field}[1]"))
+
+
+def _reference_plane_provenance(value: Any) -> dict[str, str]:
+    if not isinstance(value, dict):
+        raise ValueError("reference_plane_provenance must be an object")
+    result: dict[str, str] = {}
+    for field in ("surface", "measurement", "confirmed_date", "remeasure_if"):
+        item = value.get(field)
+        if not isinstance(item, str) or not item.strip():
+            raise ValueError(
+                f"reference_plane_provenance.{field} must be non-empty"
+            )
+        result[field] = item
+    if value.get("height_reference") != "maze floor":
+        raise ValueError(
+            "reference_plane_provenance.height_reference must be maze floor"
+        )
+    result["height_reference"] = "maze floor"
+    return result
 
 
 def _resolve(base: Path, value: Any, field: str) -> Path:
@@ -326,11 +346,23 @@ def load_placements(
     float,
     float,
     list[Placement],
+    camera_capture_fingerprint.CameraCaptureFingerprint,
 ]:
     manifest = _load_json(manifest_path, "known-pose manifest")
     if manifest.get("schema") != MANIFEST_SCHEMA:
         raise ValueError(f"manifest schema must be {MANIFEST_SCHEMA}")
     base = manifest_path.resolve().parent
+    capture = camera_capture_fingerprint.load_capture_session(
+        base, manifest.get("capture_session")
+    )
+    if not capture.safety_qualified:
+        raise ValueError(
+            "known-pose capture_session is legacy/unverified and cannot fit "
+            "safety-qualified geometry"
+        )
+    reference_provenance = _reference_plane_provenance(
+        manifest.get("reference_plane_provenance")
+    )
     board_path = _resolve(base, manifest.get("board_layout"), "board_layout")
     tracking_path = _resolve(
         base, manifest.get("tracking_geometry"), "tracking_geometry"
@@ -384,6 +416,10 @@ def load_placements(
             true_blue[1] + front_distance * math.sin(heading),
         )
         trajectory = _resolve(base, item.get("trajectory_csv"), f"{field}.trajectory_csv")
+        if trajectory.resolve() != capture.artifact("trajectory_csv").path:
+            raise ValueError(
+                f"{field}.trajectory_csv is not the capture_session trajectory"
+            )
         source_calibration_value = item.get("source_calibration_json")
         source_calibration = (
             trajectory.with_name("calibration.json")
@@ -398,6 +434,14 @@ def load_placements(
             raise ValueError(
                 f"{field}.source_calibration_json does not exist: "
                 f"{source_calibration}"
+            )
+        if (
+            source_calibration.resolve()
+            != capture.artifact("source_board_calibration").path
+        ):
+            raise ValueError(
+                f"{field}.source_calibration_json is not the capture_session "
+                "board calibration"
             )
         _verify_source_board_calibration(
             source_calibration,
@@ -477,6 +521,7 @@ def load_placements(
         red_height,
         front_distance,
         placements,
+        capture,
     )
 
 
@@ -686,7 +731,11 @@ def main() -> int:
             red_height,
             front_distance,
             placements,
+            capture,
         ) = load_placements(args.manifest.resolve())
+        reference_provenance = _reference_plane_provenance(
+            manifest.get("reference_plane_provenance")
+        )
         fit = [item for item in placements if item.role == "fit"]
         validation = [item for item in placements if item.role == "validation"]
         if not validation:
@@ -776,9 +825,13 @@ def main() -> int:
             "bindings": {
                 "board_layout_sha256": board_digest,
                 "tracking_calibration_sha256": tracking_digest,
+                "capture_session": capture.to_json(),
             },
             "qualification": {
                 "safety_qualified": qualified,
+                "capture_session_safety_qualified": (
+                    capture.safety_qualified
+                ),
                 "failures": failures,
             },
             "calibration": {
@@ -790,6 +843,7 @@ def main() -> int:
                     "sha256": sha256_file(args.manifest.resolve()),
                     "declared_schema": manifest.get("schema"),
                 },
+                "reference_plane_provenance": reference_provenance,
                 "fit_placement_count": len(fit),
                 "validation_placement_count": len(validation),
                 "fit_span_mm": {"x": x_span, "y": y_span},

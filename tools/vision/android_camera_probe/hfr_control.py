@@ -26,13 +26,20 @@ CONTROL_STATUS_PATH = "/api/v1/control/status"
 CONTROL_START_PATH = "/api/v1/control/standby/start"
 CONTROL_STOP_PATH = "/api/v1/control/standby/stop"
 CONTROL_FINISH_RUN_PATH = "/api/v1/control/recording/stop"
+CONTROL_MANUAL_START_PATH = "/api/v1/control/manual/start"
+CONTROL_MANUAL_STOP_PATH = "/api/v1/control/manual/stop"
+
+CAPTURE_MODE_IDLE = "idle"
+CAPTURE_MODE_CONTINUOUS_OPTICAL = "continuous_optical"
+CAPTURE_MODE_MANUAL_ONE_SHOT = "manual_one_shot"
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Start/stop Pixel 240 fps continuous optical standby, inspect its "
-            "state, and collect completed runs over authenticated Wi-Fi."
+            "Control Pixel 240 fps continuous optical standby or immediate "
+            "manual one-shot recording, inspect state, and collect completed "
+            "runs over authenticated Wi-Fi."
         ),
     )
     parser.add_argument(
@@ -40,6 +47,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         choices=(
             "status",
             "start",
+            "manual-start",
+            "manual-stop",
             "finish-run",
             "stop",
             "collect",
@@ -91,6 +100,7 @@ def print_status(response: dict[str, Any], host: str, port: int) -> None:
     print(
         "[HFR-CONTROL] "
         f"state={state['state']} "
+        f"mode={state.get('capture_mode', 'legacy')} "
         f"standby={bool(state.get('continuous_standby'))} "
         f"recording={bool(state.get('recording'))} "
         f"completed={int(state.get('completed_runs', 0))} "
@@ -145,6 +155,89 @@ def wait_for_stop(client: ApiClient, timeout: float) -> dict[str, Any]:
         time.sleep(0.25)
 
 
+def wait_for_manual_start(
+    client: ApiClient,
+    timeout: float,
+) -> dict[str, Any]:
+    """Wait until an immediate one-shot is recording without an optical gate."""
+    deadline = time.monotonic() + max(0.0, timeout)
+    while True:
+        response = read_status(client)
+        state = capture_state(response)
+        mode = state.get("capture_mode")
+        if mode != CAPTURE_MODE_MANUAL_ONE_SHOT:
+            raise WifiCollectorError(
+                "手動ワンショット開始に失敗しました: "
+                f"capture_mode={mode!r}, state={state['state']}"
+            )
+        if state["state"] == "recording" and state.get("recording"):
+            if state.get("continuous_standby"):
+                raise WifiCollectorError(
+                    "手動録画中に連続撮影スタンバイが有効になりました"
+                )
+            if not response.get("capture_busy"):
+                raise WifiCollectorError(
+                    "手動録画中にPixelの撮影排他が解除されました"
+                )
+            return response
+        if state["state"] in {"idle", "stopping", "error"}:
+            raise WifiCollectorError(
+                "手動ワンショット開始に失敗しました: "
+                + str(state.get("message", state["state"]))
+            )
+        if time.monotonic() >= deadline:
+            raise WifiCollectorError(
+                f"手動録画開始待ちが{timeout:g}秒でタイムアウトしました"
+            )
+        time.sleep(0.25)
+
+
+def wait_for_manual_stop(
+    client: ApiClient,
+    timeout: float,
+    completed_before: int,
+) -> dict[str, Any]:
+    """Wait for one saved file and a return to non-standby idle."""
+    deadline = time.monotonic() + max(0.0, timeout)
+    while True:
+        response = read_status(client)
+        state = capture_state(response)
+        mode = state.get("capture_mode")
+        if state["state"] == "error":
+            raise WifiCollectorError(
+                "手動動画の保存中にエラーが発生しました: "
+                + str(state.get("message", "unknown error"))
+            )
+        completed = int(state.get("completed_runs", 0))
+        if (
+            state["state"] == "idle"
+            and mode == CAPTURE_MODE_IDLE
+            and not state.get("continuous_standby")
+            and not state.get("recording")
+            and not response.get("capture_busy")
+            and completed > completed_before
+        ):
+            return response
+        if mode not in {CAPTURE_MODE_MANUAL_ONE_SHOT, CAPTURE_MODE_IDLE}:
+            raise WifiCollectorError(
+                "手動録画停止中に別の撮影モードへ遷移しました: "
+                f"capture_mode={mode!r}, state={state['state']}"
+            )
+        if (
+            mode == CAPTURE_MODE_IDLE
+            and state["state"] == "idle"
+            and completed <= completed_before
+        ):
+            raise WifiCollectorError(
+                "手動録画は終了しましたが、保存本数が増えていません"
+            )
+        if time.monotonic() >= deadline:
+            raise WifiCollectorError(
+                f"手動動画の保存待ちが{timeout:g}秒でタイムアウトしました"
+            )
+        time.sleep(0.25)
+
+
 def wait_for_current_run_finish(
     client: ApiClient,
     timeout: float,
@@ -195,6 +288,41 @@ def main(argv: list[str] | None = None) -> int:
             response = wait_for_start(client, args.wait_seconds)
             print_status(response, endpoint.host, endpoint.port)
             print("[HFR-CONTROL] 連続撮影スタンバイを開始しました")
+            return 0
+
+        if args.action == "manual-start":
+            client.json_request("POST", CONTROL_MANUAL_START_PATH, {})
+            response = wait_for_manual_start(client, args.wait_seconds)
+            print_status(response, endpoint.host, endpoint.port)
+            print("[HFR-CONTROL] 1080p/240手動録画を開始しました")
+            return 0
+
+        if args.action == "manual-stop":
+            before_response = read_status(client)
+            before = capture_state(before_response)
+            if (
+                before.get("capture_mode") == CAPTURE_MODE_IDLE
+                and before["state"] == "idle"
+                and not before_response.get("capture_busy")
+            ):
+                print_status(before_response, endpoint.host, endpoint.port)
+                print("[HFR-CONTROL] 手動録画は既に停止しています")
+                return 0
+            if before.get("capture_mode") != CAPTURE_MODE_MANUAL_ONE_SHOT:
+                raise WifiCollectorError(
+                    "手動ワンショット録画中ではありません: "
+                    f"capture_mode={before.get('capture_mode')!r}, "
+                    f"state={before['state']}"
+                )
+            completed_before = int(before.get("completed_runs", 0))
+            client.json_request("POST", CONTROL_MANUAL_STOP_PATH, {})
+            response = wait_for_manual_stop(
+                client,
+                args.wait_seconds,
+                completed_before,
+            )
+            print_status(response, endpoint.host, endpoint.port)
+            print("[HFR-CONTROL] 手動動画を保存して撮影を終了しました")
             return 0
 
         if args.action == "finish-run":

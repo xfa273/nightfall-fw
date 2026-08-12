@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Correct elevated tracking labels after floor-plane rectification.
+"""Correct elevated tracking labels after reference-plane rectification.
 
-A floor-plane homography maps an image ray to its intersection ``Q`` with a
-reference plane.  When the tracked label is actually on a parallel plane at a
+A board homography maps an image ray to its intersection ``Q`` with the marker
+reference plane. When the tracked label is actually on a parallel plane at a
 different absolute height, ``Q`` is not the physical label position ``P``.
 This module performs that ray/plane correction in board coordinates and keeps
 the camera/layout provenance needed to use it safely.
 
 Board axes are ``+x`` right, ``+y`` forward and ``+z`` up.  Yaw is measured
 counter-clockwise from ``+x``, so a vector along ``+y`` has yaw ``+90 deg``.
+The historical public identifier ``apparent_floor`` is retained for API/CSV
+compatibility; in the current rig it means the apparent point on the 2 mm
+ArUco reference plane, not an intersection with the maze floor.
 """
 
 from __future__ import annotations
@@ -150,12 +153,12 @@ def correct_apparent_floor_point(
     reference_plane_height_mm: float,
     label_height_mm: float,
 ) -> tuple[float, float]:
-    """Recover a label's physical board position from apparent floor point Q.
+    """Recover a label's physical position from apparent reference-plane Q.
 
     ``camera_height_mm``, ``reference_plane_height_mm`` and
     ``label_height_mm`` are absolute heights in the same board frame.  The
-    floor-plane homography's apparent point is scaled about the camera centre
-    by ``(H - h) / (H - h_ref)`` to intersect the actual label plane.
+    reference-plane homography's apparent point is scaled about the camera
+    centre by ``(H - h) / (H - h_ref)`` to intersect the actual label plane.
     """
 
     qx, qy = _xy(apparent_floor_xy_mm, "apparent_floor_xy_mm")

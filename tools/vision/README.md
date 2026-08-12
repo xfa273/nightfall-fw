@@ -17,7 +17,7 @@ Reusable tools in this directory are:
 - `fit_label_plane_camera.py`: fits fixed-camera centre/height from four
   stationary board-spanning poses plus one independent held-out pose
 - `apply_label_plane_geometry.py`: creates blue-10-mm/red-2-mm corrected
-  trajectories without overwriting the apparent floor-plane CSV
+  trajectories without overwriting the apparent reference-plane CSV
 - `trajectory_calibration.py`: verifies the corrected trajectory and every
   bound board/tracking/camera-calibration SHA before safety analysis
 - `desk_green_pair_probe.py`: raw-pixel feasibility probe that tracks the two
@@ -151,23 +151,21 @@ and the applied heading calibration.
 
 The measured `mini_r2_0_unit001` label surfaces are not coplanar: the blue
 centre label is 10 mm above the maze floor and the red front label is 2 mm
-above it. A floor-plane homography therefore moves the two centres by different
-amounts. The blue position itself is displaced and the blue-to-red yaw error
-changes across the field of view. The following older constant-bias fit is only
-a local diagnostic; it is not an absolute-clearance calibration:
-
-```sh
-./.venv-vision/bin/python tools/vision/fit_front_label_heading.py \
-  trial90/trajectory.csv trial180/trajectory.csv \
-  --board-layout /path/to/board_layout.json \
-  --front-label-distance-mm 24 \
-  --output /path/to/front_label_heading_calibration.json
-```
+above it. The current homography reference is the 3D-printed ArUco top surface,
+also 2 mm above the floor. It therefore leaves the red centre unchanged but
+displaces the blue centre; the blue-to-red yaw error changes across the field
+of view. `fit_front_label_heading.py` can still fit an older constant
+image-space bias, but that result is a local diagnostic only. Do not apply it
+in the absolute position/yaw or swept-clearance workflow below.
 
 For full-board correction, use the measured heights and a stationary known-pose
-calibration. Keep the camera and markers fixed, measure the top surface height
-of the ArUco markers above the maze floor, then record at least five stationary
-poses spanning the camera field. A practical 8x8 set is:
+calibration. The current 3D-printed ArUco markers have a user-confirmed common
+top surface 2.0 mm above the maze floor. This is the homography reference plane:
+the red label is also at 2.0 mm and therefore needs no plane correction, while
+the blue label at 10.0 mm is corrected for its 8.0 mm relative height. Remeasure
+the reference height if the marker fixture or mounting changes. Keep the camera
+and markers fixed, then record at least five stationary poses spanning the
+camera field. A practical 8x8 set is:
 
 - fit: blue centre `(45,45)` mm, heading `0 deg`;
 - fit: `(675,45)` mm, heading `180 deg`;
@@ -176,12 +174,22 @@ poses spanning the camera field. A practical 8x8 set is:
 - held-out validation: `(315,405)` mm, heading `90 deg`.
 
 Use a placement jig so the blue centre and cardinal heading are known. One
-continuous ordinary video is sufficient if every pose is held still for at
-least two seconds and its `start_s`/`end_s` interval is recorded in a manifest.
-The manifest schema is `nightfall_label_plane_known_pose_manifest_v1`; it names
+continuous video is sufficient if every pose is held still for at least three
+seconds and its `start_s`/`end_s` interval is recorded in a manifest. Use the
+same fixed camera, marker layout, Camera2 physical lens/crop/zoom, fixed
+1.05-diopter focus, and recording profile as the runs the calibration will
+qualify. Absolute qualification requires HFR Recorder 0.5.7 or newer. Recorder
+0.5.6 introduced much of the Camera2 geometry metadata, but it does not satisfy
+the final same-run SHA/integrity and fixed-focus contract; 0.5.6 and earlier
+captures remain diagnostic-only. A qualified 0.5.7 capture must report AF off,
+the requested 1.05-diopter focus, stationary and unchanged per-frame lens
+metadata, and a matching camera-setup fingerprint.
+The manifest schema is `nightfall_label_plane_known_pose_manifest_v2`; it names
 the committed board layout, the measured footprint/tracking geometry, the
-absolute ArUco reference-plane height, and each trajectory interval. Fit the
-camera geometry with:
+absolute ArUco reference-plane height, each trajectory interval, and the
+`nightfall_camera_capture_session_v1` artifact set used to prove the camera,
+physical lens, crop, zoom, raw video, QA, and source trajectory are coherent.
+Fit the camera geometry with:
 
 ```sh
 ./.venv-vision/bin/python tools/vision/fit_label_plane_camera.py \
@@ -190,9 +198,13 @@ camera geometry with:
 ```
 
 Copy `tools/vision/data/label_plane_known_pose_manifest.template.json`, replace
-its deliberately-null reference-plane height and trajectory path, and adjust
-the five time windows to the actual stationary holds. All five windows must be
-non-overlapping parts of one continuous extracted trajectory.
+all six paths in `capture_session`, use that same trajectory path for every
+placement, and adjust the five time windows to the actual stationary holds. Its
+2.0 mm reference height is valid for the current 3D-printed marker fixture only.
+All five windows must be non-overlapping parts of one continuous extracted
+trajectory. Start the 0.5.7 manual one-shot first, wait at least one second for
+the fixed-focus camera pipeline and scene to settle, and only then begin the
+first three-second pose window.
 
 The fit requires four spatially distinct non-collinear positions spanning at
 least 400 mm in both axes and 120000 mm² of convex-hull area, plus an independent
@@ -212,18 +224,25 @@ decoding their videos again because they retain both rectified label centres:
   --board-layout tools/vision/data/board_layout_8x8_60mm.json \
   --tracking-geometry tools/tuning/data/mini_r2_0_footprint.json \
   --label-plane-geometry path/to/label_plane_geometry.json \
+  --capture-session-manifest path/to/this_run_capture_session.json \
   --confirm-unchanged-camera-board-setup
 ```
 
 This writes a new `*_height_corrected.csv` and a hash-bound calibration
-sidecar; it never overwrites the apparent floor-plane trajectory. Parameter
-proposals and absolute-clearance checks require the matching sidecar. Repeat
-the stationary calibration after moving the camera or markers, changing crop
-or lens selection, or changing either label height. The confirmation option is
-an explicit operator assertion: the input trajectory's sibling
-`calibration.json` proves the board-layout/canonical mapping, while the current
-pipeline cannot automatically prove that the rigid camera/board pose remained
-unchanged. Do not use it across a moved rig.
+sidecar; it never overwrites the apparent reference-plane trajectory.
+Parameter proposals and absolute-clearance checks require the matching
+sidecar. The capture-session manifest binds and revalidates this run's report,
+Camera2 rows, raw video, QA, trajectory, and board calibration. The report's
+artifact-integrity SHA-256 values must identify the same-run raw video and
+Camera2 sidecar, QA must bind that video and trajectory, and every referenced
+artifact is independently hash-bound by the capture fingerprint. Its physical
+camera/lens/crop/zoom/fixed-focus setup fingerprint must match the stationary
+calibration.
+Repeat the stationary calibration after moving the camera or markers, changing
+crop or lens selection, or changing either label height. The confirmation
+option remains an explicit assertion that the rigid camera-to-board pose was
+not moved; metadata can prove the camera configuration but not that physical
+rig transform by itself. Do not use it across a moved rig.
 
 For a parameter proposal, all five repeats must use height-correction sidecars
 that bind the same board layout, tracking geometry, and label-plane geometry.
@@ -276,9 +295,10 @@ Print exactly one page at `100%` / `Actual Size`; do not mix sizes. Verify the
 printed 100 mm scale line and measure the black outer square. The four distinct
 `DICT_4X4_50` markers are ID 5 top-left, ID 7 top-right, ID 4 bottom-right, and
 ID 6 bottom-left. Keep at least the supplied white quiet zone and place all
-four marker faces coplanar. Measure their common top-surface height above the
-maze floor and use that value as the label-plane reference height; it is zero
-only when the printed face is truly flush with the floor.
+four marker faces coplanar. The current 3D-printed set has a measured common
+top-surface height of 2.0 mm above the maze floor; use 2.0 mm as the label-plane
+reference height. A paper/flush marker or a changed fixture requires a new
+height measurement and stationary calibration.
 
 For 1080-pixel short-side video, aim for at least 40 pixels across a marker's
 black side:
@@ -304,10 +324,13 @@ For a measured 4×4 setup, run:
   --front-label-colour red \
   --front-label-diameter-mm 8 \
   --front-label-distance-mm 24 \
-  --front-label-calibration /path/to/front_label_heading_calibration.json \
   --cue-colour none \
   --maximum-missing-fraction 0.01
 ```
+
+This command produces the apparent reference-plane trajectory. For absolute
+analysis, do not add the legacy constant-bias calibration; run the qualified
+five-pose fit and `apply_label_plane_geometry.py` workflow above instead.
 
 For a one-label position-only analysis, set `--front-label-colour none` and add
 `--position-only`. That mode exports any fallback heading but does not make an

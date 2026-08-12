@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 from typing import Any
 
+import camera_capture_fingerprint
 import label_plane_geometry
 
 
@@ -173,12 +174,15 @@ def verify_height_corrected_trajectory(
         output = raw["output"]
         qualification = raw["qualification"]
         bindings = raw["bindings"]
+        capture_session = raw["capture_session"]
         if not isinstance(output, dict):
             raise TypeError("output must be an object")
         if not isinstance(qualification, dict):
             raise TypeError("qualification must be an object")
         if not isinstance(bindings, dict):
             raise TypeError("bindings must be an object")
+        if not isinstance(capture_session, dict):
+            raise TypeError("capture_session must be an object")
         output_path = Path(output["trajectory_csv"]).resolve()
         output_digest = str(output["sha256"]).lower()
     except (KeyError, TypeError, ValueError) as exc:
@@ -191,6 +195,8 @@ def verify_height_corrected_trajectory(
         "height_correction_applied",
         "source_geometry_safety_qualified",
         "source_board_layout_verified",
+        "target_capture_session_safety_qualified",
+        "camera_setup_matches_calibration",
         "operator_confirmed_unchanged_camera_board_setup",
         "absolute_scene_eligible",
     ):
@@ -210,6 +216,28 @@ def verify_height_corrected_trajectory(
     source_calibration_path, _source_calibration_digest = bound[
         "source_board_calibration"
     ]
+    target_capture = camera_capture_fingerprint.revalidate_capture_fingerprint(
+        capture_session
+    )
+    if target_capture.artifact("source_board_calibration").path != (
+        source_calibration_path
+    ):
+        raise ValueError(
+            "target capture_session board calibration does not match sidecar"
+        )
+    try:
+        input_trajectory = Path(raw["input"]["trajectory_csv"]).resolve()
+        input_digest = str(raw["input"]["sha256"]).lower()
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("height-correction input binding is invalid") from exc
+    if target_capture.artifact("trajectory_csv").path != input_trajectory:
+        raise ValueError(
+            "target capture_session trajectory does not match sidecar input"
+        )
+    if not input_trajectory.is_file() or not hmac.compare_digest(
+        sha256_file(input_trajectory), input_digest
+    ):
+        raise ValueError("height-correction input trajectory binding is invalid")
     # Validate the bound files as a coherent calibration set, rather than only
     # trusting the booleans copied into the trajectory sidecar.
     _validate_board_layout(board_path)
@@ -246,6 +274,25 @@ def verify_height_corrected_trajectory(
         expected_board_layout_sha256=board_digest,
         expected_tracking_calibration_sha256=tracking_digest,
     )
+    geometry_raw = _load_object(geometry_path, "label-plane geometry")
+    try:
+        calibration_capture_raw = geometry_raw["bindings"]["capture_session"]
+    except (KeyError, TypeError) as exc:
+        raise ValueError(
+            "bound label-plane geometry lacks calibration capture_session"
+        ) from exc
+    calibration_capture = (
+        camera_capture_fingerprint.revalidate_capture_fingerprint(
+            calibration_capture_raw
+        )
+    )
+    if (
+        calibration_capture.camera_setup_sha256
+        != target_capture.camera_setup_sha256
+    ):
+        raise ValueError(
+            "target camera setup does not match label-plane calibration"
+        )
     expected = (blue, red, distance)
     actual = (
         geometry.blue_label_height_mm,

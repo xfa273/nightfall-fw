@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import sys
 
@@ -15,6 +16,25 @@ REPO_ROOT = VISION_ROOT.parents[1]
 sys.path.insert(0, str(VISION_ROOT))
 
 import trajectory_calibration  # noqa: E402
+
+
+class _FakeArtifact:
+    def __init__(self, path: Path):
+        self.path = path.resolve()
+
+
+class _FakeCaptureFingerprint:
+    safety_qualified = True
+    camera_setup_sha256 = "12" * 32
+
+    def __init__(self, trajectory: Path, calibration: Path):
+        self._artifacts = {
+            "trajectory_csv": _FakeArtifact(trajectory),
+            "source_board_calibration": _FakeArtifact(calibration),
+        }
+
+    def artifact(self, name: str):
+        return self._artifacts[name]
 
 
 class TrajectoryCalibrationBindingTest(unittest.TestCase):
@@ -56,6 +76,7 @@ class TrajectoryCalibrationBindingTest(unittest.TestCase):
                         "tracking_calibration_sha256": (
                             trajectory_calibration.sha256_file(tracking)
                         ),
+                        "capture_session": {"placeholder": True},
                     },
                     "qualification": {
                         "safety_qualified": True,
@@ -124,10 +145,17 @@ class TrajectoryCalibrationBindingTest(unittest.TestCase):
                             )
                         ),
                     },
+                    "input": {
+                        "trajectory_csv": str((root / "trajectory.csv").resolve()),
+                        "sha256": "placeholder",
+                    },
+                    "capture_session": {"placeholder": True},
                     "qualification": {
                         "height_correction_applied": True,
                         "source_geometry_safety_qualified": True,
                         "source_board_layout_verified": True,
+                        "target_capture_session_safety_qualified": True,
+                        "camera_setup_matches_calibration": True,
                         "operator_confirmed_unchanged_camera_board_setup": True,
                         "absolute_scene_eligible": True,
                     },
@@ -136,14 +164,35 @@ class TrajectoryCalibrationBindingTest(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        input_trajectory = root / "trajectory.csv"
+        input_trajectory.write_text(
+            "time_s,x_mm,y_mm\n0,1,2\n", encoding="ascii"
+        )
+        raw_sidecar = json.loads(sidecar.read_text(encoding="utf-8"))
+        raw_sidecar["input"]["sha256"] = (
+            trajectory_calibration.sha256_file(input_trajectory)
+        )
+        sidecar.write_text(json.dumps(raw_sidecar) + "\n", encoding="utf-8")
         return trajectory, sidecar
+
+    def _capture(self, root: Path) -> _FakeCaptureFingerprint:
+        return _FakeCaptureFingerprint(
+            root / "trajectory.csv", root / "calibration.json"
+        )
 
     def test_verified_sidecar_binds_trajectory_and_calibrations(self):
         with tempfile.TemporaryDirectory() as directory:
             trajectory, sidecar = self._fixture(Path(directory))
-            result = trajectory_calibration.verify_height_corrected_trajectory(
-                trajectory, sidecar
-            )
+            capture = self._capture(Path(directory))
+            with mock.patch.object(
+                trajectory_calibration.camera_capture_fingerprint,
+                "revalidate_capture_fingerprint",
+                return_value=capture,
+            ) as revalidate:
+                result = trajectory_calibration.verify_height_corrected_trajectory(
+                    trajectory, sidecar
+                )
+            self.assertEqual(revalidate.call_count, 2)
             self.assertTrue(result["qualification"]["absolute_scene_eligible"])
 
     def test_tampered_trajectory_and_unqualified_geometry_fail_closed(self):
@@ -168,7 +217,25 @@ class TrajectoryCalibrationBindingTest(unittest.TestCase):
                 trajectory_calibration.sha256_file(geometry)
             )
             sidecar.write_text(json.dumps(raw) + "\n", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "explicitly true"):
+            with mock.patch.object(
+                trajectory_calibration.camera_capture_fingerprint,
+                "revalidate_capture_fingerprint",
+                return_value=self._capture(root),
+            ), self.assertRaisesRegex(ValueError, "explicitly true"):
+                trajectory_calibration.verify_height_corrected_trajectory(
+                    trajectory, sidecar
+                )
+
+    def test_legacy_target_capture_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            trajectory, sidecar = self._fixture(root)
+            legacy = mock.Mock(safety_qualified=False)
+            with mock.patch.object(
+                trajectory_calibration.camera_capture_fingerprint,
+                "revalidate_capture_fingerprint",
+                side_effect=ValueError("legacy_unverified"),
+            ), self.assertRaisesRegex(ValueError, "legacy_unverified"):
                 trajectory_calibration.verify_height_corrected_trajectory(
                     trajectory, sidecar
                 )

@@ -136,7 +136,7 @@ Xiaomi 13 Ultraは短時間露光時のS/Nで有利な可能性がある。こ�
 | コーデック | H.264を先に検証し、HEVCは次段 |
 | 露光 | 1/1000秒、光量があれば1/2000秒も比較 |
 | ISO | 飽和せずノイズが少ない最小値 |
-| focus | 迷路面へ合わせた後に固定 |
+| focus | AFオフ、1.05 Dへ固定（Pixel recorder 0.5.7） |
 | white balance | 固定 |
 | EIS/OIS | 利用可能ならオフ |
 | HDR・夜景・自動レンズ切替 | オフ |
@@ -269,14 +269,20 @@ legacy方式は、画角全域に90 mm間隔の明るい校正線が見えるこ
 ### 3.3 レンズ歪みと高さ
 
 homographyは平面射影だけを表し、レンズの非線形歪みを除去しない。また
-盤面homographyは床面を表す一方、LEDとPCBは床から高さを持つ。斜め画角
-では視差が位置依存になる。homographyの再投影残差が小さくても、画角
-内部のmm精度が正しいとは限らない。
+盤面homographyは固定ARマーカの上面を表す。現在の3D造形マーカ上面と
+赤ラベル面は床から2 mm、青ラベル面は10 mmであるため、赤は基準面上で
+不変だが青には相対8 mmの位置依存視差が生じる。homographyの再投影残差
+が小さくても、画角内部のmm精度が正しいとは限らない。
 
-2 mm級の調整へ進む前に、実際の解像度・fps・cropでカメラ内部パラメータ
-を求めてundistortし、既知LED高さのray-plane補正を行う。さらに、盤面の
-複数位置・複数yawへ一時的な基準治具を置き、通常走行では使わないAR
-マーカなどをground truthとして絶対位置・yaw誤差をhold-out評価する。
+2 mm級の調整へ進む前に、実際の解像度・fps・cropを固定し、盤面の4位置
+と独立した中央1位置へ機体を静置する。`fit_label_plane_camera.py`で
+カメラ中心・高さをfitし、held-out誤差まで通ったgeometryだけを
+`apply_label_plane_geometry.py`へ渡して青10 mm／赤2 mmを別々に補正する。
+絶対認定にはRecorder 0.5.7以降を使い、AFオフ・固定focus 1.05 D、全frameの
+stationaryなlens state、同一runのreport/video/Camera2 sidecarのSHA/integrity、
+QA/trajectory/board calibrationまで結ぶcapture fingerprint、校正動画と
+対象走行のcamera-setup fingerprint一致を必須とする。0.5.6はCamera2幾何
+metadataを導入した履歴だが、この最終契約を満たさないため診断専用である。
 
 固定架台では、多フレーム平均した静的homographyの方が毎フレームの
 corner noiseを減らせる場合がある。本番実装では静的校正を基本とし、
@@ -309,12 +315,13 @@ fallbackとする。最大yaw rateなどを検査し、`heading_valid`を位置�
 `pose_valid`と別にCSVへ出す。`--position-only`ではheading不良を終了
 コードの失敗条件から外すが、推定yawが高精度になるわけではない。
 
-青と赤のラベル面は同じ高さに揃えるのが望ましい。高さが異なる場合、
-床面homographyで補正した青→赤ベクトルの視差は画面位置によって変化し、
-両ラベルを正確に検出してもyawが偏る。`fit_front_label_heading.py`の
-定数bias較正は同じ局所画角でのみ使い、盤面の複数位置をhold-out評価する。
-全画角で精度が必要なら、ラベル面を同じ高さにするか、カメラ内部較正と
-各ラベル高さを使うray-plane補正が必要である。
+青と赤のラベル面は異なり、現在は青10 mm、赤2 mm、AR基準面2 mmである。
+したがって赤は基準面上で不変だが、青→赤ベクトルの視差は画面位置に
+よって変化する。`fit_front_label_heading.py`の定数bias較正は同じ局所画角
+での診断に限る。全画角の絶対判定には、4 fit姿勢＋1 held-out姿勢で作る
+label-plane geometryと各動画の0.5.7 capture fingerprintを用いる。両者の
+physical camera/lens/crop/zoom/fixed-focus setup fingerprintが一致しなければ
+補正CSVを絶対判定へ渡さない。
 
 背景は動画全体から等間隔に選んだ41フレームのmedianで作る。同じ場所を
 機体が半数以上のsampleで占有すると機体が背景へ入り、検出に失敗する。
@@ -563,17 +570,9 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
 次は、標準180 mmセルを4×4区画、90 mm解析pitchで映し、実測layoutと
 空迷路clipを使う例である。
 
-青・赤ラベルの高さが異なる場合は、先に異なるyawを含む未較正CSVから
-視差較正を作る。
-
-```sh
-./.venv-vision/bin/python \
-  tools/vision/fit_front_label_heading.py \
-  "$trial90_dir/trajectory.csv" "$trial180_dir/trajectory.csv" \
-  --board-layout "$session_dir/board_layout.json" \
-  --front-label-distance-mm 24 \
-  --output "$session_dir/front_label_heading_calibration.json"
-```
+`fit_front_label_heading.py`のconstant-biasは旧来の局所診断専用であり、
+以下の通常抽出へ適用しない。絶対位置・yaw・車体と壁のクリアランスには
+5姿勢label-plane校正とheight-corrected CSVだけを使用する。
 
 ```sh
 ./.venv-vision/bin/python \
@@ -588,9 +587,32 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
   --front-label-colour red \
   --front-label-diameter-mm 8 \
   --front-label-distance-mm 24 \
-  --front-label-calibration "$session_dir/front_label_heading_calibration.json" \
   --cue-colour none \
   --maximum-missing-fraction 0.01
+```
+
+絶対位置を使う場合は、Recorder 0.5.7の手動one-shotを開始し、録画表示後
+1秒以上rigと画面を静止させてから、4 fit姿勢＋1 held-out姿勢を各3秒以上
+保持する。同じ動画からv2 manifestを作り、同一runのSHA/integrityを検証する
+Camera2 capture-sessionを含めてgeometryを生成する。
+
+```sh
+cp tools/vision/data/label_plane_known_pose_manifest.template.json \
+  "$session_dir/known_pose_manifest.json"
+# capture_sessionの6パス、trajectory path、5つの静止時間窓を実値へ変更する。
+# 全frameがAF off、fixed focus 1.05 D、stationary lens stateであることも
+# capture fingerprintが検査する。
+./.venv-vision/bin/python tools/vision/fit_label_plane_camera.py \
+  "$session_dir/known_pose_manifest.json" \
+  --output "$session_dir/label_plane_geometry.json"
+
+./.venv-vision/bin/python tools/vision/apply_label_plane_geometry.py \
+  "$trial_dir/trajectory.csv" \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --tracking-geometry tools/tuning/data/mini_r2_0_footprint.json \
+  --label-plane-geometry "$session_dir/label_plane_geometry.json" \
+  --capture-session-manifest "$trial_dir/capture_session.json" \
+  --confirm-unchanged-camera-board-setup
 ```
 
 layoutの固定マーカ幾何と青・赤ラベルの条件を満たす試験だけに使う。

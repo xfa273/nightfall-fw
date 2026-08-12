@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.6` of
+The collector installs version `0.5.7` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -95,7 +95,7 @@ The collector installs version `0.5.6` of
 - `hfr_report.json`
 - `ffprobe_stream.json`
 
-Recorder 0.5.6 adds calibration metadata without changing or removing the
+Recorder 0.5.6 added calibration metadata without changing or removing the
 existing report and sidecar fields. Every `capture_results.jsonl` row now
 stores nullable Camera2 results for focal length, the five-element intrinsic
 calibration and lens-distortion arrays, scaler crop region, zoom ratio, and
@@ -109,9 +109,21 @@ Camera2 values are JSON `null`. These values preserve the coordinate-system
 inputs needed by future camera calibration and PnP, but do not themselves
 constitute a completed calibration.
 
+Recorder 0.5.7 is the minimum version for absolute label-plane and swept-
+clearance qualification. It requests AF off at a fixed 1.05-diopter focus,
+records requested and per-frame focus/AF/lens-state metadata, identifies the
+app version, and writes same-run SHA-256/size integrity records for the raw
+video and `capture_results.jsonl`. The host capture fingerprint additionally
+binds the QA report, trajectory CSV, and board calibration and rejects a run if
+its integrity chain is incomplete, any lens row is not stationary/fixed, or
+its camera-setup fingerprint differs from the stationary calibration. Recorder
+0.5.6 is retained as the metadata-introduction history, but 0.5.6 and earlier
+captures are diagnostic-only under this contract.
+
 The recorder enables a simultaneous `TextureView` preview by default and
-disables EIS and OIS for measurement use. Automatic exposure is the default.
-A manual trial can be requested only after an automatic trial succeeds:
+disables EIS and OIS for measurement use. Focus is fixed at 1.05 diopters with
+AF off; automatic exposure is the default. A manual trial can be requested only
+after an automatic trial succeeds:
 
 ```sh
 HFR_EXPOSURE_US=1000 HFR_ISO=400 \
@@ -203,6 +215,24 @@ automatically returns to optical standby after two seconds. This operation
 does not end continuous standby; **連続待機を終了** remains the explicit batch
 stop.
 
+For a fixed-rig calibration or another capture that must not depend on mouse
+LED signals, tap **手動録画開始 (240 fps)**. This starts recording immediately
+at 1920x1080/240 fps with the same 72 Mbps, 1.000 ms, ISO 800 profile and fixed
+1.05-diopter/AF-off focus; it does not enter optical `armed` state. After the UI
+shows recording, keep the rig and scene still for at least one second so the
+camera pipeline settles before starting the first three-second known-pose
+window. Tap **手動録画を終了** to finalize that one video. The app then returns
+to idle, releases the capture lease, and does not re-arm. The same 60-second
+maximum prevents an accidentally abandoned manual recording from growing
+without bound. Qualification still checks every captured focus/lens-state row;
+if any row is non-stationary or differs from the requested fixed setup, discard
+that capture and repeat it.
+
+Version 0.5.7 adds this immediate manual one-shot mode to the Pixel UI and the
+authenticated Mac controls. It also adds `capture_mode` to control status so
+clients can keep manual one-shot and continuous optical standby mutually
+exclusive without changing the existing control fields.
+
 Version 0.5.1 hardens the optical decoder for the overhead installation. It
 does not advance the STOP sequence while waiting for the first real mouse
 motion, combines frame-difference and absolute-blue detection, and pairs with
@@ -276,6 +306,12 @@ tools/vision/android_camera_probe/hfr_control.py status
 # Open the 1080p/240 camera and wait for a complete framed START token.
 tools/vision/android_camera_probe/hfr_control.py start
 
+# Start 1080p/240 recording immediately, without waiting for an LED token.
+tools/vision/android_camera_probe/hfr_control.py manual-start
+
+# Finalize that one manual video and return to idle without re-arming.
+tools/vision/android_camera_probe/hfr_control.py manual-stop
+
 # If STOP was missed, save only the active video and keep continuous standby.
 tools/vision/android_camera_probe/hfr_control.py finish-run
 
@@ -283,10 +319,16 @@ tools/vision/android_camera_probe/hfr_control.py finish-run
 tools/vision/android_camera_probe/hfr_control.py stop
 ```
 
-The `start` and `stop` operations are idempotent. The authenticated control API
-is deliberately available only while **Nightfall HFR Recorder** is open; after
-a Pixel reboot the app must be opened once locally (or with ADB during
-development). The current activity keeps the screen awake while it is open.
+The `start` and `stop` operations are idempotent. `manual-start` is idempotent
+while the same one-shot is starting or recording, and `manual-stop` is
+idempotent after it has returned to idle. Manual and continuous modes are
+mutually exclusive. For a calibration one-shot, wait at least one second after
+`manual-start` reports recording before beginning the first timed pose hold;
+the CLI and dashboard use the same fixed 1.05-diopter focus as the Pixel UI.
+The authenticated control API is deliberately available
+only while **Nightfall HFR Recorder** is open; after a Pixel reboot the app
+must be opened once locally (or with ADB during development). The current
+activity keeps the screen awake while it is open.
 
 ### Mac live dashboard
 
@@ -309,11 +351,13 @@ active for more than 15 seconds is highlighted as a possible missed STOP token
 or merged run.
 
 The same page provides continuous-standby start/stop, a **この撮影だけ終了**
-button that preserves continuous standby, transfer, and explicit
-stop-and-transfer buttons. Transfer remains disabled while capture owns the
-camera/storage lease. The Pixel access token stays in the Mac process and is
-not sent to the browser; mutating dashboard requests use a per-launch token,
-and the server listens on loopback only by default. Useful options include:
+button that preserves continuous standby, and explicit **手動録画を開始** /
+**手動録画を終了** buttons for an immediate one-shot without optical signals.
+Transfer and stop-and-transfer remain disabled while a manual one-shot owns
+the camera/storage lease. The Pixel access token stays in the Mac process and
+is not sent to the browser; mutating dashboard requests use a per-launch
+token, and the server listens on loopback only by default. Useful options
+include:
 
 ```sh
 # Keep the dashboard on another local port without opening a new browser tab.

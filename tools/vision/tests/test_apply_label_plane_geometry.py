@@ -39,6 +39,34 @@ APPLY = _load(
 )
 
 
+class _FakeArtifact:
+    def __init__(self, path: Path):
+        self.path = path.resolve()
+
+
+class _FakeCaptureFingerprint:
+    safety_qualified = True
+    camera_setup_sha256 = "12" * 32
+
+    def __init__(self, trajectory: Path, calibration: Path):
+        self._artifacts = {
+            "trajectory_csv": _FakeArtifact(trajectory),
+            "source_board_calibration": _FakeArtifact(calibration),
+        }
+
+    def artifact(self, name: str):
+        return self._artifacts[name]
+
+    def to_json(self):
+        return {
+            "schema": "nightfall_camera_capture_fingerprint_v1",
+            "safety_qualified": True,
+            "fingerprint_sha256": "34" * 32,
+            "camera_setup_sha256": self.camera_setup_sha256,
+            "artifacts": {},
+        }
+
+
 def _apparent(
     physical_xy: tuple[float, float],
     height_mm: float,
@@ -67,7 +95,7 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
         board_digest = APPLY.sha256_file(board_path)
         tracking_digest = APPLY.sha256_file(tracking_path)
         camera = (250.0, 740.0, 620.0)
-        reference_height = 3.0
+        reference_height = 2.0
         bounds = layout.raw["canvas_bounds_mm"]
 
         def canonical(point: tuple[float, float]) -> tuple[float, float]:
@@ -81,6 +109,7 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
             input_csv = root / "trajectory.csv"
             geometry_path = root / "label_plane_geometry.json"
             source_calibration = root / "calibration.json"
+            capture_manifest = root / "capture-session.json"
             output_csv = root / "trajectory_height_corrected.csv"
             sidecar_path = root / "trajectory_height_corrected.calibration.json"
 
@@ -139,6 +168,7 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
                         "bindings": {
                             "board_layout_sha256": board_digest,
                             "tracking_calibration_sha256": tracking_digest,
+                            "capture_session": {"placeholder": True},
                         },
                         "qualification": {
                             "safety_qualified": True,
@@ -175,6 +205,8 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
                 + "\n",
                 encoding="utf-8",
             )
+            capture_manifest.write_text("{}\n", encoding="utf-8")
+            capture = _FakeCaptureFingerprint(input_csv, source_calibration)
 
             argv = [
                 "apply_label_plane_geometry.py",
@@ -185,6 +217,8 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
                 str(tracking_path),
                 "--label-plane-geometry",
                 str(geometry_path),
+                "--capture-session-manifest",
+                str(capture_manifest),
                 "--source-calibration-json",
                 str(source_calibration),
                 "--confirm-unchanged-camera-board-setup",
@@ -193,14 +227,28 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
                 "--sidecar",
                 str(sidecar_path),
             ]
-            with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(
+                APPLY,
+                "_load_target_capture",
+                return_value=capture,
+            ), mock.patch.object(
+                APPLY,
+                "_load_calibration_capture",
+                return_value=capture,
+            ), mock.patch.object(sys, "argv", argv):
                 self.assertEqual(APPLY.main(), 0)
 
-            verified = (
-                trajectory_calibration.verify_height_corrected_trajectory(
-                    output_csv, sidecar_path
+            with mock.patch.object(
+                trajectory_calibration.camera_capture_fingerprint,
+                "revalidate_capture_fingerprint",
+                return_value=capture,
+            ) as revalidate:
+                verified = (
+                    trajectory_calibration.verify_height_corrected_trajectory(
+                        output_csv, sidecar_path
+                    )
                 )
-            )
+            self.assertEqual(revalidate.call_count, 2)
             self.assertTrue(verified["qualification"]["absolute_scene_eligible"])
             self.assertEqual(verified["correction"]["sample_count"], len(rows))
             self.assertEqual(
@@ -214,6 +262,10 @@ class ApplyLabelPlaneGeometryTest(unittest.TestCase):
                 24.0,
                 places=8,
             )
+            with output_csv.open(newline="", encoding="ascii") as stream:
+                first = next(csv.DictReader(stream))
+            self.assertAlmostEqual(float(first["corrected_red_x_mm"]), 204.0)
+            self.assertAlmostEqual(float(first["corrected_red_y_mm"]), 270.0)
 
     def test_corrected_csv_columns_recover_linear_blue_path_and_red_heading(self):
         layout = board_layout.load(

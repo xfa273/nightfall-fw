@@ -234,16 +234,16 @@
       "trajectory_sha256": "91f1afd7d51b0f30a4bc1db69b522adf0bae173a4e05fd2b29ac6378989aa079",
       "trace": "tools/logging/logs/trace_bin_20260811_143737.csv",
       "trace_sha256": "3fa5c4e887ffaff71de005c6b09619cba5d0565eff454bda525177541ab5e8a7",
-      "coordinate_method": "two-marker-heading; local core extraction",
+      "coordinate_method": "legacy-two-marker-heading; local core extraction; diagnostic-only pending qualified label-plane correction",
       "wall_layout": "saved maze, first D135-in; right-side wall/post contact visible",
       "fit_role": "exclude-from-no-contact-fit; contact-location-validation",
       "contact": true
     }
   ],
   "known_limitations": [
-    "the completed-machine footprint is recorded separately, but label height above the board plane is not recorded",
+    "the current label heights are blue 10mm and red 2mm above the maze floor, with the current 3D-printed ArUco top reference also at 2mm; red is unchanged on that plane and historical blue positions need the 8mm relative-height correction",
     "historical no-contact wall layouts are not recorded and cannot certify absolute clearance",
-    "blue/red labels are above the floor homography plane and need position uncertainty or height correction",
+    "the indexed historical captures predate the recorder-0.5.7 absolute contract and lack the required fixed 1.05-diopter focus, same-run SHA/integrity chain, or matching calibration/run camera-setup fingerprint; recorder-0.5.6 metadata alone is also insufficient, so these trajectories remain diagnostic-only",
     "dist_in_mm equal to zero is a discrete execution regime and must not be interpolated with positive-entry runs",
     "the legacy K=0.03303 endpoint fit, trajectory-start-corrected K=0.0261 endpoint fit, and K=0.0178 full-path fit disagree; historical data do not qualify one non-zero K as a swept-clearance safety model"
   ]
