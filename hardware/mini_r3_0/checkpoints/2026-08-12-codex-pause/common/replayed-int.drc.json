@@ -1,0 +1,2131 @@
+{
+    "$schema": "https://schemas.kicad.org/drc.v1.json",
+    "coordinate_units": "mm",
+    "date": "2026-08-12T14:26:41",
+    "ignored_checks": [
+        {
+            "description": "Footprint has no courtyard defined",
+            "key": "missing_courtyard"
+        },
+        {
+            "description": "Track endpoint not centered on via",
+            "key": "track_not_centered_on_via"
+        },
+        {
+            "description": "Tuning profile track geometries",
+            "key": "tuning_profile_track_geometries"
+        },
+        {
+            "description": "Footprint doesn't match symbol's footprint filters",
+            "key": "footprint_filters_mismatch"
+        },
+        {
+            "description": "Silkscreen clearance",
+            "key": "silk_overlap"
+        },
+        {
+            "description": "Silkscreen clipped by solder mask",
+            "key": "silk_over_copper"
+        },
+        {
+            "description": "Silkscreen clipped by board edge",
+            "key": "silk_edge_clearance"
+        },
+        {
+            "description": "Footprint component type doesn't match footprint pads",
+            "key": "footprint_type_mismatch"
+        }
+    ],
+    "included_severities": [
+        "error",
+        "warning",
+        "exclusion"
+    ],
+    "kicad_version": "10.0.3",
+    "schematic_parity": [],
+    "source": "replayed-int.kicad_pcb",
+    "unconnected_items": [
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 2 [/VOL_CHECK] - R5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 140.3,
+                        "y": 112.7
+                    },
+                    "uuid": "4a6fac29-1bd2-436c-b045-6787c8ebf56c"
+                },
+                {
+                    "description": "パッド 1 [/VOL_CHECK] - R4 ( F.Cu 上)",
+                    "pos": {
+                        "x": 140.3,
+                        "y": 113.7
+                    },
+                    "uuid": "505cdfc8-0655-44f8-975c-6d46b850f08c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [/VOL_CHECK] - R4 ( F.Cu 上)",
+                    "pos": {
+                        "x": 140.3,
+                        "y": 113.7
+                    },
+                    "uuid": "505cdfc8-0655-44f8-975c-6d46b850f08c"
+                },
+                {
+                    "description": "パッド 18 [/VOL_CHECK] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 145.848033,
+                        "y": 116.999511
+                    },
+                    "uuid": "a5dd89e1-f25e-4536-865a-fe0e9c6f9951"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 18 [/VOL_CHECK] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 145.848033,
+                        "y": 116.999511
+                    },
+                    "uuid": "a5dd89e1-f25e-4536-865a-fe0e9c6f9951"
+                },
+                {
+                    "description": "パッド 1 [/VOL_CHECK] - C25 ( F.Cu 上)",
+                    "pos": {
+                        "x": 146.739411,
+                        "y": 116.439411
+                    },
+                    "uuid": "c1d90e90-0dc7-4935-b0b5-b4e4b11463ef"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - C3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 138.6,
+                        "y": 111.5
+                    },
+                    "uuid": "44325eb5-f822-4975-a4b2-ad1644a8983b"
+                },
+                {
+                    "description": "パッド 2 [+3V3] - R3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 141.353553,
+                        "y": 107.646447
+                    },
+                    "uuid": "940e5dc8-3ca1-4c2f-986d-b67b2cd2cee6"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 2 [+3V3] - R3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 141.353553,
+                        "y": 107.646447
+                    },
+                    "uuid": "940e5dc8-3ca1-4c2f-986d-b67b2cd2cee6"
+                },
+                {
+                    "description": "パッド 1 [+3V3] - R6 ( F.Cu 上)",
+                    "pos": {
+                        "x": 141.5,
+                        "y": 105.8
+                    },
+                    "uuid": "0e71fd4a-ce7c-46be-88f2-5abbd288a16f"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - R6 ( F.Cu 上)",
+                    "pos": {
+                        "x": 141.5,
+                        "y": 105.8
+                    },
+                    "uuid": "0e71fd4a-ce7c-46be-88f2-5abbd288a16f"
+                },
+                {
+                    "description": "配線 [+3V3] ( F.Cu 上、長さ: 5.2326 mm )",
+                    "pos": {
+                        "x": 141.5,
+                        "y": 103.8
+                    },
+                    "uuid": "4dae2d9f-4fd0-4db6-ab1c-511d01742444"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - C2 ( F.Cu 上)",
+                    "pos": {
+                        "x": 143.85,
+                        "y": 107.0
+                    },
+                    "uuid": "5e4413ac-3987-4524-9bda-ebb01745cce3"
+                },
+                {
+                    "description": "パッド 2 [+3V3] - C1 ( F.Cu 上)",
+                    "pos": {
+                        "x": 145.15,
+                        "y": 105.8
+                    },
+                    "uuid": "0b1cd11a-54bf-4d51-850d-7def8db12e11"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - C2 ( F.Cu 上)",
+                    "pos": {
+                        "x": 143.85,
+                        "y": 107.0
+                    },
+                    "uuid": "5e4413ac-3987-4524-9bda-ebb01745cce3"
+                },
+                {
+                    "description": "パッド 2 [+3V3] - R3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 141.353553,
+                        "y": 107.646447
+                    },
+                    "uuid": "940e5dc8-3ca1-4c2f-986d-b67b2cd2cee6"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - C_MCU0 ( F.Cu 上)",
+                    "pos": {
+                        "x": 144.3,
+                        "y": 109.350001
+                    },
+                    "uuid": "feb84549-0274-4ee3-8743-5bd451072ad8"
+                },
+                {
+                    "description": "パッド 1 [+3V3] - C2 ( F.Cu 上)",
+                    "pos": {
+                        "x": 143.85,
+                        "y": 107.0
+                    },
+                    "uuid": "5e4413ac-3987-4524-9bda-ebb01745cce3"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - C_MCU0 ( F.Cu 上)",
+                    "pos": {
+                        "x": 144.3,
+                        "y": 109.350001
+                    },
+                    "uuid": "feb84549-0274-4ee3-8743-5bd451072ad8"
+                },
+                {
+                    "description": "パッド 9 [+3V3] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 145.140927,
+                        "y": 113.107596
+                    },
+                    "uuid": "903c5043-ea85-4891-b3c4-eecb5de234a4"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [+3V3] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 147.969354,
+                        "y": 110.279168
+                    },
+                    "uuid": "1d05d9df-6063-4299-97fa-f4cd571e1118"
+                },
+                {
+                    "description": "パッド 5 [+3V3] - U4 ( F.Cu 上)",
+                    "pos": {
+                        "x": 148.001098,
+                        "y": 108.91
+                    },
+                    "uuid": "59c2d3f2-6e83-4014-93eb-3c3bf4010339"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 5 [+3V3] - U4 ( F.Cu 上)",
+                    "pos": {
+                        "x": 148.001098,
+                        "y": 108.91
+                    },
+                    "uuid": "59c2d3f2-6e83-4014-93eb-3c3bf4010339"
+                },
+                {
+                    "description": "パッド 1 [+3V3] - C_MCU0 ( F.Cu 上)",
+                    "pos": {
+                        "x": 144.3,
+                        "y": 109.350001
+                    },
+                    "uuid": "feb84549-0274-4ee3-8743-5bd451072ad8"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "配線 [+3V3] ( F.Cu 上、長さ: 0.0389 mm )",
+                    "pos": {
+                        "x": 149.032842,
+                        "y": 110.279168
+                    },
+                    "uuid": "e7707a13-1c41-4b4b-a78d-e7a0d71a00a1"
+                },
+                {
+                    "description": "パッド 1 [+3V3] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 147.969354,
+                        "y": 110.279168
+                    },
+                    "uuid": "1d05d9df-6063-4299-97fa-f4cd571e1118"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "配線 [+3V3] ( F.Cu 上、長さ: 0.3500 mm )",
+                    "pos": {
+                        "x": 153.8,
+                        "y": 109.35
+                    },
+                    "uuid": "b7bb1dcd-c0be-491f-a7d0-f546e77d7020"
+                },
+                {
+                    "description": "パッド 8 [+3V3] - U6 ( F.Cu 上)",
+                    "pos": {
+                        "x": 155.455,
+                        "y": 110.475
+                    },
+                    "uuid": "9e2b5cfe-d3db-42e7-a92d-dc2757730a71"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [/BOOT0] - R2 ( F.Cu 上)",
+                    "pos": {
+                        "x": 159.0,
+                        "y": 117.8
+                    },
+                    "uuid": "860cbdec-6b32-4938-8f44-c51ecdf7f951"
+                },
+                {
+                    "description": "パッド 44 [/BOOT0] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 150.447056,
+                        "y": 111.693382
+                    },
+                    "uuid": "678d003b-5b6f-44c0-b51c-577d356e865c"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 46 [/BUZZER_PWM] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 149.739949,
+                        "y": 110.986275
+                    },
+                    "uuid": "a528ddc6-8245-496a-8ba9-0672e463475b"
+                },
+                {
+                    "description": "配線 [/BUZZER_PWM] ( F.Cu 上、長さ: 0.6017 mm )",
+                    "pos": {
+                        "x": 132.0,
+                        "y": 124.3
+                    },
+                    "uuid": "c961623b-158c-4a76-96fd-eb6f386001cc"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 43 [/EC_R_B] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 150.800609,
+                        "y": 112.046935
+                    },
+                    "uuid": "9968d272-6dc9-41cf-abeb-8982ca42344e"
+                },
+                {
+                    "description": "パッド TP [/EC_R_B] - EC_R3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 159.677098,
+                        "y": 102.717598
+                    },
+                    "uuid": "c5bfe015-e5b6-4c41-b7a6-e3bdc6efabff"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 25 [/IMU_CS] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 149.032842,
+                        "y": 119.120832
+                    },
+                    "uuid": "331f77c9-1550-4055-9702-3ab770807e0b"
+                },
+                {
+                    "description": "パッド 12 [/IMU_CS] - U4 ( F.Cu 上)",
+                    "pos": {
+                        "x": 149.001098,
+                        "y": 107.09
+                    },
+                    "uuid": "cca39816-cc6d-45b3-b5d0-b4490c8fc889"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 1 [/PUSH_IN_1] - MODE0 ( F.Cu 上)",
+                    "pos": {
+                        "x": 140.264098,
+                        "y": 137.350598
+                    },
+                    "uuid": "b2fbe659-81b5-4234-9a44-57072eb5121c"
+                },
+                {
+                    "description": "パッド 5 [/PUSH_IN_1] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 146.55514,
+                        "y": 111.693382
+                    },
+                    "uuid": "14eb6930-a43a-4da1-84e6-0473879e1fb8"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        },
+        {
+            "description": "Missing connection between items",
+            "items": [
+                {
+                    "description": "パッド 5 [/PUSH_IN_1] - U5 ( F.Cu 上)",
+                    "pos": {
+                        "x": 146.55514,
+                        "y": 111.693382
+                    },
+                    "uuid": "14eb6930-a43a-4da1-84e6-0473879e1fb8"
+                },
+                {
+                    "description": "パッド 1 [/PUSH_IN_1] - R3 ( F.Cu 上)",
+                    "pos": {
+                        "x": 140.646447,
+                        "y": 108.353553
+                    },
+                    "uuid": "84bfdae3-449a-48dc-8f4c-6edcaa58c647"
+                }
+            ],
+            "severity": "error",
+            "type": "unconnected_items"
+        }
+    ],
+    "violations": [
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "配線 [+3V3] ( F.Cu 上、長さ: 5.2326 mm )",
+                    "pos": {
+                        "x": 141.5,
+                        "y": 103.8
+                    },
+                    "uuid": "4dae2d9f-4fd0-4db6-ab1c-511d01742444"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "配線 [/FRAM_CS] ( B.Cu 上、長さ: 0.6637 mm )",
+                    "pos": {
+                        "x": 156.1817,
+                        "y": 113.1175
+                    },
+                    "uuid": "afbf87fe-b9a0-4465-9eea-af9bd505d517"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Via is not connected or connected on only one layer",
+            "items": [
+                {
+                    "description": "ビア [/IR_FL] (F.Cu - B.Cu 上)",
+                    "pos": {
+                        "x": 140.13,
+                        "y": 106.9
+                    },
+                    "uuid": "89bbb00a-1f79-45ba-9dfe-9ed88e0ef90b"
+                }
+            ],
+            "severity": "warning",
+            "type": "via_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "配線 [/MOTOR_L_DIR] ( In2.Cu 上、長さ: 0.1000 mm )",
+                    "pos": {
+                        "x": 144.4,
+                        "y": 121.2
+                    },
+                    "uuid": "a9a3e090-69c5-43d8-97d1-93d7370897e3"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "Track has unconnected end",
+            "items": [
+                {
+                    "description": "配線 [/MOTOR_L_PWM] ( In2.Cu 上、長さ: 0.0500 mm )",
+                    "pos": {
+                        "x": 144.15,
+                        "y": 120.8
+                    },
+                    "uuid": "98a7f7c8-8246-4b02-83cb-a890afb2e3fa"
+                }
+            ],
+            "severity": "warning",
+            "type": "track_dangling"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R5",
+                    "pos": {
+                        "x": 139.8,
+                        "y": 112.7
+                    },
+                    "uuid": "00107ea5-da2e-4b91-87cf-b7540a2e28a4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_R2",
+                    "pos": {
+                        "x": 159.677098,
+                        "y": 100.939598
+                    },
+                    "uuid": "01a6afdf-c1f7-4781-856c-6a5616f4c816"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C15",
+                    "pos": {
+                        "x": 154.5,
+                        "y": 133.8
+                    },
+                    "uuid": "043ee87d-836e-4128-a265-00f7c69075e3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント UL0",
+                    "pos": {
+                        "x": 131.8,
+                        "y": 87.5
+                    },
+                    "uuid": "04f2f6e7-04e5-486b-b223-b2b4b53dc8e3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C_MCU-M0",
+                    "pos": {
+                        "x": 153.8,
+                        "y": 110.0
+                    },
+                    "uuid": "06880b9f-1ae2-486b-ad6b-22034d80f399"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R4FR0",
+                    "pos": {
+                        "x": 162.4,
+                        "y": 85.7
+                    },
+                    "uuid": "09f8957a-d019-425d-80e5-66b50335d74b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント LED3",
+                    "pos": {
+                        "x": 134.277098,
+                        "y": 136.499598
+                    },
+                    "uuid": "0a792cb9-c4b1-4e6e-8198-09463802de9d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント SPK1",
+                    "pos": {
+                        "x": 134.3,
+                        "y": 129.5
+                    },
+                    "uuid": "0bdc05f3-44ce-4db4-9616-ca5efd67937e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R1FR0",
+                    "pos": {
+                        "x": 164.5,
+                        "y": 81.8
+                    },
+                    "uuid": "0cf0b7f5-ab7b-4696-8a70-39c7b416c34e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント PT_FR0",
+                    "pos": {
+                        "x": 164.5,
+                        "y": 97.486583
+                    },
+                    "uuid": "0d404b59-89ca-47dc-b750-81b74eb9f20b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント TP2",
+                    "pos": {
+                        "x": 143.65,
+                        "y": 124.0
+                    },
+                    "uuid": "0e4333ab-c23d-4dcf-afe3-85225050e094"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント K1",
+                    "pos": {
+                        "x": 165.265098,
+                        "y": 121.640598
+                    },
+                    "uuid": "0e4a003a-59f0-4819-9e14-522bc088dc04"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント TP1",
+                    "pos": {
+                        "x": 143.65,
+                        "y": 122.05
+                    },
+                    "uuid": "0f7efce5-3f63-4730-983b-c00b8683b3a2"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U1",
+                    "pos": {
+                        "x": 154.0,
+                        "y": 130.5
+                    },
+                    "uuid": "129a3f6d-4775-4d39-8df3-198b38a2eb23"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R8",
+                    "pos": {
+                        "x": 132.5,
+                        "y": 124.3
+                    },
+                    "uuid": "12a9bd28-2b5a-4270-a011-785946924042"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント TP3",
+                    "pos": {
+                        "x": 143.65,
+                        "y": 116.71
+                    },
+                    "uuid": "13005c77-e122-4bcd-9a55-18577270c78c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R7",
+                    "pos": {
+                        "x": 154.2,
+                        "y": 106.1
+                    },
+                    "uuid": "14ee9f47-0ae6-494a-a763-07d8be85d26f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント PT_R0",
+                    "pos": {
+                        "x": 152.946098,
+                        "y": 79.603598
+                    },
+                    "uuid": "1539a529-6372-4ab0-95fc-708c9b181ce3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_R3",
+                    "pos": {
+                        "x": 159.677098,
+                        "y": 102.717598
+                    },
+                    "uuid": "1551b1b7-a7bb-41b3-9785-f1f32050a670"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'C_0805_2012Metric' が、ライブラリ 'Capacitor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント C22",
+                    "pos": {
+                        "x": 146.25,
+                        "y": 125.7
+                    },
+                    "uuid": "1b1d4507-9664-4263-b59e-cd31f494c648"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_L4",
+                    "pos": {
+                        "x": 137.325098,
+                        "y": 101.828598
+                    },
+                    "uuid": "1b59c0d9-1202-4a3f-9868-a884fbc5cd84"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント TP4",
+                    "pos": {
+                        "x": 143.65,
+                        "y": 118.2
+                    },
+                    "uuid": "1beaac5a-7da1-4c7b-821d-6b41969b342f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C1",
+                    "pos": {
+                        "x": 144.5,
+                        "y": 105.8
+                    },
+                    "uuid": "21d2b01c-d24e-4900-b8a1-01c3a7560720"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R27",
+                    "pos": {
+                        "x": 163.233098,
+                        "y": 133.578598
+                    },
+                    "uuid": "222c3784-a335-4a00-a320-42a91d34b8fd"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント P-LED0",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 122.8
+                    },
+                    "uuid": "23baa28a-f49d-40bd-a787-964aa5d9fd6a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R1R0",
+                    "pos": {
+                        "x": 149.263098,
+                        "y": 79.476598
+                    },
+                    "uuid": "2450f72c-eb2e-43b8-a878-4a6c962909b3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R12",
+                    "pos": {
+                        "x": 131.8,
+                        "y": 112.2
+                    },
+                    "uuid": "257ed168-8d8f-4e0b-a0b0-815191038e86"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R6",
+                    "pos": {
+                        "x": 142.0,
+                        "y": 105.8
+                    },
+                    "uuid": "2580fd07-ac17-476f-a4b5-a25ed12ca32e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R3",
+                    "pos": {
+                        "x": 141.0,
+                        "y": 108.0
+                    },
+                    "uuid": "265c70b5-2f6f-46b1-bce9-d9b4c0db518a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R2R0",
+                    "pos": {
+                        "x": 162.4,
+                        "y": 87.8
+                    },
+                    "uuid": "278d798a-d531-4610-8023-f3b0843de9f7"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント IR_LED_R0",
+                    "pos": {
+                        "x": 150.533098,
+                        "y": 76.301598
+                    },
+                    "uuid": "2c2b4aef-081f-4a8c-b61d-8ff28ecf9a88"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント P1",
+                    "pos": {
+                        "x": 133.007098,
+                        "y": 122.021598
+                    },
+                    "uuid": "2eec8610-66bf-4b80-b8a3-32ef4ce23a98"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_L2",
+                    "pos": {
+                        "x": 137.325098,
+                        "y": 100.939598
+                    },
+                    "uuid": "2f3b3dba-ebd4-4a8c-9bbc-00bcb78f3ade"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_R1",
+                    "pos": {
+                        "x": 159.677098,
+                        "y": 100.050598
+                    },
+                    "uuid": "30eda692-8a8b-4488-b43f-dc8ded150449"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'Nightfall-Power' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U7",
+                    "pos": {
+                        "x": 146.0,
+                        "y": 130.0
+                    },
+                    "uuid": "33a46863-9937-4263-a0e1-afc9e9c534a0"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'R_0402_1005Metric' が、ライブラリ 'Resistor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント R29",
+                    "pos": {
+                        "x": 142.7,
+                        "y": 130.1
+                    },
+                    "uuid": "35755e6f-9d6e-4d1d-8354-238f7ecb47a3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント UBUZ0",
+                    "pos": {
+                        "x": 132.1,
+                        "y": 125.6
+                    },
+                    "uuid": "39d701d7-2def-4eec-87b5-ed644876b60e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R2L0",
+                    "pos": {
+                        "x": 134.6,
+                        "y": 87.8
+                    },
+                    "uuid": "3a4f3782-e946-4a8c-bfbd-439d82b71917"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R2FR0",
+                    "pos": {
+                        "x": 162.4,
+                        "y": 83.5
+                    },
+                    "uuid": "3bcb7c9d-0363-4e4c-828c-fd4189f6f13e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'R_0402_1005Metric' が、ライブラリ 'Resistor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント R30",
+                    "pos": {
+                        "x": 142.7,
+                        "y": 128.199999
+                    },
+                    "uuid": "4372c22b-73eb-4c8b-94ac-81ecf1fac091"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "フットプリント 'R_0402_1005Metric' が、ライブラリ 'Resistor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント R31",
+                    "pos": {
+                        "x": 143.4,
+                        "y": 126.2
+                    },
+                    "uuid": "4461200e-7399-421d-ad24-7a132cc634b9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R0",
+                    "pos": {
+                        "x": 145.3,
+                        "y": 121.7
+                    },
+                    "uuid": "44edce8a-cca6-440d-b33a-e54502eb871b"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C14",
+                    "pos": {
+                        "x": 151.45,
+                        "y": 130.199999
+                    },
+                    "uuid": "464db276-78c5-45c3-8ed3-63fb61e51f0d"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'SOT-23' が、ライブラリ 'Package_TO_SOT_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント Q3",
+                    "pos": {
+                        "x": 160.0,
+                        "y": 122.0
+                    },
+                    "uuid": "465f4060-794e-4182-8624-5da19292d40a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R1",
+                    "pos": {
+                        "x": 152.0,
+                        "y": 106.1
+                    },
+                    "uuid": "467e3223-40ab-4d7d-bd11-3a4408ff4c9a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント UR0",
+                    "pos": {
+                        "x": 165.2,
+                        "y": 87.5
+                    },
+                    "uuid": "4773e99a-40df-4082-97cf-3e39accdbb7a"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'C_0402_1005Metric' が、ライブラリ 'Capacitor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント C24",
+                    "pos": {
+                        "x": 156.6,
+                        "y": 122.6
+                    },
+                    "uuid": "4a030601-c403-4451-8cbe-48812cbdd2c7"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U6",
+                    "pos": {
+                        "x": 157.0,
+                        "y": 109.5
+                    },
+                    "uuid": "4cfb5cd2-d21c-48f0-b765-81b59566208e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R4R0",
+                    "pos": {
+                        "x": 161.0,
+                        "y": 81.0
+                    },
+                    "uuid": "4d51d5d4-59e2-4f88-a676-5ba9339dc011"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'C_0805_2012Metric' が、ライブラリ 'Capacitor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント C23",
+                    "pos": {
+                        "x": 149.3,
+                        "y": 130.949999
+                    },
+                    "uuid": "4f2a65eb-4975-4f85-ae1c-81af9406e655"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_R4",
+                    "pos": {
+                        "x": 159.677098,
+                        "y": 101.828598
+                    },
+                    "uuid": "58f27a2c-04fe-41f5-8a05-2365402bd093"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント LED1",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 72.3
+                    },
+                    "uuid": "594bcf1f-0a33-4e25-8ee5-d3b76fe61010"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C_MCU0",
+                    "pos": {
+                        "x": 144.3,
+                        "y": 110.0
+                    },
+                    "uuid": "5bdaca35-4d92-4efc-b2fa-78a85f216dcb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R2FL0",
+                    "pos": {
+                        "x": 134.6,
+                        "y": 83.5
+                    },
+                    "uuid": "5e5d8232-8563-463b-a27c-58328bbc6299"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R33",
+                    "pos": {
+                        "x": 134.0,
+                        "y": 112.6
+                    },
+                    "uuid": "6117d00f-c913-4125-a4b2-ea6ed8a42d0f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C8",
+                    "pos": {
+                        "x": 138.5,
+                        "y": 118.1
+                    },
+                    "uuid": "62a42e52-8f05-47b4-b37f-881704277960"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U3",
+                    "pos": {
+                        "x": 141.643098,
+                        "y": 123.037598
+                    },
+                    "uuid": "65459a40-305e-4c50-b6a1-434b7827b752"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "フットプリント 'R_0402_1005Metric' が、ライブラリ 'Resistor_SMD' のコピーと一致しません",
+            "items": [
+                {
+                    "description": "フットプリント R32",
+                    "pos": {
+                        "x": 156.9,
+                        "y": 121.05
+                    },
+                    "uuid": "66b3516f-4338-4a97-9da1-509973df41ac"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_mismatch"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント PT_FL0",
+                    "pos": {
+                        "x": 132.5,
+                        "y": 97.486583
+                    },
+                    "uuid": "67d45170-5d2e-4213-a902-a13152a7cfc9"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C21",
+                    "pos": {
+                        "x": 139.2,
+                        "y": 107.5
+                    },
+                    "uuid": "684f35d4-ff85-47d1-9d2e-dc18a0d33c6c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント UFR0",
+                    "pos": {
+                        "x": 165.2,
+                        "y": 84.5
+                    },
+                    "uuid": "69b6b505-56cf-4d14-be71-eed5bf711b3f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U5",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 114.7
+                    },
+                    "uuid": "6cea5636-084e-4cdf-8667-b332cb6c6adc"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R4FL0",
+                    "pos": {
+                        "x": 134.6,
+                        "y": 85.7
+                    },
+                    "uuid": "6dfb41e5-84ae-4d84-b648-ce635d32401f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C_MCU3",
+                    "pos": {
+                        "x": 154.0,
+                        "y": 116.5
+                    },
+                    "uuid": "6fb248c3-1a5f-45d3-8088-f1656f1931b5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R4L0",
+                    "pos": {
+                        "x": 136.0,
+                        "y": 81.0
+                    },
+                    "uuid": "6fef0ca1-5090-4d8c-a827-6008cd172ef1"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R2",
+                    "pos": {
+                        "x": 159.5,
+                        "y": 117.8
+                    },
+                    "uuid": "7335bf90-c2d7-4d19-a19e-8b2a2fa37ffb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント IR_LED_FL0",
+                    "pos": {
+                        "x": 132.372098,
+                        "y": 95.7
+                    },
+                    "uuid": "758a3324-694d-47d9-b216-e9ba59731b36"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C_MCU2",
+                    "pos": {
+                        "x": 152.7,
+                        "y": 110.0
+                    },
+                    "uuid": "771320de-c976-49a4-b896-972201244213"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント MODE0",
+                    "pos": {
+                        "x": 138.214098,
+                        "y": 138.150598
+                    },
+                    "uuid": "7874330a-2097-4a83-a9a9-ddf3944dc1e3"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_L1",
+                    "pos": {
+                        "x": 137.325098,
+                        "y": 100.050598
+                    },
+                    "uuid": "83664c20-5eb7-4957-9ae1-2ebf4df198e4"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R4",
+                    "pos": {
+                        "x": 139.8,
+                        "y": 113.7
+                    },
+                    "uuid": "83f68f14-cfd2-48fb-ab14-755d39da99d7"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U2",
+                    "pos": {
+                        "x": 141.643098,
+                        "y": 117.449598
+                    },
+                    "uuid": "84a74831-6cf6-44bc-aaaa-24690b0ed8a5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント EC_L3",
+                    "pos": {
+                        "x": 137.325098,
+                        "y": 102.717598
+                    },
+                    "uuid": "8553ecfd-4373-4cbe-acdd-0a4830f2701e"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R1FL0",
+                    "pos": {
+                        "x": 132.5,
+                        "y": 81.8
+                    },
+                    "uuid": "8a00132f-e73e-4c19-9499-3f9c49fafb2f"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント RESET0",
+                    "pos": {
+                        "x": 158.788098,
+                        "y": 138.150598
+                    },
+                    "uuid": "8af8337c-43af-4a85-a20b-2e9c749c45de"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント IR_LED_FR0",
+                    "pos": {
+                        "x": 164.630098,
+                        "y": 95.7
+                    },
+                    "uuid": "8e65beb9-4edb-4ba7-89a5-da134a6681c2"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント UFL0",
+                    "pos": {
+                        "x": 131.8,
+                        "y": 84.5
+                    },
+                    "uuid": "902a3f73-0e94-4303-b18f-dedcf90eeb11"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C6",
+                    "pos": {
+                        "x": 138.5,
+                        "y": 123.688
+                    },
+                    "uuid": "9fd79adc-8eab-498c-8da6-f39cb8e3a617"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント D3",
+                    "pos": {
+                        "x": 139.0,
+                        "y": 132.0
+                    },
+                    "uuid": "a30b31ce-76ad-4613-a44e-d0348b6091fb"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント POWER0",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 136.903598
+                    },
+                    "uuid": "a393812e-501d-465c-ba95-7864baeddae2"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント LED2",
+                    "pos": {
+                        "x": 162.725098,
+                        "y": 136.372598
+                    },
+                    "uuid": "a572b60c-9f9a-498c-b2a4-3044e524ae1c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C3",
+                    "pos": {
+                        "x": 139.25,
+                        "y": 111.5
+                    },
+                    "uuid": "a864eb93-9200-4dde-ab71-f304bdff898c"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R28",
+                    "pos": {
+                        "x": 133.769098,
+                        "y": 133.705598
+                    },
+                    "uuid": "b3c4090f-737b-489c-8546-c78756d41c09"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R1L0",
+                    "pos": {
+                        "x": 147.739098,
+                        "y": 79.476598
+                    },
+                    "uuid": "bced15d7-dc86-43cd-bfd3-0e303fce31fa"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント U4",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 108.0
+                    },
+                    "uuid": "befb651b-3033-4856-8c92-90d9edfe5334"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント PT_L0",
+                    "pos": {
+                        "x": 144.056098,
+                        "y": 79.603598
+                    },
+                    "uuid": "c39ad17e-00ba-4276-9486-5e2a749f30a5"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C5",
+                    "pos": {
+                        "x": 157.0,
+                        "y": 113.0
+                    },
+                    "uuid": "c5c4e679-7d9b-40f4-a29e-e416088fed67"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント C2",
+                    "pos": {
+                        "x": 144.5,
+                        "y": 107.0
+                    },
+                    "uuid": "cb1c16eb-295b-437b-86d3-0d5dff5f3941"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント R26",
+                    "pos": {
+                        "x": 148.501098,
+                        "y": 74.1
+                    },
+                    "uuid": "e0e0ebae-3791-4d44-9cb5-c7ed0390ca11"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント IR_LED_L0",
+                    "pos": {
+                        "x": 146.469098,
+                        "y": 76.301598
+                    },
+                    "uuid": "e439d469-6379-480b-af2d-a146b93129af"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "現在の構成にはフットプリント ライブラリ 'HM_Nightfall-mini-2e_v1' が含まれていません",
+            "items": [
+                {
+                    "description": "フットプリント J2",
+                    "pos": {
+                        "x": 137.8,
+                        "y": 84.2
+                    },
+                    "uuid": "f12aa50b-8c6a-412f-b53b-f29ec7fe18e6"
+                }
+            ],
+            "severity": "warning",
+            "type": "lib_footprint_issues"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)",
+            "items": [
+                {
+                    "description": "UL0 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 131.087882,
+                        "y": 89.1277
+                    },
+                    "uuid": "afe25dea-2bb2-4c07-a673-a66e9d2ba667"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)",
+            "items": [
+                {
+                    "description": "UBUZ0 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 130.4723,
+                        "y": 124.887882
+                    },
+                    "uuid": "aae4494a-1119-410a-822e-c238daa0ccf5"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)",
+            "items": [
+                {
+                    "description": "UR0 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 164.487882,
+                        "y": 89.1277
+                    },
+                    "uuid": "166e1c34-9e01-4b92-be92-915de702d560"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0598 mm)",
+            "items": [
+                {
+                    "description": "U6のリファレンスフィールド",
+                    "pos": {
+                        "x": 159.1,
+                        "y": 111.5
+                    },
+                    "uuid": "69ac6b88-e01a-46b4-8a32-17b1c2a9d59f"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の高さが許容範囲外 (基板の設定のシルク印刷のテキスト高の制約 最小高さ 0.8000 mm; 現状 0.7530 mm)",
+            "items": [
+                {
+                    "description": "U6のリファレンスフィールド",
+                    "pos": {
+                        "x": 159.1,
+                        "y": 111.5
+                    },
+                    "uuid": "69ac6b88-e01a-46b4-8a32-17b1c2a9d59f"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_height"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)",
+            "items": [
+                {
+                    "description": "U3 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 139.128498,
+                        "y": 123.164598
+                    },
+                    "uuid": "28c837d6-8967-409a-8e60-f0b4674f19b7"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)",
+            "items": [
+                {
+                    "description": "UFR0 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 164.487882,
+                        "y": 86.1277
+                    },
+                    "uuid": "d1cdce69-2694-425f-b2a9-3a99d96b7a7b"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)",
+            "items": [
+                {
+                    "description": "U5 のフットプリント テキスト ( U5 )",
+                    "pos": {
+                        "x": 145.735179,
+                        "y": 112.832107
+                    },
+                    "uuid": "2281fb26-a450-49bc-935c-eecc20e89009"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)",
+            "items": [
+                {
+                    "description": "U5 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 146.525442,
+                        "y": 109.383688
+                    },
+                    "uuid": "5d950151-52da-4d9e-ab3e-b23200276c6b"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0762 mm)",
+            "items": [
+                {
+                    "description": "U2 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 139.128498,
+                        "y": 117.576598
+                    },
+                    "uuid": "651871f1-7248-4d89-9af0-cae1bf30a552"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0763 mm)",
+            "items": [
+                {
+                    "description": "UFL0 のフットプリント テキスト ( * )",
+                    "pos": {
+                        "x": 131.087882,
+                        "y": 86.1277
+                    },
+                    "uuid": "497cc63e-9434-4b3e-aaee-e43a95f7c661"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        },
+        {
+            "description": "文字の太さが許容範囲外 (基板の設定のシルク印刷のテキストの太さの制約 最小幅 0.0800 mm; 現状 0.0737 mm)",
+            "items": [
+                {
+                    "description": "D3のリファレンスフィールド",
+                    "pos": {
+                        "x": 139.500712,
+                        "y": 134.00285
+                    },
+                    "uuid": "58a7665a-ff18-46dc-a26b-93a20e855c1f"
+                }
+            ],
+            "severity": "warning",
+            "type": "text_thickness"
+        }
+    ]
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "mini3-manufacturing-cleanup-handoff-v1",
+  "reference_input": "/private/tmp/mini3-fan-pwm-handoff/HM_Nightfall-mini-3a_v0.kicad_pcb",
+  "full12": {
+    "directory": "/private/tmp/mini3-via-cleanup.WaS5Gg/full12",
+    "board": "HM_Nightfall-mini-3a_v0.kicad_pcb",
+    "replay": "apply_via_cleanup.py",
+    "cleaned": [
+      "UBUZ0.2",
+      "C_MCU1.2",
+      "C_MCU2.2",
+      "C_MCU-M0.2",
+      "U4.8",
+      "Q3.2",
+      "C7.1",
+      "R1FR0.1",
+      "R2R0.2",
+      "C8.2",
+      "Q3.3",
+      "R33.2"
+    ],
+    "physical_drc_errors": 0,
+    "via_in_pad_count": 0,
+    "kicad_unconnected_count": 32,
+    "gnd_groups": 1,
+    "gnd2_groups": 1,
+    "zone_incidents": 0
+  },
+  "independent7": {
+    "directory": "/private/tmp/mini3-via-cleanup.WaS5Gg/subset7",
+    "board": "HM_Nightfall-mini-3a_v0.kicad_pcb",
+    "replay": "apply_independent_cleanup.py",
+    "cleaned": [
+      "UBUZ0.2",
+      "Q3.2",
+      "C7.1",
+      "R1FR0.1",
+      "R2R0.2",
+      "C8.2",
+      "Q3.3"
+    ],
+    "deferred": [
+      "C_MCU1.2",
+      "C_MCU2.2",
+      "C_MCU-M0.2",
+      "U4.8",
+      "R33.2"
+    ],
+    "physical_drc_errors": 0,
+    "via_in_pad_count": 5,
+    "kicad_unconnected_count": 32,
+    "gnd_groups": 1,
+    "gnd2_groups": 1,
+    "zone_incidents": 0
+  },
+  "artifacts": {
+    "replay-report.json": {
+      "sha256": "683c76090190fa137c06c4fb9a4fcc1143a3e0d7a7068ec6503d95c3200c3e76",
+      "bytes": 337
+    },
+    "verify_replay.py": {
+      "sha256": "92cd312ed6edc79ba40b32d9ad3dbfb685c093aeb8345a28e9410aab6528b35a",
+      "bytes": 3116
+    },
+    "full12/HM_Nightfall-mini-3a_v0.kicad_pcb": {
+      "sha256": "f987c929750164a1e7e76291d9aae1d1efa411d33208b54a1874c2d484a07b89",
+      "bytes": 1335930
+    },
+    "full12/apply_via_cleanup.py": {
+      "sha256": "67f947aeba69be985e841cde3b23f7c30d68ce40fa976c0622a47e8ffda89cf7",
+      "bytes": 13553
+    },
+    "full12/audit.json": {
+      "sha256": "94dc513835bc54136530ab287177006b74c407ea88a68a84f58fa01b0f74e1d9",
+      "bytes": 181571
+    },
+    "full12/drc-exact.json": {
+      "sha256": "29b2d0de269b968ab0a431f09c7c1921da61ea04b711ca38a08ca3d746a443a1",
+      "bytes": 118088
+    },
+    "subset7/HM_Nightfall-mini-3a_v0.kicad_pcb": {
+      "sha256": "b8b24fa8f92f82051984ad1ecb5c44447e9a77fee8c3c353e67b3db2dcf4a995",
+      "bytes": 1334759
+    },
+    "subset7/apply_independent_cleanup.py": {
+      "sha256": "87d9d0b28c9f6305c5057dfe5cc2a8558badb4d25f0e6c37fd63918db7dd1792",
+      "bytes": 11260
+    },
+    "subset7/audit.json": {
+      "sha256": "86bbb06c5cf10752a971db0daba5162d7b77b64c18ba34fd1bb8cc0e95870c50",
+      "bytes": 183215
+    },
+    "subset7/drc-exact.json": {
+      "sha256": "b618447be61c51d7ea5f5a2775899014b4356d8ca90deaba6fbde32a797a65ea",
+      "bytes": 102744
+    }
+  }
+}

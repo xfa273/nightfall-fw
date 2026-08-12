@@ -1,0 +1,50 @@
+{
+  "input": "/private/tmp/mini3-boot-led3.sTFMSL/HM_Nightfall-mini-3a_v0.kicad_pcb",
+  "output": "/private/tmp/mini3-boot-led3.sTFMSL/out.kicad_pcb",
+  "dry_run": false,
+  "config": {
+    "grid_mm": 0.05,
+    "trace_width_mm": 0.2,
+    "clearance_mm": 0.16,
+    "sensitive_clearance_mm": 0.25,
+    "highcurrent_sensitive_clearance_mm": 0.4,
+    "switch_clearance_mm": 0.5,
+    "escape_clearance_mm": 0.12,
+    "pad_escape_mm": 1.2,
+    "via_diameter_mm": 0.6,
+    "via_drill_mm": 0.3,
+    "hole_clearance_mm": 0.25,
+    "hole_to_hole_mm": 0.2,
+    "edge_clearance_mm": 0.5,
+    "via_cost_mm": 3.0,
+    "bend_cost_mm": 0.3,
+    "max_vias": 6,
+    "max_expanded": 1000000,
+    "max_net_expanded": 4000000,
+    "candidate_pairs": 12,
+    "front_axis": "horizontal",
+    "net_order": "mcu-first",
+    "fanout_references": [],
+    "verbose": true
+  },
+  "summary": {
+    "eligible_nets": 1,
+    "complete_nets": 1,
+    "connections_added": 1,
+    "tracks_added": 21,
+    "vias_added": 3
+  },
+  "nets": [
+    {
+      "name": "/BOOT0",
+      "pad_count": 3,
+      "initial_components": 2,
+      "remaining_components": 1,
+      "connections_added": 1,
+      "tracks_added": 21,
+      "vias_added": 3,
+      "expanded_nodes": 307067,
+      "note": ""
+    }
+  ]
+}

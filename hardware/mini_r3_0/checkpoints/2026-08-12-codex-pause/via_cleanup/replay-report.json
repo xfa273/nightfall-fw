@@ -1,0 +1,18 @@
+{
+  "full12": {
+    "physical_drc_errors": 0,
+    "via_in_pad_count": 0,
+    "unconnected": 32,
+    "gnd_groups": 1,
+    "gnd2_groups": 1,
+    "zone_pass": true
+  },
+  "independent7": {
+    "physical_drc_errors": 0,
+    "via_in_pad_count": 5,
+    "unconnected": 32,
+    "gnd_groups": 1,
+    "gnd2_groups": 1,
+    "zone_pass": true
+  }
+}

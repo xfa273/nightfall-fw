@@ -39,6 +39,8 @@ compile_commands.json
 *.su
 
 *.log
+__pycache__/
+*.pyc
 
 *.bak
 

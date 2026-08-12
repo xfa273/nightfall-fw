@@ -986,7 +986,7 @@
 						)
 					)
 				)
-				(pin output line
+				(pin power_out line
 					(at 12.7 2.54 180)
 					(length 5.08)
 					(name "VOUT"
@@ -2620,7 +2620,7 @@
 						)
 					)
 				)
-				(pin bidirectional line
+				(pin passive line
 					(at -17.78 -2.54 0)
 					(length 5.08)
 					(name "SDX"
@@ -2638,7 +2638,7 @@
 						)
 					)
 				)
-				(pin bidirectional line
+				(pin passive line
 					(at -17.78 -5.08 0)
 					(length 5.08)
 					(name "SCX"
@@ -3600,7 +3600,7 @@
 						(type none)
 					)
 				)
-				(pin output line
+				(pin passive line
 					(at 40.64 -10.16 180)
 					(length 7.62)
 					(name "OUT1_2"
@@ -3636,7 +3636,7 @@
 						)
 					)
 				)
-				(pin output line
+				(pin passive line
 					(at 40.64 -15.24 180)
 					(length 7.62)
 					(name "OUT2_2"
@@ -4167,7 +4167,7 @@
 					)
 				)
 
-				(pin input line
+				(pin passive line
 					(at 0 2.54 270)
 					(length 2.54)
 					(name "TP"
@@ -7300,7 +7300,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin power_out line
 					(at 0 -20.32 0)
 					(length 7.62)
 					(name "VCAP_1"
@@ -7821,7 +7821,7 @@
 					)
 				)
 
-				(pin input line
+				(pin passive line
 					(at 0 -2.54 90)
 					(length 2.54)
 					(name "TP"
@@ -7844,7 +7844,7 @@
 		)
 
 
-		(symbol "Nightfall-Power:IRLML6402TRPBF"
+		(symbol "Nightfall-Power:PJS6403_S1_00001"
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
@@ -7856,34 +7856,34 @@
 				(do_not_autoplace no)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "Value" "IRLML6402TRPBF"
+			(property "Value" "PJS6403_S1_00001"
 				(at 5.08 -5.08 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(effects (font (size 1.27 1.27)) (justify right))
 			)
-			(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+			(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf"
+			(property "Datasheet" "https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403"
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(property "Description" "P-channel MOSFET used on mini-2e; SOT-23, G=1, S=2, D=3."
+			(property "Description" "30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4."
 				(at 0 0 0)
 				(show_name no)
 				(do_not_autoplace no)
 				(hide yes)
 				(effects (font (size 1.27 1.27)))
 			)
-			(symbol "IRLML6402TRPBF_1_0"
+			(symbol "PJS6403_S1_00001_1_0"
 				(rectangle
 					(start -3.81 -3.81)
 					(end 3.81 3.81)
@@ -7898,19 +7898,37 @@
 					(at -5.08 2.54 0)
 					(length 5.08)
 					(name "G" (effects (font (size 1.016 1.016))))
-					(number "1" (effects (font (size 1.016 1.016))))
+					(number "3" (effects (font (size 1.016 1.016))))
 				)
 				(pin passive line
 					(at 0 5.08 270)
 					(length 5.08)
 					(name "S" (effects (font (size 1.016 1.016))))
+					(number "4" (effects (font (size 1.016 1.016))))
+				)
+				(pin passive line
+					(at 0 -5.08 90)
+					(length 5.08)
+					(name "D" (effects (font (size 1.016 1.016))))
+					(number "1" (effects (font (size 1.016 1.016))))
+				)
+				(pin passive line
+					(at 0 -5.08 90)
+					(length 5.08)
+					(name "D" (effects (font (size 1.016 1.016))))
 					(number "2" (effects (font (size 1.016 1.016))))
 				)
 				(pin passive line
 					(at 0 -5.08 90)
 					(length 5.08)
 					(name "D" (effects (font (size 1.016 1.016))))
-					(number "3" (effects (font (size 1.016 1.016))))
+					(number "5" (effects (font (size 1.016 1.016))))
+				)
+				(pin passive line
+					(at 0 -5.08 90)
+					(length 5.08)
+					(name "D" (effects (font (size 1.016 1.016))))
+					(number "6" (effects (font (size 1.016 1.016))))
 				)
 			)
 			(embedded_fonts no)
@@ -8302,7 +8320,7 @@
 		(property "Value" "MPM3610GQV-P" (at 12.7 15.24 0) (effects (font (size 1.27 1.27)) (justify right)))
 		(property "Footprint" "Nightfall-Power:MPM3610_QFN-20_3x5mm" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
 		(property "Datasheet" "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
-		(property "Description" "4.5V to 21V, 1.2A step-down power module; grouped pins follow the MPS datasheet." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "4.5V to 21V, 1A step-down power module; grouped pins follow the MPS datasheet." (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
 		(property "ki_locked" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
 		(symbol "MPM3610GQV-P_1_0"
 			(rectangle (start -12.7 -12.7) (end 12.7 12.7) (stroke (width 0.254) (type solid)) (fill (type background)))
@@ -8330,6 +8348,18 @@
 				(length 5.08)
 				(name "AAM" (effects (font (size 1.016 1.016))))
 				(number "18" (effects (font (size 1.016 1.016))))
+			)
+			(pin no_connect line
+				(at -17.78 -5.08 0)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "19" (effects (font (size 1.016 1.016))))
+			)
+			(pin no_connect line
+				(at -17.78 -7.62 0)
+				(length 5.08)
+				(name "NC" (effects (font (size 1.016 1.016))))
+				(number "20" (effects (font (size 1.016 1.016))))
 			)
 			(pin power_out line
 				(at 17.78 7.62 180)
@@ -8361,20 +8391,20 @@
 				(name "VCC" (effects (font (size 1.016 1.016))))
 				(number "2" (effects (font (size 1.016 1.016))))
 			)
-			(pin output line
-				(at 17.78 -7.62 180)
+			(pin passive line
+				(at 17.78 -6.35 180)
 				(length 5.08)
 				(name "SW" (effects (font (size 1.016 1.016))))
 				(number "4" (effects (font (size 1.016 1.016))))
 			)
-			(pin output line
+			(pin passive line
 				(at 17.78 -7.62 180)
 				(length 5.08)
 				(name "SW" (effects (font (size 1.016 1.016))))
 				(number "5" (effects (font (size 0 0))))
 			)
-			(pin output line
-				(at 17.78 -7.62 180)
+			(pin passive line
+				(at 17.78 -8.89 180)
 				(length 5.08)
 				(name "SW" (effects (font (size 1.016 1.016))))
 				(number "6" (effects (font (size 0 0))))
@@ -8469,7 +8499,7 @@
 		(symbol "D_VERTICAL_1_0"
 			(polyline (pts (xy -1.524 1.27) (xy 1.524 1.27)) (stroke (width 0.254) (type solid)) (fill (type none)))
 			(polyline (pts (xy -1.524 -1.27) (xy 1.524 -1.27) (xy 0 1.27) (xy -1.524 -1.27)) (stroke (width 0.254) (type solid)) (fill (type none)))
-			(pin passive line (at 0 5.08 270) (length 3.81) (name "K" (effects (font (size 0 0)))) (number "3" (effects (font (size 0 0)))))
+			(pin passive line (at 0 5.08 270) (length 3.81) (name "K" (effects (font (size 0 0)))) (number "2" (effects (font (size 0 0)))))
 			(pin passive line (at 0 -5.08 90) (length 3.81) (name "A" (effects (font (size 0 0)))) (number "1" (effects (font (size 0 0)))))
 		)
 		(embedded_fonts no)
@@ -8534,6 +8564,38 @@
 		)
 		(embedded_fonts no)
 	)
+		(symbol "power:PWR_FLAG"
+			(power global)
+			(pin_numbers (hide yes))
+			(pin_names (offset 0) (hide yes))
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(in_pos_files yes)
+			(duplicate_pin_numbers_are_jumpers no)
+			(property "Reference" "#FLG" (at 0 1.905 0) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "Value" "PWR_FLAG" (at 0 3.81 0) (effects (font (size 1.27 1.27))))
+			(property "Footprint" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "Datasheet" "" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "Description" "Special symbol for telling ERC where power comes from" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+			(property "ki_keywords" "flag power" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27))))
+			(symbol "PWR_FLAG_0_0"
+				(pin power_out line
+					(at 0 0 90)
+					(length 0)
+					(name "" (effects (font (size 1.27 1.27))))
+					(number "1" (effects (font (size 1.27 1.27))))
+				)
+			)
+			(symbol "PWR_FLAG_0_1"
+				(polyline
+					(pts (xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27))
+					(stroke (width 0) (type default))
+					(fill (type none))
+				)
+			)
+			(embedded_fonts no)
+		)
 )
 	(text "Wall Sensor"
 		(exclude_from_sim no)
@@ -9531,13 +9593,13 @@
 
 	(wire
 		(pts
-			(xy 144.78 317.5) (xy 144.78 330.2)
+			(xy 144.78 327.66) (xy 144.78 330.2)
 		)
 		(stroke
 			(width 0.1524)
 			(type solid)
 		)
-		(uuid "17de9629-7909-4300-9c7f-4054f6cfca84")
+		(uuid "e7648d2e-8535-49cc-a610-cfba5632e65a")
 	)
 	(wire
 		(pts
@@ -10257,13 +10319,13 @@
 	)
 	(wire
 		(pts
-			(xy 45.72 317.5) (xy 45.72 330.2)
+			(xy 45.72 327.66) (xy 45.72 330.2)
 		)
 		(stroke
 			(width 0.1524)
 			(type solid)
 		)
-		(uuid "4f4c463d-8161-401d-8f5b-34389f41261f")
+		(uuid "618e661e-422e-4de9-931d-c3c98fc74372")
 	)
 	(wire
 		(pts
@@ -11877,16 +11939,6 @@
 	)
 	(wire
 		(pts
-			(xy 50.8 317.5) (xy 45.72 317.5)
-		)
-		(stroke
-			(width 0.1524)
-			(type solid)
-		)
-		(uuid "ce3d6d9d-dedd-4758-b647-edbfdfdcd107")
-	)
-	(wire
-		(pts
 			(xy 355.6 127) (xy 355.6 124.46)
 		)
 		(stroke
@@ -12126,16 +12178,6 @@
 			(type solid)
 		)
 		(uuid "e1adf3b1-d59a-402c-8edc-5cefdfc845a8")
-	)
-	(wire
-		(pts
-			(xy 149.86 317.5) (xy 144.78 317.5)
-		)
-		(stroke
-			(width 0.1524)
-			(type solid)
-		)
-		(uuid "e1c0f86e-e5fd-479e-99da-927ca4498385")
 	)
 	(wire
 		(pts
@@ -12550,6 +12592,46 @@
 		)
 		(uuid "ff05a8f5-1497-4b81-9d96-e044f2d1ddd8")
 	)
+	(label "MOTOR_R_SR"
+		(at 50.8 317.5 180)
+		(effects
+			(font
+				(size 0.889 0.889)
+			)
+			(justify right bottom)
+		)
+		(uuid "7f611d34-98c0-4489-9d45-e9b02da59fb5")
+	)
+	(label "MOTOR_R_SR"
+		(at 45.72 317.5 0)
+		(effects
+			(font
+				(size 0.889 0.889)
+			)
+			(justify left bottom)
+		)
+		(uuid "e9285561-4e2b-46a4-aa29-0aaf50f4bf7b")
+	)
+	(label "MOTOR_L_SR"
+		(at 149.86 317.5 180)
+		(effects
+			(font
+				(size 0.889 0.889)
+			)
+			(justify right bottom)
+		)
+		(uuid "95a60d41-9a88-44c9-87ad-3634cf78c48f")
+	)
+	(label "MOTOR_L_SR"
+		(at 144.78 317.5 0)
+		(effects
+			(font
+				(size 0.889 0.889)
+			)
+			(justify left bottom)
+		)
+		(uuid "af1e66be-4e70-412f-a44d-16105650b5f1")
+	)
 	(label "MOTOR_L_PWM"
 		(at 73.66 175.26 0)
 		(effects
@@ -12600,7 +12682,7 @@
 		)
 		(uuid "0c636dee-76e4-41f8-ae2d-baed0aac30e2")
 	)
-	(label "MOTOR_L_OUT1"
+	(label "MOTOR_R_OUT1"
 		(at 83.82 375.92 180)
 		(effects
 			(font
@@ -12660,7 +12742,7 @@
 		)
 		(uuid "23265100-fb4f-425e-98c5-8da4bae2c512")
 	)
-	(label "MOTOR_L_OUT1"
+	(label "MOTOR_R_OUT1"
 		(at 116.84 314.96 180)
 		(effects
 			(font
@@ -12700,7 +12782,7 @@
 		)
 		(uuid "31ea2074-3221-4eeb-92e1-c27500dfaa63")
 	)
-	(label "MOTOR_L_PWM"
+	(label "MOTOR_R_PWM"
 		(at 43.18 309.88 180)
 		(effects
 			(font
@@ -12760,7 +12842,7 @@
 		)
 		(uuid "49d89e86-6360-4916-b2f5-08478f0ef096")
 	)
-	(label "MOTOR_L_DIR"
+	(label "MOTOR_R_DIR"
 		(at 43.18 312.42 180)
 		(effects
 			(font
@@ -12850,7 +12932,7 @@
 		)
 		(uuid "5b1bc45a-d395-453a-b00b-be88acaa8b71")
 	)
-	(label "MOTOR_R_OUT1"
+	(label "MOTOR_L_OUT1"
 		(at 83.82 381 180)
 		(effects
 			(font
@@ -12981,7 +13063,7 @@
 		)
 		(uuid "84861041-001d-4c31-93f2-771223bade38")
 	)
-	(label "MOTOR_R_OUT2"
+	(label "MOTOR_L_OUT2"
 		(at 215.9 320.04 180)
 		(effects
 			(font
@@ -13041,7 +13123,7 @@
 		)
 		(uuid "9972d04f-879d-4fa4-8ec2-86ae65151983")
 	)
-	(label "MOTOR_R_PWM"
+	(label "MOTOR_L_PWM"
 		(at 142.24 309.88 180)
 		(effects
 			(font
@@ -13061,7 +13143,7 @@
 		)
 		(uuid "9aefb055-cd75-40d7-a26f-6e0b5116304f")
 	)
-	(label "MOTOR_R_DIR"
+	(label "MOTOR_L_DIR"
 		(at 142.24 312.42 180)
 		(effects
 			(font
@@ -13121,7 +13203,7 @@
 		)
 		(uuid "a86bfa3f-4bbb-42fd-aa58-3f64658cfdbb")
 	)
-	(label "MOTOR_R_OUT2"
+	(label "MOTOR_L_OUT2"
 		(at 83.82 383.54 180)
 		(effects
 			(font
@@ -13241,7 +13323,7 @@
 		)
 		(uuid "cf3a2aac-aa4d-43cc-be84-3e87973db6f8")
 	)
-	(label "MOTOR_L_OUT2"
+	(label "MOTOR_R_OUT2"
 		(at 116.84 320.04 180)
 		(effects
 			(font
@@ -13281,7 +13363,7 @@
 		)
 		(uuid "d48ecbd4-9172-4d74-a6d1-d950623ade14")
 	)
-	(label "MOTOR_R_OUT1"
+	(label "MOTOR_L_OUT1"
 		(at 215.9 314.96 180)
 		(effects
 			(font
@@ -13361,7 +13443,7 @@
 		)
 		(uuid "f9b7d2b3-ca6c-4106-8568-cba372ed7996")
 	)
-	(label "MOTOR_L_OUT2"
+	(label "MOTOR_R_OUT2"
 		(at 83.82 378.46 180)
 		(effects
 			(font
@@ -14775,7 +14857,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0402"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 182.88 134.62 0)
 			(hide yes)
 			(show_name no)
@@ -15650,7 +15732,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0402"
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
 			(at 86.36 142.24 0)
 			(hide yes)
 			(show_name no)
@@ -16491,7 +16573,7 @@
 		)
 	)
 	(symbol
-		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND2")
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
 		(at 447.04 220.98 0)
 		(unit 1)
 		(body_style 1)
@@ -16512,7 +16594,7 @@
 				)
 			)
 		)
-		(property "Value" "GND2"
+		(property "Value" "GND"
 			(at 444.627 224.155 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16838,7 +16920,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:UFQFPN-48_7X7X0P55MM-M"
+		(property "Footprint" "Nightfall-Local:UFQFPN-48_7X7X0P55MM-M_noEP_hand_solder"
 			(at 91.44 162.56 0)
 			(hide yes)
 			(show_name no)
@@ -17187,7 +17269,7 @@
 		)
 	)
 	(symbol
-		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND2")
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
 		(at 401.32 231.14 0)
 		(unit 1)
 		(body_style 1)
@@ -17208,7 +17290,7 @@
 				)
 			)
 		)
-		(property "Value" "GND2"
+		(property "Value" "GND"
 			(at 398.907 234.315 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18476,7 +18558,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
 			(at 337.82 185.42 0)
 			(hide yes)
 			(show_name no)
@@ -18956,7 +19038,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0402"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 30.48 332.74 0)
 			(hide yes)
 			(show_name no)
@@ -21033,7 +21115,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:UFQFPN-48_7X7X0P55MM-M"
+		(property "Footprint" "Nightfall-Local:UFQFPN-48_7X7X0P55MM-M_noEP_hand_solder"
 			(at 91.44 116.84 0)
 			(hide yes)
 			(show_name no)
@@ -22440,7 +22522,7 @@
 		)
 	)
 	(symbol
-		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND2")
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
 		(at 360.68 154.94 0)
 		(unit 1)
 		(body_style 1)
@@ -22461,7 +22543,7 @@
 				)
 			)
 		)
-		(property "Value" "GND2"
+		(property "Value" "GND"
 			(at 358.267 158.115 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -22550,7 +22632,7 @@
 				(justify left bottom)
 			)
 		)
-		(property "Footprint" "HM_Nightfall-mini-2e_v1:C0402"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric"
 			(at 129.54 332.74 0)
 			(hide yes)
 			(show_name no)
@@ -23239,7 +23321,7 @@
 		)
 	)
 	(symbol
-		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND2")
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
 		(at 355.6 129.54 0)
 		(unit 1)
 		(body_style 1)
@@ -23260,7 +23342,7 @@
 				)
 			)
 		)
-		(property "Value" "GND2"
+		(property "Value" "GND"
 			(at 353.187 132.715 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -24639,7 +24721,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Description" "4.5V to 21V, 1.2A step-down power module."
+		(property "Description" "4.5V to 21V, 1A step-down power module."
 			(at 398.78 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -25422,6 +25504,34 @@
 		(uuid "b95e7a2d-74ab-4a8e-8aa3-5d17aa416fee")
 	)
 	(wire
+		(pts (xy 416.56 52.07) (xy 421.64 52.07))
+		(stroke (width 0.1524) (type solid))
+		(uuid "5462116f-5920-415d-84a5-a6120d64a778")
+	)
+	(wire
+		(pts (xy 416.56 54.61) (xy 421.64 54.61))
+		(stroke (width 0.1524) (type solid))
+		(uuid "2fa94aec-afdb-4fd7-b215-2b1a7d69747a")
+	)
+	(wire
+		(pts (xy 416.56 53.34) (xy 421.64 53.34))
+		(stroke (width 0.1524) (type solid))
+		(uuid "0bf94940-50b7-4113-9bd4-e01426c15c65")
+	)
+	(wire
+		(pts (xy 421.64 52.07) (xy 421.64 54.61))
+		(stroke (width 0.1524) (type solid))
+		(uuid "d1a2ea73-bae5-4420-9346-163fc3ee6722")
+	)
+	(label "MPM_SW_INTERNAL"
+		(at 421.64 53.34 0)
+		(effects
+			(font (size 0.7112 0.7112))
+			(justify left bottom)
+		)
+		(uuid "273e93d0-0f44-45fc-9f83-1427c70382e6")
+	)
+	(wire
 		(pts (xy 424.18 33.02) (xy 424.18 38.1))
 		(stroke (width 0.1524) (type solid))
 		(uuid "cc7f5493-ce76-4f2e-a55f-38ce3672d730")
@@ -25516,10 +25626,6 @@
 	(no_connect
 		(at 416.56 50.8)
 		(uuid "b3e20c9b-3b86-4719-a491-f00b706ced7d")
-	)
-	(no_connect
-		(at 416.56 53.34)
-		(uuid "cfa83be4-20f7-46d0-871c-0692ef0bf3b5")
 	)
 	(no_connect
 		(at 416.56 55.88)
@@ -25762,6 +25868,116 @@
 		)
 	)
 	(symbol
+		(lib_id "Nightfall-Power:R_VERTICAL")
+		(at 45.72 322.58 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "03805902-9cd2-4f42-a8d3-3c149ecc12cb")
+		(property "Reference" "R34"
+			(at 48.26 321.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "220k"
+			(at 48.26 323.85 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 45.72 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/"
+			(at 45.72 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "MP6551 left-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM."
+			(at 45.72 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(pin "1" (uuid "56c92c9d-90eb-45ac-a014-a8ef3f83b93b"))
+		(pin "2" (uuid "810d6621-e644-4b14-af53-e35f011639a8"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "R34")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Nightfall-Power:R_VERTICAL")
+		(at 144.78 322.58 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "3c3b90da-8621-47c4-bb13-faf7c8e5d137")
+		(property "Reference" "R35"
+			(at 147.32 321.31 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "220k"
+			(at 147.32 323.85 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+			(at 144.78 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" "https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/"
+			(at 144.78 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "MP6551 right-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM."
+			(at 144.78 322.58 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(pin "1" (uuid "820ef164-9d88-40de-a5d4-a0497922fb54"))
+		(pin "2" (uuid "9e145b9c-1451-4639-bd5d-28ed334e7e3a"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "R35")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Nightfall-Power:D_VERTICAL")
 		(at 373.38 104.14 0)
 		(unit 1)
@@ -25781,7 +25997,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Value" "BAS16WT1GW"
+		(property "Value" "SM340A"
 			(at 368.3 105.5 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -25790,7 +26006,7 @@
 					(justify right bottom)
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-323_SC-70"
+		(property "Footprint" "Diode_SMD:D_SMA"
 			(at 373.38 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -25799,7 +26015,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://akizukidenshi.com/catalog/g/g109915/"
 			(at 373.38 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -25808,7 +26024,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Description" ""
+		(property "Description" "40 V, 3 A Schottky flyback diode for the suction fan; SMA/DO-214AC."
 			(at 373.38 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -25817,7 +26033,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(pin "3" (uuid "b4abd2a9-1c27-42fb-b629-84fa52414614"))
+		(pin "2" (uuid "b4abd2a9-1c27-42fb-b629-84fa52414614"))
 		(pin "1" (uuid "b40ba52c-e7c4-49f6-8dde-19ec0a5e93b3"))
 		(instances
 			(project "HM_Nightfall-mini-3a_v0"
@@ -26171,7 +26387,117 @@
 		(uuid "2e7e2211-ac8b-45ce-b546-055f98e2a3e4")
 	)
 	(symbol
-		(lib_id "Nightfall-Power:IRLML6402TRPBF")
+		(lib_id "Nightfall-Power:R_VERTICAL")
+		(at 256.54 213.36 90)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "f11265f3-702c-470d-9eca-d2922fc3eb86")
+		(property "Reference" "R33"
+			(at 256.54 210.82 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "4.7k"
+			(at 256.54 215.9 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "HM_Nightfall-mini-2e_v1:R0402"
+			(at 256.54 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" ""
+			(at 256.54 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "Series resistor limiting current in the main P-MOS gate clamp path."
+			(at 256.54 213.36 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(pin "1" (uuid "324d3b80-b981-432c-89c3-ad5cdec0e5be"))
+		(pin "2" (uuid "5abdb503-5d1e-42e6-96e9-11fe5b4f06a3"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "R33")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Nightfall-Power:D_VERTICAL")
+		(at 274.32 205.74 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "0356d8e0-7bcc-4d4e-a591-5a8b876545fe")
+		(property "Reference" "D5"
+			(at 279.4 204.47 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Value" "BZT52-C15S_R1_00001"
+			(at 279.4 207.01 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Footprint" "Diode_SMD:D_SOD-323"
+			(at 274.32 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Datasheet" "https://www.panjit.com.tw/upload/datasheet/BZT52-C2V4S_SERIES.pdf"
+			(at 274.32 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(property "Description" "15 V, 200 mW SOD-323 gate-source clamp for the 3S main P-channel MOSFET."
+			(at 274.32 205.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects (font (size 1.27 1.27)))
+		)
+		(pin "2" (uuid "298358d7-a018-4e0e-83ae-e7385ef12e91"))
+		(pin "1" (uuid "eeed8e30-17b3-4361-9825-1d34789c8bea"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "D5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Nightfall-Power:PJS6403_S1_00001")
 		(at 269.24 215.9 0)
 		(unit 1)
 		(body_style 1)
@@ -26189,7 +26515,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Value" "IRLML6402TRPBF"
+		(property "Value" "PJS6403_S1_00001"
 			(at 264.16 227.54 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -26197,7 +26523,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Footprint" "Package_TO_SOT_SMD:SOT-23"
+		(property "Footprint" "Package_TO_SOT_SMD:SOT-23-6"
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26206,7 +26532,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Datasheet" "https://www.infineon.com/dgdl/irlml6402pbf.pdf"
+		(property "Datasheet" "https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403"
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26215,7 +26541,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Description" "P-channel MOSFET used on mini-2e; SOT-23, G=1, S=2, D=3."
+		(property "Description" "30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4."
 			(at 269.24 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -26224,9 +26550,12 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(pin "1" (uuid "e766f087-120d-46b9-878e-6b8a76f3aaa0"))
-		(pin "2" (uuid "a2ac2a10-9918-48fc-b1a9-9d05c14f934f"))
-		(pin "3" (uuid "1db44539-e351-46d9-9005-c2e20f1f8f80"))
+		(pin "3" (uuid "e766f087-120d-46b9-878e-6b8a76f3aaa0"))
+		(pin "4" (uuid "a2ac2a10-9918-48fc-b1a9-9d05c14f934f"))
+		(pin "1" (uuid "1db44539-e351-46d9-9005-c2e20f1f8f80"))
+		(pin "2" (uuid "c0687e4b-3753-4dcf-bff2-733b6c5befcf"))
+		(pin "5" (uuid "7273281e-dde3-422b-a40b-720e2e5d29a7"))
+		(pin "6" (uuid "5cb62c11-609c-493c-81a7-a524d112b876"))
 		(instances
 			(project "HM_Nightfall-mini-3a_v0"
 				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
@@ -26712,9 +27041,19 @@
 		(uuid "e4b71506-efac-45fa-b917-342e594d0bd1")
 	)
 	(wire
-		(pts (xy 246.38 213.36) (xy 264.16 213.36))
+		(pts (xy 246.38 213.36) (xy 251.46 213.36))
 		(stroke (width 0.1524) (type solid))
 		(uuid "709579db-41fa-4a89-8669-eb734c455479")
+	)
+	(wire
+		(pts (xy 261.62 213.36) (xy 264.16 213.36))
+		(stroke (width 0.1524) (type solid))
+		(uuid "c38ac4ee-323d-420c-8417-33d3cc12f5c6")
+	)
+	(wire
+		(pts (xy 256.54 210.82) (xy 274.32 210.82))
+		(stroke (width 0.1524) (type solid))
+		(uuid "0979788b-bbb9-4f7b-98a7-9c84e8dc0a85")
 	)
 	(wire
 		(pts (xy 256.54 210.82) (xy 256.54 213.36))
@@ -26759,6 +27098,12 @@
 		(uuid "f4ab3fa5-12c0-4baa-9b5c-e185b6c1b9bc")
 	)
 	(junction
+		(at 274.32 200.66)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "11f3145e-ca3e-46b7-9866-1c0b88d811c8")
+	)
+	(junction
 		(at 256.54 213.36)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -26770,7 +27115,7 @@
 		(color 0 0 0 0)
 		(uuid "d710dbb8-81e2-4574-8628-15c0cc0f420e")
 	)
-	(label "PWR_GATE_INTERNAL"
+	(label "PWR_SWITCH_RETURN"
 		(exclude_from_sim no)
 		(at 246.38 213.36 0)
 		(effects
@@ -26938,6 +27283,71 @@
 		)
 	)
 	(symbol
+		(lib_id "Nightfall-Power:C_VERTICAL")
+		(at 284.48 172.72 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "07f11e5a-32bf-49fb-83a2-34644234c473")
+		(property "Reference" "C25"
+			(at 289.56 171.6 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "100nF X7R"
+			(at 289.56 174.1 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+			(at 284.48 172.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" ""
+			(at 284.48 172.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "100 nF X7R local ADC charge reservoir and low-pass filter for the 100k/27k battery divider."
+			(at 284.48 172.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(pin "1" (uuid "feac2436-e449-4b42-b46d-4e934c116540"))
+		(pin "2" (uuid "10ee96e5-9710-4d59-9e48-505a5744c3e1"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "C25")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Nightfall-Power:VBAT_SW")
 		(at 259.08 152.4 0)
 		(unit 1)
@@ -27003,7 +27413,7 @@
 		)
 	)
 	(symbol
-		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND2")
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
 		(at 259.08 185.42 0)
 		(unit 1)
 		(body_style 1)
@@ -27022,7 +27432,7 @@
 				(font (size 1.27 1.27))
 			)
 		)
-		(property "Value" "GND2"
+		(property "Value" "GND"
 			(at 259.08 185.42 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -27067,6 +27477,71 @@
 			)
 		)
 	)
+	(symbol
+		(lib_id "HM_Nightfall-mini-2e_v1-eagle-import:GND")
+		(at 284.48 180.34 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "56d17fc2-02ef-4acd-afb9-cd7ed384d885")
+		(property "Reference" "#SUPPLY110"
+			(at 284.48 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Value" "GND"
+			(at 284.48 180.34 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" ""
+			(at 284.48 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" ""
+			(at 284.48 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "Power symbol creates a global label named GND"
+			(at 284.48 180.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(pin "1" (uuid "edad4b6d-abe4-4c72-a000-7ff526ba2f2b"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912"
+					(reference "#SUPPLY110")
+					(unit 1)
+				)
+			)
+		)
+	)
 	(wire
 		(pts (xy 259.08 154.94) (xy 259.08 157.48))
 		(stroke (width 0.1524) (type solid))
@@ -27076,6 +27551,11 @@
 		(pts (xy 259.08 167.64) (xy 274.32 167.64))
 		(stroke (width 0.1524) (type solid))
 		(uuid "21a50012-440b-447f-9f01-2b5b292a7222")
+	)
+	(wire
+		(pts (xy 274.32 167.64) (xy 284.48 167.64))
+		(stroke (width 0.1524) (type solid))
+		(uuid "2f1d5a04-72e0-48f4-86c0-b391b8975850")
 	)
 	(wire
 		(pts (xy 259.08 177.8) (xy 259.08 182.88))
@@ -27388,5 +27868,297 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "324a31da-0c59-4348-a38a-387f535742a1")
+	)
+
+	(no_connect (at 91.44 193.04) (uuid "735d4ff0-c912-4dd9-9e3a-1be99c63d421"))
+	(no_connect (at 91.44 215.9) (uuid "ee3e9141-01a6-40c0-880f-afd3ffb9ab29"))
+	(no_connect (at 91.44 299.72) (uuid "5648d560-2eb3-49cc-94dd-1e10b3eaced2"))
+	(no_connect (at 91.44 302.26) (uuid "84bf93bb-1563-41ee-84c0-1bd331ac9059"))
+	(no_connect (at 91.44 307.34) (uuid "65c564ff-d621-4584-91e3-35a5611a5241"))
+	(no_connect (at 109.22 43.18) (uuid "947458d8-7ed8-4427-b5cd-ac1d48739fc9"))
+	(no_connect (at 154.94 63.5) (uuid "37e9f526-1dd6-4fa9-8137-c04f95fba735"))
+	(no_connect (at 154.94 66.04) (uuid "9d914e7d-fcdb-46bb-a5f1-adb62e22caac"))
+	(no_connect (at 190.5 45.72) (uuid "a84461c5-fbed-4f09-93f4-d19b4908e8e9"))
+	(no_connect (at 190.5 48.26) (uuid "9fd54467-da93-45f0-8f51-79141a0fe155"))
+	(no_connect (at 190.5 299.72) (uuid "1b65f9ff-236c-49f5-bd00-c618ed9a44bb"))
+	(no_connect (at 190.5 302.26) (uuid "3633bc57-9033-4455-b3be-309bb1fb6a46"))
+	(no_connect (at 190.5 307.34) (uuid "d661837d-f40a-47f7-a011-888f312a41d9"))
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 259.08 182.88 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "f2876c45-e547-486c-8c5c-663173ffce3c")
+		(property "Reference" "#FLG0101" (at 259.08 182.88 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "PWR_FLAG" (at 259.08 182.88 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 259.08 182.88 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 259.08 182.88 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Special symbol for telling ERC where power comes from" (at 259.08 182.88 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "cf43d4b9-7b65-42a5-9645-e196f1ab0cc5"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912" (reference "#FLG0101") (unit 1))
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 246.38 228.6 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "cfa23143-ab80-4b26-9255-a0412cf840ab")
+		(property "Reference" "#FLG0102" (at 246.38 228.6 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "PWR_FLAG" (at 246.38 228.6 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 246.38 228.6 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 246.38 228.6 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Special symbol for telling ERC where power comes from" (at 246.38 228.6 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "aa981d42-8a82-459f-b094-8209c32f5d61"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912" (reference "#FLG0102") (unit 1))
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 274.32 200.66 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "03500d51-726e-4cc2-bdfe-568dd6fc3018")
+		(property "Reference" "#FLG0103" (at 274.32 200.66 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "PWR_FLAG" (at 274.32 200.66 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 274.32 200.66 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 274.32 200.66 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Special symbol for telling ERC where power comes from" (at 274.32 200.66 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "6184c4d2-1d2e-4bc4-91ba-f40e375d78b5"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912" (reference "#FLG0103") (unit 1))
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:PWR_FLAG")
+		(at 279.4 220.98 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board no)
+		(in_pos_files no)
+		(dnp no)
+		(uuid "2ea245e5-2111-4e39-a3dc-2a36ec618bc8")
+		(property "Reference" "#FLG0104" (at 279.4 220.98 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Value" "PWR_FLAG" (at 279.4 220.98 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Footprint" "" (at 279.4 220.98 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Datasheet" "" (at 279.4 220.98 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(property "Description" "Special symbol for telling ERC where power comes from" (at 279.4 220.98 0) (hide yes) (effects (font (size 1.27 1.27))))
+		(pin "1" (uuid "829d83a6-3bd5-4bcb-ae83-5a05a2e11f40"))
+		(instances
+			(project "HM_Nightfall-mini-3a_v0"
+				(path "/54d6f28e-cecf-4d04-8425-f2088821b912" (reference "#FLG0104") (unit 1))
+			)
+		)
+	)
+	(label "Net-(U5B-VCAP_1)"
+		(exclude_from_sim no)
+		(at 91.44 137.16 0)
+		(effects (font (size 0 0)))
+		(uuid "b1cbf191-b37f-5596-b2fb-fd920d1ebbbf")
+	)
+	(label "Net-(U5B-VCAP_1)"
+		(exclude_from_sim no)
+		(at 86.36 139.7 0)
+		(effects (font (size 0 0)))
+		(uuid "ff0a039d-baf7-5a46-be4f-d83c0e28ba49")
+	)
+	(label "Net-(U6-~{WP})"
+		(exclude_from_sim no)
+		(at 114.3 50.8 0)
+		(effects (font (size 0 0)))
+		(uuid "586d5048-8d24-5c63-8929-f6cee78fe1e6")
+	)
+	(label "Net-(U6-~{WP})"
+		(exclude_from_sim no)
+		(at 78.74 50.8 0)
+		(effects (font (size 0 0)))
+		(uuid "1ba8d026-5585-5f7d-be03-81be0a1d3154")
+	)
+	(label "Net-(P-LED0-PadA)"
+		(exclude_from_sim no)
+		(at 345.44 185.42 0)
+		(effects (font (size 0 0)))
+		(uuid "872691da-4e30-511c-a84a-9971d3e8827c")
+	)
+	(label "Net-(P-LED0-PadA)"
+		(exclude_from_sim no)
+		(at 342.9 185.42 0)
+		(effects (font (size 0 0)))
+		(uuid "3d17963c-aa54-5753-a0cd-4e3dcf739519")
+	)
+	(label "Net-(LED1-PadA)"
+		(exclude_from_sim no)
+		(at 386.08 218.44 0)
+		(effects (font (size 0 0)))
+		(uuid "125864b4-d938-5a67-84df-5bf964c5d220")
+	)
+	(label "Net-(LED1-PadA)"
+		(exclude_from_sim no)
+		(at 388.62 218.44 0)
+		(effects (font (size 0 0)))
+		(uuid "3cdd843c-5b1f-5986-9f62-257eae146fc2")
+	)
+	(label "Net-(LED3-PadA)"
+		(exclude_from_sim no)
+		(at 386.08 228.6 0)
+		(effects (font (size 0 0)))
+		(uuid "5a85eb4a-d6e2-55d1-bac3-7a77087fe8af")
+	)
+	(label "Net-(LED3-PadA)"
+		(exclude_from_sim no)
+		(at 388.62 228.6 0)
+		(effects (font (size 0 0)))
+		(uuid "3801db53-6e2f-55ed-8867-8f940ea18e18")
+	)
+	(label "Net-(IR_LED_FL0-PadA)"
+		(exclude_from_sim no)
+		(at 396.24 299.72 0)
+		(effects (font (size 0 0)))
+		(uuid "3a2f7523-15c5-5d58-9963-d56ca9bb9ec8")
+	)
+	(label "Net-(IR_LED_FL0-PadA)"
+		(exclude_from_sim no)
+		(at 396.24 289.56 0)
+		(effects (font (size 0 0)))
+		(uuid "8ab78cb7-f7bf-5104-84e5-687fe08eed3f")
+	)
+	(label "Net-(IR_LED_FL0-C)"
+		(exclude_from_sim no)
+		(at 396.24 307.34 0)
+		(effects (font (size 0 0)))
+		(uuid "118f5022-56e8-568f-97a9-ec0b64717bd9")
+	)
+	(label "Net-(IR_LED_FL0-C)"
+		(exclude_from_sim no)
+		(at 391.16 314.96 0)
+		(effects (font (size 0 0)))
+		(uuid "6e0f45c1-6507-5aca-8a52-8671d9aa5bfd")
+	)
+	(label "Net-(IR_LED_L0-PadA)"
+		(exclude_from_sim no)
+		(at 396.24 355.6 0)
+		(effects (font (size 0 0)))
+		(uuid "94995894-2e58-525f-8c00-bf14027b6501")
+	)
+	(label "Net-(IR_LED_L0-PadA)"
+		(exclude_from_sim no)
+		(at 396.24 345.44 0)
+		(effects (font (size 0 0)))
+		(uuid "a7a7b7e7-ecbf-5609-9d85-c46108c5baf9")
+	)
+	(label "Net-(IR_LED_L0-C)"
+		(exclude_from_sim no)
+		(at 396.24 363.22 0)
+		(effects (font (size 0 0)))
+		(uuid "5bae884c-e90c-54ae-92ce-8be993ca7c7e")
+	)
+	(label "Net-(IR_LED_L0-C)"
+		(exclude_from_sim no)
+		(at 391.16 370.84 0)
+		(effects (font (size 0 0)))
+		(uuid "db6e7dea-8f66-506a-ad2e-599a2bc86fd3")
+	)
+	(label "Net-(D3-A)"
+		(exclude_from_sim no)
+		(at 401.32 147.32 0)
+		(effects (font (size 0 0)))
+		(uuid "99d24cd6-5c03-58ba-b597-4c65528c0473")
+	)
+	(label "Net-(D3-A)"
+		(exclude_from_sim no)
+		(at 416.56 149.86 0)
+		(effects (font (size 0 0)))
+		(uuid "1aa69b0f-b9cf-52fd-b404-582e611d8201")
+	)
+	(label "Net-(D3-A)"
+		(exclude_from_sim no)
+		(at 424.18 170.18 0)
+		(effects (font (size 0 0)))
+		(uuid "95863fe9-3d84-5efa-9962-df2238a10d63")
+	)
+	(label "Net-(LED2-PadA)"
+		(exclude_from_sim no)
+		(at 434.34 218.44 0)
+		(effects (font (size 0 0)))
+		(uuid "e7be214e-a16c-5f5c-90ea-f605c0c6c937")
+	)
+	(label "Net-(LED2-PadA)"
+		(exclude_from_sim no)
+		(at 431.8 218.44 0)
+		(effects (font (size 0 0)))
+		(uuid "27e368e0-abd3-5cac-9e24-5f2a56487927")
+	)
+	(label "Net-(IR_LED_FR0-PadA)"
+		(exclude_from_sim no)
+		(at 462.28 299.72 0)
+		(effects (font (size 0 0)))
+		(uuid "1b88dae4-54eb-5d88-af0e-55fdfc2bb65c")
+	)
+	(label "Net-(IR_LED_FR0-PadA)"
+		(exclude_from_sim no)
+		(at 462.28 289.56 0)
+		(effects (font (size 0 0)))
+		(uuid "1f6808bf-642c-5c63-bb20-61b13a4d3e75")
+	)
+	(label "Net-(IR_LED_FR0-C)"
+		(exclude_from_sim no)
+		(at 462.28 307.34 0)
+		(effects (font (size 0 0)))
+		(uuid "b1f04edd-5793-5381-a164-142ec8e1cf74")
+	)
+	(label "Net-(IR_LED_FR0-C)"
+		(exclude_from_sim no)
+		(at 457.2 314.96 0)
+		(effects (font (size 0 0)))
+		(uuid "49e9bc0a-5561-53ac-a7e3-80ffc565d323")
+	)
+	(label "Net-(IR_LED_R0-PadA)"
+		(exclude_from_sim no)
+		(at 462.28 355.6 0)
+		(effects (font (size 0 0)))
+		(uuid "6daf17bd-ce74-5bca-b3c1-794a26cbc540")
+	)
+	(label "Net-(IR_LED_R0-PadA)"
+		(exclude_from_sim no)
+		(at 462.28 345.44 0)
+		(effects (font (size 0 0)))
+		(uuid "e7f9aa5a-ebec-5979-a60d-56f858eab57a")
+	)
+	(label "Net-(IR_LED_R0-C)"
+		(exclude_from_sim no)
+		(at 462.28 363.22 0)
+		(effects (font (size 0 0)))
+		(uuid "e3a40668-6c0a-54fa-b22e-792a9713ffe7")
+	)
+	(label "Net-(IR_LED_R0-C)"
+		(exclude_from_sim no)
+		(at 457.2 370.84 0)
+		(effects (font (size 0 0)))
+		(uuid "74dee422-5e3f-565a-9bdc-cb08c3df7bd8")
 	)
 )

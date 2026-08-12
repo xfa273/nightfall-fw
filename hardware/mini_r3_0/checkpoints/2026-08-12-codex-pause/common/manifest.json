@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "created_at": "2026-08-12T14:26:00+09:00",
+  "purpose": "Control4 + LED2 integrated rear-I/O checkpoint adding LED3 and conflict-free NRST/SENSOR_FR reroutes",
+  "source": {
+    "path": "/private/tmp/mini3-control4-led2-handoff-20260812/HM_Nightfall-mini-3a_v0.control4-led2.kicad_pcb",
+    "sha256": "85c27a5f5d8bd79f8a3cf862e3fe4fae2ea0504b36c50563457da0ebf0fecb6c"
+  },
+  "candidate": {
+    "file": "HM_Nightfall-mini-3a_v0.control4-led3.kicad_pcb",
+    "sha256": "a1a231fa70815dee5e19d0daeda741c14aa30f56400d8977a5e4750b6d5aa1ac"
+  },
+  "replay": {
+    "script": "replay.py",
+    "delta": "delta.json",
+    "coordinate_unit": "integer nanometers",
+    "exact_geometry_diff_removed": 0,
+    "exact_geometry_diff_added": 0,
+    "replayed_exact_drc_physical_errors": 0,
+    "replayed_unconnected": 20
+  },
+  "completed_rear_nets": [
+    "/SWCLK",
+    "/EC_L_A",
+    "/EC_L_B",
+    "/NRST",
+    "/USART1_RX",
+    "/LED_1",
+    "/LED_2",
+    "/LED_3"
+  ],
+  "preserved_sensor_net": [
+    "/SENSOR_FR"
+  ],
+  "preserved_control_nets": [
+    "/MOTOR_L_DIR",
+    "/MOTOR_L_PWM",
+    "/MOTOR_R_DIR",
+    "/MOTOR_R_PWM",
+    "/MOTOR_STBY",
+    "/FAN_PWM"
+  ],
+  "verification": {
+    "exact_drc_physical_error_count": 0,
+    "unconnected_count": 20,
+    "unconnected_by_net": {
+      "+3V3": 11,
+      "/BOOT0": 1,
+      "/BUZZER_PWM": 1,
+      "/EC_R_B": 1,
+      "/IMU_CS": 1,
+      "/PUSH_IN_1": 2,
+      "/VOL_CHECK": 3
+    },
+    "gnd_group_count": 1,
+    "gnd2_group_count": 1,
+    "zone_self_edges": {
+      "LOGIC_GND_B": 0,
+      "LOGIC_GND_F": 0,
+      "POWER_GND2_B": 0,
+      "POWER_GND2_F": 0
+    },
+    "in1_signal_track_count": 0,
+    "via_in_pad_count": 22,
+    "via_in_pad_reference_count": 22,
+    "via_in_pad_increment": 0,
+    "r0_contract_pass": true
+  },
+  "remaining_non_supply_nets": [
+    "/BOOT0",
+    "/BUZZER_PWM",
+    "/EC_R_B",
+    "/IMU_CS",
+    "/PUSH_IN_1"
+  ],
+  "push_note": "U5.5 and MODE0.1 are separated by existing In2/outer-layer barriers; R3.1 is also enclosed. A local reroute or <=1 mm R3 move is needed. No unverified PUSH copper is included."
+}

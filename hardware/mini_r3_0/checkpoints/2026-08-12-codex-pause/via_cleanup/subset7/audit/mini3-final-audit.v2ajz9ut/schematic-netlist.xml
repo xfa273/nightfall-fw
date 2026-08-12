@@ -1,0 +1,3529 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<export version="E">
+  <design>
+    <source>/private/tmp/mini3-via-cleanup.WaS5Gg/subset7/audit/mini3-final-audit.v2ajz9ut/HM_Nightfall-mini-3a_v0.kicad_sch</source>
+    <date>2026-08-12T10:22:43</date>
+    <tool>Eeschema 10.0.3</tool>
+    <sheet number="1" name="/" tstamps="/">
+      <title_block>
+        <title>Nightfall mini 2S-3S / suction-fan power integration</title>
+        <company>Nightfall</company>
+        <rev>v0</rev>
+        <date>2026-08-11</date>
+        <source>HM_Nightfall-mini-3a_v0.kicad_sch</source>
+        <comment number="1" value="Derived from HM_Nightfall-mini-2e and CM_Nightfall-Air_v1"/>
+        <comment number="2" value=""/>
+        <comment number="3" value=""/>
+        <comment number="4" value=""/>
+        <comment number="5" value=""/>
+        <comment number="6" value=""/>
+        <comment number="7" value=""/>
+        <comment number="8" value=""/>
+        <comment number="9" value=""/>
+      </title_block>
+    </sheet>
+  </design>
+  <components>
+    <comp ref="C1">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>26071320-83ef-4715-bd6a-cee12022d276</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C2">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f314e30b-7760-4b90-b43c-0ad6ff0d269e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C3">
+      <value>2.2u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>2237f98a-32f8-4e9f-bf11-55e02e4e02f2</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C5">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3ef56639-c20c-477a-b0d7-ea1e5feba2b5</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C6">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9e5c6f98-f820-4971-9f5a-9207d1d9469e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C7">
+      <value>10u/25V X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d7f367bb-9f4e-4a3b-8bb1-cb724e241bfd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C8">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>71fbb2a6-e609-41c1-9ec9-639d2a5d3178</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C9">
+      <value>10u/25V X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>84f36004-b38c-4f85-8d99-fab8481fbaa7</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C14">
+      <value>1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>837ac747-63f1-47b4-ac11-64d4df326a1e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C15">
+      <value>2.2u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ffc92ba2-9ad9-4ca3-8842-25a815adec52</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C21">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>b5035010-d452-4850-8cca-07cea8c3da4b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C22">
+      <value>10u/25V X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="C_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>97e2dec3-a179-4f73-a686-f737c5defcfa</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C23">
+      <value>22u/10V X7R</value>
+      <footprint>Capacitor_SMD:C_0805_2012Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0805_2012Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="C_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>8229ecad-15f0-4517-bdb4-29ab4eebc23a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C24">
+      <value>0.1u/25V X7R</value>
+      <footprint>Capacitor_SMD:C_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="C_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9d023a7c-9d53-494e-8b8e-003f07f3a596</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C25">
+      <value>100nF X7R</value>
+      <footprint>Capacitor_SMD:C_0402_1005Metric</footprint>
+      <description>100 nF X7R local ADC charge reservoir and low-pass filter for the 100k/27k battery divider.</description>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description">100 nF X7R local ADC charge reservoir and low-pass filter for the 100k/27k battery divider.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="C_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>07f11e5a-32bf-49fb-83a2-34644234c473</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU-C0">
+      <value>2.2u</value>
+      <footprint>Capacitor_SMD:C_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>37253663-5f79-4257-a443-a9e295ae4c67</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU-M0">
+      <value>4.7u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>dbf24a4b-53ff-4f68-bf49-5f465956d329</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU0">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>afb07bef-63fd-4331-bc86-089aff454d74</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU1">
+      <value>0.1u</value>
+      <footprint>Capacitor_SMD:C_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Capacitor_SMD:C_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>24ae77d9-db30-49b5-b011-8ced0529bb55</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU2">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>058852fe-d6e2-4f47-bf0f-b3bbf49f3b73</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="C_MCU3">
+      <value>0.1u</value>
+      <footprint>HM_Nightfall-mini-2e_v1:C0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402" description="CAPACITOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>362745d5-3aa8-4b9e-8601-3c7c272e0ebd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D3">
+      <value>BAS16WT1GW</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT323</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT323</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="BAS16WT1GW" description="https://pricing.snapeda.com/parts/BAS16WT1G/ON%20Semiconductor/view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>feb9b187-a0b4-45df-bae1-cf5d127a5c53</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D4">
+      <value>SM340A</value>
+      <footprint>Diode_SMD:D_SMA</footprint>
+      <datasheet>https://akizukidenshi.com/catalog/g/g109915/</datasheet>
+      <description>40 V, 3 A Schottky flyback diode for the suction fan; SMA/DO-214AC.</description>
+      <fields>
+        <field name="Footprint">Diode_SMD:D_SMA</field>
+        <field name="Datasheet">https://akizukidenshi.com/catalog/g/g109915/</field>
+        <field name="Description">40 V, 3 A Schottky flyback diode for the suction fan; SMA/DO-214AC.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="D_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>89ea9260-d8f9-45ae-8c51-bc2e7ce5cd61</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="D5">
+      <value>BZT52-C15S_R1_00001</value>
+      <footprint>Diode_SMD:D_SOD-323</footprint>
+      <datasheet>https://www.panjit.com.tw/upload/datasheet/BZT52-C2V4S_SERIES.pdf</datasheet>
+      <description>15 V, 200 mW SOD-323 gate-source clamp for the 3S main P-channel MOSFET.</description>
+      <fields>
+        <field name="Footprint">Diode_SMD:D_SOD-323</field>
+        <field name="Datasheet">https://www.panjit.com.tw/upload/datasheet/BZT52-C2V4S_SERIES.pdf</field>
+        <field name="Description">15 V, 200 mW SOD-323 gate-source clamp for the 3S main P-channel MOSFET.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="D_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0356d8e0-7bcc-4d4e-a591-5a8b876545fe</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_L1">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f6a6c1f4-bef1-489e-876a-1c00a63a76bb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_L2">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0117600e-16c8-4c7e-9319-b953eb95c715</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_L3">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>042ffea8-896a-468d-8325-7099cb52d3c6</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_L4">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5c232cea-f2e6-4757-bc3d-5ac28bb7ee25</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_R1">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>cff5528e-a89a-40ca-a13e-3c02501d1ae7</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_R2">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>15061946-6585-463b-9608-5adf37f10bce</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_R3">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ced07a6d-303e-4b38-ba6d-9ea9b0758393</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="EC_R4">
+      <value>PTR1TP06SQ</value>
+      <footprint>HM_Nightfall-mini-2e_v1:TP06SQ</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ" description="TEST PIN"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>13dcd2f4-1586-41e7-ab1b-a40af39ba890</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="IR_LED_FL0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>75ec562d-96e5-4035-a3a3-e7301c8b9937</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="IR_LED_FR0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>db61321c-512f-49c7-aef5-1f2ce6f65d27</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="IR_LED_L0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>c236f773-34f1-40a4-8a7d-a3be627e6f58</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="IR_LED_R0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>02016c68-473d-4c20-a8b6-52e6f10f428d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="J2">
+      <value>FAN_2S3S</value>
+      <footprint>HM_Nightfall-mini-2e_v1:FAN_WIRE_PADS_2P</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:FAN_WIRE_PADS_2P</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="JST-PH2" description=""/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>40046885-9c21-47f1-be73-5f499b64822d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="K1">
+      <value>62201021121</value>
+      <footprint>HM_Nightfall-mini-2e_v1:62201021121</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:62201021121</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="62201021121" description="WR-PHD 1.27mm Dual Pin Header, 10 Pins=&gt;Code : Con_BTB_PHD_1.27_2_62201021121&#xA;http://katalog.we-online.de/media/thumbs2/eican/thb_Con_BTB_PHD_1.27_2_6220xx21121_pf2.jpg&#xA;&#xA;Details see: http://katalog.we-online.de/en/em/622_0xx_211_21 http://katalog.we-online.de/en/em/622_0xx_211_21&#xA;&#xA;Created 2014-06-03, Karrer Zheng&#xA;2014 (C) Würth Elektronik"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5f5346c8-8e72-486e-bac5-bc2081f03f76</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="10"/>
+            <pin num="9"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="LED1">
+      <value>LEDCHIPLED_0603</value>
+      <footprint>HM_Nightfall-mini-2e_v1:CHIPLED_0603</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:CHIPLED_0603</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LEDCHIPLED_0603" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d6cff130-7ece-436b-9f3b-e4d9169215ce</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="C"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="LED2">
+      <value>LEDCHIPLED_0603</value>
+      <footprint>HM_Nightfall-mini-2e_v1:CHIPLED_0603</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:CHIPLED_0603</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LEDCHIPLED_0603" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3b4788e4-fcab-42d1-9fb8-54e484733a85</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="C"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="LED3">
+      <value>LEDCHIPLED_0603</value>
+      <footprint>HM_Nightfall-mini-2e_v1:CHIPLED_0603</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:CHIPLED_0603</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LEDCHIPLED_0603" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>177e807c-d714-4e85-a8bc-2057e407b85f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="C"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="MODE0">
+      <value>TL6330AF200Q</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SW_TL6330AF200Q</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SW_TL6330AF200Q</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TL6330AF200Q" description="https://pricing.snapeda.com/parts/TL6330AF200Q/E-Switch/view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>6eafd061-ffb6-43f6-8f35-1db25b1aad5d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="P-LED0">
+      <value>LEDCHIPLED_0603</value>
+      <footprint>HM_Nightfall-mini-2e_v1:CHIPLED_0603</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:CHIPLED_0603</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LEDCHIPLED_0603" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>1d638258-fcfc-452a-ab57-b529ba76749e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="C"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="P1">
+      <value>BATTERY</value>
+      <footprint>HM_Nightfall-mini-2e_v1:JST_PH2</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:JST_PH2</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="JST-PH2" description=""/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>57e86afa-5035-4e67-89af-ac5b6ce95b47</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="POWER0">
+      <value>EG1215AA</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SW_EG1215AA</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SW_EG1215AA</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="SW_SPDT_VERTICAL" description="Vertical SPDT slide-switch symbol."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>df1dcd4a-9b45-41ed-8408-e14320ec0cfd</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="PT_FL0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>a0a277ac-e369-4506-b5b1-147d1e2408c7</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="PT_FR0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>43798210-df33-4966-96d6-35b945d2521c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="PT_L0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>aab6f4ca-395c-4232-aa73-ef946fe94994</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="PT_R0">
+      <value>LED3MM</value>
+      <footprint>HM_Nightfall-mini-2e_v1:LED3MM</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM" description="LED&#xA;&#xA;OSRAM:&#xA;- CHIPLED&#xA;LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974&#xA;LS Q976, LO Q976, LY Q976&#xA;LO Q996&#xA;- Hyper CHIPLED&#xA;LW Q18S&#xA;LB Q993, LB Q99A, LB R99A&#xA;- SideLED&#xA;LS A670, LO A670, LY A670, LG A670, LP A670&#xA;LB A673, LV A673, LT A673, LW A673&#xA;LH A674&#xA;LY A675&#xA;LS A676, LA A676, LO A676, LY A676, LW A676&#xA;LS A679, LY A679, LG A679&#xA;-  Hyper Micro SIDELED®&#xA;LS Y876, LA Y876, LO Y876, LY Y876&#xA;LT Y87S&#xA;- SmartLED&#xA;LW L88C, LW L88S&#xA;LB L89C, LB L89S, LG L890&#xA;LS L89K, LO L89K, LY L89K&#xA;LS L896, LA L896, LO L896, LY L896&#xA;- TOPLED&#xA;LS T670, LO T670, LY T670, LG T670, LP T670&#xA;LSG T670, LSP T670, LSY T670, LOP T670, LYG T670&#xA;LG T671, LOG T671, LSG T671&#xA;LB T673, LV T673, LT T673, LW T673&#xA;LH T674&#xA;LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676&#xA;LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C&#xA;LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C&#xA;LW T67C&#xA;LS T679, LY T679, LG T679&#xA;LS T770, LO T770, LY T770, LG T770, LP T770&#xA;LB T773, LV T773, LT T773, LW T773&#xA;LH T774&#xA;LS E675, LA E675, LY E675, LS T675&#xA;LS T776, LA T776, LO T776, LY T776, LB T776&#xA;LHGB T686&#xA;LT T68C, LB T68C&#xA;- Hyper Mini TOPLED®&#xA;LB M676&#xA;- Mini TOPLED Santana®&#xA;LG M470&#xA;LS M47K, LO M47K, LY M47K&#xA;&#xA;Source: http://www.osram.convergy.de&#xA;&#xA;LUXEON:&#xA;- LUMILED®&#xA;LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00&#xA;LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00&#xA;LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00&#xA;LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00&#xA;LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00&#xA;LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00&#xA;LXK2-PH12-R00, LXK2-PH12-S00&#xA;LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00&#xA;&#xA;Source: www.luxeon.com&#xA;&#xA;KINGBRIGHT:&#xA;&#xA;KA-3528ASYC&#xA;Source: www.kingbright.com"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>330974fe-d639-40e6-8ffb-1ac2e6c1ee14</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="A"/>
+            <pin num="K"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q2">
+      <value>PJS6403_S1_00001</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23-6</footprint>
+      <datasheet>https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403</datasheet>
+      <description>30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4.</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23-6</field>
+        <field name="Datasheet">https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403</field>
+        <field name="Description">30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="PJS6403_S1_00001" description="30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>541cd025-fee2-40a9-aa6f-889b29e5a1c4</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="5"/>
+            <pin num="6"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="Q3">
+      <value>IRLML6344TRPBF</value>
+      <footprint>Package_TO_SOT_SMD:SOT-23</footprint>
+      <datasheet>https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf</datasheet>
+      <description>30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3.</description>
+      <fields>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf</field>
+        <field name="Description">30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="IRLML6344TRPBF" description="30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>32350066-59bb-4cd8-aa82-0a8412339343</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="3"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R0">
+      <value>0</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>304f4864-1daf-4e14-9019-bb9a0f4f4285</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>398f15ea-8fd2-4bcd-a251-f65be0d1024a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1FL0">
+      <value>10</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ff268d90-cbef-4f3f-a56b-0822f7d095f1</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1FR0">
+      <value>10</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f8f7eb6b-c211-4816-88fb-dbbe421aa3a5</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1L0">
+      <value>10</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ea405074-265f-4cde-8ead-ed9f6e601d82</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R1R0">
+      <value>10</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>09d06b4f-92ef-4cfd-a95c-0b8d11c5255d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>d48b2baa-fc8c-430b-be6c-93533f2a0207</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2FL0">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e313a0a9-a6c0-421b-83e9-c60258a1940e</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2FR0">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>e4fff187-7f56-4737-86a4-f1cf515dd395</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2L0">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f9f46b76-9fa8-49c4-af62-b61c1d85e3f3</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R2R0">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9d2761c4-09ae-4d85-afc9-95440c4f6fc0</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R3">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>5876590c-77ea-40a8-b04f-7f88e924db29</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4">
+      <value>100k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>81ae1c78-d137-4bb8-b837-ed6da495603d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4FL0">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ff0f2e65-0e67-44f1-a0e2-a494322cb11c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4FR0">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4fb81795-bada-478e-9fbb-b10cbb6f0f69</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4L0">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bb196826-1c4b-4e89-a7da-193ca129fe73</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R4R0">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>75aae81c-26ce-4299-b45b-a6177e2eab69</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R5">
+      <value>27k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3046f867-693e-4965-b947-af66f20d0920</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R6">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>09b086c5-2281-4dcb-aa4d-9f9b1cf4f6c7</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R7">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f9a5e087-1689-4661-8824-9a8929f106b6</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R8">
+      <value>10k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3dbfd6d0-b3ee-4b0d-bb3d-59b6b6d40c0a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R12">
+      <value>100k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>730a8d38-95bc-4123-bc03-3c4641e6386d</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R25">
+      <value>1k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>780ab04e-57e0-49fd-9a82-421dcb35ffee</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R26">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>79676a01-46d4-4b72-8c3a-531073dbec19</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R27">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0f6f3b69-b539-49f6-b7ba-6f42c8055218</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R28">
+      <value>1k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402" description="RESISTOR, European symbol"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>da9891a1-77a1-42f2-9d42-32e186181a42</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R29">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>27cc9271-7fa2-415d-8f40-759dd88b5a42</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R30">
+      <value>19.1k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ea8ce3ae-346b-441d-a7d5-6454deca03ae</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R31">
+      <value>100k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>99f93b69-7394-47d5-8405-38e1ad950d49</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R32">
+      <value>10k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>da062668-aa92-4a18-8db1-0a1c2f6c4152</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R33">
+      <value>4.7k</value>
+      <footprint>HM_Nightfall-mini-2e_v1:R0402</footprint>
+      <description>Series resistor limiting current in the main P-MOS gate clamp path.</description>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description">Series resistor limiting current in the main P-MOS gate clamp path.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>f11265f3-702c-470d-9eca-d2922fc3eb86</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R34">
+      <value>220k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <datasheet>https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/</datasheet>
+      <description>MP6551 left-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM.</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet">https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/</field>
+        <field name="Description">MP6551 left-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>03805902-9cd2-4f42-a8d3-3c149ecc12cb</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="R35">
+      <value>220k</value>
+      <footprint>Resistor_SMD:R_0402_1005Metric</footprint>
+      <datasheet>https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/</datasheet>
+      <description>MP6551 right-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM.</description>
+      <fields>
+        <field name="Footprint">Resistor_SMD:R_0402_1005Metric</field>
+        <field name="Datasheet">https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/</field>
+        <field name="Description">MP6551 right-motor slew-rate programming resistor; 220 kOhm initial value balances EMI and switching loss at 100 kHz PWM.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="R_VERTICAL" description="Vertical schematic symbol for clear power flow."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3c3b90da-8621-47c4-bb13-faf7c8e5d137</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="RESET0">
+      <value>TL6330AF200Q</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SW_TL6330AF200Q</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SW_TL6330AF200Q</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TL6330AF200Q" description="https://pricing.snapeda.com/parts/TL6330AF200Q/E-Switch/view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>0b277dfd-f0e7-4018-ad37-8524fffaff60</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="SPK1">
+      <value>SMT-0540-S-R</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SMT-0540-S-R</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SMT-0540-S-R</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="SMT-0540-S-R" description="SMT-0549-S-R  Small surface-mount magnetic buzzer"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>83b8a333-0da1-498d-b21e-f3263097da07</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="-"/>
+            <pin num="+"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="TP1">
+      <value>TPB1,27</value>
+      <footprint>HM_Nightfall-mini-2e_v1:B1,27</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:B1,27</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TPB1,27" description="Test pad"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>4723ce7e-a8ba-49b0-affb-8006e81bd33c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="TP2">
+      <value>TPB1,27</value>
+      <footprint>HM_Nightfall-mini-2e_v1:B1,27</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:B1,27</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TPB1,27" description="Test pad"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>623f4596-cbcf-4e04-af65-b7dcc09d4c94</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="TP3">
+      <value>TPB1,27</value>
+      <footprint>HM_Nightfall-mini-2e_v1:B1,27</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:B1,27</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TPB1,27" description="Test pad"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>7fe4dfe3-4734-4893-a660-8ce8a7aea5e7</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="TP4">
+      <value>TPB1,27</value>
+      <footprint>HM_Nightfall-mini-2e_v1:B1,27</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:B1,27</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TPB1,27" description="Test pad"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>edc12628-2ed0-4ca1-98f3-980b6e10740a</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="TP"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U1">
+      <value>AP2210N-3.3TRG1</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT95P280X145-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT95P280X145-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="AP2210N-3.3TRG1" description="LDO Regulator Pos 5V 0.3A 3-Pin SOT-23 T/R https://pricing.snapeda.com/parts/AP2210N-3.3TRG1/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bd6aa87b-a62d-4797-8397-dc57728bc703</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="3"/>
+            <pin num="2"/>
+            <pin num="1"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U2">
+      <value>MP6551GQB-P</value>
+      <footprint>HM_Nightfall-mini-2e_v1:QFN-14_MP6551_MNP</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:QFN-14_MP6551_MNP</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="MP6551GQB-P" description=""/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3bc9c511-e7a5-4c4c-923c-e34e2caf1f50</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="14"/>
+            <pin num="4"/>
+            <pin num="13"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="2"/>
+            <pin num="9"/>
+            <pin num="11"/>
+            <pin num="7"/>
+            <pin num="12"/>
+            <pin num="1"/>
+            <pin num="10"/>
+            <pin num="3"/>
+            <pin num="8"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U3">
+      <value>MP6551GQB-P</value>
+      <footprint>HM_Nightfall-mini-2e_v1:QFN-14_MP6551_MNP</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:QFN-14_MP6551_MNP</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="MP6551GQB-P" description=""/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>3cb6cce0-c383-4abd-89fe-5df637dd519f</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="14"/>
+            <pin num="4"/>
+            <pin num="13"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="2"/>
+            <pin num="9"/>
+            <pin num="11"/>
+            <pin num="7"/>
+            <pin num="12"/>
+            <pin num="1"/>
+            <pin num="10"/>
+            <pin num="3"/>
+            <pin num="8"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U4">
+      <value>ISM330DHCXTR</value>
+      <footprint>HM_Nightfall-mini-2e_v1:PQFN50P250X300X86-14N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:PQFN50P250X300X86-14N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="ISM330DHCXTR" description="https://pricing.snapeda.com/parts/ISM330DHCXTR/STMicroelectronics/view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>57af4ddb-8802-47a2-b0e7-1028f256a867</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="12"/>
+            <pin num="13"/>
+            <pin num="14"/>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="11"/>
+            <pin num="10"/>
+            <pin num="8"/>
+            <pin num="5"/>
+            <pin num="4"/>
+            <pin num="9"/>
+            <pin num="6"/>
+            <pin num="7"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U5">
+      <value>STM32F413CHU6TRUFQFPN-48_7X7X0P55MM-M</value>
+      <footprint>Nightfall-Local:UFQFPN-48_7X7X0P55MM-M_noEP_hand_solder</footprint>
+      <fields>
+        <field name="Footprint">Nightfall-Local:UFQFPN-48_7X7X0P55MM-M_noEP_hand_solder</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="STM32F413CHU6TRUFQFPN-48_7X7X0P55MM-M" description=""/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bafb2a56-bd86-4f81-8ff0-d7154268aaf7 4a595e6c-aebe-4edc-b98d-169b9cce0c42</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="10"/>
+            <pin num="11"/>
+            <pin num="12"/>
+            <pin num="13"/>
+            <pin num="14"/>
+            <pin num="15"/>
+            <pin num="16"/>
+            <pin num="17"/>
+            <pin num="29"/>
+            <pin num="30"/>
+            <pin num="31"/>
+            <pin num="32"/>
+            <pin num="33"/>
+            <pin num="34"/>
+            <pin num="37"/>
+            <pin num="38"/>
+            <pin num="18"/>
+            <pin num="19"/>
+            <pin num="20"/>
+            <pin num="39"/>
+            <pin num="40"/>
+            <pin num="41"/>
+            <pin num="42"/>
+            <pin num="43"/>
+            <pin num="45"/>
+            <pin num="46"/>
+            <pin num="21"/>
+            <pin num="25"/>
+            <pin num="26"/>
+            <pin num="27"/>
+            <pin num="28"/>
+            <pin num="2"/>
+            <pin num="3"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="7"/>
+            <pin num="44"/>
+          </pins>
+        </unit>
+        <unit name="B">
+          <pins>
+            <pin num="23"/>
+            <pin num="35"/>
+            <pin num="47"/>
+            <pin num="8"/>
+            <pin num="1"/>
+            <pin num="22"/>
+            <pin num="24"/>
+            <pin num="36"/>
+            <pin num="48"/>
+            <pin num="9"/>
+            <pin num="49"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U6">
+      <value>CY15B108QI-20LPXC</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SON65P328X323X55-8N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SON65P328X323X55-8N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="CY15B108QI-20LPXC" description="https://pricing.snapeda.com/parts/CY15B108QI-20LPXC/Cypress%20Semiconductor/view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>cf7684b6-75cb-4847-92d7-d54770c80d83</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="6"/>
+            <pin num="3"/>
+            <pin num="5"/>
+            <pin num="2"/>
+            <pin num="8"/>
+            <pin num="7"/>
+            <pin num="4"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="U7">
+      <value>MPM3610GQV-P</value>
+      <footprint>Nightfall-Power:MPM3610_QFN-20_3x5mm</footprint>
+      <datasheet>https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090</datasheet>
+      <description>4.5V to 21V, 1A step-down power module.</description>
+      <fields>
+        <field name="Footprint">Nightfall-Power:MPM3610_QFN-20_3x5mm</field>
+        <field name="Datasheet">https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090</field>
+        <field name="Description">4.5V to 21V, 1A step-down power module.</field>
+      </fields>
+      <libsource lib="Nightfall-Power" part="MPM3610GQV-P" description="4.5V to 21V, 1A step-down power module; grouped pins follow the MPS datasheet."/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>ca99c529-ef7d-4641-8ce4-3b3985d7365b</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="17"/>
+            <pin num="18"/>
+            <pin num="15"/>
+            <pin num="19"/>
+            <pin num="20"/>
+            <pin num="16"/>
+            <pin num="3"/>
+            <pin num="12"/>
+            <pin num="13"/>
+            <pin num="14"/>
+            <pin num="7"/>
+            <pin num="8"/>
+            <pin num="9"/>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="4"/>
+            <pin num="5"/>
+            <pin num="6"/>
+            <pin num="11"/>
+            <pin num="10"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="UBUZ0">
+      <value>2N7002TQ-7-F</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F" description="https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>bc4954f0-2b20-4ef7-83c5-791308bd8d20</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="UFL0">
+      <value>2N7002TQ-7-F</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F" description="https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>b5b98582-1d99-4b93-a9eb-47783f551c69</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="UFR0">
+      <value>2N7002TQ-7-F</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F" description="https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>96860307-4111-4135-944d-f83eb8ce107c</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="UL0">
+      <value>2N7002TQ-7-F</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F" description="https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>9dfacdbf-0c43-4a0d-98e9-29c8f681a871</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+    <comp ref="UR0">
+      <value>2N7002TQ-7-F</value>
+      <footprint>HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</footprint>
+      <fields>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <libsource lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F" description="https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability"/>
+      <property name="Sheetname" value=""/>
+      <property name="Sheetfile" value="HM_Nightfall-mini-3a_v0.kicad_sch"/>
+      <sheetpath names="/" tstamps="/"/>
+      <tstamps>96ef11a2-727a-437d-85f2-f4e29825f193</tstamps>
+      <units>
+        <unit name="A">
+          <pins>
+            <pin num="1"/>
+            <pin num="2"/>
+            <pin num="3"/>
+          </pins>
+        </unit>
+      </units>
+    </comp>
+  </components>
+  <libparts>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="2N7002TQ-7-F">
+      <description>https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT50P160X90-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description">https://pricing.snapeda.com/parts/2N7002TQ-7-F/Diodes%20Inc./view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="passive"/>
+        <pin num="2" name="E" type="passive"/>
+        <pin num="3" name="D" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="62201021121">
+      <description>WR-PHD 1.27mm Dual Pin Header, 10 Pins=&gt;Code : Con_BTB_PHD_1.27_2_62201021121
+http://katalog.we-online.de/media/thumbs2/eican/thb_Con_BTB_PHD_1.27_2_6220xx21121_pf2.jpg
+
+Details see: http://katalog.we-online.de/en/em/622_0xx_211_21 http://katalog.we-online.de/en/em/622_0xx_211_21
+
+Created 2014-06-03, Karrer Zheng
+2014 (C) Würth Elektronik</description>
+      <fields>
+        <field name="Reference">K</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:62201021121</field>
+        <field name="Datasheet"/>
+        <field name="Description">WR-PHD 1.27mm Dual Pin Header, 10 Pins=&gt;Code : Con_BTB_PHD_1.27_2_62201021121
+http://katalog.we-online.de/media/thumbs2/eican/thb_Con_BTB_PHD_1.27_2_6220xx21121_pf2.jpg
+
+Details see: http://katalog.we-online.de/en/em/622_0xx_211_21 http://katalog.we-online.de/en/em/622_0xx_211_21
+
+Created 2014-06-03, Karrer Zheng
+2014 (C) Würth Elektronik</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+        <pin num="3" name="3" type="passive"/>
+        <pin num="4" name="4" type="passive"/>
+        <pin num="5" name="5" type="passive"/>
+        <pin num="6" name="6" type="passive"/>
+        <pin num="7" name="7" type="passive"/>
+        <pin num="8" name="8" type="passive"/>
+        <pin num="9" name="9" type="passive"/>
+        <pin num="10" name="10" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="AP2210N-3.3TRG1">
+      <description>LDO Regulator Pos 5V 0.3A 3-Pin SOT-23 T/R https://pricing.snapeda.com/parts/AP2210N-3.3TRG1/Diodes%20Inc./view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT95P280X145-3N</field>
+        <field name="Datasheet"/>
+        <field name="Description">LDO Regulator Pos 5V 0.3A 3-Pin SOT-23 T/R https://pricing.snapeda.com/parts/AP2210N-3.3TRG1/Diodes%20Inc./view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="GND" type="power_in"/>
+        <pin num="2" name="VOUT" type="output"/>
+        <pin num="3" name="VIN" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="BAS16WT1GW">
+      <description>https://pricing.snapeda.com/parts/BAS16WT1G/ON%20Semiconductor/view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SOT323</field>
+        <field name="Datasheet"/>
+        <field name="Description">https://pricing.snapeda.com/parts/BAS16WT1G/ON%20Semiconductor/view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A" type="passive"/>
+        <pin num="3" name="K" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="C-EUC0402">
+      <description>CAPACITOR, European symbol</description>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:C0402</field>
+        <field name="Datasheet"/>
+        <field name="Description">CAPACITOR, European symbol</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="CY15B108QI-20LPXC">
+      <description>https://pricing.snapeda.com/parts/CY15B108QI-20LPXC/Cypress%20Semiconductor/view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SON65P328X323X55-8N</field>
+        <field name="Datasheet"/>
+        <field name="Description">https://pricing.snapeda.com/parts/CY15B108QI-20LPXC/Cypress%20Semiconductor/view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="~{CS}" type="input"/>
+        <pin num="2" name="SO" type="output"/>
+        <pin num="3" name="~{WP}" type="input"/>
+        <pin num="4" name="VSS" type="power_in"/>
+        <pin num="5" name="SI" type="input"/>
+        <pin num="6" name="SCK" type="input"/>
+        <pin num="7" name="DNU" type="passive"/>
+        <pin num="8" name="VDD" type="power_in"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="ISM330DHCXTR">
+      <description>https://pricing.snapeda.com/parts/ISM330DHCXTR/STMicroelectronics/view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:PQFN50P250X300X86-14N</field>
+        <field name="Datasheet"/>
+        <field name="Description">https://pricing.snapeda.com/parts/ISM330DHCXTR/STMicroelectronics/view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="SDO/SA0" type="bidirectional"/>
+        <pin num="2" name="SDX" type="bidirectional"/>
+        <pin num="3" name="SCX" type="bidirectional"/>
+        <pin num="4" name="INT1" type="output"/>
+        <pin num="5" name="VDD_IO" type="power_in"/>
+        <pin num="6" name="GND" type="power_in"/>
+        <pin num="7" name="GND" type="power_in"/>
+        <pin num="8" name="VDD" type="power_in"/>
+        <pin num="9" name="INT2" type="output"/>
+        <pin num="10" name="OCS_AUX" type="bidirectional"/>
+        <pin num="11" name="SDO_AUX" type="bidirectional"/>
+        <pin num="12" name="CS" type="input"/>
+        <pin num="13" name="SCL" type="input"/>
+        <pin num="14" name="SDA" type="bidirectional"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="JST-PH2">
+      <fields>
+        <field name="Reference">P</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:JST-PH2</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LED3MM">
+      <description>LED
+
+OSRAM:
+- CHIPLED
+LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974
+LS Q976, LO Q976, LY Q976
+LO Q996
+- Hyper CHIPLED
+LW Q18S
+LB Q993, LB Q99A, LB R99A
+- SideLED
+LS A670, LO A670, LY A670, LG A670, LP A670
+LB A673, LV A673, LT A673, LW A673
+LH A674
+LY A675
+LS A676, LA A676, LO A676, LY A676, LW A676
+LS A679, LY A679, LG A679
+-  Hyper Micro SIDELED®
+LS Y876, LA Y876, LO Y876, LY Y876
+LT Y87S
+- SmartLED
+LW L88C, LW L88S
+LB L89C, LB L89S, LG L890
+LS L89K, LO L89K, LY L89K
+LS L896, LA L896, LO L896, LY L896
+- TOPLED
+LS T670, LO T670, LY T670, LG T670, LP T670
+LSG T670, LSP T670, LSY T670, LOP T670, LYG T670
+LG T671, LOG T671, LSG T671
+LB T673, LV T673, LT T673, LW T673
+LH T674
+LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676
+LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C
+LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C
+LW T67C
+LS T679, LY T679, LG T679
+LS T770, LO T770, LY T770, LG T770, LP T770
+LB T773, LV T773, LT T773, LW T773
+LH T774
+LS E675, LA E675, LY E675, LS T675
+LS T776, LA T776, LO T776, LY T776, LB T776
+LHGB T686
+LT T68C, LB T68C
+- Hyper Mini TOPLED®
+LB M676
+- Mini TOPLED Santana®
+LG M470
+LS M47K, LO M47K, LY M47K
+
+Source: http://www.osram.convergy.de
+
+LUXEON:
+- LUMILED®
+LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00
+LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00
+LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00
+LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00
+LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00
+LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00
+LXK2-PH12-R00, LXK2-PH12-S00
+LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00
+
+Source: www.luxeon.com
+
+KINGBRIGHT:
+
+KA-3528ASYC
+Source: www.kingbright.com</description>
+      <fields>
+        <field name="Reference">LED</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:LED3MM</field>
+        <field name="Datasheet"/>
+        <field name="Description">LED
+
+OSRAM:
+- CHIPLED
+LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974
+LS Q976, LO Q976, LY Q976
+LO Q996
+- Hyper CHIPLED
+LW Q18S
+LB Q993, LB Q99A, LB R99A
+- SideLED
+LS A670, LO A670, LY A670, LG A670, LP A670
+LB A673, LV A673, LT A673, LW A673
+LH A674
+LY A675
+LS A676, LA A676, LO A676, LY A676, LW A676
+LS A679, LY A679, LG A679
+-  Hyper Micro SIDELED®
+LS Y876, LA Y876, LO Y876, LY Y876
+LT Y87S
+- SmartLED
+LW L88C, LW L88S
+LB L89C, LB L89S, LG L890
+LS L89K, LO L89K, LY L89K
+LS L896, LA L896, LO L896, LY L896
+- TOPLED
+LS T670, LO T670, LY T670, LG T670, LP T670
+LSG T670, LSP T670, LSY T670, LOP T670, LYG T670
+LG T671, LOG T671, LSG T671
+LB T673, LV T673, LT T673, LW T673
+LH T674
+LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676
+LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C
+LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C
+LW T67C
+LS T679, LY T679, LG T679
+LS T770, LO T770, LY T770, LG T770, LP T770
+LB T773, LV T773, LT T773, LW T773
+LH T774
+LS E675, LA E675, LY E675, LS T675
+LS T776, LA T776, LO T776, LY T776, LB T776
+LHGB T686
+LT T68C, LB T68C
+- Hyper Mini TOPLED®
+LB M676
+- Mini TOPLED Santana®
+LG M470
+LS M47K, LO M47K, LY M47K
+
+Source: http://www.osram.convergy.de
+
+LUXEON:
+- LUMILED®
+LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00
+LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00
+LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00
+LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00
+LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00
+LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00
+LXK2-PH12-R00, LXK2-PH12-S00
+LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00
+
+Source: www.luxeon.com
+
+KINGBRIGHT:
+
+KA-3528ASYC
+Source: www.kingbright.com</field>
+      </fields>
+      <pins>
+        <pin num="A" name="A" type="passive"/>
+        <pin num="K" name="C" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="LEDCHIPLED_0603">
+      <description>LED
+
+OSRAM:
+- CHIPLED
+LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974
+LS Q976, LO Q976, LY Q976
+LO Q996
+- Hyper CHIPLED
+LW Q18S
+LB Q993, LB Q99A, LB R99A
+- SideLED
+LS A670, LO A670, LY A670, LG A670, LP A670
+LB A673, LV A673, LT A673, LW A673
+LH A674
+LY A675
+LS A676, LA A676, LO A676, LY A676, LW A676
+LS A679, LY A679, LG A679
+-  Hyper Micro SIDELED®
+LS Y876, LA Y876, LO Y876, LY Y876
+LT Y87S
+- SmartLED
+LW L88C, LW L88S
+LB L89C, LB L89S, LG L890
+LS L89K, LO L89K, LY L89K
+LS L896, LA L896, LO L896, LY L896
+- TOPLED
+LS T670, LO T670, LY T670, LG T670, LP T670
+LSG T670, LSP T670, LSY T670, LOP T670, LYG T670
+LG T671, LOG T671, LSG T671
+LB T673, LV T673, LT T673, LW T673
+LH T674
+LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676
+LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C
+LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C
+LW T67C
+LS T679, LY T679, LG T679
+LS T770, LO T770, LY T770, LG T770, LP T770
+LB T773, LV T773, LT T773, LW T773
+LH T774
+LS E675, LA E675, LY E675, LS T675
+LS T776, LA T776, LO T776, LY T776, LB T776
+LHGB T686
+LT T68C, LB T68C
+- Hyper Mini TOPLED®
+LB M676
+- Mini TOPLED Santana®
+LG M470
+LS M47K, LO M47K, LY M47K
+
+Source: http://www.osram.convergy.de
+
+LUXEON:
+- LUMILED®
+LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00
+LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00
+LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00
+LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00
+LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00
+LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00
+LXK2-PH12-R00, LXK2-PH12-S00
+LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00
+
+Source: www.luxeon.com
+
+KINGBRIGHT:
+
+KA-3528ASYC
+Source: www.kingbright.com</description>
+      <fields>
+        <field name="Reference">LED</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:CHIPLED_0603</field>
+        <field name="Datasheet"/>
+        <field name="Description">LED
+
+OSRAM:
+- CHIPLED
+LG R971, LG N971, LY N971, LG Q971, LY Q971, LO R971, LY R971 LH N974, LH R974
+LS Q976, LO Q976, LY Q976
+LO Q996
+- Hyper CHIPLED
+LW Q18S
+LB Q993, LB Q99A, LB R99A
+- SideLED
+LS A670, LO A670, LY A670, LG A670, LP A670
+LB A673, LV A673, LT A673, LW A673
+LH A674
+LY A675
+LS A676, LA A676, LO A676, LY A676, LW A676
+LS A679, LY A679, LG A679
+-  Hyper Micro SIDELED®
+LS Y876, LA Y876, LO Y876, LY Y876
+LT Y87S
+- SmartLED
+LW L88C, LW L88S
+LB L89C, LB L89S, LG L890
+LS L89K, LO L89K, LY L89K
+LS L896, LA L896, LO L896, LY L896
+- TOPLED
+LS T670, LO T670, LY T670, LG T670, LP T670
+LSG T670, LSP T670, LSY T670, LOP T670, LYG T670
+LG T671, LOG T671, LSG T671
+LB T673, LV T673, LT T673, LW T673
+LH T674
+LS T676, LA T676, LO T676, LY T676, LB T676, LH T676, LSB T676, LW T676
+LB T67C, LV T67C, LT T67C, LS T67K, LO T67K, LY T67K, LW E67C
+LS E67B, LA E67B, LO E67B, LY E67B, LB E67C, LV E67C, LT E67C
+LW T67C
+LS T679, LY T679, LG T679
+LS T770, LO T770, LY T770, LG T770, LP T770
+LB T773, LV T773, LT T773, LW T773
+LH T774
+LS E675, LA E675, LY E675, LS T675
+LS T776, LA T776, LO T776, LY T776, LB T776
+LHGB T686
+LT T68C, LB T68C
+- Hyper Mini TOPLED®
+LB M676
+- Mini TOPLED Santana®
+LG M470
+LS M47K, LO M47K, LY M47K
+
+Source: http://www.osram.convergy.de
+
+LUXEON:
+- LUMILED®
+LXK2-PW12-R00, LXK2-PW12-S00, LXK2-PW14-U00, LXK2-PW14-V00
+LXK2-PM12-R00, LXK2-PM12-S00, LXK2-PM14-U00
+LXK2-PE12-Q00, LXK2-PE12-R00, LXK2-PE12-S00, LXK2-PE14-T00, LXK2-PE14-U00
+LXK2-PB12-K00, LXK2-PB12-L00, LXK2-PB12-M00, LXK2-PB14-N00, LXK2-PB14-P00, LXK2-PB14-Q00
+LXK2-PR12-L00, LXK2-PR12-M00, LXK2-PR14-Q00, LXK2-PR14-R00
+LXK2-PD12-Q00, LXK2-PD12-R00, LXK2-PD12-S00
+LXK2-PH12-R00, LXK2-PH12-S00
+LXK2-PL12-P00, LXK2-PL12-Q00, LXK2-PL12-R00
+
+Source: www.luxeon.com
+
+KINGBRIGHT:
+
+KA-3528ASYC
+Source: www.kingbright.com</field>
+      </fields>
+      <pins>
+        <pin num="A" name="A" type="passive"/>
+        <pin num="C" name="C" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="MP6551GQB-P">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:QFN-14_MP6551_MNP</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="OUT1_2" type="output"/>
+        <pin num="2" name="VIN" type="power_in"/>
+        <pin num="3" name="OUT2_2" type="output"/>
+        <pin num="4" name="EN2" type="input"/>
+        <pin num="5" name="IN2" type="input"/>
+        <pin num="6" name="SR" type="passive"/>
+        <pin num="7" name="CM2" type="output"/>
+        <pin num="8" name="OUT2" type="output"/>
+        <pin num="9" name="GND" type="power_in"/>
+        <pin num="10" name="OUT1" type="output"/>
+        <pin num="11" name="CM1" type="output"/>
+        <pin num="12" name="NFAULT" type="output"/>
+        <pin num="13" name="IN1" type="input"/>
+        <pin num="14" name="EN1" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="PTR1TP06SQ">
+      <description>TEST PIN</description>
+      <fields>
+        <field name="Reference">TP</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:TP06SQ</field>
+        <field name="Datasheet"/>
+        <field name="Description">TEST PIN</field>
+      </fields>
+      <pins>
+        <pin num="TP" name="TP" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="R-EU_R0402">
+      <description>RESISTOR, European symbol</description>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:R0402</field>
+        <field name="Datasheet"/>
+        <field name="Description">RESISTOR, European symbol</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="SMT-0540-S-R">
+      <description>SMT-0549-S-R  Small surface-mount magnetic buzzer</description>
+      <fields>
+        <field name="Reference">SPK</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SMT-0540-S-R</field>
+        <field name="Datasheet"/>
+        <field name="Description">SMT-0549-S-R  Small surface-mount magnetic buzzer</field>
+      </fields>
+      <pins>
+        <pin num="+" name="-" type="passive"/>
+        <pin num="-" name="+" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="STM32F413CHU6TRUFQFPN-48_7X7X0P55MM-M">
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:UFQFPN-48_7X7X0P55MM-M</field>
+        <field name="Datasheet"/>
+        <field name="Description"/>
+      </fields>
+      <pins>
+        <pin num="1" name="VBAT" type="power_in"/>
+        <pin num="2" name="PC13" type="bidirectional"/>
+        <pin num="3" name="PC14-OSC32_IN" type="bidirectional"/>
+        <pin num="4" name="PC15-OSC32_OUT" type="bidirectional"/>
+        <pin num="5" name="PH0-OSC_IN" type="bidirectional"/>
+        <pin num="6" name="PH1" type="bidirectional"/>
+        <pin num="7" name="NRST" type="bidirectional"/>
+        <pin num="8" name="VSSA/VREF-" type="power_in"/>
+        <pin num="9" name="VDDA/VREF+" type="power_in"/>
+        <pin num="10" name="PA0" type="bidirectional"/>
+        <pin num="11" name="PA1" type="bidirectional"/>
+        <pin num="12" name="PA2" type="bidirectional"/>
+        <pin num="13" name="PA3" type="bidirectional"/>
+        <pin num="14" name="PA4" type="bidirectional"/>
+        <pin num="15" name="PA5" type="bidirectional"/>
+        <pin num="16" name="PA6" type="bidirectional"/>
+        <pin num="17" name="PA7" type="bidirectional"/>
+        <pin num="18" name="PB0" type="bidirectional"/>
+        <pin num="19" name="PB1" type="bidirectional"/>
+        <pin num="20" name="PB2" type="bidirectional"/>
+        <pin num="21" name="PB10" type="bidirectional"/>
+        <pin num="22" name="VCAP_1" type="power_in"/>
+        <pin num="23" name="VSS_2" type="power_in"/>
+        <pin num="24" name="VDD_2" type="power_in"/>
+        <pin num="25" name="PB12" type="bidirectional"/>
+        <pin num="26" name="PB13" type="bidirectional"/>
+        <pin num="27" name="PB14" type="bidirectional"/>
+        <pin num="28" name="PB15" type="bidirectional"/>
+        <pin num="29" name="PA8" type="bidirectional"/>
+        <pin num="30" name="PA9" type="bidirectional"/>
+        <pin num="31" name="PA10" type="bidirectional"/>
+        <pin num="32" name="PA11" type="bidirectional"/>
+        <pin num="33" name="PA12" type="bidirectional"/>
+        <pin num="34" name="PA13" type="bidirectional"/>
+        <pin num="35" name="VSS_3" type="power_in"/>
+        <pin num="36" name="VDD_3" type="power_in"/>
+        <pin num="37" name="PA14" type="bidirectional"/>
+        <pin num="38" name="PA15" type="bidirectional"/>
+        <pin num="39" name="PB3" type="bidirectional"/>
+        <pin num="40" name="PB4" type="bidirectional"/>
+        <pin num="41" name="PB5" type="bidirectional"/>
+        <pin num="42" name="PB6" type="bidirectional"/>
+        <pin num="43" name="PB7" type="bidirectional"/>
+        <pin num="44" name="BOOT0" type="input"/>
+        <pin num="45" name="PB8" type="bidirectional"/>
+        <pin num="46" name="PB9" type="bidirectional"/>
+        <pin num="47" name="VSS" type="power_in"/>
+        <pin num="48" name="VDD" type="power_in"/>
+        <pin num="49" name="EPAD" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TL6330AF200Q">
+      <description>https://pricing.snapeda.com/parts/TL6330AF200Q/E-Switch/view-part?ref=eda Check availability</description>
+      <fields>
+        <field name="Reference">S</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SW_TL6330AF200Q</field>
+        <field name="Datasheet"/>
+        <field name="Description">https://pricing.snapeda.com/parts/TL6330AF200Q/E-Switch/view-part?ref=eda Check availability</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+        <pin num="3" name="3" type="passive"/>
+        <pin num="4" name="4" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="HM_Nightfall-mini-2e_v1-eagle-import" part="TPB1,27">
+      <description>Test pad</description>
+      <fields>
+        <field name="Reference">TP</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:B1,27</field>
+        <field name="Datasheet"/>
+        <field name="Description">Test pad</field>
+      </fields>
+      <pins>
+        <pin num="TP" name="TP" type="input"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="C_VERTICAL">
+      <description>Vertical schematic symbol for clear power flow.</description>
+      <fields>
+        <field name="Reference">C</field>
+        <field name="Value"/>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Vertical schematic symbol for clear power flow.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="D_VERTICAL">
+      <description>Vertical schematic symbol for clear power flow.</description>
+      <fields>
+        <field name="Reference">D</field>
+        <field name="Value"/>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Vertical schematic symbol for clear power flow.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="A" type="passive"/>
+        <pin num="2" name="K" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="IRLML6344TRPBF">
+      <description>30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3.</description>
+      <docs>https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf</docs>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">IRLML6344TRPBF</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23</field>
+        <field name="Datasheet">https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlml6344-datasheet-en.pdf</field>
+        <field name="Description">30 V logic-level N-channel MOSFET, SOT-23; fan low-side PWM switch. G=1, S=2, D=3.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="G" type="input"/>
+        <pin num="2" name="S" type="passive"/>
+        <pin num="3" name="D" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="MPM3610GQV-P">
+      <description>4.5V to 21V, 1A step-down power module; grouped pins follow the MPS datasheet.</description>
+      <docs>https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090</docs>
+      <fields>
+        <field name="Reference">U</field>
+        <field name="Value">MPM3610GQV-P</field>
+        <field name="Footprint">Nightfall-Power:MPM3610_QFN-20_3x5mm</field>
+        <field name="Datasheet">https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3610GQV-Z/document_id/2090</field>
+        <field name="Description">4.5V to 21V, 1A step-down power module; grouped pins follow the MPS datasheet.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="FB" type="input"/>
+        <pin num="2" name="VCC" type="power_out"/>
+        <pin num="3" name="AGND" type="power_in"/>
+        <pin num="4" name="SW" type="output"/>
+        <pin num="5" name="SW" type="output"/>
+        <pin num="6" name="SW" type="output"/>
+        <pin num="7" name="OUT" type="power_out"/>
+        <pin num="8" name="OUT" type="power_out"/>
+        <pin num="9" name="OUT" type="power_out"/>
+        <pin num="10" name="NC" type="no_connect"/>
+        <pin num="11" name="BST" type="passive"/>
+        <pin num="12" name="PGND" type="power_in"/>
+        <pin num="13" name="PGND" type="power_in"/>
+        <pin num="14" name="PGND" type="power_in"/>
+        <pin num="15" name="NC" type="no_connect"/>
+        <pin num="16" name="IN" type="power_in"/>
+        <pin num="17" name="EN" type="input"/>
+        <pin num="18" name="AAM" type="input"/>
+        <pin num="19" name="NC" type="no_connect"/>
+        <pin num="20" name="NC" type="no_connect"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="PJS6403_S1_00001">
+      <description>30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4.</description>
+      <docs>https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403</docs>
+      <fields>
+        <field name="Reference">Q</field>
+        <field name="Value">PJS6403_S1_00001</field>
+        <field name="Footprint">Package_TO_SOT_SMD:SOT-23-6</field>
+        <field name="Datasheet">https://www.panjit.com.tw/en/Product/downloadPDF/PJS6403</field>
+        <field name="Description">30 V, 6.4 A P-channel MOSFET for 2S-3S main power; SOT-23-6, D=1/2/5/6, G=3, S=4.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="D" type="passive"/>
+        <pin num="2" name="D" type="passive"/>
+        <pin num="3" name="G" type="input"/>
+        <pin num="4" name="S" type="passive"/>
+        <pin num="5" name="D" type="passive"/>
+        <pin num="6" name="D" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="R_VERTICAL">
+      <description>Vertical schematic symbol for clear power flow.</description>
+      <fields>
+        <field name="Reference">R</field>
+        <field name="Value"/>
+        <field name="Footprint"/>
+        <field name="Datasheet"/>
+        <field name="Description">Vertical schematic symbol for clear power flow.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="1" type="passive"/>
+        <pin num="2" name="2" type="passive"/>
+      </pins>
+    </libpart>
+    <libpart lib="Nightfall-Power" part="SW_SPDT_VERTICAL">
+      <description>Vertical SPDT slide-switch symbol.</description>
+      <fields>
+        <field name="Reference">SW</field>
+        <field name="Value"/>
+        <field name="Footprint">HM_Nightfall-mini-2e_v1:SW_EG1215AA</field>
+        <field name="Datasheet"/>
+        <field name="Description">Vertical SPDT slide-switch symbol.</field>
+      </fields>
+      <pins>
+        <pin num="1" name="OFF" type="passive"/>
+        <pin num="2" name="COM" type="passive"/>
+        <pin num="3" name="ALT" type="passive"/>
+      </pins>
+    </libpart>
+  </libparts>
+  <libraries>
+    <library logical="HM_Nightfall-mini-2e_v1-eagle-import">
+      <uri>${KIPRJMOD}/../../../../mini_r2_0/cad/kicad/HM_Nightfall-mini-2e/HM_Nightfall-mini-2e_v1-eagle-import.kicad_sym</uri>
+    </library>
+    <library logical="Nightfall-Power">
+      <uri>${KIPRJMOD}/HM_Nightfall-mini-3a_v0-power.kicad_sym</uri>
+    </library>
+  </libraries>
+  <nets>
+    <net code="1" name="+3V3" class="LogicPower">
+      <node ref="C1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C15" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C2" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C3" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C5" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU-M0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C_MCU0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C_MCU1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C_MCU2" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C_MCU3" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="EC_L1" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="EC_R1" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="K1" pin="6" pinfunction="6_6" pintype="passive"/>
+      <node ref="PT_FL0" pin="A" pinfunction="A_A" pintype="passive"/>
+      <node ref="PT_FR0" pin="A" pinfunction="A_A" pintype="passive"/>
+      <node ref="PT_L0" pin="A" pinfunction="A_A" pintype="passive"/>
+      <node ref="PT_R0" pin="A" pinfunction="A_A" pintype="passive"/>
+      <node ref="R1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R1FL0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R1FR0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R1L0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R1R0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R25" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R3" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R6" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R7" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U1" pin="2" pinfunction="VOUT_2" pintype="output"/>
+      <node ref="U4" pin="5" pinfunction="VDD_IO_5" pintype="power_in"/>
+      <node ref="U4" pin="8" pinfunction="VDD_8" pintype="power_in"/>
+      <node ref="U5" pin="1" pinfunction="VBAT_1" pintype="power_in"/>
+      <node ref="U5" pin="24" pinfunction="VDD_2_24" pintype="power_in"/>
+      <node ref="U5" pin="36" pinfunction="VDD_3_36" pintype="power_in"/>
+      <node ref="U5" pin="48" pinfunction="VDD_48" pintype="power_in"/>
+      <node ref="U5" pin="9" pinfunction="VDDA/VREF+_9" pintype="power_in"/>
+      <node ref="U6" pin="8" pinfunction="VDD_8" pintype="power_in"/>
+    </net>
+    <net code="2" name="+5V" class="LogicPower">
+      <node ref="C14" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C23" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="D3" pin="3" pinfunction="K_3" pintype="passive"/>
+      <node ref="K1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R29" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="SPK1" pin="+" pinfunction="-_+" pintype="passive"/>
+      <node ref="U1" pin="3" pinfunction="VIN_3" pintype="input"/>
+      <node ref="U7" pin="7" pinfunction="OUT_7" pintype="power_out"/>
+      <node ref="U7" pin="8" pinfunction="OUT_8" pintype="power_out"/>
+      <node ref="U7" pin="9" pinfunction="OUT_9" pintype="power_out"/>
+    </net>
+    <net code="3" name="/BOOT0" class="Default">
+      <node ref="K1" pin="7" pinfunction="7_7" pintype="passive"/>
+      <node ref="R2" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U5" pin="44" pinfunction="BOOT0_44" pintype="input"/>
+    </net>
+    <net code="4" name="/BUZZER_PWM" class="Default">
+      <node ref="R8" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U5" pin="46" pinfunction="PB9_46" pintype="bidirectional"/>
+      <node ref="UBUZ0" pin="1" pinfunction="G_1" pintype="passive"/>
+    </net>
+    <net code="5" name="/EC_L_A" class="Default">
+      <node ref="EC_L4" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U5" pin="16" pinfunction="PA6_16" pintype="bidirectional"/>
+    </net>
+    <net code="6" name="/EC_L_B" class="Default">
+      <node ref="EC_L3" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U5" pin="17" pinfunction="PA7_17" pintype="bidirectional"/>
+    </net>
+    <net code="7" name="/EC_R_A" class="Default">
+      <node ref="EC_R4" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U5" pin="42" pinfunction="PB6_42" pintype="bidirectional"/>
+    </net>
+    <net code="8" name="/EC_R_B" class="Default">
+      <node ref="EC_R3" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U5" pin="43" pinfunction="PB7_43" pintype="bidirectional"/>
+    </net>
+    <net code="9" name="/FAN_NEG_INTERNAL" class="HighCurrent">
+      <node ref="C24" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="D4" pin="1" pinfunction="A_1" pintype="passive"/>
+      <node ref="J2" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="Q3" pin="3" pinfunction="D_3" pintype="passive"/>
+    </net>
+    <net code="10" name="/FAN_PWM" class="Default">
+      <node ref="Q3" pin="1" pinfunction="G_1" pintype="input"/>
+      <node ref="R32" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U5" pin="45" pinfunction="PB8_45" pintype="bidirectional"/>
+    </net>
+    <net code="11" name="/FRAM_CS" class="Default">
+      <node ref="R7" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="25" pinfunction="PB12_25" pintype="bidirectional"/>
+      <node ref="U6" pin="1" pinfunction="~{CS}_1" pintype="input"/>
+    </net>
+    <net code="12" name="/IMU_CS" class="Sensitive">
+      <node ref="R6" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U4" pin="12" pinfunction="CS_12" pintype="input"/>
+      <node ref="U5" pin="29" pinfunction="PA8_29" pintype="bidirectional"/>
+    </net>
+    <net code="13" name="/IR_FL" class="Default">
+      <node ref="R4FL0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="4" pinfunction="PC15-OSC32_OUT_4" pintype="bidirectional"/>
+      <node ref="UFL0" pin="1" pinfunction="G_1" pintype="passive"/>
+    </net>
+    <net code="14" name="/IR_FR" class="Default">
+      <node ref="R4FR0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="2" pinfunction="PC13_2" pintype="bidirectional"/>
+      <node ref="UFR0" pin="1" pinfunction="G_1" pintype="passive"/>
+    </net>
+    <net code="15" name="/IR_L" class="Default">
+      <node ref="R4L0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="3" pinfunction="PC14-OSC32_IN_3" pintype="bidirectional"/>
+      <node ref="UL0" pin="1" pinfunction="G_1" pintype="passive"/>
+    </net>
+    <net code="16" name="/IR_R" class="Default">
+      <node ref="R4R0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="41" pinfunction="PB5_41" pintype="bidirectional"/>
+      <node ref="UR0" pin="1" pinfunction="G_1" pintype="passive"/>
+    </net>
+    <net code="17" name="/LED_1" class="Default">
+      <node ref="R26" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="38" pinfunction="PA15_38" pintype="bidirectional"/>
+    </net>
+    <net code="18" name="/LED_2" class="Default">
+      <node ref="R27" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="32" pinfunction="PA11_32" pintype="bidirectional"/>
+    </net>
+    <net code="19" name="/LED_3" class="Default">
+      <node ref="R28" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="6" pinfunction="PH1_6" pintype="bidirectional"/>
+    </net>
+    <net code="20" name="/MOTOR_L_DIR" class="Default">
+      <node ref="U2" pin="5" pinfunction="IN2_5" pintype="input"/>
+      <node ref="U5" pin="14" pinfunction="PA4_14" pintype="bidirectional"/>
+    </net>
+    <net code="21" name="/MOTOR_L_OUT1" class="HighCurrent">
+      <node ref="TP3" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U2" pin="1" pinfunction="OUT1_2_1" pintype="output"/>
+      <node ref="U2" pin="10" pinfunction="OUT1_10" pintype="output"/>
+    </net>
+    <net code="22" name="/MOTOR_L_OUT2" class="HighCurrent">
+      <node ref="TP4" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U2" pin="3" pinfunction="OUT2_2_3" pintype="output"/>
+      <node ref="U2" pin="8" pinfunction="OUT2_8" pintype="output"/>
+    </net>
+    <net code="23" name="/MOTOR_L_PWM" class="Default">
+      <node ref="U2" pin="13" pinfunction="IN1_13" pintype="input"/>
+      <node ref="U5" pin="15" pinfunction="PA5_15" pintype="bidirectional"/>
+    </net>
+    <net code="24" name="/MOTOR_L_SR" class="Default">
+      <node ref="R35" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U2" pin="6" pinfunction="SR_6" pintype="passive"/>
+    </net>
+    <net code="25" name="/MOTOR_R_DIR" class="Default">
+      <node ref="U3" pin="5" pinfunction="IN2_5" pintype="input"/>
+      <node ref="U5" pin="19" pinfunction="PB1_19" pintype="bidirectional"/>
+    </net>
+    <net code="26" name="/MOTOR_R_OUT1" class="HighCurrent">
+      <node ref="TP1" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U3" pin="1" pinfunction="OUT1_2_1" pintype="output"/>
+      <node ref="U3" pin="10" pinfunction="OUT1_10" pintype="output"/>
+    </net>
+    <net code="27" name="/MOTOR_R_OUT2" class="HighCurrent">
+      <node ref="TP2" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="U3" pin="3" pinfunction="OUT2_2_3" pintype="output"/>
+      <node ref="U3" pin="8" pinfunction="OUT2_8" pintype="output"/>
+    </net>
+    <net code="28" name="/MOTOR_R_PWM" class="Default">
+      <node ref="U3" pin="13" pinfunction="IN1_13" pintype="input"/>
+      <node ref="U5" pin="21" pinfunction="PB10_21" pintype="bidirectional"/>
+    </net>
+    <net code="29" name="/MOTOR_R_SR" class="Default">
+      <node ref="R34" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U3" pin="6" pinfunction="SR_6" pintype="passive"/>
+    </net>
+    <net code="30" name="/MOTOR_STBY" class="Default">
+      <node ref="U2" pin="14" pinfunction="EN1_14" pintype="input"/>
+      <node ref="U2" pin="4" pinfunction="EN2_4" pintype="input"/>
+      <node ref="U3" pin="14" pinfunction="EN1_14" pintype="input"/>
+      <node ref="U3" pin="4" pinfunction="EN2_4" pintype="input"/>
+      <node ref="U5" pin="20" pinfunction="PB2_20" pintype="bidirectional"/>
+    </net>
+    <net code="31" name="/MPM_EN_INTERNAL" class="Default">
+      <node ref="R31" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U7" pin="17" pinfunction="EN_17" pintype="input"/>
+    </net>
+    <net code="32" name="/MPM_FB_INTERNAL" class="Default">
+      <node ref="R29" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R30" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U7" pin="1" pinfunction="FB_1" pintype="input"/>
+    </net>
+    <net code="33" name="/MPM_SW_INTERNAL" class="SwitchNode">
+      <node ref="U7" pin="4" pinfunction="SW_4" pintype="output"/>
+      <node ref="U7" pin="5" pinfunction="SW_5" pintype="output"/>
+      <node ref="U7" pin="6" pinfunction="SW_6" pintype="output"/>
+    </net>
+    <net code="34" name="/NRST" class="Default">
+      <node ref="C21" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="K1" pin="5" pinfunction="5_5" pintype="passive"/>
+      <node ref="RESET0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="RESET0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="7" pinfunction="NRST_7" pintype="bidirectional"/>
+    </net>
+    <net code="35" name="/PUSH_IN_1" class="Default">
+      <node ref="MODE0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="MODE0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R3" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U5" pin="5" pinfunction="PH0-OSC_IN_5" pintype="bidirectional"/>
+    </net>
+    <net code="36" name="/PWR_GATE_INTERNAL" class="Default">
+      <node ref="D5" pin="1" pinfunction="A_1" pintype="passive"/>
+      <node ref="Q2" pin="3" pinfunction="G_3" pintype="input"/>
+      <node ref="R12" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R33" pin="1" pinfunction="1_1" pintype="passive"/>
+    </net>
+    <net code="37" name="/PWR_SWITCH_RETURN" class="Default">
+      <node ref="POWER0" pin="2" pinfunction="COM_2" pintype="passive"/>
+      <node ref="R33" pin="2" pinfunction="2_2" pintype="passive"/>
+    </net>
+    <net code="38" name="/SENSOR_FL" class="Sensitive">
+      <node ref="PT_FL0" pin="K" pinfunction="C_K" pintype="passive"/>
+      <node ref="R2FL0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="12" pinfunction="PA2_12" pintype="bidirectional"/>
+    </net>
+    <net code="39" name="/SENSOR_FR" class="Sensitive">
+      <node ref="PT_FR0" pin="K" pinfunction="C_K" pintype="passive"/>
+      <node ref="R2FR0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="10" pinfunction="PA0_10" pintype="bidirectional"/>
+    </net>
+    <net code="40" name="/SENSOR_L" class="Sensitive">
+      <node ref="PT_L0" pin="K" pinfunction="C_K" pintype="passive"/>
+      <node ref="R2L0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="13" pinfunction="PA3_13" pintype="bidirectional"/>
+    </net>
+    <net code="41" name="/SENSOR_R" class="Sensitive">
+      <node ref="PT_R0" pin="K" pinfunction="C_K" pintype="passive"/>
+      <node ref="R2R0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="11" pinfunction="PA1_11" pintype="bidirectional"/>
+    </net>
+    <net code="42" name="/SPI2_MISO" class="Sensitive">
+      <node ref="U4" pin="1" pinfunction="SDO/SA0_1" pintype="bidirectional"/>
+      <node ref="U5" pin="27" pinfunction="PB14_27" pintype="bidirectional"/>
+      <node ref="U6" pin="2" pinfunction="SO_2" pintype="output"/>
+    </net>
+    <net code="43" name="/SPI2_MOSI" class="Sensitive">
+      <node ref="U4" pin="14" pinfunction="SDA_14" pintype="bidirectional"/>
+      <node ref="U5" pin="28" pinfunction="PB15_28" pintype="bidirectional"/>
+      <node ref="U6" pin="5" pinfunction="SI_5" pintype="input"/>
+    </net>
+    <net code="44" name="/SPI2_SCK" class="Sensitive">
+      <node ref="U4" pin="13" pinfunction="SCL_13" pintype="input"/>
+      <node ref="U5" pin="26" pinfunction="PB13_26" pintype="bidirectional"/>
+      <node ref="U6" pin="6" pinfunction="SCK_6" pintype="input"/>
+    </net>
+    <net code="45" name="/SWCLK" class="Default">
+      <node ref="K1" pin="4" pinfunction="4_4" pintype="passive"/>
+      <node ref="U5" pin="37" pinfunction="PA14_37" pintype="bidirectional"/>
+    </net>
+    <net code="46" name="/SWDIO" class="Default">
+      <node ref="K1" pin="3" pinfunction="3_3" pintype="passive"/>
+      <node ref="U5" pin="34" pinfunction="PA13_34" pintype="bidirectional"/>
+    </net>
+    <net code="47" name="/SWO" class="Default">
+      <node ref="K1" pin="10" pinfunction="10_10" pintype="passive"/>
+      <node ref="U5" pin="39" pinfunction="PB3_39" pintype="bidirectional"/>
+    </net>
+    <net code="48" name="/USART1_RX" class="Default">
+      <node ref="K1" pin="9" pinfunction="9_9" pintype="passive"/>
+      <node ref="U5" pin="31" pinfunction="PA10_31" pintype="bidirectional"/>
+    </net>
+    <net code="49" name="/USART1_TX" class="Default">
+      <node ref="K1" pin="8" pinfunction="8_8" pintype="passive"/>
+      <node ref="U5" pin="30" pinfunction="PA9_30" pintype="bidirectional"/>
+    </net>
+    <net code="50" name="/VOL_CHECK" class="Sensitive">
+      <node ref="C25" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R4" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R5" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U5" pin="18" pinfunction="PB0_18" pintype="bidirectional"/>
+    </net>
+    <net code="51" name="GND" class="Default">
+      <node ref="C1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C2" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C21" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C25" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C3" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C5" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C_MCU-C0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU-M0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU2" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C_MCU3" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="EC_L2" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="EC_R2" pin="TP" pinfunction="TP_TP" pintype="input"/>
+      <node ref="K1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="LED1" pin="C" pinfunction="C_C" pintype="passive"/>
+      <node ref="LED2" pin="C" pinfunction="C_C" pintype="passive"/>
+      <node ref="LED3" pin="C" pinfunction="C_C" pintype="passive"/>
+      <node ref="MODE0" pin="3" pinfunction="3_3" pintype="passive"/>
+      <node ref="MODE0" pin="4" pinfunction="4_4" pintype="passive"/>
+      <node ref="P-LED0" pin="C" pinfunction="C_C" pintype="passive"/>
+      <node ref="R0" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R2" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R2FL0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R2FR0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R2L0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R2R0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R4FL0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R4FR0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R4L0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R4R0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R5" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R8" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="RESET0" pin="3" pinfunction="3_3" pintype="passive"/>
+      <node ref="RESET0" pin="4" pinfunction="4_4" pintype="passive"/>
+      <node ref="U4" pin="2" pinfunction="SDX_2" pintype="bidirectional"/>
+      <node ref="U4" pin="3" pinfunction="SCX_3" pintype="bidirectional"/>
+      <node ref="U4" pin="6" pinfunction="GND_6" pintype="power_in"/>
+      <node ref="U4" pin="7" pinfunction="GND_7" pintype="power_in"/>
+      <node ref="U5" pin="23" pinfunction="VSS_2_23" pintype="power_in"/>
+      <node ref="U5" pin="35" pinfunction="VSS_3_35" pintype="power_in"/>
+      <node ref="U5" pin="47" pinfunction="VSS_47" pintype="power_in"/>
+      <node ref="U5" pin="49" pinfunction="EPAD_49" pintype="passive"/>
+      <node ref="U5" pin="8" pinfunction="VSSA/VREF-_8" pintype="power_in"/>
+      <node ref="U6" pin="4" pinfunction="VSS_4" pintype="power_in"/>
+      <node ref="UBUZ0" pin="2" pinfunction="E_2" pintype="passive"/>
+      <node ref="UFL0" pin="2" pinfunction="E_2" pintype="passive"/>
+      <node ref="UFR0" pin="2" pinfunction="E_2" pintype="passive"/>
+      <node ref="UL0" pin="2" pinfunction="E_2" pintype="passive"/>
+      <node ref="UR0" pin="2" pinfunction="E_2" pintype="passive"/>
+    </net>
+    <net code="52" name="GND2" class="HighCurrent">
+      <node ref="C14" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C15" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C22" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C23" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C6" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C7" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C8" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C9" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="P1" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="POWER0" pin="1" pinfunction="OFF_1" pintype="passive"/>
+      <node ref="Q3" pin="2" pinfunction="S_2" pintype="passive"/>
+      <node ref="R0" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R30" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R32" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R34" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="R35" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="U1" pin="1" pinfunction="GND_1" pintype="power_in"/>
+      <node ref="U2" pin="9" pinfunction="GND_9" pintype="power_in"/>
+      <node ref="U3" pin="9" pinfunction="GND_9" pintype="power_in"/>
+      <node ref="U7" pin="12" pinfunction="PGND_12" pintype="power_in"/>
+      <node ref="U7" pin="13" pinfunction="PGND_13" pintype="power_in"/>
+      <node ref="U7" pin="14" pinfunction="PGND_14" pintype="power_in"/>
+      <node ref="U7" pin="3" pinfunction="AGND_3" pintype="power_in"/>
+    </net>
+    <net code="53" name="VBAT_RAW" class="HighCurrent">
+      <node ref="D5" pin="2" pinfunction="K_2" pintype="passive"/>
+      <node ref="P1" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="Q2" pin="4" pinfunction="S_4" pintype="passive"/>
+      <node ref="R12" pin="2" pinfunction="2_2" pintype="passive"/>
+    </net>
+    <net code="54" name="VBAT_SW" class="HighCurrent">
+      <node ref="C22" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C24" pin="1" pinfunction="1_1" pintype="passive"/>
+      <node ref="C6" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C7" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C8" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="C9" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="D4" pin="2" pinfunction="K_2" pintype="passive"/>
+      <node ref="J2" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="Q2" pin="1" pinfunction="D_1" pintype="passive"/>
+      <node ref="Q2" pin="2" pinfunction="D_2" pintype="passive"/>
+      <node ref="Q2" pin="5" pinfunction="D_5" pintype="passive"/>
+      <node ref="Q2" pin="6" pinfunction="D_6" pintype="passive"/>
+      <node ref="R31" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="R4" pin="2" pinfunction="2_2" pintype="passive"/>
+      <node ref="U2" pin="2" pinfunction="VIN_2" pintype="power_in"/>
+      <node ref="U3" pin="2" pinfunction="VIN_2" pintype="power_in"/>
+      <node ref="U7" pin="16" pinfunction="IN_16" pintype="power_in"/>
+    </net>
+  </nets>
+</export>

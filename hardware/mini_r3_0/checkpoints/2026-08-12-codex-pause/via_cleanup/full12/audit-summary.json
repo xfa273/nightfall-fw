@@ -1,0 +1,51 @@
+{
+  "release_gate_pass": false,
+  "release_checks": {
+    "candidate_and_canonical_sources_unchanged": true,
+    "exact_project_rules": true,
+    "gnd_and_gnd2_single_group_no_zone_self_edges": true,
+    "jlc_2oz_spacing": true,
+    "jlc_2oz_track_width": true,
+    "jlc_routed_edge_clearance": true,
+    "jlc_via_hard_capability": true,
+    "physical_drc_errors_zero": true,
+    "project_via_0p40_0p20_floor": true,
+    "r0_single_point_contract": true,
+    "two_copper_layers_only": true,
+    "u2_left_u3_right_parity": true,
+    "u5_no_ep49_no_central_paste": true,
+    "unconnected_items_zero": false,
+    "via_in_pad_zero": true
+  },
+  "via_in_pad": {
+    "items": [],
+    "pass": true,
+    "via_count": 155,
+    "via_in_pad_count": 0
+  },
+  "physical": {
+    "error_count": 0,
+    "physical_error_pass": true
+  },
+  "unconnected": 32,
+  "ground": {
+    "GND": 1,
+    "GND2": 1
+  },
+  "zone": {
+    "cross_zone_items": [],
+    "incidents": {
+      "LOGIC_GND_B": 0,
+      "LOGIC_GND_F": 0,
+      "POWER_GND2_B": 0,
+      "POWER_GND2_F": 0
+    },
+    "pass": true,
+    "self_edges": {
+      "LOGIC_GND_B": 0,
+      "LOGIC_GND_F": 0,
+      "POWER_GND2_B": 0,
+      "POWER_GND2_F": 0
+    }
+  }
+}

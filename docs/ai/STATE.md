@@ -2,6 +2,21 @@
 
 このファイルは、Codex の現在の運用状態を記録する正本です。
 
+## 2026-08-12 mini_r3_0 PCB pause checkpoint
+
+ユーザ指示により、`mini_r3_0` の4層PCB設計は利用枠リセットまで中断中です。
+再開時は次を正本として読み、`/private/tmp` の旧試行板から再開しないでください。
+
+- 引継ぎ: `hardware/mini_r3_0/checkpoints/2026-08-12-codex-pause/README.md`
+- 共通基板: `hardware/mini_r3_0/checkpoints/2026-08-12-codex-pause/common/HM_Nightfall-mini-3a_v0.control4-led3.kicad_pcb`
+- 共通基板 SHA-256: `a1a231fa70815dee5e19d0daeda741c14aa30f56400d8977a5e4750b6d5aa1ac`
+- 状態: 4層、物理銅箔DRCエラー0、GND/GND2各1group、R0単一点、In1 plane-only、未配線20
+- 独立してDRC-cleanな候補: PUSH、BOOT、BUZZER+MOSI局所移設、+3V3/VOL、EC_R_B、via-in-pad cleanup
+- 注意: 上記候補はまだ相互統合されておらず、製造可能な最終基板ではない
+- 残作業: 候補統合、IMU_CS、全未配線0、via-in-pad 0、In2最終plane、strict audit、canonical反映、ERC/DRC/parity、Gerber/ドリル/発注資料
+
+F413電池保護は commit `5c77482` としてpush済みです。今回のPCB作業ではHIL、モータ、ファン、走行、Flash/NVM破壊操作を実行していません。
+
 ## 目的
 
 - 会話履歴ではなく、リポジトリ内の状態ファイルで運用を継続可能にする

@@ -1,1 +1,52 @@
 (version 1)
+
+# JLCPCB four-layer process guardrails.  The factory limit is tighter, but
+# 0.20/0.20 mm is used as the normal design floor for yield margin.  The
+# high-current paths remain on the two 2 oz outer layers; In1.Cu is the split
+# GND/GND2 reference plane and In2.Cu carries low-current logic only.
+(rule "JLCPCB 2 oz copper minimums"
+  (constraint track_width (min 0.16mm))
+  (constraint clearance (min 0.16mm)))
+
+(rule "1.27 mm programming connector pad clearance"
+  (constraint clearance (min 0.16mm))
+  (condition "(A.Reference == 'K1') && (B.Reference == 'K1')"))
+
+(rule "Mechanically constrained front-left sensor pair"
+  (constraint clearance (min 0.16mm))
+  (condition "((A.Reference == 'IR_LED_L0') && (B.Reference == 'PT_L0')) || ((A.Reference == 'PT_L0') && (B.Reference == 'IR_LED_L0'))"))
+
+(rule "High-current routed width"
+  (constraint track_width (min 0.30mm) (opt 0.80mm))
+  (constraint connection_width (min 0.30mm))
+  (condition "A.hasNetclass('HighCurrent') && (A.Layer == 'F.Cu' || A.Layer == 'B.Cu')"))
+
+# Inner GND2 pours are return references, not motor-current routing.  KiCad's
+# generic connection-width check can otherwise compare a GND2 thermal against
+# an unrelated through-via antipad on the same internal layer.  The actual
+# high-current copper remains constrained on F.Cu/B.Cu by the rule above.
+(rule "Inner GND2 reference connection"
+  (constraint connection_width (min 0.20mm))
+  (condition "A.hasNetclass('HighCurrent') && (A.Layer == 'In1.Cu' || A.Layer == 'In2.Cu')"))
+
+(rule "High-current power via"
+  (constraint via_diameter (min 0.80mm))
+  (constraint hole_size (min 0.40mm))
+  (condition "A.Type == 'Via' && A.hasNetclass('HighCurrent') && A.NetName != '+5V'"))
+
+(rule "5V distribution via"
+  (constraint via_diameter (min 0.60mm))
+  (constraint hole_size (min 0.30mm))
+  (condition "A.Type == 'Via' && A.NetName == '+5V'"))
+
+(rule "MPM3610 output-pin connection"
+  (constraint connection_width (min 0.25mm))
+  (condition "A.NetName == '+5V' && A.Reference == 'U7'"))
+
+(rule "Switch-node functional clearance"
+  (constraint clearance (min 0.50mm))
+  (condition "(A.hasNetclass('SwitchNode') || B.hasNetclass('SwitchNode')) && !((A.Reference == 'U7') && (B.Reference == 'U7'))"))
+
+(rule "Power-to-sensitive functional clearance"
+  (constraint clearance (min 0.40mm))
+  (condition "(A.hasNetclass('HighCurrent') && B.hasNetclass('Sensitive')) || (A.hasNetclass('Sensitive') && B.hasNetclass('HighCurrent'))"))

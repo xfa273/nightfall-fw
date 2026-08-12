@@ -1,0 +1,33 @@
+(version 1)
+
+# JLCPCB two-layer, 2 oz process guardrails.  The factory limit is tighter,
+# but 0.20/0.20 mm is used as the normal design floor for yield margin.
+(rule "JLCPCB 2 oz copper minimums"
+  (constraint track_width (min 0.16mm))
+  (constraint clearance (min 0.16mm)))
+
+(rule "1.27 mm programming connector pad clearance"
+  (constraint clearance (min 0.16mm))
+  (condition "(A.Reference == 'K1') && (B.Reference == 'K1')"))
+
+(rule "Mechanically constrained front-left sensor pair"
+  (constraint clearance (min 0.16mm))
+  (condition "((A.Reference == 'IR_LED_L0') && (B.Reference == 'PT_L0')) || ((A.Reference == 'PT_L0') && (B.Reference == 'IR_LED_L0'))"))
+
+(rule "High-current routed width"
+  (constraint track_width (min 0.30mm) (opt 0.80mm))
+  (constraint connection_width (min 0.30mm))
+  (condition "A.hasNetclass('HighCurrent')"))
+
+(rule "High-current power via"
+  (constraint via_diameter (min 0.80mm))
+  (constraint hole_size (min 0.40mm))
+  (condition "A.Type == 'Via' && A.hasNetclass('HighCurrent')"))
+
+(rule "Switch-node functional clearance"
+  (constraint clearance (min 0.50mm))
+  (condition "(A.hasNetclass('SwitchNode') || B.hasNetclass('SwitchNode')) && !((A.Reference == 'U7') && (B.Reference == 'U7'))"))
+
+(rule "Power-to-sensitive functional clearance"
+  (constraint clearance (min 0.40mm))
+  (condition "(A.hasNetclass('HighCurrent') && B.hasNetclass('Sensitive')) || (A.hasNetclass('Sensitive') && B.hasNetclass('HighCurrent'))"))
