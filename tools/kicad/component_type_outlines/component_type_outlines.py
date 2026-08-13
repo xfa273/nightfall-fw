@@ -25,14 +25,12 @@ LAYER_NAMES = {
     pcbnew.User_1: "R / Resistor",
     pcbnew.User_2: "C / Capacitor",
     pcbnew.User_3: "LED",
-    pcbnew.User_4: "Other / IC",
 }
 
 CATEGORY_LAYERS = {
     "resistor": pcbnew.User_1,
     "capacitor": pcbnew.User_2,
     "led": pcbnew.User_3,
-    "other": pcbnew.User_4,
 }
 
 
@@ -176,11 +174,11 @@ def _remove_previous_outlines(board: pcbnew.BOARD) -> int:
 
                 for item in list(footprint.GraphicalItems()):
                     if str(item.m_Uuid.AsString()) == outline_uuid:
-                        footprint.Remove(item)
+                        footprint.Delete(item)
                         removed += 1
                         break
 
-            footprint.Remove(metadata)
+            footprint.Delete(metadata)
 
         # Remove the short-lived group-based format as well.  It may exist in
         # a board saved by a development build of this plugin.
@@ -250,6 +248,16 @@ def has_legacy_board_group(board: pcbnew.BOARD) -> bool:
     return any(str(group.GetName()) == GROUP_NAME for group in board.Groups())
 
 
+def has_unwanted_outlines(board: pcbnew.BOARD) -> bool:
+    """Return whether a non-R/C/LED footprint still has a generated frame."""
+
+    return any(
+        classify_footprint(footprint) not in CATEGORY_LAYERS
+        and _find_generated_outline(footprint)[1] is not None
+        for footprint in board.GetFootprints()
+    )
+
+
 def regenerate_outlines(board: pcbnew.BOARD) -> dict[str, int]:
     """Create or update footprint-owned rectangles and return category counts.
 
@@ -267,6 +275,13 @@ def regenerate_outlines(board: pcbnew.BOARD) -> dict[str, int]:
 
     for footprint in board.GetFootprints():
         category = classify_footprint(footprint)
+
+        # R, C, and LED are already distinguishable from the absence of a
+        # frame, so adding a fourth color to every IC/connector only adds
+        # clutter and can create very large overlapping boxes.
+        if category not in CATEGORY_LAYERS:
+            continue
+
         layer = CATEGORY_LAYERS[category]
         box = _footprint_box(footprint)
 
@@ -313,8 +328,8 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
         self.name = PLUGIN_NAME
         self.category = "Layout helpers"
         self.description = (
-            "Add footprint-following outlines on User.1-User.4, classified "
-            "as resistor, capacitor, LED, or other."
+            "Add footprint-following outlines on User.1-User.3 for "
+            "resistors, capacitors, and LEDs."
         )
         self.show_toolbar_button = True
 
@@ -325,10 +340,10 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
             self._show_message("PCBが開かれていません。", error=True)
             return
 
-        if has_legacy_board_group(board):
+        if has_legacy_board_group(board) or has_unwanted_outlines(board):
             self._show_message(
-                "旧版の基板直下アウトラインを検出しました。\n\n"
-                "KiCad 10では開いた基板からグループを削除すると異常終了するため、"
+                "削除が必要な旧形式または「その他」のアウトラインを検出しました。\n\n"
+                "KiCad 10では開いた基板から生成図形を削除すると異常終了するため、"
                 "PCBエディターを閉じて一度だけファイル移行を実行してください。\n"
                 "詳しくはプラグインのREADMEを参照してください。",
                 error=True,
@@ -351,7 +366,7 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
             f"抵抗: {counts['resistor']}\n"
             f"コンデンサ: {counts['capacitor']}\n"
             f"LED: {counts['led']}\n"
-            f"その他: {counts['other']}\n\n"
+            "その他: 枠なし\n\n"
             "枠は部品の移動・回転に追従します。\n"
             "再実行すると既存の生成枠を更新します。"
             + (

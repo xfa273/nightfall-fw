@@ -1,7 +1,7 @@
 # Component Type Outlines
 
 KiCad PCB Editor上で、各フットプリントのCourtyard（未定義ならBounding Box）を
-部品種類別のUserレイヤーへ矩形として生成するAction Pluginです。矩形は
+抵抗・コンデンサ・LED別のUserレイヤーへ矩形として生成するAction Pluginです。矩形は
 フットプリント内の図形として追加されるため、部品の移動・回転・反転に追従します。
 
 | 種類 | 判定 | レイヤー | 推奨色 |
@@ -9,7 +9,9 @@ KiCad PCB Editor上で、各フットプリントのCourtyard（未定義ならB
 | 抵抗 | `R` + 数字/`_`/`?` | `User.1` | 黄色 `#FFD54F` |
 | コンデンサ | `C` + 数字/`_`/`?` | `User.2` | 水色 `#4FC3F7` |
 | LED | `LED` + 数字/`_`/`?`、またはLED情報を持つ`D` | `User.3` | 黄緑 `#AEEA00` |
-| その他 | 上記以外 | `User.4` | KiCad標準のピンク `#FF26E2` |
+
+上記以外のIC、コネクタ、ダイオードなどには追加の枠を生成しません。枠がないこと自体を
+「その他」の判別情報として使うため、表示の重なりと情報量を抑えられます。
 
 各フットプリントには、生成した枠のUUIDを記録する非表示の
 `__component_type_outline__`カスタム属性が追加されます。プラグインを再実行すると、
@@ -37,9 +39,9 @@ KiCad 10ではAction Pluginからフットプリントへ新しい図形を追�
 
 ## 旧版からの一度だけの移行
 
-旧版の`__component_type_outlines__`グループがある基板は、PCBエディターを閉じてから
-KiCad付属Pythonで次を実行します。開いた基板から旧グループを削除するとKiCad 10が
-異常終了するため、プラグイン本体は安全のため移行を中断します。
+旧版の`__component_type_outlines__`グループ、または「その他」の生成枠がある基板は、
+PCBエディターを閉じてからKiCad付属Pythonで次を実行します。開いた基板から生成図形を
+削除するとKiCad 10が異常終了するため、プラグイン本体は安全のため移行を中断します。
 
 ```sh
 /Applications/KiCad/KiCad.app/Contents/Frameworks/Python.framework/Versions/Current/bin/python3 \
@@ -47,7 +49,7 @@ KiCad付属Pythonで次を実行します。開いた基板から旧グループ
   /path/to/board.kicad_pcb
 ```
 
-移行コマンドは旧版の基板直下の枠および開発版のグループ形式だけを削除し、
-フットプリント追従型の枠へ置き換えます。
+移行コマンドは既存のプラグイン生成枠だけを削除し、抵抗・コンデンサ・LEDの
+フットプリント追従型枠へ置き換えます。
 
 KiCad 10.0.3で動作確認しています。
