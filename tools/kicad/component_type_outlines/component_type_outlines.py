@@ -240,7 +240,10 @@ def _configure_outline(
 
     outline.SetFilled(False)
     outline.SetWidth(line_width)
-    outline.SetLocked(True)
+    # A locked footprint child intercepts selection in PCB Editor and makes
+    # the otherwise-unlocked component appear immovable.  Child graphics move
+    # with their parent without being locked, so keep the generated frame free.
+    outline.SetLocked(False)
 
 
 def has_legacy_board_group(board: pcbnew.BOARD) -> bool:
