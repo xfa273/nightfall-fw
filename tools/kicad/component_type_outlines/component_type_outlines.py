@@ -20,11 +20,14 @@ METADATA_FIELD_NAME = "__component_type_outline__"
 METADATA_VERSION = "2"
 LINE_WIDTH_MM = 0.10
 PADDING_MM = 0.15
+NON_PRINT_SILK_LAYER = pcbnew.User_5
+NON_PRINT_SILK_LAYER_NAME = "Footprint Silk (No Print)"
 
 LAYER_NAMES = {
     pcbnew.User_1: "R / Resistor",
     pcbnew.User_2: "C / Capacitor",
     pcbnew.User_3: "LED",
+    NON_PRINT_SILK_LAYER: NON_PRINT_SILK_LAYER_NAME,
 }
 
 CATEGORY_LAYERS = {
@@ -58,6 +61,35 @@ def classify_footprint(footprint: pcbnew.FOOTPRINT) -> str:
         return "capacitor"
 
     return "other"
+
+
+def relocate_footprint_silks(board: pcbnew.BOARD) -> dict[str, int]:
+    """Move front-silkscreen items owned by footprints to a non-print layer.
+
+    Board-level F.Silkscreen graphics are deliberately left untouched.  This
+    makes imported DXF artwork and explicitly placed board text the only items
+    left on the manufacturing silkscreen while preserving the footprint parent
+    of every component graphic, so it continues to follow moves and rotations.
+    """
+
+    enabled_layers = board.GetEnabledLayers()
+    enabled_layers.AddLayer(NON_PRINT_SILK_LAYER)
+    board.SetEnabledLayers(enabled_layers)
+    board.SetLayerName(NON_PRINT_SILK_LAYER, NON_PRINT_SILK_LAYER_NAME)
+    counts = {"graphics": 0, "fields": 0}
+
+    for footprint in board.GetFootprints():
+        for item in footprint.GraphicalItems():
+            if item.GetLayer() == pcbnew.F_SilkS:
+                item.SetLayer(NON_PRINT_SILK_LAYER)
+                counts["graphics"] += 1
+
+        for field in footprint.GetFields():
+            if field.GetLayer() == pcbnew.F_SilkS:
+                field.SetLayer(NON_PRINT_SILK_LAYER)
+                counts["fields"] += 1
+
+    return counts
 
 
 def _footprint_box(footprint: pcbnew.FOOTPRINT) -> pcbnew.BOX2I:
@@ -114,6 +146,7 @@ def _footprint_box(footprint: pcbnew.FOOTPRINT) -> pcbnew.BOX2I:
             pcbnew.B_Fab,
             pcbnew.F_CrtYd,
             pcbnew.B_CrtYd,
+            NON_PRINT_SILK_LAYER,
         }
         content_boxes = [pad.GetBoundingBox() for pad in normalized.Pads()]
         content_boxes.extend(
@@ -270,6 +303,8 @@ def regenerate_outlines(board: pcbnew.BOARD) -> dict[str, int]:
     for layer, name in LAYER_NAMES.items():
         board.SetLayerName(layer, name)
 
+    relocate_footprint_silks(board)
+
     counts = {category: 0 for category in CATEGORY_LAYERS}
     line_width = pcbnew.FromMM(LINE_WIDTH_MM)
 
@@ -308,6 +343,7 @@ def regenerate_outlines(board: pcbnew.BOARD) -> dict[str, int]:
             metadata.SetVisible(False)
             footprint.Add(metadata)
 
+        metadata.SetLayer(NON_PRINT_SILK_LAYER)
         metadata.SetText(
             f"{METADATA_VERSION}|{outline.m_Uuid.AsString()}|{category}"
         )
@@ -329,7 +365,8 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
         self.category = "Layout helpers"
         self.description = (
             "Add footprint-following outlines on User.1-User.3 for "
-            "resistors, capacitors, and LEDs."
+            "resistors, capacitors, and LEDs, and move footprint "
+            "F.Silkscreen items to a non-print User layer."
         )
         self.show_toolbar_button = True
 
@@ -355,6 +392,16 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
                 _find_generated_outline(footprint)[1] is not None
                 for footprint in board.GetFootprints()
             )
+            silk_before = sum(
+                item.GetLayer() == pcbnew.F_SilkS
+                for footprint in board.GetFootprints()
+                for item in footprint.GraphicalItems()
+            )
+            fields_before = sum(
+                field.GetLayer() == pcbnew.F_SilkS
+                for footprint in board.GetFootprints()
+                for field in footprint.GetFields()
+            )
             counts = regenerate_outlines(board)
             pcbnew.Refresh()
         except Exception as exc:  # Keep failures visible inside KiCad.
@@ -367,6 +414,10 @@ class ComponentTypeOutlines(pcbnew.ActionPlugin):
             f"コンデンサ: {counts['capacitor']}\n"
             f"LED: {counts['led']}\n"
             "その他: 枠なし\n\n"
+            f"非印刷シルクへ移動: 図形/文字 {silk_before}、"
+            f"フィールド {fields_before}\n"
+            f"移動先: {NON_PRINT_SILK_LAYER_NAME} (User.5)\n\n"
+            "基板直下のF.Silkscreen図形は変更しません。\n"
             "枠は部品の移動・回転に追従します。\n"
             "再実行すると既存の生成枠を更新します。"
             + (
@@ -394,12 +445,26 @@ def main() -> None:
 
     board_path = args.board.expanduser().resolve()
     board = pcbnew.LoadBoard(str(board_path))
+    silk_before = sum(
+        item.GetLayer() == pcbnew.F_SilkS
+        for footprint in board.GetFootprints()
+        for item in footprint.GraphicalItems()
+    )
+    fields_before = sum(
+        field.GetLayer() == pcbnew.F_SilkS
+        for footprint in board.GetFootprints()
+        for field in footprint.GetFields()
+    )
     counts = migrate_outlines(board)
     pcbnew.SaveBoard(str(board_path), board)
 
     print(
         "Updated component outlines: "
         + ", ".join(f"{category}={count}" for category, count in counts.items())
+    )
+    print(
+        f"Moved footprint F.Silkscreen to {NON_PRINT_SILK_LAYER_NAME} "
+        f"(User.5): graphics={silk_before}, fields={fields_before}"
     )
 
 
