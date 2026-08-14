@@ -116,6 +116,8 @@ Require explicit confirmation that the machine is lifted and secured, or that th
 Motor/fan/motion commands include:
 
 - `o` / `0`: motor driver pulse
+- `~`: continuous left/right forward motor break-in at 50% duty; reset is the
+  only software stop path
 - `6`, `7`, `8`, `9`: single-side motor and encoder checks
 - `y`: motor trace session
 - `1`, `2`, `3`, `4`, `5`: closed-loop motion tests

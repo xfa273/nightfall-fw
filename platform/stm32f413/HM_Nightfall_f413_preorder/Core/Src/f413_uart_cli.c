@@ -39,7 +39,7 @@ void f413_uart_cli_print_help(void)
   trace_printf("[ROUTE]    K=read-only/non-motor strict KERI #1..#5 route preview (FRAM maze, diagnostic center-2x2 goal, F413 mode2/case8)\r\n");
   trace_printf("[ROUTE]    +=read-only/non-motor saved-FRAM route preview (compiled goals, F413 mode2/cases6..9)\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, n=wall-distance, :=wall-distance-debug, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, ;=video-start3, ,=video-stop4, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, n=wall-distance, :=wall-distance-debug, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, ~=L/R-break-in-forward-50pct(reset-stop), e=encoder, l=led30s, ;=video-start3, ,=video-stop4, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
   trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
@@ -169,6 +169,10 @@ void f413_uart_cli_handle_command(uint8_t cmd)
     case 'o':
     case '0':
       f413_hw_diag_run_motor_driver_test_once();
+      break;
+
+    case '~':
+      f413_hw_diag_start_motor_break_in_continuous();
       break;
 
     case 'e':

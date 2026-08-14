@@ -8,6 +8,7 @@
 
 #define F413_HW_DIAG_ENCODER_WINDOW_MS (10000U)
 #define F413_HW_DIAG_LED_ON_WINDOW_MS (30000U)
+#define F413_HW_DIAG_MOTOR_BREAK_IN_DUTY (500U)
 #define F413_HW_DIAG_ENCODER_SIGN_L (1L)
 #define F413_HW_DIAG_ENCODER_SIGN_R (-1L)
 
@@ -94,6 +95,19 @@ void f413_hw_diag_run_motor_driver_test_once(void)
   f413_hw_motor_set(false, false, false, 0U, 0U);
 
   trace_printf("[HW-TEST][Motor] PASS(pulse done)\r\n");
+}
+
+void f413_hw_diag_start_motor_break_in_continuous(void)
+{
+  /* This intentionally has no software stop path: a reset returns the driver
+     to its boot-time disabled state.  Use only with the robot lifted/secured. */
+  f413_hw_motor_set(true,
+                    true,
+                    true,
+                    F413_HW_DIAG_MOTOR_BREAK_IN_DUTY,
+                    F413_HW_DIAG_MOTOR_BREAK_IN_DUTY);
+  trace_printf("[HW-TEST][Motor] BREAK-IN active: L/R forward duty=%u/1000; reset to stop\r\n",
+               (unsigned int)F413_HW_DIAG_MOTOR_BREAK_IN_DUTY);
 }
 
 void f413_hw_diag_run_encoder_test_once(void)
