@@ -79,10 +79,14 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   Recorder 0.5.6 introduced geometry metadata but does not meet that final
   contract.  The first fixed-rig five-pose attempt exposed a more fundamental
   board-coordinate problem before label-plane fitting: four ruler-placed
-  corner positions were observed 26--30 mm inward, with an almost uniform
-  `1.066 x / 1.071 y` correction and only about 1 mm attributable to Camera2
-  lens distortion.  Four outer markers therefore remain registration anchors,
-  not metric qualification.  Absolute work is blocked on a distributed flush
+  corner positions were observed 26--30 mm inward.  The permanent 90 mm
+  orthogonal grid then proved that IDs 6/4/5/7 coincide with its outer
+  intersections and span 720 mm, whereas the old layout declared 780 mm.
+  After correcting that definition, the same Pixel clip measures mean pitch
+  89.791/89.796 mm in X/Y and at most 1.014/0.922 mm non-uniform residual.
+  The 30 mm-class failure was therefore a software layout error, not Pixel
+  optical distortion.  Four outer markers remain registration anchors, not
+  metric qualification.  Absolute work is still blocked on a distributed flush
   board lattice (32+ points with 8+ held out), a qualified dense metric map
   with <=1.0 mm held-out p95 and <=1.5 mm maximum error, and only then a new
   label-plane five-pose fit.  The failed five-pose set remains diagnostic and

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import sys
 import tempfile
 import unittest
@@ -19,6 +20,7 @@ sys.path.insert(0, str(VISION_ROOT))
 import board_metric_geometry as metric  # noqa: E402
 import extract_board_metric_lattice as lattice  # noqa: E402
 import markerless_trajectory as markerless  # noqa: E402
+import probe_board_line_grid as line_grid  # noqa: E402
 
 
 REFERENCE_PROVENANCE = {
@@ -38,12 +40,12 @@ def distorted_canonical(board: np.ndarray) -> np.ndarray:
     yn = (y - 360.0) / 360.0
     apparent_x_mm = 360.0 + 0.935 * (x - 360.0) + 2.4 * xn * yn
     apparent_y_mm = 360.0 + 0.932 * (y - 360.0) - 1.8 * xn * yn
-    # Existing 840 mm canvas maps -60..780 mm to 0..899 canonical pixels.
-    px_per_mm = 899.0 / 840.0
+    # Measured 780 mm canvas maps -30..750 mm to 0..899 canonical pixels.
+    px_per_mm = 899.0 / 780.0
     return np.column_stack(
         [
-            (apparent_x_mm + 60.0) * px_per_mm,
-            (780.0 - apparent_y_mm) * px_per_mm,
+            (apparent_x_mm + 30.0) * px_per_mm,
+            (750.0 - apparent_y_mm) * px_per_mm,
         ]
     )
 
@@ -226,6 +228,49 @@ class BoardMetricGeometryTest(unittest.TestCase):
         assigned = lattice.assign_candidates(expected, candidates, 20.0)
         self.assertEqual(len(assigned), 16)
         self.assertEqual({item["point_id"] for item in assigned}, {f"p{i}" for i in range(16)})
+
+    def test_orthogonal_line_probe_separates_scale_and_residual(self) -> None:
+        size = 900
+        expected = np.linspace(35.0, 865.0, 9)
+        # Independent smooth field warp with a small global scale error.
+        line_index = np.arange(9, dtype=float)
+        displaced = expected + 0.8 * np.sin(line_index * math.pi / 4.0)
+        displaced[0] = expected[0]
+        displaced[-1] = expected[-1]
+        yy, xx = np.mgrid[:size, :size]
+        response = np.zeros((size, size), dtype=np.float32)
+        for position in displaced:
+            response += np.exp(-0.5 * ((xx - position) / 1.2) ** 2).astype(
+                np.float32
+            )
+            response += np.exp(-0.5 * ((yy - position) / 1.2) ** 2).astype(
+                np.float32
+            )
+        # Diagonal calibration lines cross the orthogonal lines but must not
+        # steal the long-axis projection peak.
+        response += 0.35 * np.exp(-0.5 * ((xx - yy) / 1.4) ** 2).astype(
+            np.float32
+        )
+        detected_x, local_x = line_grid._detect_axis_positions(
+            response, expected, axis="x"
+        )
+        detected_y, local_y = line_grid._detect_axis_positions(
+            response, expected, axis="y"
+        )
+        np.testing.assert_allclose(detected_x, displaced, atol=0.08)
+        np.testing.assert_allclose(detected_y, displaced, atol=0.08)
+        report = line_grid._axis_report(
+            detected_x,
+            expected,
+            local_x,
+            pixels_per_mm=830.0 / 720.0,
+            known_pitch_mm=90.0,
+        )
+        self.assertLess(abs(report["affine_pitch_mm"] - 90.0), 0.2)
+        self.assertGreater(report["uniform_grid_residual_mm_max"], 0.1)
+        self.assertLess(report["uniform_grid_residual_mm_max"], 1.5)
+        self.assertEqual(len(local_x), 8)
+        self.assertEqual(len(local_y), 8)
 
     def test_white_circle_detector_rejects_wall_shaped_distractor(self) -> None:
         layout = markerless.board_layout.load(

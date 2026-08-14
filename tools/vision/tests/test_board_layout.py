@@ -19,6 +19,26 @@ import aruco_trajectory as aruco  # noqa: E402
 
 
 class BoardLayoutTest(unittest.TestCase):
+    def test_current_8x8_layout_uses_measured_grid_intersections(self):
+        layout = board_layout.load(
+            VISION_ROOT / "data/board_layout_8x8_60mm.json",
+            900,
+        )
+        centres_mm = {
+            marker_id: tuple(item["center_mm"])
+            for marker_id, item in (
+                (int(marker_id), marker)
+                for marker_id, marker in layout.raw["markers"].items()
+            )
+        }
+        self.assertEqual(centres_mm[6], (0.0, 0.0))
+        self.assertEqual(centres_mm[4], (720.0, 0.0))
+        self.assertEqual(centres_mm[5], (0.0, 720.0))
+        self.assertEqual(centres_mm[7], (720.0, 720.0))
+        self.assertAlmostEqual(layout.grid.x_origin_px, 30.0 * 899.0 / 780.0)
+        self.assertAlmostEqual(layout.grid.y_origin_px, 30.0 * 899.0 / 780.0)
+        self.assertAlmostEqual(layout.grid.x_pitch_px, 90.0 * 899.0 / 780.0)
+
     def test_writer_fps_uses_nominal_hfr_rate_without_rounding_ntsc(self):
         self.assertEqual(aruco.writer_fps(239.914), 240.0)
         self.assertEqual(aruco.writer_fps(119.88), 120.0)

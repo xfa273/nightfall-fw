@@ -148,14 +148,33 @@ pipeline is:
 
 ### Full-board metric calibration
 
-The four outer markers are a registration frame, not a dense metric
-calibration. A homography can make all four marker centres exact while the
-interior remains wrong because of a measured-layout scale error, lens
+The four outer markers are a registration frame, not by themselves a dense
+metric calibration. A homography can make all four marker centres exact while
+the interior remains wrong because of a measured-layout scale error, lens
 distortion, or a non-flat support. This failure was observed on the current
 8x8 rig: four ruler-placed blue-label positions were reported 26--30 mm inward
-near the corners. The error was highly symmetric (approximately `x*1.066` and
-`y*1.071` after the old mapping), so it must not be attributed to placement
-noise or corrected by tuning a turn.
+near the corners. The cause was then measured directly with the 90 mm
+orthogonal centre-line grid: marker IDs 6/4/5/7 lie on the four outer grid
+intersections, so their centres span 720 mm, not the previously declared
+780 mm. `board_layout_8x8_60mm.json` now records ID6=(0,0), ID4=(720,0),
+ID5=(0,720), and ID7=(720,720) mm. Artifacts bound to the earlier layout SHA
+are intentionally invalidated and remain diagnostic-only.
+
+The permanent orthogonal lines provide a quick repeatable distortion check:
+
+```sh
+./.venv-vision/bin/python tools/vision/probe_board_line_grid.py \
+  path/to/empty-board.mp4 \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --output-dir path/to/line-grid-probe
+```
+
+The tool fixes the ambiguous outer chalk-line peaks to the four detected
+marker centres, measures the seven interior lines and local pitch across the
+field, and reports global scale separately from residual non-uniformity. Its
+residual includes hand-drawn-line error, board flatness, and detector error;
+it is a diagnostic and does not by itself produce a safety-qualified metric
+map.
 
 Install a distributed reference pattern before using the camera for absolute
 turn clearance. The preferred permanent pattern is one matte white circular

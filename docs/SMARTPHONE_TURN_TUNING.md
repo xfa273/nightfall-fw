@@ -223,10 +223,10 @@ ID 7は検出数のQAだけに使い、homographyにも幾何残差にも使わ�
 `tools/vision/board_layout_4x4_example.json`である。
 
 - 90 mm pitchを8個、原点`[0, 0]`から`720 × 720 mm`
-- ID 5/7/4/6中心をそれぞれ
-  `[-30,750] / [750,750] / [750,-30] / [-30,-30] mm`
-- マーカ黒枠一辺40 mm、`rotation_deg = 0`
-- 4枚とも迷路床と同一平面、白いquiet zoneを含めて固定
+- ID 6/4/5/7中心をそれぞれ
+  `[0,0] / [720,0] / [0,720] / [720,720] mm`
+- マーカ黒枠一辺60 mm、`rotation_deg = 0`
+- 4枚とも外周の直交中心線交点に中心を一致させ、白いquiet zoneを含めて固定
 
 `side_mm`は紙全体ではなく黒いArUco外枠の実測寸法である。印刷倍率と
 中心位置をノギスまたはスケールで確認し、実測値にJSONを直す。この
@@ -235,12 +235,10 @@ layoutを指定した場合、JSONの`grid.pitch_mm`がmetric scaleとなり、
 座標は+xが右、+yが画面上方で、`rotation_deg = 0`では印刷マーカの上辺を
 +yへ向ける。正のrotationは盤面上の反時計回りである。
 
-例の`canvas_bounds_mm = -55..775`は830 mm角の**解析crop**であり、紙や
-治具の外形、または必要FOVの外端ではない。外周マーカの黒枠は
-`-50..770 mm`まで達するため、その外側へ白いquiet zoneを最低7 mm、
-推奨10 mm以上確保する。推奨値なら固定マーカまでの物理的な可視範囲は
-約840 mm角となる。実際のFOVには、さらに機体の走行余白と設置ずれの余白
-を加える。前節の1.0 m角はこの余白を含めた初期値である。
+現8x8 fixtureの`canvas_bounds_mm = -30..750`は、外周交点上の60 mm黒枠を
+ちょうど含む780 mm角の**解析crop**であり、治具外形または必要FOVの外端
+ではない。黒枠外側の白いquiet zone、機体の走行余白、設置ずれの余白は
+さらにFOVへ含める。前節の1.0 m角はこの余白を含めた初期値である。
 
 ただし、現実装がhomographyへ使うのはlayout modeでもID 5、4、6だけで
 ある。4〜8枚の全可視マーカをRANSACで使い、leave-one-out QAを行う一般
@@ -572,9 +570,22 @@ exit code 0でも、前述のsensor frameと複製frameの限界は残る。
 
 四隅ARマーカだけのhomographyは盤面内部のmetric精度を保証しない。現8x8
 fixtureでは、定規で±2 mm以内に置いた四隅近傍の機体中心が一様に26--30 mm
-内側へ観測された。現layoutに対する補正は概ねX 1.066倍/Y 1.071倍であり、
-レンズ補正単独の寄与は約1 mmなので、主因は固定マーカ実配置とlayout設定の
-縮尺不整合である。これはターンパラメータへ吸収してはいけない。
+内側へ観測された。その後、外周直交線交点とID6/4/5/7中心が一致し、中心間
+距離が8×90=720 mmであることを確認した。旧layoutは780 mmと宣言していた
+ため約8.33%の縮尺誤りを持っていた。720 mmへ修正後の同一Pixel動画では、
+平均pitchはX=89.791 mm/Y=89.796 mm、best-affineからの最大非一様残差は
+X=1.014 mm/Y=0.922 mmである。従って30 mm級誤差はPixel光学系ではなく
+layout定義のソフト不具合だった。これはターンパラメータへ吸収してはいけない。
+
+現盤面の直交線を使う反復診断は次で行う。これは線引き誤差・盤面平坦度・
+検出誤差も含むため、metric mapの安全認定そのものではない。
+
+```sh
+./.venv-vision/bin/python tools/vision/probe_board_line_grid.py \
+  "$session_dir/empty_background.mp4" \
+  --board-layout tools/vision/data/board_layout_8x8_60mm.json \
+  --output-dir "$session_dir/line_grid_probe"
+```
 
 実運用では盤面の各90 mm half-cell中心 `(45+90*i,45+90*j)` に直径8 mmの
 つや消し白円を、走行を乱さない薄いシール・塗装・埋込みで64点配置する。
