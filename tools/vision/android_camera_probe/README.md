@@ -269,7 +269,7 @@ the output directory is skipped. Completed runs receive an ffprobe report;
 failed attempts retain their diagnostic report but have no MP4. Ending an
 armed standby before START does not create a saved run.
 
-## ADB-free daily Wi-Fi collection
+## Daily USB-preferred or ADB-free Wi-Fi collection
 
 Recorder version 0.5.0 keeps ADB installation and collection available for
 development, but routine operation no longer needs ADB. While the activity is
@@ -387,8 +387,17 @@ tools/vision/android_camera_probe/hfr_control.py stop-and-collect
 
 Capture remains higher priority than file transfer: `collect` refuses to run
 while standby is active, and completing an individual run never starts an
-automatic transfer or ends the repeated standby loop. The older standalone
-collector remains available; later collections need only:
+automatic transfer or ends the repeated standby loop. The unified controller
+and dashboard default to `--transfer auto`: when one authorized Pixel is
+connected over USB debugging, they forward the same authenticated/resumable
+HTTP protocol through ADB and report `transport=usb`; otherwise they fall back
+to Wi-Fi. This preserves nonce checks, atomic publication, resume, `ffprobe`,
+and Pixel acknowledgement on both paths. A USB 3.x link avoids sending large
+MP4 files through the LAN. Use `--transfer usb --adb-serial SERIAL` to require
+a particular cable-connected Pixel, or `--transfer wifi` to force LAN transfer.
+
+The older standalone Wi-Fi-only collector remains available; later
+collections need only:
 
 ```sh
 tools/vision/android_camera_probe/collect_wifi_runs.py

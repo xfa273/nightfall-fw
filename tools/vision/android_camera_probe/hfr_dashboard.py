@@ -24,7 +24,6 @@ from collect_wifi_runs import (
     DEFAULT_OUTPUT_ROOT,
     Endpoint,
     WifiCollectorError,
-    collect_all,
     default_config_path,
     discover_devices,
     fetch_info,
@@ -49,6 +48,7 @@ from hfr_control import (
     wait_for_stop,
     wait_for_current_run_finish,
 )
+from transfer_runs import TRANSFER_CHOICES, collect_preferred
 
 
 DASHBOARD_DIR = Path(__file__).with_name("dashboard")
@@ -142,6 +142,8 @@ class PixelDashboard:
         discover_seconds: float,
         wait_seconds: float,
         recording_warning_seconds: float,
+        transfer: str = "auto",
+        adb_serial: str | None = None,
     ) -> None:
         self.config_path = config_path
         self.output_root = output_root
@@ -150,6 +152,8 @@ class PixelDashboard:
         self.discover_seconds = discover_seconds
         self.wait_seconds = wait_seconds
         self.recording_warning_seconds = recording_warning_seconds
+        self.transfer = transfer
+        self.adb_serial = adb_serial
         self._connection_lock = threading.Lock()
         self._endpoint: Endpoint | None = None
         self._token: str | None = None
@@ -432,9 +436,16 @@ class PixelDashboard:
                     raise CaptureBusyError(
                         "撮影待機中は転送できません。先に待機終了を実行してください"
                     )
-                collected, skipped = collect_all(client, self.output_root)
+                collected, skipped, transport = collect_preferred(
+                    client,
+                    self.output_root,
+                    transport=self.transfer,
+                    adb_serial=self.adb_serial,
+                )
+                transport_label = "USB" if transport == "usb" else "Wi-Fi"
                 messages.append(
-                    f"Macへの転送完了: 新規{collected}本・既存{skipped}本"
+                    f"Macへの{transport_label}転送完了: "
+                    f"新規{collected}本・既存{skipped}本"
                 )
             self._finish_action(sequence, "success", " / ".join(messages))
         except (WifiCollectorError, OSError) as exc:
@@ -586,6 +597,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=15.0,
         help="STOP信号見逃し警告を出す録画継続秒数",
     )
+    parser.add_argument(
+        "--transfer",
+        choices=TRANSFER_CHOICES,
+        default="auto",
+        help="転送経路（autoはUSBデバッグ接続を優先し、未接続時Wi-Fi）",
+    )
+    parser.add_argument("--adb-serial", help="複数ADB端末接続時のPixel serial")
     parser.add_argument("--no-open", action="store_true", help="ブラウザを自動で開かない")
     parser.add_argument("--verbose-http", action="store_true")
     return parser.parse_args(argv)
@@ -604,6 +622,8 @@ def main(argv: list[str] | None = None) -> int:
         discover_seconds=args.discover_seconds,
         wait_seconds=args.wait_seconds,
         recording_warning_seconds=args.recording_warning_seconds,
+        transfer=args.transfer,
+        adb_serial=args.adb_serial,
     )
     csrf_token = secrets.token_urlsafe(32)
     handler = make_handler(dashboard, csrf_token, verbose=args.verbose_http)

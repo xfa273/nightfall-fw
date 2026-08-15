@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Control Pixel HFR standby and collect runs over authenticated Wi-Fi."""
+"""Control Pixel HFR standby and collect runs over USB or authenticated Wi-Fi."""
 
 from __future__ import annotations
 
@@ -15,11 +15,11 @@ from collect_wifi_runs import (
     DEFAULT_OUTPUT_ROOT,
     WifiCollectorError,
     choose_endpoint,
-    collect_all,
     configured_token,
     default_config_path,
     load_config,
 )
+from transfer_runs import TRANSFER_CHOICES, collect_preferred
 
 
 CONTROL_STATUS_PATH = "/api/v1/control/status"
@@ -71,6 +71,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         help="認証情報の保存先",
     )
     parser.add_argument("--discover-seconds", type=float, default=2.5)
+    parser.add_argument(
+        "--transfer",
+        choices=TRANSFER_CHOICES,
+        default="auto",
+        help="転送経路（autoはUSBデバッグ接続を優先し、未接続時Wi-Fi）",
+    )
+    parser.add_argument(
+        "--adb-serial",
+        help="USB端末が複数ある場合に使うADB serial",
+    )
     parser.add_argument(
         "--wait-seconds",
         type=float,
@@ -355,10 +365,16 @@ def main(argv: list[str] | None = None) -> int:
                     "Pixelは撮影待機中です。先にhfr_control.py stopを実行するか、"
                     "stop-and-collectを使用してください"
                 )
-            collected, skipped = collect_all(client, args.output_root)
+            collected, skipped, transport = collect_preferred(
+                client,
+                args.output_root,
+                transport=args.transfer,
+                adb_serial=args.adb_serial,
+            )
             print(
                 f"[HFR-CONTROL] Transfer complete: collected={collected} "
-                f"skipped={skipped} output={args.output_root}"
+                f"skipped={skipped} transport={transport} "
+                f"output={args.output_root}"
             )
             return 0
 
