@@ -1145,7 +1145,7 @@ f413_test_runner_preflight_mode2_case(uint8_t case_index)
 
   return f413_path_run_preflight(
       path, ROUTE_MAX_LEN, &shortestRunModeParams2, run_case, first_speed,
-      true);
+      true, false);
 }
 
 static bool f413_test_saved_maze_runner_preflight(

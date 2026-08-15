@@ -205,6 +205,7 @@ static void expect_preflight(
     size_t capacity,
     const ShortestRunCaseParams_t* run_case,
     bool wall_end_correction_enabled,
+    bool test_mode_run,
     f413_path_run_preflight_status_t expected_status,
     size_t expected_index)
 {
@@ -212,7 +213,7 @@ static void expect_preflight(
       2.0f * run_case->acceleration_straight * (float)DIST_FIRST_SEC);
   const f413_path_run_preflight_result_t result = f413_path_run_preflight(
       codes, capacity, &shortestRunModeParams2, run_case,
-      initial_velocity, wall_end_correction_enabled);
+      initial_velocity, wall_end_correction_enabled, test_mode_run);
 
   g_checks++;
   if ((result.status != expected_status) ||
@@ -250,6 +251,8 @@ static void check_preflight_boundaries(void)
       203U, 701U, 1099U, 1002U, 703U, 203U, 0U};
   static const uint16_t terminal_diagonal[] = {
       203U, 701U, 1001U, 0U};
+  static const uint16_t diagonal_without_entry[] = {
+      203U, 1001U, 0U};
   static const uint16_t leading_turn[] = {
       300U, 201U, 0U};
   static const uint16_t large_s1_small[] = {
@@ -260,54 +263,115 @@ static void check_preflight_boundaries(void)
                    sizeof(non_diagonal_case1) /
                        sizeof(non_diagonal_case1[0]),
                    &shortestRunCaseParamsMode2[0], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("case6 S1 small fallback",
                    case6_small_s1,
                    sizeof(case6_small_s1) / sizeof(case6_small_s1[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("case6 S1 large rejected",
                    case6_large_s1,
                    sizeof(case6_large_s1) / sizeof(case6_large_s1[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR, 0U);
   expect_preflight("case6 S3 small fallback",
                    case6_small_s3,
                    sizeof(case6_small_s3) / sizeof(case6_small_s3[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("case7 S2 large",
                    case7_large_s2,
                    sizeof(case7_large_s2) / sizeof(case7_large_s2[0]),
                    &shortestRunCaseParamsMode2[6], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("coalesced orthogonal codes",
                    continuous_orthogonal,
                    sizeof(continuous_orthogonal) /
                        sizeof(continuous_orthogonal[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("coalesced diagonal codes",
                    continuous_diagonal,
                    sizeof(continuous_diagonal) /
                        sizeof(continuous_diagonal[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
   expect_preflight("terminal diagonal rejected",
                    terminal_diagonal,
                    sizeof(terminal_diagonal) / sizeof(terminal_diagonal[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_INVALID_LEGACY_PATH, 3U);
+  expect_preflight("test mode still rejects invalid diagonal entry",
+                   diagonal_without_entry,
+                   sizeof(diagonal_without_entry) /
+                       sizeof(diagonal_without_entry[0]),
+                   &shortestRunCaseParamsMode2[7], false,
+                   true,
+                   F413_PATH_RUN_PREFLIGHT_INVALID_LEGACY_PATH, 1U);
   expect_preflight("leading turn speed discontinuity",
                    leading_turn,
                    sizeof(leading_turn) / sizeof(leading_turn[0]),
                    &shortestRunCaseParamsMode2[5], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_SPEED_DISCONTINUITY, 0U);
   expect_preflight("large-S1-small skip wall-end",
                    large_s1_small,
                    sizeof(large_s1_small) / sizeof(large_s1_small[0]),
                    &shortestRunCaseParamsMode2[6], true,
+                   false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
+}
+
+static void check_mode2_case0_paths(void)
+{
+  static const uint16_t paths[10][6] = {
+      {203U, 300U, 0U},
+      {203U, 501U, 0U},
+      {203U, 502U, 0U},
+      {203U, 701U, 1001U, 0U},
+      {203U, 701U, 1001U, 704U, 0U},
+      {203U, 701U, 1001U, 802U, 1001U, 0U},
+      {203U, 901U, 1001U, 0U},
+      {203U, 901U, 1001U, 904U, 0U},
+      {209U, 0U},
+      {209U, 0U},
+  };
+  static const uint8_t case_indices[10] = {
+      3U, 3U, 3U, 8U, 8U, 8U, 8U, 8U, 1U, 5U};
+
+  for (size_t sub = 0U; sub < 10U; sub++)
+  {
+    char label[40];
+    const uint8_t case_index = case_indices[sub];
+    (void)snprintf(label, sizeof(label), "mode2 case0 sub%zu", sub);
+    expect_preflight(label,
+                     paths[sub],
+                     sizeof(paths[sub]) / sizeof(paths[sub][0]),
+                     &shortestRunCaseParamsMode2[case_index - 1U],
+                     false,
+                     true,
+                     F413_PATH_RUN_PREFLIGHT_OK,
+                     0U);
+  }
+
+  CHECK(close_value(
+      f413_path_run_next_diagonal_exit_velocity(
+          0U, &shortestRunModeParams2, &shortestRunCaseParamsMode2[7], 500.0f),
+      500.0,
+      1.0e-6));
+  CHECK(close_value(
+      f413_path_run_next_diagonal_exit_velocity(
+          0U, &shortestRunModeParams2, &shortestRunCaseParamsMode2[7], 0.0f),
+      0.0,
+      1.0e-6));
 }
 
 int main(void)
@@ -316,6 +380,7 @@ int main(void)
   check_start_runup_contract();
   check_wall_end_approach_contract();
   check_preflight_boundaries();
+  check_mode2_case0_paths();
 
   if (g_failures != 0U)
   {

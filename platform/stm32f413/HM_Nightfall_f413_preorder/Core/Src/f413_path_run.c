@@ -227,7 +227,8 @@ static float f413_path_run_next_straight_exit_velocity(
 static float f413_path_run_next_diagonal_exit_velocity(
     uint16_t next_code,
     const ShortestRunModeParams_t* mode_params,
-    const ShortestRunCaseParams_t* case_params)
+    const ShortestRunCaseParams_t* case_params,
+    float test_terminal_velocity_mm_s)
 {
   float turn_velocity;
 
@@ -242,7 +243,55 @@ static float f413_path_run_next_diagonal_exit_velocity(
         case_params->velocity_d_straight,
         NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP);
   }
+  if ((next_code == 0U) && isfinite(test_terminal_velocity_mm_s) &&
+      (test_terminal_velocity_mm_s > 0.0f))
+  {
+    /*
+     * A case0 primitive test may intentionally finish on a diagonal heading.
+     * Keep the tuned turn velocity through its explicit DS tail; the common
+     * implicit 45 mm tail below then performs the stop.  Normal shortest paths
+     * pass zero here and retain the cardinal-terminal invariant.
+     */
+    return test_terminal_velocity_mm_s;
+  }
   return 0.0f;
+}
+
+static bool f413_path_run_make_test_terminal_profile(
+    float entry_velocity_mm_s,
+    const NfLinearLimits* limits,
+    NfConstantAccelProfile* out)
+{
+  NfLinearLimits terminal_limits;
+  double acceleration_limit;
+
+  if ((limits == NULL) || (out == NULL))
+  {
+    return false;
+  }
+  terminal_limits = *limits;
+  acceleration_limit = fmax(limits->accel_low_mm_s2,
+                            limits->accel_high_mm_s2);
+  if (!isfinite(acceleration_limit) || (acceleration_limit <= 0.0))
+  {
+    return false;
+  }
+
+  /*
+   * The legacy case0 runner commands one monotonic velocity profile over its
+   * final half cell.  Bound that direct controller command by the larger of
+   * the selected case's two declared acceleration limits; do not apply this
+   * relaxed terminal rule to solver-generated shortest paths.
+   */
+  terminal_limits.switch_velocity_mm_s = 0.0;
+  terminal_limits.accel_low_mm_s2 = acceleration_limit;
+  terminal_limits.accel_high_mm_s2 = acceleration_limit;
+  return nf_motion_constant_accel_profile(
+             &terminal_limits,
+             (double)DIST_HALF_SEC,
+             (double)entry_velocity_mm_s,
+             0.0,
+             out) == NF_MOTION_OK;
 }
 
 static bool f413_path_run_make_wall_end_approach_plan(
@@ -305,7 +354,8 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
     float initial_velocity_mm_s,
-    bool wall_end_correction_enabled)
+    bool wall_end_correction_enabled,
+    bool test_mode_run)
 {
   f413_path_run_preflight_result_t result = {
       F413_PATH_RUN_PREFLIGHT_OK, NF_LEGACY_PATH_OK, 0U, 0U};
@@ -333,7 +383,9 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
   }
 
   legacy = nf_legacy_path_validate(codes, capacity);
-  if (legacy.status != NF_LEGACY_PATH_OK)
+  if ((legacy.status != NF_LEGACY_PATH_OK) &&
+      !(test_mode_run &&
+        (legacy.status == NF_LEGACY_PATH_ENDS_DIAGONAL)))
   {
     result.status = F413_PATH_RUN_PREFLIGHT_INVALID_LEGACY_PATH;
     result.legacy_status = legacy.status;
@@ -420,7 +472,8 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
         end++;
       }
       exit_velocity = f413_path_run_next_diagonal_exit_velocity(
-          codes[end], mode_params, case_params);
+          codes[end], mode_params, case_params,
+          (test_mode_run && (codes[end] == 0U)) ? speed_now : 0.0f);
       if (!f413_path_run_make_linear_plan(
               (float)steps * (float)DIST_D_HALF_SEC,
               speed_now, exit_velocity, &diagonal_limits, &plan))
@@ -465,7 +518,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
     }
   }
 
-  if (diagonal)
+  if (diagonal && !test_mode_run)
   {
     /* Normally caught by the shared grammar; keep the execution invariant. */
     result.status = F413_PATH_RUN_PREFLIGHT_INVALID_LEGACY_PATH;
@@ -475,9 +528,13 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
   }
   {
     NfConstantAccelProfile stop_profile;
-    if (nf_motion_constant_accel_profile(
-            &straight_limits, (double)DIST_HALF_SEC, (double)speed_now,
-            0.0, &stop_profile) != NF_MOTION_OK)
+    const bool valid_stop = test_mode_run
+        ? f413_path_run_make_test_terminal_profile(
+              speed_now, &straight_limits, &stop_profile)
+        : (nf_motion_constant_accel_profile(
+               &straight_limits, (double)DIST_HALF_SEC, (double)speed_now,
+               0.0, &stop_profile) == NF_MOTION_OK);
+    if (!valid_stop)
     {
       result.status = F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR;
       result.index = index;
@@ -1467,8 +1524,7 @@ static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
 {
   const float straight_mm =
       (float)diagonal_steps * (float)DIST_D_HALF_SEC;
-  const float v_next = f413_path_run_next_diagonal_exit_velocity(
-      next_code, mode_params, case_params);
+  float v_next;
   NfLinearLimits limits;
 
   if ((straight_mm <= 0.0f) || (speed_now_mm_s == NULL) ||
@@ -1476,6 +1532,12 @@ static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
+
+  v_next = f413_path_run_next_diagonal_exit_velocity(
+      next_code, mode_params, case_params,
+      (f413_run_features_test_mode_run() && (next_code == 0U))
+          ? *speed_now_mm_s
+          : 0.0f);
 
   return f413_path_run_drive_linear_profile(straight_mm,
                                             v_next,
@@ -1581,6 +1643,7 @@ void f413_path_run_session_once(uint8_t mode,
       NIGHTFALL_F413_PATH_VELOCITY_CAP);
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
+  bool diagonal = false;
   uint16_t pi;
   uint16_t code;
 
@@ -1601,7 +1664,8 @@ void f413_path_run_session_once(uint8_t mode,
   }
   preflight = f413_path_run_preflight(
       path, NIGHTFALL_F413_PATH_MAX_CODES, mode_params, case_params,
-      first_speed, f413_run_features_wall_end_correction_enabled());
+      first_speed, f413_run_features_wall_end_correction_enabled(),
+      f413_run_features_test_mode_run());
   if (preflight.status != F413_PATH_RUN_PREFLIGHT_OK)
   {
     trace_printf(
@@ -1723,6 +1787,14 @@ void f413_path_run_session_once(uint8_t mode,
                                                               &guard,
             (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
                        NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG));
+        if (f413_path_run_turn_enters_diagonal(code))
+        {
+          diagonal = true;
+        }
+        else if (f413_path_run_turn_exits_diagonal(code))
+        {
+          diagonal = false;
+        }
       }
       else
       {
@@ -1749,13 +1821,16 @@ void f413_path_run_session_once(uint8_t mode,
 
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
-    abort_reason = f413_path_run_drive_segment((float)DIST_HALF_SEC,
-                                               0.0f,
-                                               &speed_now,
-                                               &guard,
-                                               (uint16_t)(base_trace_flag |
-                                                          NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
-                                                          NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
+    abort_reason = f413_path_run_drive_segment_ex(
+        (float)DIST_HALF_SEC,
+        0.0f,
+        &speed_now,
+        &guard,
+        (uint16_t)(base_trace_flag |
+                   NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
+                   NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG),
+        !diagonal,
+        diagonal);
   }
 
   f413_ctrl_clear_angle_target();
