@@ -453,7 +453,16 @@ class D135RegressionTest(unittest.TestCase):
         )
         model = json.loads(model_path.read_text(encoding="utf-8"))
         coefficient = model["model"]["coefficient_s2_m"]
-        args = self._args("--slip-angle-coefficient", str(coefficient))
+        args = self._args(
+            "--alpha",
+            "10250",
+            "--dist-in",
+            "3.5",
+            "--dist-out",
+            "22",
+            "--slip-angle-coefficient",
+            str(coefficient),
+        )
         _, _, simulation = TURN_CLEARANCE.resolve_simulation(args)
         core = [
             sample for sample in simulation.samples if sample.phase == "turn_core"
@@ -873,8 +882,10 @@ class D135RegressionTest(unittest.TestCase):
         self.assertFalse(report["safe_recommendation_available"])
         self.assertIsNone(report["recommended"])
 
-    def test_current_d135_hits_inner_post_but_canonical_closure_clears_it(self):
-        args = self._args()
+    def test_historical_d135_hits_inner_post_but_canonical_closure_clears_it(self):
+        args = self._args(
+            "--alpha", "10250", "--dist-in", "3.5", "--dist-out", "22"
+        )
         _, _, current = TURN_CLEARANCE.resolve_simulation(args)
         scene = TURN_CLEARANCE.canonical_scene(901)
         footprint = TURN_CLEARANCE.Footprint()
@@ -976,8 +987,8 @@ class D135RegressionTest(unittest.TestCase):
             places=9,
         )
         self.assertAlmostEqual(
-            results[0].first_collision_theta_deg,
-            -results[1].first_collision_theta_deg,
+            results[0].worst_theta_deg,
+            -results[1].worst_theta_deg,
             places=9,
         )
 
@@ -1056,7 +1067,9 @@ class D135RegressionTest(unittest.TestCase):
                 TURN_CLEARANCE.extract_video_turn(path, scene, turn, simulation)
 
     def test_absolute_video_registration_preserves_trial_translation(self):
-        args = self._args("--dist-in", "29", "--dist-out", "21.5")
+        args = self._args(
+            "--alpha", "10250", "--dist-in", "29", "--dist-out", "21.5"
+        )
         _, turn, simulation = TURN_CLEARANCE.resolve_simulation(args)
         scene = TURN_CLEARANCE.canonical_scene(901)
         world_samples = TURN_CLEARANCE.simulation_world_samples(simulation, scene)
