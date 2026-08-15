@@ -40,6 +40,10 @@ BLUE_LABEL_HSV_LOW = (88, 50, 50)
 BLUE_LABEL_HSV_HIGH = (112, 255, 255)
 BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 8
 BLUE_LABEL_MIN_BLUE_RED_EXCESS = 25
+FRONT_LABEL_HSV_LOW = (0, 40, 70)
+FRONT_LABEL_HSV_HIGH = (26, 255, 255)
+FRONT_LABEL_HSV_WRAP_LOW = (168, 40, 70)
+FRONT_LABEL_HSV_WRAP_HIGH = (179, 255, 255)
 DEFAULT_FRONT_LABEL_DISTANCE_MM = 24.0
 FRONT_LABEL_CALIBRATION_SCHEMA = "nightfall_front_label_heading_calibration_v1"
 
@@ -663,6 +667,35 @@ def red_mask(frame: np.ndarray) -> np.ndarray:
     )
 
 
+def front_label_mask(frame: np.ndarray) -> np.ndarray:
+    """Select the red front label even when HFR lighting shifts it orange.
+
+    Pixel 8 recordings made under the current maze lighting move the matte red
+    pigment as far as HSV hue 22 during a turn.  The legacy red cue mask is
+    deliberately narrower and remains unchanged.  False orange objects are
+    rejected later using the label's area, 24 mm lever arm, and predicted
+    position.
+    """
+
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    low = cv2.inRange(
+        hsv,
+        np.asarray(FRONT_LABEL_HSV_LOW, dtype=np.uint8),
+        np.asarray(FRONT_LABEL_HSV_HIGH, dtype=np.uint8),
+    )
+    high = cv2.inRange(
+        hsv,
+        np.asarray(FRONT_LABEL_HSV_WRAP_LOW, dtype=np.uint8),
+        np.asarray(FRONT_LABEL_HSV_WRAP_HIGH, dtype=np.uint8),
+    )
+    mask = cv2.bitwise_or(low, high)
+    return cv2.morphologyEx(
+        mask,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
+    )
+
+
 def blue_label_mask(frame: np.ndarray) -> np.ndarray:
     """Select the matte blue center label without accepting the green PCB.
 
@@ -1138,7 +1171,7 @@ def detect_pose(
     front_label_count = 0
     if args.front_label_colour == "red" and label_xy is not None:
         front_label_xy, front_label_count, _ = _front_label_component(
-            red_mask(frame) & board,
+            front_label_mask(frame) & board,
             label_xy,
             args.minimum_front_label_pixels,
             args.maximum_front_label_pixels,
@@ -2409,6 +2442,10 @@ def main() -> int:
                 "blue_label_min_blue_red_excess": (
                     BLUE_LABEL_MIN_BLUE_RED_EXCESS
                 ),
+                "front_label_hsv_low": list(FRONT_LABEL_HSV_LOW),
+                "front_label_hsv_high": list(FRONT_LABEL_HSV_HIGH),
+                "front_label_hsv_wrap_low": list(FRONT_LABEL_HSV_WRAP_LOW),
+                "front_label_hsv_wrap_high": list(FRONT_LABEL_HSV_WRAP_HIGH),
             },
             "metric_scale": {
                 "cell_size_mm": args.cell_size_mm,

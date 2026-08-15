@@ -694,6 +694,26 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         self.assertEqual(count, 64)
         np.testing.assert_allclose(center, [73.5, 49.5])
 
+    def test_front_label_mask_accepts_orange_shifted_red(self):
+        hsv = np.zeros((24, 48, 3), dtype=np.uint8)
+        hsv[6:18, 6:18] = (21, 48, 220)
+        hsv[6:18, 30:42] = (174, 110, 180)
+        frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+        front = MARKERLESS.front_label_mask(frame)
+        legacy = MARKERLESS.red_mask(frame)
+
+        self.assertGreater(np.count_nonzero(front[6:18, 6:18]), 100)
+        self.assertEqual(np.count_nonzero(legacy[6:18, 6:18]), 0)
+        self.assertGreater(np.count_nonzero(front[6:18, 30:42]), 100)
+
+    def test_front_label_mask_rejects_low_saturation_board(self):
+        hsv = np.zeros((24, 24, 3), dtype=np.uint8)
+        hsv[6:18, 6:18] = (21, 30, 220)
+        frame = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+
+        self.assertEqual(np.count_nonzero(MARKERLESS.front_label_mask(frame)), 0)
+
     def test_front_label_provides_heading_without_body_segmentation(self):
         frame = np.zeros((120, 120, 3), dtype=np.uint8)
         background = np.zeros_like(frame)
@@ -741,7 +761,7 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         )
         with (
             mock.patch.object(MARKERLESS, "blue_label_mask", return_value=blue),
-            mock.patch.object(MARKERLESS, "red_mask", return_value=red),
+            mock.patch.object(MARKERLESS, "front_label_mask", return_value=red),
             mock.patch.object(
                 MARKERLESS,
                 "green_mask",
