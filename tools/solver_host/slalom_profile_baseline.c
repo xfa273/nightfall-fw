@@ -45,8 +45,8 @@ const NfPrimitiveGeometry
 static const NfCurrentPrimitive g_current_mode2[NF_PRIMITIVE_COUNT] = {
     NF_CURRENT(300.0, 10200.0, 8.0, 12.8,
                44.512055, 49.312055),
-    NF_CURRENT(500.0, 9400.0, 0.0, 29.8,
-               63.390064, 93.190064),
+    NF_CURRENT(500.0, 6900.0, 13.0, 20.5,
+               86.987877, 94.487877),
     NF_CURRENT(500.0, 4150.0, 6.5, 20.0,
                -13.500000, 92.904831),
     NF_CURRENT(500.0, 6200.0, 23.5, 10.5,
