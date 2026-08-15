@@ -619,6 +619,20 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         mask = MARKERLESS.blue_label_mask(frame)
         self.assertEqual(mask[0].tolist(), [255, 0, 0])
 
+    def test_blue_label_glare_mask_recovers_only_desaturated_blue(self):
+        hsv = np.asarray(
+            [[[98, 20, 240], [0, 0, 240], [115, 220, 220]]],
+            dtype=np.uint8,
+        )
+        frame = MARKERLESS.cv2.cvtColor(hsv, MARKERLESS.cv2.COLOR_HSV2BGR)
+        frame[0, 1] = (140, 150, 30)
+
+        strict = MARKERLESS.blue_label_mask(frame)
+        glare = MARKERLESS.blue_label_glare_mask(frame)
+
+        self.assertEqual(strict[0].tolist(), [0, 0, 0])
+        self.assertEqual(glare[0].tolist(), [255, 0, 0])
+
     def test_label_component_prefers_expected_area_and_prediction(self):
         mask = np.zeros((100, 100), dtype=np.uint8)
         mask[46:54, 46:54] = 255
@@ -693,6 +707,35 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         )
         self.assertEqual(count, 64)
         np.testing.assert_allclose(center, [73.5, 49.5])
+
+    def test_label_pair_rejects_blue_led_adjacent_to_front_label(self):
+        blue = np.zeros((120, 120), dtype=np.uint8)
+        red = np.zeros_like(blue)
+        blue[46:54, 46:54] = 255
+        blue[46:56, 68:78] = 255
+        red[46:54, 70:78] = 255
+
+        center, center_count, front, front_count = (
+            MARKERLESS._blue_front_label_pair(
+                blue,
+                red,
+                minimum_blue_pixels=6,
+                maximum_blue_pixels=180,
+                expected_blue_pixels=64.0,
+                minimum_red_pixels=20,
+                maximum_red_pixels=180,
+                expected_red_pixels=64.0,
+                expected_distance_px=24.0,
+                distance_tolerance_px=5.0,
+                prediction_xy=np.asarray([55.0, 50.0]),
+                maximum_prediction_distance_px=30.0,
+            )
+        )
+
+        self.assertEqual(center_count, 64)
+        self.assertEqual(front_count, 64)
+        np.testing.assert_allclose(center, [49.5, 49.5])
+        np.testing.assert_allclose(front, [73.5, 49.5])
 
     def test_front_label_mask_accepts_orange_shifted_red(self):
         hsv = np.zeros((24, 48, 3), dtype=np.uint8)
@@ -790,6 +833,93 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         np.testing.assert_allclose(result[0], [49.5, 49.5])
         np.testing.assert_allclose(result[4], [73.5, 49.5])
         self.assertAlmostEqual(result[6], 0.0)
+        self.assertTrue(result[-3])
+        self.assertEqual(result[-2], "front_label")
+
+    def test_green_tracker_seeds_glare_recovery_for_blue_label(self):
+        frame = np.zeros((120, 120, 3), dtype=np.uint8)
+        background = np.zeros_like(frame)
+        strict_blue = np.zeros((120, 120), dtype=np.uint8)
+        glare_blue = np.zeros_like(strict_blue)
+        green = np.zeros_like(strict_blue)
+        red = np.zeros_like(strict_blue)
+        glare_blue[46:54, 46:54] = 255
+        green[38:62, 38:62] = 255
+        red[46:54, 70:78] = 255
+        grid = sys.modules["aruco_trajectory"].GridCalibration(
+            x_lines_px=np.asarray([10.0, 110.0]),
+            y_lines_px=np.asarray([10.0, 110.0]),
+            x_origin_px=10.0,
+            y_origin_px=10.0,
+            x_pitch_px=100.0,
+            y_pitch_px=100.0,
+            cells=1,
+            x_peak_contrast=1.0,
+            y_peak_contrast=1.0,
+        )
+        args = argparse.Namespace(
+            foreground_blur=3,
+            foreground_threshold=1,
+            morph_open=1,
+            morph_close=1,
+            tracking_radius_px=45.0,
+            minimum_green_pixels=20,
+            minimum_body_pixels=80,
+            cue_colour="none",
+            label_colour="blue",
+            front_label_colour="red",
+            minimum_label_pixels=20,
+            maximum_label_pixels=180,
+            minimum_front_label_pixels=20,
+            maximum_front_label_pixels=180,
+            minimum_cue_pixels=1,
+            maximum_cue_pixels=100,
+            minimum_cue_lever_arm_px=10.0,
+            cue_distance_relative_tolerance=0.9,
+            cue_yaw_offset_deg=0.0,
+            front_label_yaw_offset_deg=0.0,
+            initial_yaw_deg=None,
+            maximum_yaw_rate_deg_s=3000.0,
+            minimum_axis_anisotropy=0.5,
+            axis_yaw_offset_deg=0.0,
+            position_source="label",
+        )
+        with (
+            mock.patch.object(
+                MARKERLESS,
+                "blue_label_mask",
+                return_value=strict_blue,
+            ),
+            mock.patch.object(
+                MARKERLESS,
+                "blue_label_glare_mask",
+                return_value=glare_blue,
+            ),
+            mock.patch.object(MARKERLESS, "green_mask", return_value=green),
+            mock.patch.object(MARKERLESS, "front_label_mask", return_value=red),
+        ):
+            result = MARKERLESS.detect_pose(
+                frame,
+                background,
+                grid,
+                args,
+                None,
+                None,
+                None,
+                None,
+                None,
+                64.0,
+                64.0,
+                24.0,
+                5.0,
+                np.zeros(2, dtype=float),
+                deque(),
+                False,
+                1.0 / 240.0,
+            )
+
+        np.testing.assert_allclose(result[0], [49.5, 49.5])
+        np.testing.assert_allclose(result[4], [73.5, 49.5])
         self.assertTrue(result[-3])
         self.assertEqual(result[-2], "front_label")
 

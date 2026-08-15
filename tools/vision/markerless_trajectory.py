@@ -40,6 +40,10 @@ BLUE_LABEL_HSV_LOW = (88, 50, 50)
 BLUE_LABEL_HSV_HIGH = (112, 255, 255)
 BLUE_LABEL_MIN_BLUE_GREEN_EXCESS = 8
 BLUE_LABEL_MIN_BLUE_RED_EXCESS = 25
+BLUE_LABEL_GLARE_HSV_LOW = (82, 5, 150)
+BLUE_LABEL_GLARE_HSV_HIGH = (112, 255, 255)
+BLUE_LABEL_GLARE_MIN_BLUE_GREEN_EXCESS = -2
+BLUE_LABEL_GLARE_MIN_BLUE_RED_EXCESS = 5
 FRONT_LABEL_HSV_LOW = (0, 40, 70)
 FRONT_LABEL_HSV_HIGH = (26, 255, 255)
 FRONT_LABEL_HSV_WRAP_LOW = (168, 40, 70)
@@ -722,6 +726,31 @@ def blue_label_mask(frame: np.ndarray) -> np.ndarray:
     return cv2.bitwise_and(mask, channel_gate)
 
 
+def blue_label_glare_mask(frame: np.ndarray) -> np.ndarray:
+    """Recover a specularly desaturated blue label near the tracked mouse.
+
+    The overhead light can drive the matte label close to white for particular
+    mouse positions and headings.  This deliberately permissive mask must only
+    be used with a spatial prediction from the normal label tracker or green
+    PCB tracker; applying it board-wide would admit blue-tinted grid lines.
+    """
+
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(
+        hsv,
+        np.asarray(BLUE_LABEL_GLARE_HSV_LOW, dtype=np.uint8),
+        np.asarray(BLUE_LABEL_GLARE_HSV_HIGH, dtype=np.uint8),
+    )
+    blue, green, red = cv2.split(frame.astype(np.int16))
+    channel_gate = np.where(
+        (blue - green >= BLUE_LABEL_GLARE_MIN_BLUE_GREEN_EXCESS)
+        & (blue - red >= BLUE_LABEL_GLARE_MIN_BLUE_RED_EXCESS),
+        255,
+        0,
+    ).astype(np.uint8)
+    return cv2.bitwise_and(mask, channel_gate)
+
+
 def centroid(mask: np.ndarray) -> Optional[np.ndarray]:
     moments = cv2.moments(mask, binaryImage=True)
     if moments["m00"] <= 0:
@@ -916,6 +945,89 @@ def _front_label_component(
         np.asarray(centers[selected], dtype=float),
         int(stats[selected, cv2.CC_STAT_AREA]),
         component,
+    )
+
+
+def _blue_front_label_pair(
+    blue_mask: np.ndarray,
+    red_mask: np.ndarray,
+    minimum_blue_pixels: int,
+    maximum_blue_pixels: int,
+    expected_blue_pixels: float,
+    minimum_red_pixels: int,
+    maximum_red_pixels: int,
+    expected_red_pixels: float,
+    expected_distance_px: float,
+    distance_tolerance_px: float,
+    prediction_xy: np.ndarray,
+    maximum_prediction_distance_px: float,
+) -> tuple[
+    Optional[np.ndarray],
+    int,
+    Optional[np.ndarray],
+    int,
+]:
+    """Jointly identify the centre and front labels around the mouse.
+
+    A specular blue label may contribute only a small pale component while a
+    blue optical-token LED remains strongly saturated.  The LED cannot form
+    the measured centre-to-front-label baseline, so scoring the two labels as
+    a pair prevents the tracker from jumping from the centre to an LED.
+    """
+
+    count, labels, stats, centers = cv2.connectedComponentsWithStats(
+        blue_mask,
+        connectivity=8,
+    )
+    candidates: list[
+        tuple[float, int, np.ndarray, int, Optional[np.ndarray]]
+    ] = []
+    for label in range(1, count):
+        area = int(stats[label, cv2.CC_STAT_AREA])
+        if not minimum_blue_pixels <= area <= maximum_blue_pixels:
+            continue
+        prediction_error = float(
+            np.linalg.norm(centers[label] - prediction_xy)
+        )
+        if prediction_error > maximum_prediction_distance_px:
+            continue
+        front_xy, front_count, front_component = _front_label_component(
+            red_mask,
+            np.asarray(centers[label], dtype=float),
+            minimum_red_pixels,
+            maximum_red_pixels,
+            expected_red_pixels,
+            expected_distance_px,
+            distance_tolerance_px,
+            None,
+            maximum_prediction_distance_px,
+        )
+        if front_xy is None:
+            continue
+        width = max(1, int(stats[label, cv2.CC_STAT_WIDTH]))
+        height = max(1, int(stats[label, cv2.CC_STAT_HEIGHT]))
+        baseline_error = abs(
+            float(np.linalg.norm(front_xy - centers[label]))
+            - expected_distance_px
+        )
+        score = (
+            0.45 * baseline_error
+            + 1.5 * abs(math.log(area / max(1.0, expected_blue_pixels)))
+            + abs(math.log(front_count / max(1.0, expected_red_pixels)))
+            + 0.20 * abs(math.log(width / height))
+            + 0.08 * prediction_error
+        )
+        candidates.append(
+            (score, label, front_xy, front_count, front_component)
+        )
+    if not candidates:
+        return None, 0, None, 0
+    _, selected, front_xy, front_count, _ = min(candidates, key=lambda x: x[0])
+    return (
+        np.asarray(centers[selected], dtype=float),
+        int(stats[selected, cv2.CC_STAT_AREA]),
+        front_xy,
+        front_count,
     )
 
 
@@ -1167,21 +1279,6 @@ def detect_pose(
             max(20.0, min(45.0, args.tracking_radius_px)),
         )
 
-    front_label_xy: Optional[np.ndarray] = None
-    front_label_count = 0
-    if args.front_label_colour == "red" and label_xy is not None:
-        front_label_xy, front_label_count, _ = _front_label_component(
-            front_label_mask(frame) & board,
-            label_xy,
-            args.minimum_front_label_pixels,
-            args.maximum_front_label_pixels,
-            expected_front_label_pixels,
-            expected_front_label_distance_px,
-            front_label_distance_tolerance_px,
-            predicted_front_label_xy,
-            max(20.0, min(45.0, args.tracking_radius_px)),
-        )
-
     green = green_mask(frame) & board
     green_prediction = predicted_green_xy
     green_prediction_is_label_seed = False
@@ -1203,6 +1300,72 @@ def detect_pose(
         maximum_distance=green_maximum_distance,
         prefer_largest=prediction_is_seed or green_prediction_is_label_seed,
     )
+
+    if args.label_colour == "blue" and label_xy is None:
+        recovery_prediction = (
+            predicted_label_xy
+            if predicted_label_xy is not None
+            else green_xy
+        )
+        if recovery_prediction is not None:
+            label_xy, label_count, _ = _label_component(
+                blue_label_glare_mask(frame) & board,
+                args.minimum_label_pixels,
+                args.maximum_label_pixels,
+                expected_label_pixels,
+                recovery_prediction,
+                max(20.0, min(30.0, args.tracking_radius_px)),
+            )
+
+    front_label_xy: Optional[np.ndarray] = None
+    front_label_count = 0
+    pair_prediction = (
+        predicted_label_xy
+        if predicted_label_xy is not None
+        else green_xy
+    )
+    if args.front_label_colour == "red" and pair_prediction is not None:
+        paired_label_xy, paired_label_count, paired_front_xy, paired_front_count = (
+            _blue_front_label_pair(
+                cv2.bitwise_or(
+                    blue_label_mask(frame),
+                    blue_label_glare_mask(frame),
+                )
+                & board,
+                front_label_mask(frame) & board,
+                max(6, args.minimum_label_pixels // 3),
+                args.maximum_label_pixels,
+                expected_label_pixels,
+                args.minimum_front_label_pixels,
+                args.maximum_front_label_pixels,
+                expected_front_label_pixels,
+                expected_front_label_distance_px,
+                front_label_distance_tolerance_px,
+                pair_prediction,
+                max(20.0, min(30.0, args.tracking_radius_px)),
+            )
+        )
+        if paired_label_xy is not None:
+            label_xy = paired_label_xy
+            label_count = paired_label_count
+            front_label_xy = paired_front_xy
+            front_label_count = paired_front_count
+    if (
+        args.front_label_colour == "red"
+        and label_xy is not None
+        and front_label_xy is None
+    ):
+        front_label_xy, front_label_count, _ = _front_label_component(
+            front_label_mask(frame) & board,
+            label_xy,
+            args.minimum_front_label_pixels,
+            args.maximum_front_label_pixels,
+            expected_front_label_pixels,
+            expected_front_label_distance_px,
+            front_label_distance_tolerance_px,
+            predicted_front_label_xy,
+            max(20.0, min(45.0, args.tracking_radius_px)),
+        )
 
     body_seed = green_xy if green_xy is not None else label_xy
     body_xy: Optional[np.ndarray] = None
@@ -2441,6 +2604,14 @@ def main() -> int:
                 ),
                 "blue_label_min_blue_red_excess": (
                     BLUE_LABEL_MIN_BLUE_RED_EXCESS
+                ),
+                "blue_label_glare_hsv_low": list(BLUE_LABEL_GLARE_HSV_LOW),
+                "blue_label_glare_hsv_high": list(BLUE_LABEL_GLARE_HSV_HIGH),
+                "blue_label_glare_min_blue_green_excess": (
+                    BLUE_LABEL_GLARE_MIN_BLUE_GREEN_EXCESS
+                ),
+                "blue_label_glare_min_blue_red_excess": (
+                    BLUE_LABEL_GLARE_MIN_BLUE_RED_EXCESS
                 ),
                 "front_label_hsv_low": list(FRONT_LABEL_HSV_LOW),
                 "front_label_hsv_high": list(FRONT_LABEL_HSV_HIGH),
