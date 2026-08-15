@@ -246,6 +246,7 @@ class PixelDashboard:
             client = self._client()
             response = read_status(client)
             capture = capture_state(response)
+            self._reconcile_finished_current_run(capture)
             saved_runs = int(response.get("saved_runs", 0))
             acknowledged_runs = int(response.get("acknowledged_runs", 0))
             now = time.monotonic()
@@ -307,6 +308,27 @@ class PixelDashboard:
                 elapsed = 0.0
             self._last_capture_state = state
             return elapsed
+
+    def _reconcile_finished_current_run(self, capture: dict[str, Any]) -> None:
+        """Release a stale finish-run UI operation once Pixel has re-armed."""
+        if (
+            capture.get("state") not in {"rearming", "starting", "armed"}
+            or capture.get("continuous_standby") is not True
+            or capture.get("recording") is True
+        ):
+            return
+        with self._operation_lock:
+            if (
+                self._operation.state != "running"
+                or self._operation.name != "finish-run"
+            ):
+                return
+            self._operation.state = "success"
+            self._operation.message = (
+                "現在の動画を保存し、連続撮影スタンバイを継続"
+                f"（{int(capture.get('completed_runs', 0))}本保存）"
+            )
+            self._operation.finished_at_unix_ms = int(time.time() * 1000)
 
     def start_action(self, action: str) -> dict[str, Any]:
         if action not in VALID_ACTIONS:
@@ -420,7 +442,10 @@ class PixelDashboard:
 
     def _finish_action(self, sequence: int, state: str, message: str) -> None:
         with self._operation_lock:
-            if self._operation.sequence != sequence:
+            if (
+                self._operation.sequence != sequence
+                or self._operation.state != "running"
+            ):
                 return
             self._operation.state = state
             self._operation.message = message

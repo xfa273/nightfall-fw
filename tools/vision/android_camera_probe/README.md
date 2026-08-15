@@ -353,6 +353,11 @@ or merged run.
 The same page provides continuous-standby start/stop, a **この撮影だけ終了**
 button that preserves continuous standby, and explicit **手動録画を開始** /
 **手動録画を終了** buttons for an immediate one-shot without optical signals.
+After **この撮影だけ終了**, the armed banner explicitly says
+**録画停止中・次の走行OK**: the just-finished MP4 is closed, no video is being
+recorded, and the optical detector remains ready for the next START token. The
+dashboard also reconciles this state directly from the Pixel, so a missed
+session-counter refresh cannot leave the controls disabled after re-arming.
 Transfer and stop-and-transfer remain disabled while a manual one-shot owns
 the camera/storage lease. The Pixel access token stays in the Mac process and
 is not sent to the browser; mutating dashboard requests use a per-launch

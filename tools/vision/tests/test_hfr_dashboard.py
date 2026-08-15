@@ -137,6 +137,7 @@ class DashboardTest(unittest.TestCase):
             self.assertIn("手動録画を終了", page)
             self.assertIn(token, page)
             self.assertIn("default-src 'self'", response.getheader("Content-Security-Policy"))
+            self.assertEqual(response.getheader("Cache-Control"), "no-store")
             connection.close()
 
             connection = HTTPConnection("127.0.0.1", server.server_port)
@@ -228,6 +229,39 @@ class DashboardTest(unittest.TestCase):
         self.assertIn("elements.manualStartButton.disabled", javascript)
         self.assertIn("elements.manualStopButton.disabled", javascript)
         self.assertIn("!continuousOptical", javascript)
+        self.assertIn("録画停止中（待機継続）", javascript)
+        self.assertIn("録画停止中・次の走行OK", javascript)
+
+    def test_armed_capture_releases_stale_finish_run_operation(self) -> None:
+        model = dashboard.PixelDashboard(
+            config_path=Path("/tmp/unused-hfr-config.json"),
+            output_root=Path("/tmp/unused-hfr-output"),
+            pixel_host=None,
+            device_id=None,
+            discover_seconds=0.0,
+            wait_seconds=2.0,
+            recording_warning_seconds=15.0,
+        )
+        model._operation = dashboard.Operation(
+            sequence=3,
+            name="finish-run",
+            state="running",
+            message="現在の撮影だけ終了を開始しました",
+        )
+        model._reconcile_finished_current_run({
+            "state": "armed",
+            "capture_mode": "continuous_optical",
+            "continuous_standby": True,
+            "recording": False,
+            "completed_runs": 7,
+        })
+        self.assertEqual(model._operation.state, "success")
+        self.assertIn("7本保存", model._operation.message)
+
+        # A late timeout/error from the old waiter must not replace the
+        # capture-state-confirmed success or disable the controls again.
+        model._finish_action(3, "error", "late timeout")
+        self.assertEqual(model._operation.state, "success")
 
     def test_dashboard_manual_actions_use_dedicated_pixel_endpoints(self) -> None:
         model = dashboard.PixelDashboard(

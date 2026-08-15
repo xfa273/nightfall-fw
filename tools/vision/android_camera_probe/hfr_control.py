@@ -256,12 +256,11 @@ def wait_for_current_run_finish(
             raise WifiCollectorError(
                 "現在の動画を終了した後、連続撮影スタンバイが解除されました"
             )
-        completed = int(state.get("completed_runs", 0))
-        if completed > completed_before and state["state"] in {
+        if state["state"] in {
             "rearming",
             "starting",
             "armed",
-        }:
+        } and not state.get("recording"):
             return response
         if time.monotonic() >= deadline:
             raise WifiCollectorError(

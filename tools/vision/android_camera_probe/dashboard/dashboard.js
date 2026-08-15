@@ -222,9 +222,13 @@ function renderOnline(data) {
   } else if (state === "armed") {
     setHero(
       recentSave && latestComplete ? "saved" : "armed",
-      recentSave && latestComplete ? "SAVE VERIFIED / ARMED" : "ARMED 240 FPS",
-      recentSave && latestComplete ? "保存確認済み・次の走行OK" : "次の走行OK",
-      `LED START信号を待機中です。現在のセッションで${completed}本保存済みです。`,
+      recentSave && latestComplete
+        ? "SAVE VERIFIED / RECORDING STOPPED / ARMED"
+        : "RECORDING STOPPED / ARMED 240 FPS",
+      recentSave && latestComplete
+        ? "保存確認済み・録画停止・次の走行OK"
+        : "録画停止中・次の走行OK",
+      `録画は停止しています。LED START信号を待機中です。現在のセッションで${completed}本保存済みです。`,
     );
   } else if (state === "finishing-run") {
     setHero(
@@ -274,6 +278,18 @@ function renderOnline(data) {
   elements.manualStopButton.disabled = actionRunning
     || !manualOneShot
     || state !== "recording";
+  if (continuousOptical && state === "recording") {
+    elements.finishRunButton.textContent = "この撮影だけ終了";
+  } else if (
+    continuousOptical
+    && ["finishing-run", "rearming", "starting"].includes(state)
+  ) {
+    elements.finishRunButton.textContent = "撮影終了処理中…";
+  } else if (continuousOptical && state === "armed") {
+    elements.finishRunButton.textContent = "録画停止中（待機継続）";
+  } else {
+    elements.finishRunButton.textContent = "この撮影だけ終了";
+  }
   elements.finishRunButton.disabled = actionRunning
     || state !== "recording"
     || !continuousOptical
@@ -282,6 +298,10 @@ function renderOnline(data) {
     || !continuousOptical
     || !capture.continuous_standby
     || state === "finishing-run";
+  elements.stopButton.textContent = continuousOptical
+    && capture.continuous_standby
+    ? "連続待機を終了"
+    : "待機を終了";
   elements.collectButton.disabled = actionRunning || captureBusy;
   elements.stopCollectButton.disabled = actionRunning
     || !continuousOptical

@@ -85,6 +85,19 @@ class CurrentRunFinishTest(unittest.TestCase):
         ):
             control.wait_for_current_run_finish(client, 2.0, 3)
 
+    @patch.object(control.time, "sleep", return_value=None)
+    def test_armed_state_finishes_even_if_session_counter_was_not_observed(
+        self,
+        _sleep: object,
+    ) -> None:
+        client = FakeClient([
+            response("armed", continuous=True, completed=3),
+        ])
+        result = control.wait_for_current_run_finish(client, 2.0, 3)
+        state = control.capture_state(result)
+        self.assertEqual(state["state"], "armed")
+        self.assertTrue(state["continuous_standby"])
+
 
 class ContinuousStandbyRegressionTest(unittest.TestCase):
     @patch.object(control.time, "sleep", return_value=None)
