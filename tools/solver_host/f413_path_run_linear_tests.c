@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #define NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST (1U)
+#define NIGHTFALL_F413_PATH_DISTANCE_CURSOR_HOST_TEST (1U)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c"
 
 static unsigned int g_checks;
@@ -433,6 +434,64 @@ static void check_prepared_execution_plans(void)
   CHECK(close_value(prepared.actions[0].exit_velocity_mm_s, 300.0, 1.0e-6));
 }
 
+static void check_distance_cursor_transition_credit(void)
+{
+  f413_path_run_distance_cursor_t cursor;
+  float target = 0.0f;
+  float remaining = 0.0f;
+
+  f413_path_run_distance_cursor_invalidate(&cursor);
+  CHECK(!cursor.active);
+  CHECK(!f413_path_run_distance_cursor_advance(
+      &cursor, 0.0f, 5.0f, &target, &remaining));
+
+  f413_path_run_distance_cursor_reset(&cursor, 0.0f);
+  CHECK(cursor.active);
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 0.0f, 5.0f, &target, &remaining));
+  CHECK(close_value(target, 5.0, 1.0e-6));
+  CHECK(close_value(remaining, 5.0, 1.0e-6));
+
+  /* 0.4 mm traveled while switching profiles consumes the S3 action. */
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 5.4f, 135.0f, &target, &remaining));
+  CHECK(close_value(target, 140.0, 1.0e-6));
+  CHECK(close_value(remaining, 134.6, 1.0e-5));
+
+  /* A further 1.0 mm transition consumes the turn entry offset. */
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 141.0f, 10.0f, &target, &remaining));
+  CHECK(close_value(target, 150.0, 1.0e-6));
+  CHECK(close_value(remaining, 9.0, 1.0e-6));
+
+  /* The empirical timed turn core establishes a fresh measured origin. */
+  f413_path_run_distance_cursor_reset(&cursor, 217.5f);
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 219.0f, 29.0f, &target, &remaining));
+  CHECK(close_value(target, 246.5, 1.0e-6));
+  CHECK(close_value(remaining, 27.5, 1.0e-6));
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 247.0f, (float)DIST_D_HALF_SEC, &target, &remaining));
+  CHECK(close_value(target, 246.5 + DIST_D_HALF_SEC, 1.0e-5));
+  CHECK(close_value(remaining, DIST_D_HALF_SEC - 0.5, 1.0e-5));
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, target + 2.0f, (float)DIST_HALF_SEC, &target, &remaining));
+  CHECK(close_value(remaining, DIST_HALF_SEC - 2.0, 1.0e-5));
+
+  /* Overshoot larger than one portion carries into the following portion. */
+  f413_path_run_distance_cursor_reset(&cursor, 0.0f);
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 0.0f, 5.0f, &target, &remaining));
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 8.0f, 2.0f, &target, &remaining));
+  CHECK(close_value(target, 7.0, 1.0e-6));
+  CHECK(close_value(remaining, 0.0, 1.0e-6));
+  CHECK(f413_path_run_distance_cursor_advance(
+      &cursor, 8.0f, 10.0f, &target, &remaining));
+  CHECK(close_value(target, 17.0, 1.0e-6));
+  CHECK(close_value(remaining, 9.0, 1.0e-6));
+}
+
 int main(void)
 {
   check_mode2_case_profiles();
@@ -441,6 +500,7 @@ int main(void)
   check_preflight_boundaries();
   check_mode2_case0_paths();
   check_prepared_execution_plans();
+  check_distance_cursor_transition_credit();
 
   if (g_failures != 0U)
   {

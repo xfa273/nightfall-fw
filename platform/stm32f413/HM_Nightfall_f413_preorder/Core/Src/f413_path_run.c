@@ -53,6 +53,76 @@ typedef struct
   size_t count;
 } f413_path_run_prepared_path_t;
 
+#if !defined(NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST) || \
+    defined(NIGHTFALL_F413_PATH_DISTANCE_CURSOR_HOST_TEST)
+/*
+ * The distance controller keeps the preceding velocity active while the main
+ * loop changes from one path action to the next.  Starting every following
+ * action from the then-current encoder position makes that transition travel
+ * additive: several individually small gaps can move a complete path by more
+ * than one centimetre.  Keep an absolute endpoint for consecutive straight
+ * portions instead.  Any forward travel between calls therefore consumes the
+ * following portion rather than extending the path.
+ *
+ * A timed turn core is intentionally an empirical primitive.  Its measured
+ * end position becomes the next cursor origin; only the straight in/out and
+ * path-code transition gaps are compensated here.
+ */
+typedef struct
+{
+  float endpoint_mm;
+  bool active;
+} f413_path_run_distance_cursor_t;
+
+static void f413_path_run_distance_cursor_reset(
+    f413_path_run_distance_cursor_t* cursor,
+    float position_mm)
+{
+  if (cursor == NULL)
+  {
+    return;
+  }
+  cursor->endpoint_mm = position_mm;
+  cursor->active = isfinite(position_mm);
+}
+
+static void f413_path_run_distance_cursor_invalidate(
+    f413_path_run_distance_cursor_t* cursor)
+{
+  if (cursor != NULL)
+  {
+    cursor->endpoint_mm = 0.0f;
+    cursor->active = false;
+  }
+}
+
+static bool f413_path_run_distance_cursor_advance(
+    f413_path_run_distance_cursor_t* cursor,
+    float current_position_mm,
+    float requested_distance_mm,
+    float* target_position_mm,
+    float* remaining_distance_mm)
+{
+  float remaining;
+
+  if ((cursor == NULL) || !cursor->active ||
+      !isfinite(cursor->endpoint_mm) ||
+      !isfinite(current_position_mm) ||
+      !isfinite(requested_distance_mm) ||
+      (requested_distance_mm < 0.0f) ||
+      (target_position_mm == NULL) || (remaining_distance_mm == NULL))
+  {
+    return false;
+  }
+
+  cursor->endpoint_mm += requested_distance_mm;
+  remaining = cursor->endpoint_mm - current_position_mm;
+  *target_position_mm = cursor->endpoint_mm;
+  *remaining_distance_mm = (remaining > 0.0f) ? remaining : 0.0f;
+  return isfinite(cursor->endpoint_mm) && isfinite(*remaining_distance_mm);
+}
+#endif
+
 static bool f413_path_run_store_prepared_linear(
     f413_path_run_prepared_path_t* prepared,
     size_t path_index,
@@ -705,6 +775,7 @@ typedef struct {
 extern uint16_t path[];
 
 static f413_path_run_prepared_path_t g_f413_path_run_prepared_path;
+static f413_path_run_distance_cursor_t g_f413_path_run_distance_cursor;
 
 #if (NIGHTFALL_F413_PATH_MAX_CODES > ROUTE_MAX_LEN)
 #error "F413 path execution limit exceeds path[] capacity"
@@ -1146,9 +1217,14 @@ static f413_run_session_abort_reason_t f413_path_run_settle_test_stop(
   {
     const float velocity_mm_s = f413_ctrl_get_real_velocity();
     const float position_error_mm =
-        f413_ctrl_get_target_distance() - f413_ctrl_get_distance();
+        g_f413_path_run_distance_cursor.endpoint_mm - f413_ctrl_get_distance();
     f413_run_session_abort_reason_t reason;
 
+    if (!g_f413_path_run_distance_cursor.active ||
+        !isfinite(position_error_mm))
+    {
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
     if ((fabsf(velocity_mm_s) <= F413_PATH_RUN_TEST_STOP_VELOCITY_MM_S) &&
         (fabsf(position_error_mm) <=
          F413_PATH_RUN_TEST_STOP_POSITION_ERROR_MM))
@@ -1178,6 +1254,7 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
                                                                       bool diagonal_control_gate)
 {
   float start_velocity;
+  float profile_distance;
   float target_distance;
   f413_run_session_abort_reason_t reason;
 
@@ -1192,13 +1269,30 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
   }
 
   start_velocity = *speed_now_mm_s;
-  target_distance = f413_ctrl_get_distance() + distance_mm;
+  if (!f413_path_run_distance_cursor_advance(
+          &g_f413_path_run_distance_cursor,
+          f413_ctrl_get_distance(),
+          distance_mm,
+          &target_distance,
+          &profile_distance))
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
   if (!wall_control_gate)
   {
     f413_wall_runtime_control_clear();
   }
   f413_path_run_prepare_straight_angle_control();
-  f413_ctrl_set_velocity_profile(start_velocity, target_velocity_mm_s, distance_mm);
+  if (profile_distance <= 0.001f)
+  {
+    f413_ctrl_set_velocity(target_velocity_mm_s);
+    f413_ctrl_set_omega(0.0f);
+    *speed_now_mm_s = target_velocity_mm_s;
+    return F413_RUN_SESSION_ABORT_NONE;
+  }
+  f413_ctrl_set_velocity_profile(start_velocity,
+                                 target_velocity_mm_s,
+                                 profile_distance);
   f413_ctrl_set_omega(0.0f);
 
   reason = f413_path_run_wait_ctrl_target(target_distance, false, guard, trace_flags,
@@ -1341,6 +1435,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segm
     if ((int32_t)(HAL_GetTick() - deadline) >= 0)
     {
       *speed_now_mm_s = target_velocity_mm_s;
+      f413_path_run_distance_cursor_reset(
+          &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
       return F413_RUN_SESSION_ABORT_TIMEOUT;
     }
     f413_trace_log_set_mode_flags(trace_flags);
@@ -1350,6 +1446,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segm
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
       *speed_now_mm_s = target_velocity_mm_s;
+      f413_path_run_distance_cursor_reset(
+          &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
       return reason;
     }
   }
@@ -1385,6 +1483,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segm
   }
 
   *speed_now_mm_s = target_velocity_mm_s;
+  f413_path_run_distance_cursor_reset(
+      &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
   return reason;
 }
 
@@ -1449,6 +1549,8 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
 
   f413_wall_runtime_control_apply(false);
   *speed_now_mm_s = target_velocity_mm_s;
+  f413_path_run_distance_cursor_reset(
+      &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
   return reason;
 }
 
@@ -1543,6 +1645,8 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   }
 
   f413_ctrl_stop_omega_profile();
+  f413_path_run_distance_cursor_reset(
+      &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
   if (turn->large_turn && next_is_large_turn &&
       f413_run_features_wall_end_correction_enabled() &&
       (turn->dist_out_mm > 0.0f))
@@ -1870,6 +1974,8 @@ void f413_path_run_session_once(uint8_t mode,
                                             mode_params->wall_end_thr_l_low);
   f413_path_run_trace_on_run_start();
   f413_ctrl_start();
+  f413_path_run_distance_cursor_reset(
+      &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
 
   abort_reason = f413_path_run_drive_segment(
       (float)DIST_FIRST_SEC,
@@ -2053,6 +2159,8 @@ void f413_path_run_session_once(uint8_t mode,
                                            NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
   (void)f413_run_session_wait_with_auto_step_guarded(NIGHTFALL_F413_PATH_COAST_MS, &guard);
   f413_ctrl_stop();
+  f413_path_run_distance_cursor_invalidate(
+      &g_f413_path_run_distance_cursor);
   f413_wall_runtime_reset_wall_end_thresholds();
 
   if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
