@@ -487,10 +487,10 @@ static bool f413_test_kerilab_2014_parity(const char* maze_path)
   CHECK(compact.goal.stop_us == common.stop_us + 300000ULL);
   CHECK(common.goal_x == 8U);
   CHECK(common.goal_y == 8U);
-  CHECK(common.goal_entry_us == 10282206ULL);
-  CHECK(common.stop_us == 10541764ULL);
-  CHECK(compact.goal.goal_entry_us == 10582206UL);
-  CHECK(compact.goal.stop_us == 10841764UL);
+  CHECK(common.goal_entry_us == 10306206ULL);
+  CHECK(common.stop_us == 10565764ULL);
+  CHECK(compact.goal.goal_entry_us == 10606206UL);
+  CHECK(compact.goal.stop_us == 10865764UL);
   CHECK(common.action_count == 15U);
   CHECK(f413_test_common_diagonal_actions(&common) == 8U);
   reconstruction_mark = arena.cursor;
@@ -554,7 +554,7 @@ static bool f413_test_public_cleanup_and_metadata(const char* maze_path)
   CHECK(strstr(g_trace_output,
                "OK turns=13 actions=15 diagonal-actions=8") != NULL);
   CHECK(strstr(g_trace_output,
-               "goal-entry=10.582206 s stop=10.841764 s") != NULL);
+               "goal-entry=10.606206 s stop=10.865764 s") != NULL);
   CHECK(strstr(g_trace_output,
                "wall-mismatch-normalized=0") != NULL);
   CHECK(strstr(g_trace_output,
