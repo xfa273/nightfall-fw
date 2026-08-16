@@ -16,6 +16,7 @@ typedef enum
   F413_PATH_RUN_PREFLIGHT_INVALID_LEGACY_PATH,
   F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR,
   F413_PATH_RUN_PREFLIGHT_SPEED_DISCONTINUITY,
+  F413_PATH_RUN_PREFLIGHT_PREPARED_CAPACITY,
 } f413_path_run_preflight_status_t;
 
 typedef struct
@@ -25,6 +26,86 @@ typedef struct
   size_t index;
   uint16_t code;
 } f413_path_run_preflight_result_t;
+
+/*
+ * A 16x16 shortest path cannot contain more than 256 distinct linear runs.
+ * Keep only the controller inputs needed at execution time instead of the
+ * double-precision host plan.  Building nf_motion_linear_plan() while the
+ * motors are already running otherwise leaves the preceding velocity command
+ * active for several milliseconds on the F413 and changes the physical path.
+ */
+#define F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS (256U)
+
+typedef struct
+{
+  uint16_t path_index;
+  uint8_t phase_count;
+  bool execute_plan;
+  float entry_velocity_mm_s;
+  float exit_velocity_mm_s;
+  float phase_distance_mm[NF_MOTION_LINEAR_MAX_PHASES];
+  float phase_exit_velocity_mm_s[NF_MOTION_LINEAR_MAX_PHASES];
+} f413_path_run_prepared_linear_t;
+
+typedef struct
+{
+  f413_path_run_prepared_linear_t actions[F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS];
+  size_t count;
+} f413_path_run_prepared_path_t;
+
+static bool f413_path_run_store_prepared_linear(
+    f413_path_run_prepared_path_t* prepared,
+    size_t path_index,
+    float entry_velocity_mm_s,
+    float exit_velocity_mm_s,
+    const NfLinearPlan* plan,
+    bool execute_plan)
+{
+  f413_path_run_prepared_linear_t* action;
+  size_t phase_index;
+
+  if (prepared == NULL)
+  {
+    return true;
+  }
+  if ((prepared->count >= F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS) ||
+      (path_index > UINT16_MAX) || !isfinite(entry_velocity_mm_s) ||
+      !isfinite(exit_velocity_mm_s) ||
+      (execute_plan && ((plan == NULL) ||
+                        (plan->phase_count > NF_MOTION_LINEAR_MAX_PHASES))))
+  {
+    return false;
+  }
+
+  action = &prepared->actions[prepared->count];
+  action->path_index = (uint16_t)path_index;
+  action->phase_count = execute_plan ? (uint8_t)plan->phase_count : 0U;
+  action->execute_plan = execute_plan;
+  action->entry_velocity_mm_s = entry_velocity_mm_s;
+  action->exit_velocity_mm_s = exit_velocity_mm_s;
+  for (phase_index = 0U; phase_index < NF_MOTION_LINEAR_MAX_PHASES; phase_index++)
+  {
+    action->phase_distance_mm[phase_index] = 0.0f;
+    action->phase_exit_velocity_mm_s[phase_index] = 0.0f;
+  }
+  for (phase_index = 0U; phase_index < action->phase_count; phase_index++)
+  {
+    const double distance_mm = plan->phases[phase_index].distance_mm;
+    const double phase_exit_velocity_mm_s =
+        plan->phases[phase_index].exit_velocity_mm_s;
+    if (!isfinite(distance_mm) || (distance_mm < 0.0) ||
+        !isfinite(phase_exit_velocity_mm_s) ||
+        (phase_exit_velocity_mm_s < 0.0))
+    {
+      return false;
+    }
+    action->phase_distance_mm[phase_index] = (float)distance_mm;
+    action->phase_exit_velocity_mm_s[phase_index] =
+        (float)phase_exit_velocity_mm_s;
+  }
+  prepared->count++;
+  return true;
+}
 
 static bool f413_path_run_make_linear_plan(float distance_mm,
                                             float entry_velocity_mm_s,
@@ -348,14 +429,15 @@ static bool f413_path_run_turn_exits_diagonal(uint16_t code)
          (code == NF_LEGACY_PATH_LEFT_135_OUT);
 }
 
-static f413_path_run_preflight_result_t f413_path_run_preflight(
+static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
     const uint16_t* codes,
     size_t capacity,
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
     float initial_velocity_mm_s,
     bool wall_end_correction_enabled,
-    bool test_mode_run)
+    bool test_mode_run,
+    f413_path_run_prepared_path_t* prepared)
 {
   f413_path_run_preflight_result_t result = {
       F413_PATH_RUN_PREFLIGHT_OK, NF_LEGACY_PATH_OK, 0U, 0U};
@@ -365,6 +447,11 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
   float speed_now = initial_velocity_mm_s;
   bool diagonal = false;
   size_t index = 0U;
+
+  if (prepared != NULL)
+  {
+    prepared->count = 0U;
+  }
 
   if ((codes == NULL) || (capacity == 0U) || (mode_params == NULL) ||
       (case_params == NULL) || !isfinite(initial_velocity_mm_s) ||
@@ -407,6 +494,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
       float exit_velocity;
       NfLinearPlan plan;
       bool skip_wall_end;
+      bool execute_plan = true;
 
       while (f413_path_run_is_straight_code(codes[end]))
       {
@@ -433,6 +521,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
         {
           result.status = F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR;
         }
+        execute_plan = execute_before_buffer;
       }
       else if (!f413_path_run_make_linear_plan(
                    (float)steps * (float)DIST_HALF_SEC,
@@ -442,6 +531,15 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
       }
       if (result.status != F413_PATH_RUN_PREFLIGHT_OK)
       {
+        result.index = index;
+        result.code = code;
+        return result;
+      }
+      if (!f413_path_run_store_prepared_linear(
+              prepared, index, speed_now, exit_velocity,
+              execute_plan ? &plan : NULL, execute_plan))
+      {
+        result.status = F413_PATH_RUN_PREFLIGHT_PREPARED_CAPACITY;
         result.index = index;
         result.code = code;
         return result;
@@ -479,6 +577,14 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
               speed_now, exit_velocity, &diagonal_limits, &plan))
       {
         result.status = F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR;
+        result.index = index;
+        result.code = code;
+        return result;
+      }
+      if (!f413_path_run_store_prepared_linear(
+              prepared, index, speed_now, exit_velocity, &plan, true))
+      {
+        result.status = F413_PATH_RUN_PREFLIGHT_PREPARED_CAPACITY;
         result.index = index;
         result.code = code;
         return result;
@@ -545,6 +651,22 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
   return result;
 }
 
+#if defined(NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST)
+static f413_path_run_preflight_result_t f413_path_run_preflight(
+    const uint16_t* codes,
+    size_t capacity,
+    const ShortestRunModeParams_t* mode_params,
+    const ShortestRunCaseParams_t* case_params,
+    float initial_velocity_mm_s,
+    bool wall_end_correction_enabled,
+    bool test_mode_run)
+{
+  return f413_path_run_preflight_prepare(
+      codes, capacity, mode_params, case_params, initial_velocity_mm_s,
+      wall_end_correction_enabled, test_mode_run, NULL);
+}
+#endif
+
 #if !defined(NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST)
 
 #include "f413_control.h"
@@ -581,6 +703,8 @@ typedef struct {
 } f413_path_run_smooth_turn_t;
 
 extern uint16_t path[];
+
+static f413_path_run_prepared_path_t g_f413_path_run_prepared_path;
 
 #if (NIGHTFALL_F413_PATH_MAX_CODES > ROUTE_MAX_LEN)
 #error "F413 path execution limit exceeds path[] capacity"
@@ -878,6 +1002,55 @@ static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn(float angle_d
   return profile;
 }
 
+static bool f413_path_run_print_turn_profiles_before_run(
+    const ShortestRunModeParams_t* mode_params)
+{
+  uint16_t index;
+
+  for (index = 0U; index < NIGHTFALL_F413_PATH_MAX_CODES; index++)
+  {
+    const uint16_t code = path[index];
+    f413_path_run_turn_t turn;
+    f413_path_run_smooth_turn_t profile;
+
+    if (code == 0U)
+    {
+      return true;
+    }
+    if (f413_path_run_is_straight_code(code) ||
+        f413_path_run_is_diagonal_code(code))
+    {
+      continue;
+    }
+    if (!f413_path_run_turn_from_code(code, mode_params, &turn))
+    {
+      return false;
+    }
+    profile = f413_path_run_build_smooth_turn(turn.signed_angle_deg,
+                                              turn.alpha_deg_s2,
+                                              NIGHTFALL_F413_PATH_OMEGA_CAP);
+    if (profile.t_total_s <= 0.0f)
+    {
+      return false;
+    }
+    /*
+     * Float formatting is intentionally completed while motor standby is
+     * still off.  Printing this line at the live straight-to-turn boundary
+     * previously extended the approach distance at the old velocity.
+     */
+    trace_printf(
+        "[OP-UI][PATH-TEST] turn[%u] code=%u angle=%.1f alpha=%.0f omega=%.0f v=%.0f t=%.0fms\r\n",
+        (unsigned int)index,
+        (unsigned int)code,
+        (double)turn.signed_angle_deg,
+        (double)turn.alpha_deg_s2,
+        (double)profile.omega_peak_deg_s,
+        (double)turn.velocity_mm_s,
+        (double)(profile.t_total_s * 1000.0f));
+  }
+  return false;
+}
+
 static void f413_path_run_trace_on_run_start(void)
 {
   /* Keep the driver in standby for the complete optical START token. */
@@ -958,6 +1131,44 @@ static f413_run_session_abort_reason_t f413_path_run_wait_ctrl_target(
   return F413_RUN_SESSION_ABORT_NONE;
 }
 
+#define F413_PATH_RUN_TEST_STOP_SETTLE_MAX_MS       (250U)
+#define F413_PATH_RUN_TEST_STOP_VELOCITY_MM_S       (20.0f)
+#define F413_PATH_RUN_TEST_STOP_POSITION_ERROR_MM   (0.75f)
+
+static f413_run_session_abort_reason_t f413_path_run_settle_test_stop(
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags)
+{
+  const uint32_t deadline =
+      HAL_GetTick() + F413_PATH_RUN_TEST_STOP_SETTLE_MAX_MS;
+
+  while (1)
+  {
+    const float velocity_mm_s = f413_ctrl_get_real_velocity();
+    const float position_error_mm =
+        f413_ctrl_get_target_distance() - f413_ctrl_get_distance();
+    f413_run_session_abort_reason_t reason;
+
+    if ((fabsf(velocity_mm_s) <= F413_PATH_RUN_TEST_STOP_VELOCITY_MM_S) &&
+        (fabsf(position_error_mm) <=
+         F413_PATH_RUN_TEST_STOP_POSITION_ERROR_MM))
+    {
+      return F413_RUN_SESSION_ABORT_NONE;
+    }
+    if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+    {
+      return F413_RUN_SESSION_ABORT_TIMEOUT;
+    }
+    f413_trace_log_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    f413_wall_runtime_control_apply(false);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+  }
+}
+
 static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float distance_mm,
                                                                       float target_velocity_mm_s,
                                                                       float* speed_now_mm_s,
@@ -1026,27 +1237,31 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_no_wall(float
                                         false);
 }
 
-static f413_run_session_abort_reason_t f413_path_run_execute_linear_plan(
-    const NfLinearPlan* plan,
+static f413_run_session_abort_reason_t f413_path_run_execute_prepared_linear(
+    const f413_path_run_prepared_linear_t* action,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
     uint16_t trace_flags,
     bool wall_control_gate,
     bool diagonal_control_gate)
 {
-  if ((plan == NULL) || (speed_now_mm_s == NULL) ||
-      !isfinite(plan->entry_velocity_mm_s) ||
-      !isfinite(plan->exit_velocity_mm_s) ||
-      (fabs((double)*speed_now_mm_s - plan->entry_velocity_mm_s) > 0.5))
+  size_t phase_index;
+
+  if ((action == NULL) || !action->execute_plan ||
+      (speed_now_mm_s == NULL) ||
+      !isfinite(action->entry_velocity_mm_s) ||
+      !isfinite(action->exit_velocity_mm_s) ||
+      (action->phase_count > NF_MOTION_LINEAR_MAX_PHASES) ||
+      (fabsf(*speed_now_mm_s - action->entry_velocity_mm_s) > 0.5f))
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
 
-  for (size_t phase_index = 0U; phase_index < plan->phase_count; phase_index++)
+  for (phase_index = 0U; phase_index < action->phase_count; phase_index++)
   {
-    const NfLinearPhase* phase = &plan->phases[phase_index];
-    const float phase_distance_mm = (float)phase->distance_mm;
-    const float phase_exit_velocity_mm_s = (float)phase->exit_velocity_mm_s;
+    const float phase_distance_mm = action->phase_distance_mm[phase_index];
+    const float phase_exit_velocity_mm_s =
+        action->phase_exit_velocity_mm_s[phase_index];
     f413_run_session_abort_reason_t reason;
 
     if (!isfinite(phase_distance_mm) || (phase_distance_mm < 0.0f) ||
@@ -1073,42 +1288,8 @@ static f413_run_session_abort_reason_t f413_path_run_execute_linear_plan(
     }
   }
 
-  *speed_now_mm_s = (float)plan->exit_velocity_mm_s;
+  *speed_now_mm_s = action->exit_velocity_mm_s;
   return F413_RUN_SESSION_ABORT_NONE;
-}
-
-static f413_run_session_abort_reason_t f413_path_run_drive_linear_profile(
-    float distance_mm,
-    float exit_velocity_mm_s,
-    const NfLinearLimits* limits,
-    float* speed_now_mm_s,
-    f413_run_session_guard_t* guard,
-    uint16_t trace_flags,
-    bool wall_control_gate,
-    bool diagonal_control_gate)
-{
-  NfLinearPlan plan;
-
-  if ((speed_now_mm_s == NULL) ||
-      !f413_path_run_make_linear_plan(distance_mm,
-                                      *speed_now_mm_s,
-                                      exit_velocity_mm_s,
-                                      limits,
-                                      &plan))
-  {
-    trace_printf("[RUN-TEST] invalid linear profile d=%.3f entry=%.1f exit=%.1f\r\n",
-                 (double)distance_mm,
-                 (double)((speed_now_mm_s != NULL) ? *speed_now_mm_s : 0.0f),
-                 (double)exit_velocity_mm_s);
-    return F413_RUN_SESSION_ABORT_IMU_FAULT;
-  }
-
-  return f413_path_run_execute_linear_plan(&plan,
-                                            speed_now_mm_s,
-                                            guard,
-                                            trace_flags,
-                                            wall_control_gate,
-                                            diagonal_control_gate);
 }
 
 static f413_run_session_abort_reason_t f413_path_run_drive_front_wall_entry_segment(
@@ -1300,13 +1481,6 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   }
 
   turn_sign = (turn->signed_angle_deg < 0.0f) ? -1 : 1;
-  trace_printf("[OP-UI][PATH-TEST] turn profile angle=%.1f alpha=%.0f omega=%.0f v=%.0f t=%.0fms\r\n",
-               (double)turn->signed_angle_deg,
-               (double)turn->alpha_deg_s2,
-               (double)profile.omega_peak_deg_s,
-               (double)turn->velocity_mm_s,
-               (double)(profile.t_total_s * 1000.0f));
-
   straight_trace_flags = f413_path_run_motor_phase_flags(
       trace_flags,
       turn->wall_control_offsets ? NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG : 0U);
@@ -1413,6 +1587,7 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
     uint16_t next_code,
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
+    const f413_path_run_prepared_linear_t* prepared,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
     uint16_t trace_flags)
@@ -1420,7 +1595,6 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
   const float straight_mm = (float)straight_steps * (float)DIST_HALF_SEC;
   const float v_next =
       f413_path_run_next_straight_exit_velocity(next_code, mode_params, case_params);
-  NfLinearLimits limits;
   f413_run_session_abort_reason_t reason;
   bool next_is_small_turn;
   bool next_is_large_turn;
@@ -1429,7 +1603,9 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
   bool skip_wallend;
 
   if ((straight_mm <= 0.0f) || (speed_now_mm_s == NULL) ||
-      !f413_path_run_straight_limits(mode_params, case_params, &limits))
+      (prepared == NULL) ||
+      (fabsf(prepared->entry_velocity_mm_s - *speed_now_mm_s) > 0.5f) ||
+      (fabsf(prepared->exit_velocity_mm_s - v_next) > 0.5f))
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
@@ -1447,29 +1623,16 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
   if ((next_is_small_turn || next_is_large_turn) && !skip_wallend)
   {
     const float buffer_max_mm = (float)DIST_HALF_SEC;
-    NfLinearPlan approach_plan;
-    bool execute_before_buffer;
     bool wall_end_found = false;
 
-    if (!f413_path_run_make_wall_end_approach_plan(
-            straight_steps, *speed_now_mm_s, v_next, &limits,
-            &approach_plan, &execute_before_buffer))
+    if (prepared->execute_plan)
     {
-      trace_printf(
-          "[RUN-TEST] infeasible wall-end approach S%lu entry=%.1f turn=%.1f\r\n",
-          (unsigned long)straight_steps,
-          (double)*speed_now_mm_s,
-          (double)v_next);
-      return F413_RUN_SESSION_ABORT_IMU_FAULT;
-    }
-    if (execute_before_buffer)
-    {
-      reason = f413_path_run_execute_linear_plan(&approach_plan,
-                                                 speed_now_mm_s,
-                                                 guard,
-                                                 trace_flags,
-                                                 true,
-                                                 false);
+      reason = f413_path_run_execute_prepared_linear(prepared,
+                                                     speed_now_mm_s,
+                                                     guard,
+                                                     trace_flags,
+                                                     true,
+                                                     false);
       if (reason != F413_RUN_SESSION_ABORT_NONE)
       {
         return reason;
@@ -1503,14 +1666,12 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
     return F413_RUN_SESSION_ABORT_NONE;
   }
 
-  return f413_path_run_drive_linear_profile(straight_mm,
-                                            v_next,
-                                            &limits,
-                                            speed_now_mm_s,
-                                            guard,
-                                            trace_flags,
-                                            true,
-                                            false);
+  return f413_path_run_execute_prepared_linear(prepared,
+                                               speed_now_mm_s,
+                                               guard,
+                                               trace_flags,
+                                               true,
+                                               false);
 }
 
 static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
@@ -1518,6 +1679,7 @@ static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
     uint16_t next_code,
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
+    const f413_path_run_prepared_linear_t* prepared,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
     uint16_t trace_flags)
@@ -1525,10 +1687,9 @@ static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
   const float straight_mm =
       (float)diagonal_steps * (float)DIST_D_HALF_SEC;
   float v_next;
-  NfLinearLimits limits;
 
   if ((straight_mm <= 0.0f) || (speed_now_mm_s == NULL) ||
-      !f413_path_run_diagonal_limits(case_params, &limits))
+      (prepared == NULL))
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
   }
@@ -1539,14 +1700,17 @@ static f413_run_session_abort_reason_t f413_path_run_run_diagonal_steps(
           ? *speed_now_mm_s
           : 0.0f);
 
-  return f413_path_run_drive_linear_profile(straight_mm,
-                                            v_next,
-                                            &limits,
-                                            speed_now_mm_s,
-                                            guard,
-                                            trace_flags,
-                                            false,
-                                            true);
+  if ((fabsf(prepared->entry_velocity_mm_s - *speed_now_mm_s) > 0.5f) ||
+      (fabsf(prepared->exit_velocity_mm_s - v_next) > 0.5f))
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  return f413_path_run_execute_prepared_linear(prepared,
+                                               speed_now_mm_s,
+                                               guard,
+                                               trace_flags,
+                                               false,
+                                               true);
 }
 
 void f413_path_run_print_preview(void)
@@ -1646,6 +1810,7 @@ void f413_path_run_session_once(uint8_t mode,
   bool diagonal = false;
   uint16_t pi;
   uint16_t code;
+  size_t prepared_linear_index = 0U;
 
   if (f413_trace_log_auto_is_enabled())
   {
@@ -1662,10 +1827,10 @@ void f413_path_run_session_once(uint8_t mode,
     trace_printf("[RUN-TEST] path canceled(empty path)\r\n");
     return;
   }
-  preflight = f413_path_run_preflight(
+  preflight = f413_path_run_preflight_prepare(
       path, NIGHTFALL_F413_PATH_MAX_CODES, mode_params, case_params,
       first_speed, f413_run_features_wall_end_correction_enabled(),
-      f413_run_features_test_mode_run());
+      f413_run_features_test_mode_run(), &g_f413_path_run_prepared_path);
   if (preflight.status != F413_PATH_RUN_PREFLIGHT_OK)
   {
     trace_printf(
@@ -1685,6 +1850,12 @@ void f413_path_run_session_once(uint8_t mode,
                (double)NIGHTFALL_F413_PATH_VELOCITY_CAP,
                (double)NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP,
                (double)NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP);
+
+  if (!f413_path_run_print_turn_profiles_before_run(mode_params))
+  {
+    trace_printf("[RUN-TEST] path canceled(turn profile preparation failed)\r\n");
+    return;
+  }
 
   if (!f413_run_session_guard_prepare(&guard))
   {
@@ -1727,8 +1898,18 @@ void f413_path_run_session_once(uint8_t mode,
 
     if (f413_path_run_is_straight_code(code))
     {
+      const f413_path_run_prepared_linear_t* prepared;
       uint32_t straight_steps = 0U;
       uint16_t end = pi;
+
+      if ((prepared_linear_index >= g_f413_path_run_prepared_path.count) ||
+          (g_f413_path_run_prepared_path.actions[prepared_linear_index].path_index != pi))
+      {
+        abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
+        break;
+      }
+      prepared =
+          &g_f413_path_run_prepared_path.actions[prepared_linear_index++];
 
       while ((end < NIGHTFALL_F413_PATH_MAX_CODES) &&
              f413_path_run_is_straight_code(path[end]))
@@ -1744,6 +1925,7 @@ void f413_path_run_session_once(uint8_t mode,
           next_code,
           mode_params,
           case_params,
+          prepared,
           &speed_now,
           &guard,
           (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
@@ -1752,8 +1934,18 @@ void f413_path_run_session_once(uint8_t mode,
     }
     else if (f413_path_run_is_diagonal_code(code))
     {
+      const f413_path_run_prepared_linear_t* prepared;
       uint32_t diagonal_steps = 0U;
       uint16_t end = pi;
+
+      if ((prepared_linear_index >= g_f413_path_run_prepared_path.count) ||
+          (g_f413_path_run_prepared_path.actions[prepared_linear_index].path_index != pi))
+      {
+        abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
+        break;
+      }
+      prepared =
+          &g_f413_path_run_prepared_path.actions[prepared_linear_index++];
 
       while ((end < NIGHTFALL_F413_PATH_MAX_CODES) &&
              f413_path_run_is_diagonal_code(path[end]))
@@ -1768,6 +1960,7 @@ void f413_path_run_session_once(uint8_t mode,
           next_code,
           mode_params,
           case_params,
+          prepared,
           &speed_now,
           &guard,
           (uint16_t)(base_trace_flag | NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
@@ -1819,6 +2012,15 @@ void f413_path_run_session_once(uint8_t mode,
     abort_reason = F413_RUN_SESSION_ABORT_TIMEOUT;
   }
 
+  if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
+      (prepared_linear_index != g_f413_path_run_prepared_path.count))
+  {
+    trace_printf("[RUN-TEST] path aborted(prepared linear mismatch %lu/%lu)\r\n",
+                 (unsigned long)prepared_linear_index,
+                 (unsigned long)g_f413_path_run_prepared_path.count);
+    abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
     abort_reason = f413_path_run_drive_segment_ex(
@@ -1831,6 +2033,16 @@ void f413_path_run_session_once(uint8_t mode,
                    NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG),
         !diagonal,
         diagonal);
+  }
+
+  if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
+      f413_run_features_test_mode_run())
+  {
+    abort_reason = f413_path_run_settle_test_stop(
+        &guard,
+        (uint16_t)(base_trace_flag |
+                   NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
+                   NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
   }
 
   f413_ctrl_clear_angle_target();

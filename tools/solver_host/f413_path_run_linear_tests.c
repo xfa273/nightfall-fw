@@ -374,6 +374,65 @@ static void check_mode2_case0_paths(void)
       1.0e-6));
 }
 
+static double prepared_distance_sum(
+    const f413_path_run_prepared_linear_t* action)
+{
+  double sum = 0.0;
+  for (size_t index = 0U; index < action->phase_count; index++)
+  {
+    sum += action->phase_distance_mm[index];
+  }
+  return sum;
+}
+
+static void check_prepared_execution_plans(void)
+{
+  static const uint16_t sub3[] = {203U, 701U, 1001U, 0U};
+  static const uint16_t case6_small_s1[] = {201U, 300U, 201U, 0U};
+  const ShortestRunCaseParams_t* case8 = &shortestRunCaseParamsMode2[7];
+  const ShortestRunCaseParams_t* case6 = &shortestRunCaseParamsMode2[5];
+  f413_path_run_prepared_path_t prepared;
+  float initial_velocity = sqrtf(
+      2.0f * case8->acceleration_straight * (float)DIST_FIRST_SEC);
+  f413_path_run_preflight_result_t result = f413_path_run_preflight_prepare(
+      sub3, sizeof(sub3) / sizeof(sub3[0]), &shortestRunModeParams2,
+      case8, initial_velocity, false, true, &prepared);
+
+  CHECK(result.status == F413_PATH_RUN_PREFLIGHT_OK);
+  CHECK(prepared.count == 2U);
+  CHECK(prepared.actions[0].path_index == 0U);
+  CHECK(prepared.actions[0].execute_plan);
+  CHECK(prepared.actions[0].phase_count > 0U);
+  CHECK(close_value(prepared.actions[0].entry_velocity_mm_s,
+                    initial_velocity, 1.0e-6));
+  CHECK(close_value(prepared.actions[0].exit_velocity_mm_s, 500.0, 1.0e-6));
+  CHECK(close_value(prepared_distance_sum(&prepared.actions[0]),
+                    3.0 * DIST_HALF_SEC, 1.0e-4));
+  CHECK(prepared.actions[1].path_index == 2U);
+  CHECK(prepared.actions[1].execute_plan);
+  CHECK(prepared.actions[1].phase_count > 0U);
+  CHECK(close_value(prepared.actions[1].entry_velocity_mm_s, 500.0, 1.0e-6));
+  CHECK(close_value(prepared.actions[1].exit_velocity_mm_s, 500.0, 1.0e-6));
+  CHECK(close_value(prepared_distance_sum(&prepared.actions[1]),
+                    DIST_D_HALF_SEC, 1.0e-4));
+
+  initial_velocity = sqrtf(
+      2.0f * case6->acceleration_straight * (float)DIST_FIRST_SEC);
+  result = f413_path_run_preflight_prepare(
+      case6_small_s1,
+      sizeof(case6_small_s1) / sizeof(case6_small_s1[0]),
+      &shortestRunModeParams2, case6, initial_velocity, true, false,
+      &prepared);
+  CHECK(result.status == F413_PATH_RUN_PREFLIGHT_OK);
+  CHECK(prepared.count == 2U);
+  CHECK(prepared.actions[0].path_index == 0U);
+  CHECK(!prepared.actions[0].execute_plan);
+  CHECK(prepared.actions[0].phase_count == 0U);
+  CHECK(close_value(prepared.actions[0].entry_velocity_mm_s,
+                    initial_velocity, 1.0e-6));
+  CHECK(close_value(prepared.actions[0].exit_velocity_mm_s, 300.0, 1.0e-6));
+}
+
 int main(void)
 {
   check_mode2_case_profiles();
@@ -381,6 +440,7 @@ int main(void)
   check_wall_end_approach_contract();
   check_preflight_boundaries();
   check_mode2_case0_paths();
+  check_prepared_execution_plans();
 
   if (g_failures != 0U)
   {
