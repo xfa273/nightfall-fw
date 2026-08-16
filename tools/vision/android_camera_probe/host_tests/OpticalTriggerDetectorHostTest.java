@@ -15,6 +15,11 @@ public final class OpticalTriggerDetectorHostTest {
     private static final int STOP_HIGH_FRAMES = 32;
     private static final int SHORT_SLOT = 1;
     private static final int LONG_SLOT = 2;
+    private static final int PAIR_THREE_BY_THREE = 0;
+    private static final int PAIR_ONE_PIXEL = 1;
+    private static final int PAIR_MIXED_RESOLUTION = 2;
+    private static final int PAIR_DIM_CONTRAST = 3;
+    private static final int PAIR_BELOW_BASE_GATE = 4;
 
     private OpticalTriggerDetectorHostTest() {
     }
@@ -34,9 +39,19 @@ public final class OpticalTriggerDetectorHostTest {
         testModeIndicationWithoutFramingIsIgnored();
         testWhiteWaveformIsIgnored();
         testSingleLedWaveformIsIgnored();
+        testWeakPairBelowConfiguredBaseGateIsIgnored();
+        testTwoLedSyncAndPayloadAreAccepted();
+        testMixedResolutionPairIsAccepted();
+        testDimAbsoluteChromaUsesOffBaseline();
+        testStaticBlueTriangleDoesNotBlockPreamble();
+        testCalibrationPulseFramesDoNotRaiseNoiseFloor();
+        testAdaptiveThresholdCannotBlindDeltaPair();
         testTwoOfThreePayloadLedsAreAccepted();
         testPersistentBlueMarkerAndSinglePixelLeds();
         testShortPreviewDropoutIsTolerated();
+        testFirmwareSyncReedgeIsAccepted();
+        testSkippedCallbacksInSyncAndPayloadAreTolerated();
+        testSkippedCallbacksAtProtocolBoundariesAreTolerated();
         System.out.println("OpticalTriggerDetectorHostTest PASS");
     }
 
@@ -273,6 +288,196 @@ public final class OpticalTriggerDetectorHostTest {
         simulation.assertNoToken("single-LED framed waveform");
     }
 
+    private static void testWeakPairBelowConfiguredBaseGateIsIgnored() {
+        Simulation simulation = new Simulation();
+        simulation.feedPairFrame(
+                false,
+                PREAMBLE_FRAMES,
+                PAIR_BELOW_BASE_GATE,
+                false
+        );
+        simulation.feedPairFrame(
+                true,
+                SYNC_FRAMES,
+                PAIR_BELOW_BASE_GATE,
+                false
+        );
+        simulation.feedPairFrame(
+                false,
+                SYNC_GAP_FRAMES,
+                PAIR_BELOW_BASE_GATE,
+                false
+        );
+        for (int slot = 0; slot < 5; slot += 1) {
+            simulation.feedPairFrame(
+                    true,
+                    START_HIGH_FRAMES,
+                    PAIR_BELOW_BASE_GATE,
+                    false
+            );
+            simulation.feedPairFrame(
+                    false,
+                    SLOT_FRAMES - START_HIGH_FRAMES,
+                    PAIR_BELOW_BASE_GATE,
+                    false
+            );
+        }
+        simulation.feedPairFrame(
+                false,
+                1,
+                PAIR_BELOW_BASE_GATE,
+                false
+        );
+        simulation.assertNoToken("two-component waveform below base score gate");
+    }
+
+    private static void testTwoLedSyncAndPayloadAreAccepted() {
+        for (int slotType : new int[] {SHORT_SLOT, LONG_SLOT}) {
+            OpticalTriggerDetector.Result result =
+                    new Simulation().emitPairToken(
+                            slotType,
+                            PAIR_ONE_PIXEL,
+                            false
+                    );
+            OpticalTriggerDetector.TokenType expected = slotType == SHORT_SLOT
+                    ? OpticalTriggerDetector.TokenType.START
+                    : OpticalTriggerDetector.TokenType.STOP;
+            String context = "two one-pixel LEDs throughout " + expected;
+            assertToken(result, expected, context);
+            if (result.matchedLeds != 2) {
+                throw new AssertionError(
+                        context + " matchedLeds=" + result.matchedLeds
+                                + " expected=2"
+                );
+            }
+            if (result.centerX != 230 || result.centerY != 134) {
+                throw new AssertionError(
+                        context + " center=" + result.centerX + ","
+                                + result.centerY + " expected=230,134"
+                );
+            }
+        }
+    }
+
+    private static void testMixedResolutionPairIsAccepted() {
+        OpticalTriggerDetector.Result result =
+                new Simulation().emitPairToken(
+                        LONG_SLOT,
+                        PAIR_MIXED_RESOLUTION,
+                        false
+                );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.STOP,
+                "3x3 plus one-pixel endpoint pair"
+        );
+        assertVotes(result, 0, 5, 0, "mixed-resolution pair");
+        if (result.matchedLeds != 2) {
+            throw new AssertionError(
+                    "mixed-resolution pair matchedLeds=" + result.matchedLeds
+                            + " expected=2"
+            );
+        }
+    }
+
+    private static void testDimAbsoluteChromaUsesOffBaseline() {
+        OpticalTriggerDetector.Result result =
+                new Simulation().emitPairToken(
+                        LONG_SLOT,
+                        PAIR_DIM_CONTRAST,
+                        false
+                );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.STOP,
+                "pair below the former absolute chroma floor"
+        );
+        assertVotes(result, 0, 5, 0, "dim baseline-relative pair");
+        if (result.matchedLeds != 2) {
+            throw new AssertionError(
+                    "dim baseline-relative pair matchedLeds="
+                            + result.matchedLeds + " expected=2"
+            );
+        }
+    }
+
+    private static void testStaticBlueTriangleDoesNotBlockPreamble() {
+        Simulation simulation = new Simulation(false);
+        simulation.feedPairFrame(
+                false,
+                CALIBRATION_FRAMES,
+                PAIR_ONE_PIXEL,
+                true
+        );
+        OpticalTriggerDetector.Result result = simulation.emitPairToken(
+                SHORT_SLOT,
+                PAIR_ONE_PIXEL,
+                true
+        );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START beside a permanent blue triangle"
+        );
+        assertVotes(result, 5, 0, 0, "static blue triangle");
+    }
+
+    private static void testAdaptiveThresholdCannotBlindDeltaPair() {
+        Simulation simulation = new Simulation(false);
+        simulation.feedNoisyCalibration(CALIBRATION_FRAMES);
+        OpticalTriggerDetector.Result result = simulation.emitPairToken(
+                SHORT_SLOT,
+                PAIR_ONE_PIXEL,
+                false
+        );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "one-pixel delta pair with capped adaptive threshold"
+        );
+        if (result.threshold != 900) {
+            throw new AssertionError(
+                    "delta-pair threshold=" + result.threshold
+                            + " expected capped threshold=900"
+            );
+        }
+        if (result.score >= result.threshold) {
+            throw new AssertionError(
+                    "fixture must exercise acquisition below the adaptive gate: "
+                            + result.score + "/" + result.threshold
+            );
+        }
+    }
+
+    private static void testCalibrationPulseFramesDoNotRaiseNoiseFloor() {
+        Simulation simulation = new Simulation(false);
+        simulation.feedDark(32);
+        for (int frame = 32; frame < CALIBRATION_FRAMES; frame += 1) {
+            simulation.feedPairFrame(
+                    (frame & 1) == 0,
+                    1,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+        }
+        OpticalTriggerDetector.Result result = simulation.emitPairToken(
+                SHORT_SLOT,
+                PAIR_ONE_PIXEL,
+                false
+        );
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START after calibration-time framed rises"
+        );
+        if (result.threshold != 200) {
+            throw new AssertionError(
+                    "calibration rises contaminated noise threshold="
+                            + result.threshold + " expected=200"
+            );
+        }
+    }
+
     private static void testTwoOfThreePayloadLedsAreAccepted() {
         for (int slotType : new int[] {SHORT_SLOT, LONG_SLOT}) {
             OpticalTriggerDetector.Result result = new Simulation().emitToken(
@@ -349,6 +554,42 @@ public final class OpticalTriggerDetectorHostTest {
                 "START with 125 ms preview dropout"
         );
         assertVotes(result, 5, 0, 0, "START with preview dropout");
+    }
+
+    private static void testSkippedCallbacksInSyncAndPayloadAreTolerated() {
+        Simulation simulation = new Simulation();
+        OpticalTriggerDetector.Result result =
+                simulation.emitPairStartWithSkippedCallbacks();
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START with omitted preview callbacks"
+        );
+        assertVotes(result, 5, 0, 0, "omitted preview callbacks");
+    }
+
+    private static void testFirmwareSyncReedgeIsAccepted() {
+        Simulation simulation = new Simulation();
+        OpticalTriggerDetector.Result result =
+                simulation.emitPairStartWithFirmwareSyncReedge();
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START after exact 75/50/825 ms firmware SYNC"
+        );
+        assertVotes(result, 5, 0, 0, "firmware SYNC re-edge");
+    }
+
+    private static void testSkippedCallbacksAtProtocolBoundariesAreTolerated() {
+        Simulation simulation = new Simulation();
+        OpticalTriggerDetector.Result result =
+                simulation.emitPairStartWithBoundaryCallbacksSkipped();
+        assertToken(
+                result,
+                OpticalTriggerDetector.TokenType.START,
+                "START with callbacks omitted at SYNC fall and payload origin"
+        );
+        assertVotes(result, 5, 0, 0, "boundary callback omissions");
     }
 
     private static int[] filledSlots(int slotType) {
@@ -439,6 +680,197 @@ public final class OpticalTriggerDetectorHostTest {
             return takeToken("complete payload");
         }
 
+        OpticalTriggerDetector.Result emitPairToken(
+                int slotType,
+                int pairStyle,
+                boolean staticTriangle
+        ) {
+            feedPairFrame(
+                    false,
+                    PREAMBLE_FRAMES,
+                    pairStyle,
+                    staticTriangle
+            );
+            feedPairFrame(
+                    true,
+                    SYNC_FRAMES,
+                    pairStyle,
+                    staticTriangle
+            );
+            feedPairFrame(
+                    false,
+                    SYNC_GAP_FRAMES,
+                    pairStyle,
+                    staticTriangle
+            );
+            int highFrames = slotType == SHORT_SLOT
+                    ? START_HIGH_FRAMES
+                    : STOP_HIGH_FRAMES;
+            for (int slot = 0; slot < 5; slot += 1) {
+                feedPairFrame(
+                        true,
+                        highFrames,
+                        pairStyle,
+                        staticTriangle
+                );
+                feedPairFrame(
+                        false,
+                        SLOT_FRAMES - highFrames,
+                        pairStyle,
+                        staticTriangle
+                );
+            }
+            assertNoToken("pair payload before terminal sample");
+            feedPairFrame(false, 1, pairStyle, staticTriangle);
+            return takeToken("complete pair payload");
+        }
+
+        OpticalTriggerDetector.Result emitPairStartWithSkippedCallbacks() {
+            feedPairFrame(
+                    false,
+                    PREAMBLE_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            feedPairFrame(true, 8, PAIR_ONE_PIXEL, false);
+            skipFrames(5);
+            feedPairFrame(
+                    true,
+                    SYNC_FRAMES - 8 - 5,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            feedPairFrame(
+                    false,
+                    SYNC_GAP_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            for (int slot = 0; slot < 5; slot += 1) {
+                if (slot == 0) {
+                    feedPairFrame(true, 4, PAIR_ONE_PIXEL, false);
+                    skipFrames(5);
+                    feedPairFrame(
+                            true,
+                            START_HIGH_FRAMES - 4 - 5,
+                            PAIR_ONE_PIXEL,
+                            false
+                    );
+                } else {
+                    feedPairFrame(
+                            true,
+                            START_HIGH_FRAMES,
+                            PAIR_ONE_PIXEL,
+                            false
+                    );
+                }
+                feedPairFrame(
+                        false,
+                        SLOT_FRAMES - START_HIGH_FRAMES,
+                        PAIR_ONE_PIXEL,
+                        false
+                );
+            }
+            assertNoToken("skipped-callback payload before terminal sample");
+            feedPairFrame(false, 1, PAIR_ONE_PIXEL, false);
+            return takeToken("complete skipped-callback payload");
+        }
+
+        OpticalTriggerDetector.Result emitPairStartWithFirmwareSyncReedge() {
+            feedPairFrame(
+                    false,
+                    PREAMBLE_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            // This is the exact F413 SYNC waveform: the short re-edge gap is
+            // not a pulse end because it is shorter than LOW_CONFIRM_NS.
+            feedPairFrame(true, 3, PAIR_ONE_PIXEL, false);  // 75 ms ON
+            feedPairFrame(false, 2, PAIR_ONE_PIXEL, false); // 50 ms OFF
+            feedPairFrame(true, 33, PAIR_ONE_PIXEL, false); // 825 ms ON
+            feedPairFrame(
+                    false,
+                    SYNC_GAP_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            for (int slot = 0; slot < 5; slot += 1) {
+                feedPairFrame(
+                        true,
+                        START_HIGH_FRAMES,
+                        PAIR_ONE_PIXEL,
+                        false
+                );
+                feedPairFrame(
+                        false,
+                        SLOT_FRAMES - START_HIGH_FRAMES,
+                        PAIR_ONE_PIXEL,
+                        false
+                );
+            }
+            assertNoToken("firmware-reedge payload before terminal sample");
+            feedPairFrame(false, 1, PAIR_ONE_PIXEL, false);
+            return takeToken("complete firmware-reedge payload");
+        }
+
+        OpticalTriggerDetector.Result emitPairStartWithBoundaryCallbacksSkipped() {
+            feedPairFrame(
+                    false,
+                    PREAMBLE_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            feedPairFrame(true, SYNC_FRAMES, PAIR_ONE_PIXEL, false);
+
+            // Four physically-OFF frames pass without a preview callback at
+            // the SYNC falling edge. Only the remaining 200 ms of the 300 ms
+            // gap are observed, shifting the learned payload origin by 100 ms.
+            skipFrames(4);
+            feedPairFrame(
+                    false,
+                    SYNC_GAP_FRAMES - 4,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+
+            // The first four physically-ON payload frames are also omitted.
+            // The detector must recover from both boundary losses using frame
+            // timestamps rather than assuming an uninterrupted 25 ms cadence.
+            skipFrames(4);
+            feedPairFrame(
+                    true,
+                    START_HIGH_FRAMES - 4,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            feedPairFrame(
+                    false,
+                    SLOT_FRAMES - START_HIGH_FRAMES,
+                    PAIR_ONE_PIXEL,
+                    false
+            );
+            for (int slot = 1; slot < 5; slot += 1) {
+                feedPairFrame(
+                        true,
+                        START_HIGH_FRAMES,
+                        PAIR_ONE_PIXEL,
+                        false
+                );
+                feedPairFrame(
+                        false,
+                        SLOT_FRAMES - START_HIGH_FRAMES,
+                        PAIR_ONE_PIXEL,
+                        false
+                );
+            }
+            assertNoToken("boundary-skip payload before terminal sample");
+            // SYNC-fall callbacks were absent, so the detector's timestamped
+            // payload origin is 100 ms later than the physical origin. Let
+            // the trailing OFF level cover that bounded timing uncertainty.
+            feedPairFrame(false, 5, PAIR_ONE_PIXEL, false);
+            return takeToken("complete boundary-skip payload");
+        }
+
         void beginToken() {
             beginToken(PREAMBLE_FRAMES);
         }
@@ -502,6 +934,19 @@ public final class OpticalTriggerDetectorHostTest {
         void feedMarkerMask(int ledMask, int frames, boolean onePixelLeds) {
             for (int index = 0; index < frames; index += 1) {
                 makeMarkerFrame(frame, ledMask, onePixelLeds);
+                record(detector.process(frame, WIDTH, HEIGHT, nowNs));
+                nowNs += FRAME_NS;
+            }
+        }
+
+        void feedPairFrame(
+                boolean ledsOn,
+                int frames,
+                int pairStyle,
+                boolean staticTriangle
+        ) {
+            for (int index = 0; index < frames; index += 1) {
+                makePairFrame(frame, ledsOn, pairStyle, staticTriangle);
                 record(detector.process(frame, WIDTH, HEIGHT, nowNs));
                 nowNs += FRAME_NS;
             }
@@ -581,6 +1026,65 @@ public final class OpticalTriggerDetectorHostTest {
                 frame[leds[led][1] * WIDTH + leds[led][0]] = 0xff202060;
             } else {
                 setLed(frame, leds[led][0], leds[led][1]);
+            }
+        }
+    }
+
+    private static void makePairFrame(
+            int[] frame,
+            boolean ledsOn,
+            int pairStyle,
+            boolean staticTriangle
+    ) {
+        Arrays.fill(
+                frame,
+                pairStyle == PAIR_DIM_CONTRAST
+                        ? 0xff202025
+                        : 0xff202020
+        );
+        if (staticTriangle) {
+            setLed(frame, 50, 50);
+            setLed(frame, 70, 50);
+            setLed(frame, 60, 68);
+        }
+        if (!ledsOn) {
+            return;
+        }
+        if (pairStyle == PAIR_THREE_BY_THREE) {
+            setLed(frame, 220, 134);
+            setLed(frame, 240, 134);
+        } else if (pairStyle == PAIR_ONE_PIXEL) {
+            frame[134 * WIDTH + 220] = 0xff2020ff;
+            frame[134 * WIDTH + 240] = 0xff2020ff;
+        } else if (pairStyle == PAIR_MIXED_RESOLUTION) {
+            setLed(frame, 220, 134);
+            frame[134 * WIDTH + 240] = 0xff2020ff;
+        } else if (pairStyle == PAIR_DIM_CONTRAST) {
+            // Absolute blue chroma is 49 and 25 over a chroma-5 OFF frame. The
+            // second LED is below the historical fixed floor of 48, but both
+            // remain well above baseline, matching the failed real STOP clip.
+            setLedColor(frame, 220, 134, 0xff202051);
+            setLedColor(frame, 240, 134, 0xff202039);
+        } else if (pairStyle == PAIR_BELOW_BASE_GATE) {
+            // Each one-pixel component reaches the component floor (48), but
+            // their score sum is only 96 and must not bypass the configured
+            // aggregate acquisition gate of 180.
+            frame[134 * WIDTH + 220] = 0xff202050;
+            frame[134 * WIDTH + 240] = 0xff202050;
+        } else {
+            throw new IllegalArgumentException("unknown pair style");
+        }
+    }
+
+    private static void setLedColor(
+            int[] frame,
+            int centerX,
+            int centerY,
+            int color
+    ) {
+        for (int y = centerY - 1; y <= centerY + 1; y += 1) {
+            for (int x = centerX - 1; x <= centerX + 1; x += 1) {
+                frame[y * WIDTH + x] = color;
             }
         }
     }

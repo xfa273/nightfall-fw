@@ -86,7 +86,7 @@ tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
   /path/to/session-artifacts
 ```
 
-The collector installs version `0.5.7` of
+The collector installs version `0.5.8` of
 `com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
 
 - `hfr_capture.mp4`
@@ -148,8 +148,11 @@ for a recording-surface-only diagnostic.
 
 The recorder can arm a preview-only high-speed session and wait for the F413
 mouse to emit a framed visible-LED token. START and STOP use the same frame:
-2.5 seconds with all three status LEDs OFF, a 900 ms all-LED SYNC pulse, a
-300 ms gap, and five 1.1-second payload slots. Every START slot begins with
+2.5 seconds with all three status LEDs OFF, a logical 950 ms all-LED SYNC
+pulse, a 300 ms gap, and five 1.1-second payload slots. SYNC is emitted as
+75 ms ON, 50 ms OFF, then 825 ms ON. The 50 ms notch is shorter than the
+decoder's confirmed-low interval, so it remains one SYNC while providing a
+second rising edge if the first is missed. Every START slot begins with
 350 ms ON; every STOP slot begins with 800 ms ON. The rest of each slot is OFF.
 The payload is followed by 500 ms with all LEDs OFF. The common SYNC pulse
 establishes the slot timing, and the long preamble keeps an all-LED OP-UI mode
@@ -164,18 +167,18 @@ prefix can be accepted as START. A STOP received while waiting for START, or a
 START received while recording, is explicitly ignored without changing the
 capture state.
 
-The Pixel compares consecutive preview frames and also checks the absolute
-blue level, discards the first 0.8 seconds while auto exposure settles,
-calibrates local preview noise for 1.2 seconds, and requires three spatially
-separated blue status LEDs on SYNC. SYNC location learning prefers the three
-components that actually rose, so the persistent blue trajectory label is not
-substituted for a signalling LED. Payload slots reuse the learned locations
-and may retain two LEDs; at those fixed coordinates only, a one-preview-pixel
-LED is accepted. This tolerates a dim LED at the edge of the overhead view
-without relaxing full-frame noise rejection. A 175 ms confirmed-low interval
-rejects brief flicker around the SYNC edge. White illumination changes, hands
-moving through the frame, and ordinary single-LED UI activity are therefore
-not accepted as a complete token.
+The Pixel compares consecutive preview frames, discards the first 0.8 seconds
+while auto exposure settles, and calibrates local preview noise for 1.2
+seconds. SYNC location learning begins only from components that actually
+rose, so the persistent blue trajectory label is not substituted for a
+signalling LED. It prefers three status LEDs but may acquire two spatially
+separated one-preview-pixel LEDs when the third is hidden. SYNC and payload
+then reuse the learned locations and measure OFF-to-ON blue contrast instead
+of requiring a fixed absolute blue level. The complete frame and vote rules
+still reject a single LED and static scene objects. A 175 ms confirmed-low
+interval rejects brief flicker around the SYNC edge. White illumination
+changes, hands moving through the frame, and ordinary single-LED UI activity
+are therefore not accepted as a complete token.
 
 Arm and collect one run with:
 
@@ -232,6 +235,15 @@ Version 0.5.7 adds this immediate manual one-shot mode to the Pixel UI and the
 authenticated Mac controls. It also adds `capture_mode` to control status so
 clients can keep manual one-shot and continuous optical standby mutually
 exclusive without changing the existing control fields.
+
+Version 0.5.8 hardens continuous optical START/STOP acquisition for the
+overhead rig. SYNC learning now starts only from newly risen LEDs after the
+required rise-free preamble, accepts two spatially separated one-pixel LEDs
+when the third is hidden, and sustains their learned locations by OFF-to-ON
+contrast instead of a fixed absolute-blue threshold. Complete five-slot
+framing and three homogeneous votes are still required, so a single LED or a
+static blue label cannot trigger recording. Calibration-time mouse pulses are excluded
+from the adaptive noise threshold.
 
 Version 0.5.1 hardens the optical decoder for the overhead installation. It
 does not advance the STOP sequence while waiting for the first real mouse

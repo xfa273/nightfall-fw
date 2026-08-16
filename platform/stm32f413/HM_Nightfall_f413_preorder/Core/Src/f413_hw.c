@@ -6,7 +6,9 @@
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
 #define F413_HW_MOTOR_PWM_MAX (1000U)
 #define F413_HW_VIDEO_SYNC_OFF_PREAMBLE_MS (2500U)
-#define F413_HW_VIDEO_SYNC_SYNC_ON_MS (900U)
+#define F413_HW_VIDEO_SYNC_SYNC_FIRST_ON_MS (75U)
+#define F413_HW_VIDEO_SYNC_SYNC_REEDGE_OFF_MS (50U)
+#define F413_HW_VIDEO_SYNC_SYNC_SECOND_ON_MS (825U)
 #define F413_HW_VIDEO_SYNC_SYNC_GAP_MS (300U)
 #define F413_HW_VIDEO_SYNC_PAYLOAD_SLOTS (5U)
 #define F413_HW_VIDEO_SYNC_PAYLOAD_SLOT_MS (1100U)
@@ -93,8 +95,19 @@ static void f413_hw_emit_video_sync_pattern(uint32_t payload_on_ms)
   f413_hw_show_led_mask(0U);
   HAL_Delay(F413_HW_VIDEO_SYNC_OFF_PREAMBLE_MS);
 
+  /*
+   * Present two rising edges while remaining one logical 950 ms SYNC pulse.
+   * The 50 ms notch is shorter than the Pixel decoder's 175 ms LOW confirm,
+   * so a receiver that saw the first edge treats the pulse as continuous.  A
+   * receiver that missed it can still acquire the independent 825 ms second
+   * edge, which remains inside the accepted 650--1150 ms SYNC width.
+   */
   f413_hw_set_all_leds(GPIO_PIN_SET);
-  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_ON_MS);
+  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_FIRST_ON_MS);
+  f413_hw_show_led_mask(0U);
+  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_REEDGE_OFF_MS);
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_SECOND_ON_MS);
   f413_hw_show_led_mask(0U);
   HAL_Delay(F413_HW_VIDEO_SYNC_SYNC_GAP_MS);
 

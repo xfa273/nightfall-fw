@@ -3,15 +3,16 @@ package com.nightfall.hfrrecorder;
 /**
  * Decodes the framed visible-LED START/STOP protocol emitted by the F413.
  *
- * <p>A long all-off preamble and a common SYNC pulse establish a time origin.
+ * <p>A long rise-free preamble and a common SYNC pulse establish a time origin.
  * Five fixed-width payload slots then carry either short (START) or long
- * (STOP) all-three-LED pulses.  The complete payload is classified before a
+ * (STOP) multi-LED pulses.  The complete payload is classified before a
  * token is reported, so no prefix of STOP can be interpreted as START. A
  * missing slot is an erasure and any mixture of short and long votes is
- * rejected. The SYNC pulse learns the three LED locations; payload slots may
- * retain two of the three so a dim or compressed LED does not discard the
- * token. This class has no Android dependencies so its state machine can be
- * exercised by the host JDK.</p>
+ * rejected. The rising edge of SYNC learns two or preferably three LED
+ * locations; later samples need two known locations above their learned OFF
+ * baselines, so a dim, compressed, or occluded LED does not discard the token.
+ * This class has no Android dependencies so its state machine can be exercised
+ * by the host JDK.</p>
  */
 final class OpticalTriggerDetector {
     private static final int TILE_SIZE = 8;
@@ -38,16 +39,20 @@ final class OpticalTriggerDetector {
     private static final long LATE_WINDOW_END_NS = 725_000_000L;
     private static final int MIN_WINDOW_SAMPLES = 3;
     private static final int MIN_TOKEN_VOTES = 3;
-    private static final int MIN_COMPONENT_SCORE = 60;
-    private static final int MIN_COMPONENT_HOT_PIXELS = 2;
-    private static final int MIN_KNOWN_LED_SCORE =
+    private static final int MIN_ACQUISITION_COMPONENT_SCORE =
             ABSOLUTE_BLUE_CHROMA_THRESHOLD;
+    private static final int MIN_ACQUISITION_COMPONENT_HOT_PIXELS = 1;
+    private static final int KNOWN_LED_CONTRAST_ON = 14;
+    private static final int KNOWN_LED_CONTRAST_HOLD = 8;
     private static final int MIN_KNOWN_LED_HOT_PIXELS = 1;
     private static final int MAX_COMPONENTS = 12;
     private static final int MIN_LED_SEPARATION_SQUARED = 36;
     private static final int MAX_LED_SEPARATION_SQUARED = 10_000;
     private static final int MIN_TRIANGLE_DOUBLE_AREA = 30;
     private static final int KNOWN_LED_RADIUS = 5;
+    private static final int KNOWN_LED_DIAMETER = 2 * KNOWN_LED_RADIUS + 1;
+    private static final int KNOWN_LED_BASELINE_PIXELS =
+            KNOWN_LED_DIAMETER * KNOWN_LED_DIAMETER;
     private static final int MIN_KNOWN_LED_MATCHES = 2;
 
     enum TokenType {
@@ -116,7 +121,13 @@ final class OpticalTriggerDetector {
     private static final class Pulse {
         final int[] x = new int[3];
         final int[] y = new int[3];
-        int matchedLeds = 3;
+        int ledCount;
+        int matchedLeds;
+
+        Pulse() {
+            java.util.Arrays.fill(x, -1);
+            java.util.Arrays.fill(y, -1);
+        }
     }
 
     private final int configuredScoreThreshold;
@@ -127,11 +138,12 @@ final class OpticalTriggerDetector {
     private int[] tileScores;
     private int[] tileHotPixels;
     private int[] pixelDeltas;
-    private int[] absoluteBlueChroma;
+    private int[] currentBlueChroma;
     private int[] componentQueue;
     private int tileColumns;
     private int tileRows;
     private final int[] componentScores = new int[MAX_COMPONENTS];
+    private final int[] componentHotPixels = new int[MAX_COMPONENTS];
     private final int[] componentX = new int[MAX_COMPONENTS];
     private final int[] componentY = new int[MAX_COMPONENTS];
     private final int[] calibrationScores =
@@ -160,6 +172,10 @@ final class OpticalTriggerDetector {
     private int tokenCenterY = -1;
     private final int[] candidateLedX = new int[3];
     private final int[] candidateLedY = new int[3];
+    private final int[][] candidateLedBaseline =
+            new int[3][KNOWN_LED_BASELINE_PIXELS];
+    private final boolean[] candidateLedOn = new boolean[3];
+    private int candidateLedCount;
 
     OpticalTriggerDetector(int scoreThreshold, int hotPixelThreshold) {
         if (scoreThreshold < 1 || hotPixelThreshold < 1) {
@@ -178,7 +194,7 @@ final class OpticalTriggerDetector {
         tileScores = null;
         tileHotPixels = null;
         pixelDeltas = null;
-        absoluteBlueChroma = null;
+        currentBlueChroma = null;
         componentQueue = null;
         width = 0;
         height = 0;
@@ -216,10 +232,7 @@ final class OpticalTriggerDetector {
             for (int x = 0; x < width; x += 1) {
                 int index = rowOffset + x;
                 int current = blueChroma(pixels[index]);
-                absoluteBlueChroma[index] = current
-                        >= ABSOLUTE_BLUE_CHROMA_THRESHOLD
-                        ? current
-                        : 0;
+                currentBlueChroma[index] = current;
                 int delta = current - previous[index];
                 if (delta >= PIXEL_DELTA_THRESHOLD) {
                     pixelDeltas[index] = delta;
@@ -229,7 +242,6 @@ final class OpticalTriggerDetector {
                 } else {
                     pixelDeltas[index] = 0;
                 }
-                previous[index] = current;
             }
         }
 
@@ -261,12 +273,17 @@ final class OpticalTriggerDetector {
             }
         }
 
+        // SYNC acquisition is deliberately based only on newly-risen blue
+        // components. The mouse carries a permanent blue centre label, and
+        // the surrounding scene may contain other static blue objects; none
+        // of those may prevent the rise-free preamble or become an LED anchor.
+        // Do not gate this discovery with the adaptive aggregate score. At the
+        // overhead endpoints two real LEDs can each occupy one preview pixel,
+        // while calibration noise elsewhere can raise that aggregate gate.
+        Pulse acquisitionPulse = findAcquisitionPulse(pixelDeltas);
+
         if (!calibrationComplete) {
-            Pulse calibrationPulse = findThreeLedPulse(
-                    absoluteBlueChroma,
-                    absoluteComponentScoreThreshold()
-            );
-            if (calibrationPulse == null) {
+            if (acquisitionPulse == null) {
                 if (calibrationQuietStartedNs < 0L) {
                     calibrationQuietStartedNs = nowNs;
                 }
@@ -274,7 +291,8 @@ final class OpticalTriggerDetector {
                 calibrationQuietStartedNs = -1L;
             }
             long calibrationElapsedNs = nowNs - calibrationStartedNs;
-            if (calibrationElapsedNs >= CALIBRATION_WARMUP_NS) {
+            if (calibrationElapsedNs >= CALIBRATION_WARMUP_NS
+                    && acquisitionPulse == null) {
                 addCalibrationScore(bestScore);
             }
             if (calibrationElapsedNs
@@ -283,52 +301,46 @@ final class OpticalTriggerDetector {
                 calibrationComplete = true;
                 lowStartedNs = calibrationQuietStartedNs;
             }
-            return result(bestScore, bestHotPixels, calibrationPulse);
+            Result calibrationResult = result(
+                    bestScore,
+                    bestHotPixels,
+                    acquisitionPulse
+            );
+            rememberCurrentFrame();
+            return calibrationResult;
         }
 
-        boolean risingEdge = bestScore >= effectiveScoreThreshold
-                && bestHotPixels >= hotPixelThreshold;
-        Pulse deltaPulse = null;
-        if (risingEdge) {
-            deltaPulse = findThreeLedPulse(
-                    pixelDeltas,
-                    MIN_COMPONENT_SCORE
-            );
-        }
-        boolean candidateKnown = candidateLedX[0] >= 0;
-        Pulse levelPulse = candidateKnown
-                ? findKnownLedPulse(absoluteBlueChroma)
-                : findThreeLedPulse(
-                        absoluteBlueChroma,
-                        absoluteComponentScoreThreshold()
-                );
-        // At the beginning of SYNC, prefer components that actually rose.
-        // The mouse carries a persistent blue centre label for trajectory
-        // tracking; an absolute-level triangle can otherwise learn that
-        // label in place of one of the three signalling LEDs.
-        Pulse pulse = !candidateKnown && deltaPulse != null
-                ? deltaPulse
-                : levelPulse;
+        Pulse levelPulse = candidateLedCount > 0
+                ? findKnownLedPulse(currentBlueChroma)
+                : null;
         Result decoded = decodeFrame(
-                pulse,
+                acquisitionPulse,
+                levelPulse,
                 nowNs,
                 bestScore,
                 bestHotPixels
         );
-        return decoded != null
+        Result output = decoded != null
                 ? decoded
-                : result(bestScore, bestHotPixels, pulse);
+                : result(
+                        bestScore,
+                        bestHotPixels,
+                        candidateLedCount > 0 ? levelPulse : acquisitionPulse
+                );
+        rememberCurrentFrame();
+        return output;
     }
 
     private Result decodeFrame(
-            Pulse pulse,
+            Pulse acquisitionPulse,
+            Pulse levelPulse,
             long nowNs,
             int score,
             int hotPixels
     ) {
         switch (decoderState) {
             case WAIT_PREAMBLE:
-                if (pulse == null) {
+                if (acquisitionPulse == null) {
                     if (lowStartedNs < 0L) {
                         lowStartedNs = nowNs;
                     }
@@ -339,13 +351,13 @@ final class OpticalTriggerDetector {
                     lowStartedNs = -1L;
                     return null;
                 }
-                beginSync(pulse, nowNs, score, hotPixels);
+                beginSync(acquisitionPulse, nowNs, score, hotPixels);
                 return null;
 
             case SYNC_HIGH:
-                if (pulse != null) {
+                if (levelPulse != null) {
                     lowStartedNs = -1L;
-                    noteTokenPulse(pulse, score, hotPixels);
+                    noteTokenPulse(levelPulse, score, hotPixels);
                     if (nowNs - syncStartedNs
                             > SYNC_HIGH_MAX_NS + LOW_CONFIRM_NS) {
                         resetSequence();
@@ -380,8 +392,8 @@ final class OpticalTriggerDetector {
                 // Fall through so the first payload sample is retained.
 
             case PAYLOAD:
-                noteTokenPulse(pulse, score, hotPixels);
-                return decodePayloadFrame(pulse != null, nowNs);
+                noteTokenPulse(levelPulse, score, hotPixels);
+                return decodePayloadFrame(levelPulse != null, nowNs);
 
             default:
                 throw new IllegalStateException("unknown optical decoder state");
@@ -396,8 +408,8 @@ final class OpticalTriggerDetector {
     ) {
         resetTokenMeasurements();
         rememberCandidate(pulse);
-        tokenCenterX = (pulse.x[0] + pulse.x[1] + pulse.x[2] + 1) / 3;
-        tokenCenterY = (pulse.y[0] + pulse.y[1] + pulse.y[2] + 1) / 3;
+        tokenCenterX = pulseCenterX(pulse);
+        tokenCenterY = pulseCenterY(pulse);
         noteTokenPulse(pulse, score, hotPixels);
         syncStartedNs = nowNs;
         lowStartedNs = -1L;
@@ -516,12 +528,22 @@ final class OpticalTriggerDetector {
         tileScores = new int[tileColumns * tileRows];
         tileHotPixels = new int[tileColumns * tileRows];
         pixelDeltas = new int[pixels.length];
-        absoluteBlueChroma = new int[pixels.length];
+        currentBlueChroma = new int[pixels.length];
         componentQueue = new int[pixels.length];
         if (calibrationStartedNs < 0L) {
             calibrationStartedNs = nowNs;
         }
         return true;
+    }
+
+    private void rememberCurrentFrame() {
+        System.arraycopy(
+                currentBlueChroma,
+                0,
+                previous,
+                0,
+                currentBlueChroma.length
+        );
     }
 
     private void addCalibrationScore(int score) {
@@ -559,19 +581,10 @@ final class OpticalTriggerDetector {
         );
     }
 
-    private int absoluteComponentScoreThreshold() {
-        return Math.max(
-                MIN_COMPONENT_SCORE,
-                configuredScoreThreshold / 3
-        );
-    }
-
-    private Pulse findThreeLedPulse(
-            int[] componentPixels,
-            int componentScoreThreshold
-    ) {
+    private Pulse findAcquisitionPulse(int[] componentPixels) {
         int componentCount = 0;
         java.util.Arrays.fill(componentScores, 0);
+        java.util.Arrays.fill(componentHotPixels, 0);
         for (int seed = 0; seed < componentPixels.length; seed += 1) {
             if (componentPixels[seed] == 0) {
                 continue;
@@ -613,20 +626,25 @@ final class OpticalTriggerDetector {
                     }
                 }
             }
-            if (score < componentScoreThreshold
-                    || hotPixels < MIN_COMPONENT_HOT_PIXELS) {
+            if (score < MIN_ACQUISITION_COMPONENT_SCORE
+                    || hotPixels
+                    < MIN_ACQUISITION_COMPONENT_HOT_PIXELS) {
                 continue;
             }
             componentCount = storeComponent(
                     componentCount,
                     score,
+                    hotPixels,
                     (sumX + hotPixels / 2) / hotPixels,
                     (sumY + hotPixels / 2) / hotPixels
             );
         }
 
+        // Prefer the full three-LED triangle whenever the preview resolves it.
+        // Fall back to a separated pair because one LED is frequently hidden
+        // or merged into a neighbour near the edge of the overhead frame.
         Pulse best = null;
-        int bestScore = 0;
+        int bestScore = -1;
         for (int first = 0; first < componentCount - 2; first += 1) {
             for (int second = first + 1; second < componentCount - 1; second += 1) {
                 for (int third = second + 1; third < componentCount; third += 1) {
@@ -636,25 +654,64 @@ final class OpticalTriggerDetector {
                     int score = componentScores[first]
                             + componentScores[second]
                             + componentScores[third];
+                    int hotPixels = componentHotPixels[first]
+                            + componentHotPixels[second]
+                            + componentHotPixels[third];
+                    if (score < configuredScoreThreshold
+                            || hotPixels < hotPixelThreshold) {
+                        continue;
+                    }
                     if (score <= bestScore) {
                         continue;
                     }
                     bestScore = score;
-                    best = new Pulse();
-                    int[] indexes = {first, second, third};
-                    for (int led = 0; led < indexes.length; led += 1) {
-                        best.x[led] = componentX[indexes[led]];
-                        best.y[led] = componentY[indexes[led]];
-                    }
+                    best = pulseFromComponents(first, second, third);
                 }
+            }
+        }
+        if (best != null) {
+            return best;
+        }
+
+        for (int first = 0; first < componentCount - 1; first += 1) {
+            for (int second = first + 1;
+                    second < componentCount;
+                    second += 1) {
+                if (!isLedPair(first, second)) {
+                    continue;
+                }
+                int score = componentScores[first] + componentScores[second];
+                int hotPixels = componentHotPixels[first]
+                        + componentHotPixels[second];
+                if (score < configuredScoreThreshold
+                        || hotPixels < hotPixelThreshold) {
+                    continue;
+                }
+                if (score <= bestScore) {
+                    continue;
+                }
+                bestScore = score;
+                best = pulseFromComponents(first, second);
             }
         }
         return best;
     }
 
+    private Pulse pulseFromComponents(int... indexes) {
+        Pulse pulse = new Pulse();
+        pulse.ledCount = indexes.length;
+        pulse.matchedLeds = indexes.length;
+        for (int led = 0; led < indexes.length; led += 1) {
+            pulse.x[led] = componentX[indexes[led]];
+            pulse.y[led] = componentY[indexes[led]];
+        }
+        return pulse;
+    }
+
     private int storeComponent(
             int componentCount,
             int score,
+            int hotPixels,
             int x,
             int y
     ) {
@@ -666,6 +723,8 @@ final class OpticalTriggerDetector {
         while (insertAt > 0 && componentScores[insertAt - 1] < score) {
             if (insertAt < MAX_COMPONENTS) {
                 componentScores[insertAt] = componentScores[insertAt - 1];
+                componentHotPixels[insertAt] =
+                        componentHotPixels[insertAt - 1];
                 componentX[insertAt] = componentX[insertAt - 1];
                 componentY[insertAt] = componentY[insertAt - 1];
             }
@@ -673,17 +732,17 @@ final class OpticalTriggerDetector {
         }
         if (insertAt < MAX_COMPONENTS) {
             componentScores[insertAt] = score;
+            componentHotPixels[insertAt] = hotPixels;
             componentX[insertAt] = x;
             componentY[insertAt] = y;
         }
         return Math.min(MAX_COMPONENTS, componentCount + 1);
     }
 
-    private Pulse findKnownLedPulse(int[] componentPixels) {
+    private Pulse findKnownLedPulse(int[] currentPixels) {
         Pulse pulse = new Pulse();
-        boolean[] matchedKnown = new boolean[candidateLedX.length];
         int matched = 0;
-        for (int led = 0; led < candidateLedX.length; led += 1) {
+        for (int led = 0; led < candidateLedCount; led += 1) {
             int minX = Math.max(0, candidateLedX[led] - KNOWN_LED_RADIUS);
             int maxX = Math.min(width - 1,
                     candidateLedX[led] + KNOWN_LED_RADIUS);
@@ -697,45 +756,44 @@ final class OpticalTriggerDetector {
             for (int y = minY; y <= maxY; y += 1) {
                 int row = y * width;
                 for (int x = minX; x <= maxX; x += 1) {
-                    int value = componentPixels[row + x];
-                    if (value <= 0) {
+                    int baselineIndex = (y - candidateLedY[led]
+                            + KNOWN_LED_RADIUS) * KNOWN_LED_DIAMETER
+                            + x - candidateLedX[led]
+                            + KNOWN_LED_RADIUS;
+                    int contrast = currentPixels[row + x]
+                            - candidateLedBaseline[led][baselineIndex];
+                    int contrastThreshold = candidateLedOn[led]
+                            ? KNOWN_LED_CONTRAST_HOLD
+                            : KNOWN_LED_CONTRAST_ON;
+                    if (contrast < contrastThreshold) {
                         continue;
                     }
-                    score += value;
+                    score += contrast;
                     hotPixels += 1;
                     sumX += x;
                     sumY += y;
                 }
             }
-            // Once SYNC has fixed the three LED coordinates, accepting a
-            // single chroma pixel is safe because two separated known
-            // locations must still agree. At the overhead camera height an
-            // LED can project to one 480x270 preview pixel near the maze edge.
-            if (score < MIN_KNOWN_LED_SCORE
-                    || hotPixels < MIN_KNOWN_LED_HOT_PIXELS) {
-                pulse.x[led] = candidateLedX[led];
-                pulse.y[led] = candidateLedY[led];
+            // Once a rising edge has fixed the LED coordinates, sustain the
+            // pulse by contrast from that coordinate's OFF snapshot rather
+            // than by absolute blue chroma. Real endpoint LEDs can peak below
+            // the old absolute floor while still being 20+ chroma above OFF.
+            // Hysteresis keeps a dim one-pixel LED stable through compression.
+            if (hotPixels < MIN_KNOWN_LED_HOT_PIXELS) {
+                candidateLedOn[led] = false;
                 continue;
             }
-            pulse.x[led] = (sumX + hotPixels / 2) / hotPixels;
-            pulse.y[led] = (sumY + hotPixels / 2) / hotPixels;
-            matchedKnown[led] = true;
+            candidateLedOn[led] = true;
+            pulse.x[matched] = (sumX + hotPixels / 2) / hotPixels;
+            pulse.y[matched] = (sumY + hotPixels / 2) / hotPixels;
             matched += 1;
         }
         if (matched < MIN_KNOWN_LED_MATCHES) {
             return null;
         }
         boolean separatedPair = false;
-        for (int first = 0; first < matchedKnown.length - 1; first += 1) {
-            if (!matchedKnown[first]) {
-                continue;
-            }
-            for (int second = first + 1;
-                    second < matchedKnown.length;
-                    second += 1) {
-                if (!matchedKnown[second]) {
-                    continue;
-                }
+        for (int first = 0; first < matched - 1; first += 1) {
+            for (int second = first + 1; second < matched; second += 1) {
                 int deltaX = pulse.x[first] - pulse.x[second];
                 int deltaY = pulse.y[first] - pulse.y[second];
                 if (deltaX * deltaX + deltaY * deltaY
@@ -747,8 +805,15 @@ final class OpticalTriggerDetector {
         if (!separatedPair) {
             return null;
         }
+        pulse.ledCount = matched;
         pulse.matchedLeds = matched;
         return pulse;
+    }
+
+    private boolean isLedPair(int first, int second) {
+        int separation = distanceSquared(first, second);
+        return separation >= MIN_LED_SEPARATION_SQUARED
+                && separation <= MAX_LED_SEPARATION_SQUARED;
     }
 
     private boolean isLedTriangle(int first, int second, int third) {
@@ -779,8 +844,38 @@ final class OpticalTriggerDetector {
     }
 
     private void rememberCandidate(Pulse pulse) {
-        System.arraycopy(pulse.x, 0, candidateLedX, 0, candidateLedX.length);
-        System.arraycopy(pulse.y, 0, candidateLedY, 0, candidateLedY.length);
+        java.util.Arrays.fill(candidateLedX, -1);
+        java.util.Arrays.fill(candidateLedY, -1);
+        candidateLedCount = pulse.ledCount;
+        System.arraycopy(pulse.x, 0, candidateLedX, 0, pulse.ledCount);
+        System.arraycopy(pulse.y, 0, candidateLedY, 0, pulse.ledCount);
+        java.util.Arrays.fill(candidateLedOn, false);
+        for (int led = 0; led < candidateLedCount; led += 1) {
+            candidateLedOn[led] = true;
+            java.util.Arrays.fill(candidateLedBaseline[led], 0);
+            for (int offsetY = -KNOWN_LED_RADIUS;
+                    offsetY <= KNOWN_LED_RADIUS;
+                    offsetY += 1) {
+                int y = candidateLedY[led] + offsetY;
+                if (y < 0 || y >= height) {
+                    continue;
+                }
+                int row = y * width;
+                for (int offsetX = -KNOWN_LED_RADIUS;
+                        offsetX <= KNOWN_LED_RADIUS;
+                        offsetX += 1) {
+                    int x = candidateLedX[led] + offsetX;
+                    if (x < 0 || x >= width) {
+                        continue;
+                    }
+                    int baselineIndex = (offsetY + KNOWN_LED_RADIUS)
+                            * KNOWN_LED_DIAMETER
+                            + offsetX + KNOWN_LED_RADIUS;
+                    candidateLedBaseline[led][baselineIndex] =
+                            previous[row + x];
+                }
+            }
+        }
     }
 
     private Result result(
@@ -791,8 +886,8 @@ final class OpticalTriggerDetector {
         int centerX = -1;
         int centerY = -1;
         if (pulse != null) {
-            centerX = (pulse.x[0] + pulse.x[1] + pulse.x[2] + 1) / 3;
-            centerY = (pulse.y[0] + pulse.y[1] + pulse.y[2] + 1) / 3;
+            centerX = pulseCenterX(pulse);
+            centerY = pulseCenterY(pulse);
         }
         return new Result(
                 TokenType.NONE,
@@ -841,6 +936,24 @@ final class OpticalTriggerDetector {
         resetTokenMeasurements();
         java.util.Arrays.fill(candidateLedX, -1);
         java.util.Arrays.fill(candidateLedY, -1);
+        java.util.Arrays.fill(candidateLedOn, false);
+        candidateLedCount = 0;
+    }
+
+    private static int pulseCenterX(Pulse pulse) {
+        int sum = 0;
+        for (int led = 0; led < pulse.ledCount; led += 1) {
+            sum += pulse.x[led];
+        }
+        return (sum + pulse.ledCount / 2) / pulse.ledCount;
+    }
+
+    private static int pulseCenterY(Pulse pulse) {
+        int sum = 0;
+        for (int led = 0; led < pulse.ledCount; led += 1) {
+            sum += pulse.y[led];
+        }
+        return (sum + pulse.ledCount / 2) / pulse.ledCount;
     }
 
     private void resetTokenMeasurements() {
