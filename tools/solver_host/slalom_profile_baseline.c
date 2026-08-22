@@ -52,13 +52,13 @@ static const NfCurrentPrimitive g_current_mode2[NF_PRIMITIVE_COUNT] = {
     NF_CURRENT(500.0, 12400.0, 10.0, 29.0,
                89.182488, 44.810654),
     NF_CURRENT(500.0, 9500.0, 24.0, 6.0,
-               95.272639, 31.389103),
-    NF_CURRENT(500.0, 12200.0, 12.8, 27.2,
-               68.442316, 82.842316),
+               95.279312, 32.010139),
+    NF_CURRENT(500.0, 17500.0, 17.0, 17.0,
+               63.458597, 63.458597),
     NF_CURRENT(500.0, 8300.0, 17.0, 22.0,
                35.846214, 98.611486),
-    NF_CURRENT(500.0, 10000.0, 8.5, 9.5,
-               34.913443, 82.580243),
+    NF_CURRENT(500.0, 10000.0, 12.5, 27.5,
+               24.396791, 95.112267),
 };
 
 static const NfCurrentPrimitive g_current_f405_mode2[NF_PRIMITIVE_COUNT] = {
