@@ -34,10 +34,10 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .dist_turn45in_out   = 29.0f,
     // 45deg Out
     .velocity_turn45out= 500.0f,
-    .alpha_turn45out   = 10500.0f,
+    .alpha_turn45out   = 7000.0f,
     .angle_turn45out   = 44.4f,
-    .dist_turn45out_in = 7.5f,
-    .dist_turn45out_out= 0.0f,
+    .dist_turn45out_in = 14.0f,
+    .dist_turn45out_out= 8.0f,
     // V90deg
     .velocity_turnV90  = 500.0f,
     .alpha_turnV90     = 12200.0f,  // 10492
@@ -52,10 +52,10 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .dist_turn135in_out = 22.0f,
     // 135deg Out
     .velocity_turn135out = 500.0f,
-    .alpha_turn135out    = 8850.0f,
+    .alpha_turn135out    = 10000.0f,
     .angle_turn135out    = 133.3f,
-    .dist_turn135out_in  = 0.0f,
-    .dist_turn135out_out = 12.0f,
+    .dist_turn135out_in  = 8.5f,
+    .dist_turn135out_out = 9.5f,
     // Fan
     .fan_power          = 0,
     // Makepath

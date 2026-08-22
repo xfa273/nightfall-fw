@@ -51,14 +51,14 @@ static const NfCurrentPrimitive g_current_mode2[NF_PRIMITIVE_COUNT] = {
                -13.500000, 92.904831),
     NF_CURRENT(500.0, 12400.0, 10.0, 29.0,
                89.182488, 44.810654),
-    NF_CURRENT(500.0, 10500.0, 7.5, 0.0,
-               71.264593, 26.412159),
+    NF_CURRENT(500.0, 7000.0, 14.0, 8.0,
+               97.772339, 37.334444),
     NF_CURRENT(500.0, 12200.0, 12.8, 27.2,
                68.442316, 82.842316),
     NF_CURRENT(500.0, 8300.0, 17.0, 22.0,
                35.846214, 98.611486),
-    NF_CURRENT(500.0, 8850.0, 0.0, 12.0,
-               24.831130, 88.918214),
+    NF_CURRENT(500.0, 10000.0, 8.5, 9.5,
+               34.913443, 82.580243),
 };
 
 static const NfCurrentPrimitive g_current_f405_mode2[NF_PRIMITIVE_COUNT] = {
