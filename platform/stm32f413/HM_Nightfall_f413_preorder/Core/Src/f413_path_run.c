@@ -36,6 +36,14 @@ typedef struct
  */
 #define F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS (256U)
 
+/*
+ * Primitive calibration paths always finish with the runner's fixed 45 mm
+ * stop tail.  Low-acceleration shortest-run cases may legitimately need a
+ * stronger terminal-only deceleration than their route-planning limit; this
+ * does not alter the approach or any tuned turn primitive.
+ */
+#define F413_PATH_RUN_TEST_TERMINAL_ACCEL_MIN_MM_S2 (3000.0)
+
 typedef struct
 {
   uint16_t path_index;
@@ -421,8 +429,9 @@ static bool f413_path_run_make_test_terminal_profile(
     return false;
   }
   terminal_limits = *limits;
-  acceleration_limit = fmax(limits->accel_low_mm_s2,
-                            limits->accel_high_mm_s2);
+  acceleration_limit = fmax(
+      F413_PATH_RUN_TEST_TERMINAL_ACCEL_MIN_MM_S2,
+      fmax(limits->accel_low_mm_s2, limits->accel_high_mm_s2));
   if (!isfinite(acceleration_limit) || (acceleration_limit <= 0.0))
   {
     return false;
@@ -430,9 +439,10 @@ static bool f413_path_run_make_test_terminal_profile(
 
   /*
    * The legacy case0 runner commands one monotonic velocity profile over its
-   * final half cell.  Bound that direct controller command by the larger of
-   * the selected case's two declared acceleration limits; do not apply this
-   * relaxed terminal rule to solver-generated shortest paths.
+   * final half cell.  Bound that direct controller command by at least the
+   * dedicated calibration-stop limit and otherwise the larger of the
+   * selected case's declared limits.  Do not apply this terminal-only rule to
+   * solver-generated shortest paths.
    */
   terminal_limits.switch_velocity_mm_s = 0.0;
   terminal_limits.accel_low_mm_s2 = acceleration_limit;

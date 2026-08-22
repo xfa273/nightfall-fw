@@ -58,11 +58,14 @@ static const f413_mode2_case0_sub_t k_case0_subs[10] = {
   {3U, "mode2-case0-sub0 small R90",             {203U, 300U},                         2U},
   {3U, "mode2-case0-sub1 large R90",             {203U, 501U},                         2U},
   {3U, "mode2-case0-sub2 large R180",            {203U, 502U},                         2U},
-  {8U, "mode2-case0-sub3 R45 in",                {203U, 701U, 1001U},                  3U},
-  {8U, "mode2-case0-sub4 L45 out after R45 in",  {203U, 701U, 1001U, 704U},            4U},
-  {8U, "mode2-case0-sub5 L-V90 after R45 in",    {203U, 701U, 1001U, 802U, 1001U},     5U},
-  {8U, "mode2-case0-sub6 R135 in",               {203U, 901U, 1001U},                  3U},
-  {8U, "mode2-case0-sub7 L135 out after R135 in", {203U, 901U, 1001U, 904U},            4U},
+  /* Match the low-speed diagonal shortest-run profile used by mode2 case6.
+   * The previous case8 acceleration made the calibration paths sensitive to
+   * approach slip before the 500mm/s turn-speed boundary was reached. */
+  {6U, "mode2-case0-sub3 R45 in (case6 approach)",                {203U, 701U, 1001U},                  3U},
+  {6U, "mode2-case0-sub4 L45 out after R45 in (case6 approach)",  {203U, 701U, 1001U, 704U},            4U},
+  {6U, "mode2-case0-sub5 L-V90 after R45 in (case6 approach)",    {203U, 701U, 1001U, 802U, 1001U},     5U},
+  {6U, "mode2-case0-sub6 R135 in (case6 approach)",               {203U, 901U, 1001U},                  3U},
+  {6U, "mode2-case0-sub7 L135 out after R135 in (case6 approach)", {203U, 901U, 1001U, 904U},            4U},
   {1U, "mode2-case0-sub8 straight case1",        {209U},                               1U},
   {5U, "mode2-case0-sub9 straight case5",        {209U},                               1U},
 };

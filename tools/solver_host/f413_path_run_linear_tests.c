@@ -135,6 +135,7 @@ static void check_mode2_case_profiles(void)
 static void check_start_runup_contract(void)
 {
   NfLinearPlan plan;
+  NfConstantAccelProfile terminal_profile;
   const NfLinearLimits case6 = {1000.0, 2000.0, 1000.0, 1000.0};
   const NfLinearLimits case7 = {1250.0, 2000.0, 3000.0, 3000.0};
   const NfLinearLimits case8 = {1500.0, 2000.0, 4000.0, 4000.0};
@@ -152,6 +153,11 @@ static void check_start_runup_contract(void)
                                        &case7, &plan));
   CHECK(f413_path_run_make_linear_plan(45.0f, case8_start, 500.0f,
                                        &case8, &plan));
+  CHECK(f413_path_run_make_test_terminal_profile(
+      500.0f, &case6, &terminal_profile));
+  CHECK(close_value(terminal_profile.distance_mm, 45.0, 1.0e-9));
+  CHECK(close_value(terminal_profile.acceleration_mm_s2,
+                    -2777.777777777778, 1.0e-6));
 }
 
 static void check_wall_end_approach_contract(void)
@@ -346,7 +352,7 @@ static void check_mode2_case0_paths(void)
       {209U, 0U},
   };
   static const uint8_t case_indices[10] = {
-      3U, 3U, 3U, 8U, 8U, 8U, 8U, 8U, 1U, 5U};
+      3U, 3U, 3U, 6U, 6U, 6U, 6U, 6U, 1U, 5U};
 
   for (size_t sub = 0U; sub < 10U; sub++)
   {
@@ -390,14 +396,13 @@ static void check_prepared_execution_plans(void)
 {
   static const uint16_t sub3[] = {203U, 701U, 1001U, 0U};
   static const uint16_t case6_small_s1[] = {201U, 300U, 201U, 0U};
-  const ShortestRunCaseParams_t* case8 = &shortestRunCaseParamsMode2[7];
   const ShortestRunCaseParams_t* case6 = &shortestRunCaseParamsMode2[5];
   f413_path_run_prepared_path_t prepared;
   float initial_velocity = sqrtf(
-      2.0f * case8->acceleration_straight * (float)DIST_FIRST_SEC);
+      2.0f * case6->acceleration_straight * (float)DIST_FIRST_SEC);
   f413_path_run_preflight_result_t result = f413_path_run_preflight_prepare(
       sub3, sizeof(sub3) / sizeof(sub3[0]), &shortestRunModeParams2,
-      case8, initial_velocity, false, true, &prepared);
+      case6, initial_velocity, false, true, &prepared);
 
   CHECK(result.status == F413_PATH_RUN_PREFLIGHT_OK);
   CHECK(prepared.count == 2U);
