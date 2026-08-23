@@ -1644,7 +1644,14 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   }
 
   f413_path_run_prepare_turn_angle_control();
-  f413_ctrl_set_velocity(turn->velocity_mm_s);
+  /*
+   * Preserve distance tracking through the timed core.  The preceding
+   * set_velocity() contract disabled the distance outer loop, and repeating
+   * it below kept re-synchronising away the accumulated error.  On the real
+   * V90 this produced only 74 mm for a 77.5 mm target despite substantial
+   * PWM headroom, translating every following diagonal segment.
+   */
+  f413_ctrl_set_velocity_tracking(turn->velocity_mm_s);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
@@ -1660,7 +1667,6 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     }
 
     f413_trace_log_set_mode_flags(turn_trace_flags);
-    f413_ctrl_set_velocity(turn->velocity_mm_s);
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {

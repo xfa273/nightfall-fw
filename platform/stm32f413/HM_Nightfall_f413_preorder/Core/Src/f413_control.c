@@ -967,6 +967,28 @@ void f413_ctrl_set_velocity(float velocity_mm_s)
     s_target_velocity = velocity_mm_s;
 }
 
+void f413_ctrl_set_velocity_tracking(float velocity_mm_s)
+{
+    /*
+     * A timed turn still has a geometric distance contract.  Keep advancing
+     * that contract at the requested cruise rate and let the distance outer
+     * loop recover load-induced velocity loss.  Calling set_velocity() here
+     * would disable and re-synchronise the outer loop on every call, so a
+     * high-curvature turn would permanently under-travel even with ample PWM
+     * headroom.
+     */
+    if (s_distance_feedback_enabled == 0U)
+    {
+        f413_ctrl_sync_distance_feedback_to_real();
+    }
+    s_distance_feedback_enabled = 1U;
+    s_acceleration_interrupt = 0.0f;
+    s_velocity_interrupt = velocity_mm_s;
+    s_velocity_profile_target = velocity_mm_s;
+    s_velocity_profile_clamp_enabled = 0U;
+    s_target_velocity = velocity_mm_s;
+}
+
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
                                     float target_velocity_mm_s,
                                     float distance_mm)

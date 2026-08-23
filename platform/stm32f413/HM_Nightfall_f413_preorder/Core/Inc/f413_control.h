@@ -34,6 +34,8 @@ void f413_ctrl_stop(void);
 
 /* 目標値設定（走行中に随時呼ぶ） */
 void f413_ctrl_set_velocity(float velocity_mm_s);
+/* Keep the distance outer loop active while holding a constant cruise rate. */
+void f413_ctrl_set_velocity_tracking(float velocity_mm_s);
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
                                     float target_velocity_mm_s,
                                     float distance_mm);
