@@ -132,6 +132,21 @@ static void check_mode2_case_profiles(void)
         shortestRunCaseParamsMode2[7].velocity_d_straight);
 }
 
+static void check_turn_offset_trace_contract(void)
+{
+  const uint16_t base = (uint16_t)(NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG |
+                                   NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
+                                   NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG |
+                                   NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
+  const uint16_t flags = f413_path_run_turn_offset_trace_flags(base);
+
+  CHECK((flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U);
+  CHECK((flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG) == 0U);
+  CHECK((flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG) == 0U);
+  CHECK((flags & NIGHTFALL_F413_TRACE_MODE_SHORTEST_SAFE_FLAG) != 0U);
+  CHECK((flags & NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG) != 0U);
+}
+
 static void check_start_runup_contract(void)
 {
   NfLinearPlan plan;
@@ -500,6 +515,7 @@ static void check_distance_cursor_transition_credit(void)
 int main(void)
 {
   check_mode2_case_profiles();
+  check_turn_offset_trace_contract();
   check_start_runup_contract();
   check_wall_end_approach_contract();
   check_preflight_boundaries();

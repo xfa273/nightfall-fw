@@ -8,6 +8,7 @@
 #include "motion_time.h"
 #include "params.h"
 #include "shortest_run_params.h"
+#include "f413_trace_flags.h"
 
 typedef enum
 {
@@ -509,6 +510,30 @@ static bool f413_path_run_turn_exits_diagonal(uint16_t code)
          (code == NF_LEGACY_PATH_LEFT_135_OUT);
 }
 
+#if !defined(NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST) || \
+    defined(NIGHTFALL_F413_PATH_DISTANCE_CURSOR_HOST_TEST)
+static uint16_t f413_path_run_motor_phase_flags(uint16_t trace_flags,
+                                                uint16_t motor_flag)
+{
+  const uint16_t motor_mask = (uint16_t)(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG |
+                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG |
+                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
+  return (uint16_t)((trace_flags & (uint16_t)~motor_mask) | motor_flag);
+}
+
+static uint16_t f413_path_run_turn_offset_trace_flags(uint16_t trace_flags)
+{
+  /*
+   * Every turn entry/exit offset is powered forward motion, including the
+   * diagonal primitives that deliberately disable wall control.  Keep the
+   * motor flag independent of that wall-control choice: the auto trace logger
+   * uses this flag to defer blocking FRAM writes until the motors stop.
+   */
+  return f413_path_run_motor_phase_flags(
+      trace_flags, NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG);
+}
+#endif
+
 static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
     const uint16_t* codes,
     size_t capacity,
@@ -844,14 +869,6 @@ static float f413_path_run_velocity_or_cap(float candidate, float fallback, floa
   }
 
   return v;
-}
-
-static uint16_t f413_path_run_motor_phase_flags(uint16_t trace_flags, uint16_t motor_flag)
-{
-  const uint16_t motor_mask = (uint16_t)(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG |
-                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG |
-                                        NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
-  return (uint16_t)((trace_flags & (uint16_t)~motor_mask) | motor_flag);
 }
 
 static void f413_path_run_prepare_straight_angle_control(void)
@@ -1593,9 +1610,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   }
 
   turn_sign = (turn->signed_angle_deg < 0.0f) ? -1 : 1;
-  straight_trace_flags = f413_path_run_motor_phase_flags(
-      trace_flags,
-      turn->wall_control_offsets ? NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG : 0U);
+  straight_trace_flags = f413_path_run_turn_offset_trace_flags(trace_flags);
   turn_trace_flags = f413_path_run_motor_phase_flags(trace_flags,
                                                      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
 
