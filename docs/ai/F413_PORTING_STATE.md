@@ -124,9 +124,12 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
     validation path `S3,R45-in,DS1,L-V90,DS1,R45-out,S2`.  It bypasses saved-maze
     path generation and disables wall control, wall-end correction, and front-
     wall correction while retaining the canonical accumulated gyro-angle
-    contract used to tune the turns.  Cases7--9 still use the saved-maze KERI
-    planner.  Restore case6 to that planner after the measured composite path
-    agrees with the intended centre lines.
+    contract used to tune the turns.  The common F413 shortest/search
+    `first_section` is 10 mm, derived from the 45 mm first centre line minus the
+    measured 35 mm centre-to-rear overhang, so the machine starts with its rear
+    against the start wall.  Cases7--9 still use the saved-maze KERI planner.
+    Restore case6 to that planner after the measured composite path agrees with
+    the intended centre lines.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_motion_table.c`
   - PC-generated const geometry, pose, turn-time, connector-time, and
     wall-end-approach tables for mode2 case6--9.

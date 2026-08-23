@@ -1912,6 +1912,22 @@ void f413_path_run_print_preview(void)
   trace_printf("\r\n");
 }
 
+static f413_run_session_abort_reason_t f413_path_run_first_section(
+    float first_speed_mm_s,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags)
+{
+  trace_printf("[RUN-TEST] first-section distance=%.1fmm speed=0->%.1fmm/s\r\n",
+               (double)DIST_FIRST_SEC,
+               (double)first_speed_mm_s);
+  return f413_path_run_drive_segment((float)DIST_FIRST_SEC,
+                                     first_speed_mm_s,
+                                     speed_now_mm_s,
+                                     guard,
+                                     trace_flags);
+}
+
 void f413_path_run_session_once(uint8_t mode,
                                 uint8_t case_index,
                                 uint16_t base_trace_flag,
@@ -2002,8 +2018,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
 
-  abort_reason = f413_path_run_drive_segment(
-      (float)DIST_FIRST_SEC,
+  abort_reason = f413_path_run_first_section(
       first_speed,
       &speed_now,
       &guard,

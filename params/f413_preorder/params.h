@@ -19,7 +19,9 @@
 #define D_TIRE            14.39
 #define DIST_HALF_SEC     45.0
 #define DIST_D_HALF_SEC   67.279
-#define DIST_FIRST_SEC    5
+#define ROBOT_REAR_OVERHANG 35.0
+/* Rear-wall contact to the first 45 mm centre line. */
+#define DIST_FIRST_SEC    (DIST_HALF_SEC - ROBOT_REAR_OVERHANG)
 #define DIST_SET_POSITION 5
 
 /*------------------------------------------------------------

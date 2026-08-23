@@ -199,7 +199,7 @@ const NfAuditProfile nf_slalom_profiles[] = {
         "params/f413_preorder/shortest_run_params_split.c",
         true,
         2U,
-        5.0,
+        10.0,
         {2200.0, 1.2},
         g_current_mode2,
         g_seed_mode2,

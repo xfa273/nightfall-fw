@@ -3209,8 +3209,9 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
     state = f413_rp_parent_previous(parent);
   }
 
-  trace_printf("[KERI-PREVIEW] A0 start-offset O=5.000mm speed=0->crawl(%lu) "
+  trace_printf("[KERI-PREVIEW] A0 start-offset O=%.3fmm speed=0->crawl(%lu) "
                "total=%lu.%06lu s\r\n",
+               (double)DIST_FIRST_SEC,
                (unsigned long)context->motion->precomputed
                    ->speed_mm_s[F413_RP_SPEED_CRAWL],
                (unsigned long)(context->motion->precomputed->start_time_us /

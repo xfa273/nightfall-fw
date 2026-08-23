@@ -252,17 +252,22 @@ int main(void)
         f413_route_precomputed_find_case(7U);
     const F413RoutePrecomputedCase* case8 =
         f413_route_precomputed_find_case(8U);
+    const uint32_t case6_crawl_low_time_us =
+        (case6 == NULL) ? UINT32_MAX : seconds_to_u32_us(
+            (2.0 * (double)DIST_HALF_SEC) /
+            (case6->speed_mm_s[SPEED_CRAWL] +
+             case6->speed_mm_s[SPEED_LOW]));
     check_bool(case6 != NULL &&
                    case6->orthogonal_approach_time_us[SPEED_CRAWL]
                        [SPEED_LOW][1U] != UINT32_MAX,
                "case6 exact one-step crawl-to-small approach is feasible");
     check_bool(case6 != NULL &&
                    case6->orthogonal_approach_time_us[SPEED_CRAWL]
-                       [SPEED_LOW][1U] == 225000U,
+                       [SPEED_LOW][1U] == case6_crawl_low_time_us,
                "case6 exact one-step crawl-to-small duration");
     check_bool(case6 != NULL &&
                    case6->orthogonal_approach_time_us[SPEED_LOW]
-                       [SPEED_CRAWL][1U] == 225000U,
+                       [SPEED_CRAWL][1U] == case6_crawl_low_time_us,
                "case6 exact one-step small-to-crawl duration");
     check_bool(case6 != NULL &&
                    case6->orthogonal_approach_time_us[SPEED_CRAWL]

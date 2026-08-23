@@ -154,10 +154,16 @@ static void check_start_runup_contract(void)
   const NfLinearLimits case6 = {1000.0, 2000.0, 1000.0, 1000.0};
   const NfLinearLimits case7 = {1250.0, 2000.0, 3000.0, 3000.0};
   const NfLinearLimits case8 = {1500.0, 2000.0, 4000.0, 4000.0};
-  const float case6_start = sqrtf(2.0f * 1000.0f * 5.0f);
-  const float case7_start = sqrtf(2.0f * 3000.0f * 5.0f);
-  const float case8_start = sqrtf(2.0f * 4000.0f * 5.0f);
+  const float case6_start = sqrtf(
+      2.0f * 1000.0f * (float)DIST_FIRST_SEC);
+  const float case7_start = sqrtf(
+      2.0f * 3000.0f * (float)DIST_FIRST_SEC);
+  const float case8_start = sqrtf(
+      2.0f * 4000.0f * (float)DIST_FIRST_SEC);
 
+  CHECK(close_value(DIST_FIRST_SEC, 10.0, 1.0e-9));
+  CHECK(close_value(DIST_FIRST_SEC,
+                    DIST_HALF_SEC - ROBOT_REAR_OVERHANG, 1.0e-9));
   CHECK(f413_path_run_make_linear_plan(45.0f, case6_start, 300.0f,
                                        &case6, &plan));
   CHECK(!f413_path_run_make_linear_plan(45.0f, case6_start, 500.0f,
@@ -179,8 +185,10 @@ static void check_wall_end_approach_contract(void)
 {
   const ShortestRunCaseParams_t* case6 = &shortestRunCaseParamsMode2[5];
   const ShortestRunCaseParams_t* case7 = &shortestRunCaseParamsMode2[6];
-  const float case6_start = sqrtf(2.0f * case6->acceleration_straight * 5.0f);
-  const float case7_start = sqrtf(2.0f * case7->acceleration_straight * 5.0f);
+  const float case6_start = sqrtf(
+      2.0f * case6->acceleration_straight * (float)DIST_FIRST_SEC);
+  const float case7_start = sqrtf(
+      2.0f * case7->acceleration_straight * (float)DIST_FIRST_SEC);
   NfLinearLimits limits;
   NfLinearPlan plan;
   bool execute_before_buffer = true;
