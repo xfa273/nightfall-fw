@@ -310,6 +310,10 @@ const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
     {
       return "turn/diagonal/straight test";
     }
+    if ((mode == 2U) && (op_case == 6U))
+    {
+      return "open-floor diagonal wall correction off";
+    }
     return "shortest case";
   }
   if (mode == 8U)

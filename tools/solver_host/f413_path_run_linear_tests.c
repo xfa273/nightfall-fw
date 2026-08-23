@@ -279,6 +279,8 @@ static void check_preflight_boundaries(void)
       300U, 201U, 0U};
   static const uint16_t large_s1_small[] = {
       202U, 501U, 201U, 300U, 202U, 0U};
+  static const uint16_t case6_open_floor_diagonal[] = {
+      203U, 701U, 1001U, 802U, 1001U, 703U, 202U, 0U};
 
   expect_preflight("non-diagonal case1 keeps zero diagonal params",
                    non_diagonal_case1,
@@ -348,6 +350,13 @@ static void check_preflight_boundaries(void)
                    large_s1_small,
                    sizeof(large_s1_small) / sizeof(large_s1_small[0]),
                    &shortestRunCaseParamsMode2[6], true,
+                   false,
+                   F413_PATH_RUN_PREFLIGHT_OK, 0U);
+  expect_preflight("case6 open-floor diagonal wall correction off",
+                   case6_open_floor_diagonal,
+                   sizeof(case6_open_floor_diagonal) /
+                       sizeof(case6_open_floor_diagonal[0]),
+                   &shortestRunCaseParamsMode2[5], false,
                    false,
                    F413_PATH_RUN_PREFLIGHT_OK, 0U);
 }

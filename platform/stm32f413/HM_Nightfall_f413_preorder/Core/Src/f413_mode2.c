@@ -42,6 +42,15 @@ typedef struct {
     .test_mode_run = false, \
   }
 
+#define F413_MODE2_FEATURES_NO_WALL_CORRECTION_INIT \
+  { \
+    .wall_control_enabled = false, \
+    .wall_end_correction_enabled = false, \
+    .front_wall_correction_enabled = false, \
+    .angle_accum_mode = true, \
+    .test_mode_run = false, \
+  }
+
 static const f413_mode2_case_t k_cases[9] = {
   {1U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[0]", F413_MODE2_FEATURES_FRONT_ON_NO_ACCUM_INIT},
   {2U, "shortestRunModeParams2 + shortestRunCaseParamsMode2[1]", F413_MODE2_FEATURES_FRONT_OFF_INIT},
@@ -70,9 +79,36 @@ static const f413_mode2_case0_sub_t k_case0_subs[10] = {
   {5U, "mode2-case0-sub9 straight case5",        {209U},                               1U},
 };
 
+/*
+ * Deterministic open-floor validation route for the low-speed diagonal
+ * profile.  It enters a right diagonal, crosses a left V90, and exits right
+ * back to a cardinal heading.  The explicit diagonal straights separate the
+ * primitives so their measured swept paths can be compared with the intended
+ * centre lines without relying on a saved maze or on wall/post feedback.
+ */
+static const uint16_t k_case6_open_floor_diagonal_path[] = {
+  203U, 701U, 1001U, 802U, 1001U, 703U, 202U,
+};
+
+static const f413_run_features_t k_case6_no_wall_correction_features =
+    F413_MODE2_FEATURES_NO_WALL_CORRECTION_INIT;
+
 void f413_mode2_run_case(uint8_t op_case)
 {
   f413_shortest_case_config_t config;
+
+  if (op_case == 6U)
+  {
+    f413_mode_shortest_run_path_config(
+        "mode2-case6 open-floor diagonal (wall corrections off)",
+        2U,
+        6U,
+        k_case6_open_floor_diagonal_path,
+        (uint16_t)(sizeof(k_case6_open_floor_diagonal_path) /
+                   sizeof(k_case6_open_floor_diagonal_path[0])),
+        &k_case6_no_wall_correction_features);
+    return;
+  }
 
   if ((op_case < 1U) || (op_case > 9U))
   {

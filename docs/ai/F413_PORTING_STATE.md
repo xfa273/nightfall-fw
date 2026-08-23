@@ -119,6 +119,14 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
     fallback.  Run generation requires the FRAM maze and compiled goals;
     preview alone may use the built-in diagnostic fixture.  This module builds
     but never starts motor/fan execution or writes NVM.
+- `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_mode2.c`
+  - Mode2 case6 is temporarily assigned to a deterministic open-floor diagonal
+    validation path `S3,R45-in,DS1,L-V90,DS1,R45-out,S2`.  It bypasses saved-maze
+    path generation and disables wall control, wall-end correction, and front-
+    wall correction while retaining the canonical accumulated gyro-angle
+    contract used to tune the turns.  Cases7--9 still use the saved-maze KERI
+    planner.  Restore case6 to that planner after the measured composite path
+    agrees with the intended centre lines.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_motion_table.c`
   - PC-generated const geometry, pose, turn-time, connector-time, and
     wall-end-approach tables for mode2 case6--9.
@@ -186,8 +194,11 @@ Treat motor, fan, turn, search, shortest, and NVM-destructive operations as gate
    - `tools/solver_host/run_solver_host.sh --explore-sim`
    - UART `@` dump rendering
    - solver from search dump
-5. Validate diagonal shortest running in stages: inspect the generated path,
-   then run the low profile mode2 case6 before case7 and case8.  Current
+5. Validate diagonal shortest running in stages: first run the temporary
+   open-floor/no-wall-correction mode2 case6 path and compare its measured
+   composite trajectory with the intended centre lines; then restore case6 to
+   saved-maze KERI generation, inspect the generated path, and run the low
+   profile before case7 and case8.  Current
    orthogonal/diagonal speed and acceleration ladders are
    `1000/800 @ 1000`, `1250/900 @ 3000`, and `1500/1000 @ 4000`
    (mm/s and mm/s^2).  Keep case9 as a later comparison profile.

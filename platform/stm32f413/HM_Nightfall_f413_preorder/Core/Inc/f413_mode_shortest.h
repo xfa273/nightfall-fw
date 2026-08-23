@@ -20,5 +20,11 @@ void f413_mode_shortest_run_case0_path(const char* label,
                                        uint8_t case_index,
                                        const uint16_t* codes,
                                        uint16_t code_count);
+void f413_mode_shortest_run_path_config(const char* label,
+                                        uint8_t mode,
+                                        uint8_t case_index,
+                                        const uint16_t* codes,
+                                        uint16_t code_count,
+                                        const f413_run_features_t* features);
 
 #endif

@@ -181,10 +181,6 @@ void f413_mode_shortest_run_case0_path(const char* label,
                                        const uint16_t* codes,
                                        uint16_t code_count)
 {
-#if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
-  uint16_t invalid_index = 0U;
-  const f413_case0_path_validation_t validation =
-      f413_mode_shortest_validate_case0_path(codes, code_count, &invalid_index);
   const f413_run_features_t test_features = {
     .wall_control_enabled = true,
     .wall_end_correction_enabled = false,
@@ -193,6 +189,32 @@ void f413_mode_shortest_run_case0_path(const char* label,
     .test_mode_run = true,
   };
 
+  f413_mode_shortest_run_path_config(label,
+                                      mode,
+                                      case_index,
+                                      codes,
+                                      code_count,
+                                      &test_features);
+}
+
+void f413_mode_shortest_run_path_config(const char* label,
+                                        uint8_t mode,
+                                        uint8_t case_index,
+                                        const uint16_t* codes,
+                                        uint16_t code_count,
+                                        const f413_run_features_t* features)
+{
+#if (NIGHTFALL_F413_REAL_RUN_PATH_ENABLED != 0U)
+  uint16_t invalid_index = 0U;
+  const f413_case0_path_validation_t validation =
+      f413_mode_shortest_validate_case0_path(codes, code_count, &invalid_index);
+
+  if (features == NULL)
+  {
+    trace_printf("[OP-UI][PATH-TEST] rejected %s (features missing)\r\n",
+                 (label != NULL) ? label : "unnamed");
+    return;
+  }
   if (validation != F413_CASE0_PATH_VALID)
   {
     const uint16_t invalid_code = ((codes != NULL) && (invalid_index < code_count))
@@ -206,7 +228,14 @@ void f413_mode_shortest_run_case0_path(const char* label,
     return;
   }
 
-  f413_run_features_set(&test_features);
+  trace_printf(
+      "[OP-UI][PATH-TEST] features wall=%u wall-end=%u front=%u angle-accum=%u test=%u\r\n",
+      features->wall_control_enabled ? 1U : 0U,
+      features->wall_end_correction_enabled ? 1U : 0U,
+      features->front_wall_correction_enabled ? 1U : 0U,
+      features->angle_accum_mode ? 1U : 0U,
+      features->test_mode_run ? 1U : 0U);
+  f413_run_features_set(features);
   f413_path_run_custom_path_session_once(label,
                                          mode,
                                          case_index,
@@ -220,6 +249,7 @@ void f413_mode_shortest_run_case0_path(const char* label,
   (void)case_index;
   (void)codes;
   (void)code_count;
+  (void)features;
   trace_printf("[RUN-TEST] no-op: F413 path-code test runner is disabled\r\n");
 #endif
 }
