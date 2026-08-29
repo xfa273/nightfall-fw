@@ -191,6 +191,7 @@ static float s_velocity_accel_comp_encoder_sum = 0.0f;
 static float s_velocity_accel_comp_accel_sum = 0.0f;
 static uint16_t s_velocity_accel_comp_index = 0U;
 static uint16_t s_velocity_accel_comp_count = 0U;
+static float s_encoder_velocity_windowed = 0.0f;
 static uint16_t s_distance_outer_count = 0U;
 static float s_distance_velocity_feedback = 0.0f;
 static uint16_t s_angle_outer_count = 0U;
@@ -343,6 +344,7 @@ static void f413_ctrl_reset_velocity_accel_comp(void)
     s_velocity_accel_comp_accel_sum = 0.0f;
     s_velocity_accel_comp_index = 0U;
     s_velocity_accel_comp_count = 0U;
+    s_encoder_velocity_windowed = 0.0f;
     s_accel_velocity = 0.0f;
 }
 
@@ -399,6 +401,7 @@ static float f413_ctrl_update_velocity_accel_comp(float encoder_velocity_mm_s,
     count = s_velocity_accel_comp_count;
     encoder_avg = s_velocity_accel_comp_encoder_sum / (float)count;
     accel_avg = s_velocity_accel_comp_accel_sum / (float)count;
+    s_encoder_velocity_windowed = encoder_avg;
     avg_time_s = (float)count * F413_CTRL_DT;
     return encoder_avg + (accel_avg * avg_time_s * 0.5f * VELOCITY_ACCEL_COMP_GAIN);
 }
@@ -1159,6 +1162,10 @@ float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
 float f413_ctrl_get_gyro_z_raw(void)      { return s_omega_z_raw; }
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void) { return (uint16_t)VELOCITY_ACCEL_COMP_WINDOW_MS; }
 bool f413_ctrl_velocity_accel_comp_control_enabled(void) { return (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U); }
+bool f413_ctrl_velocity_accel_comp_turn_control_enabled(void)
+{
+    return (VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE != 0U);
+}
 int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
 int16_t f413_ctrl_get_motor_out_r(void)   { return s_motor_out_r; }
 int16_t f413_ctrl_get_log_encoder_delta_l(void) { return s_encoder_delta_l; }
@@ -1294,7 +1301,19 @@ void f413_ctrl_tick(void)
     }
 
 #if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
+#if (VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE != 0U)
     s_real_velocity = s_accel_velocity;
+#else
+    /*
+     * A turn produces lateral acceleration near v*omega.  Until the IMU-axis
+     * cross-coupling is calibrated, feeding that component into the forward
+     * velocity estimator makes the translation PI alternately back off and
+     * surge.  The same 30 ms encoder window is smooth enough for the coarse
+     * 200-count/rev wheel encoders and remains independent of turn direction.
+     */
+    s_real_velocity = s_omega_profile_active ? s_encoder_velocity_windowed
+                                             : s_accel_velocity;
+#endif
 #else
     s_real_velocity = s_real_velocity_lpf;
 #endif

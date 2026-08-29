@@ -77,6 +77,7 @@ float f413_ctrl_get_accel_forward(void);
 float f413_ctrl_get_gyro_z_raw(void);
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void);
 bool f413_ctrl_velocity_accel_comp_control_enabled(void);
+bool f413_ctrl_velocity_accel_comp_turn_control_enabled(void);
 int16_t f413_ctrl_get_motor_out_l(void);
 int16_t f413_ctrl_get_motor_out_r(void);
 int16_t f413_ctrl_get_log_encoder_delta_l(void);

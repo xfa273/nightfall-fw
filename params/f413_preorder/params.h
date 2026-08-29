@@ -61,6 +61,17 @@
 #define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
 #endif
 
+/*
+ * The forward accelerometer estimate is useful on straight acceleration, but
+ * the present IMU mounting couples a material part of lateral acceleration
+ * into that axis during a slalom.  Keep the estimator available for logging,
+ * while using the windowed wheel-encoder velocity for the velocity loop for
+ * the duration of an omega profile.
+ */
+#ifndef VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE
+#define VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE 0U
+#endif
+
 #ifndef SEARCH_STEP_MM
 #define SEARCH_STEP_MM 10.0F
 #endif
