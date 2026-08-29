@@ -780,6 +780,22 @@ def _circle_mask(
     return result
 
 
+def _bounded_label_prediction_distance(
+    tracking_radius_px: float,
+    upper_bound_px: float,
+) -> float:
+    """Keep the normal wide reacquisition gate but permit strict HFR tracking.
+
+    At 240 fps the centre label normally advances by much less than one pixel
+    per frame.  A hard 20 px floor allowed a nearby blue status LED to take
+    over after a single blurred frame even when the caller deliberately asked
+    for a narrow tracking radius.  Four pixels still tolerates blur/centroid
+    quantisation while making radii below 20 px effective.
+    """
+
+    return max(4.0, min(upper_bound_px, tracking_radius_px))
+
+
 def _board_mask(
     shape: tuple[int, int],
     grid: aruco.GridCalibration,
@@ -1276,7 +1292,9 @@ def detect_pose(
             args.maximum_label_pixels,
             expected_label_pixels,
             predicted_label_xy,
-            max(20.0, min(45.0, args.tracking_radius_px)),
+            _bounded_label_prediction_distance(
+                args.tracking_radius_px, 45.0
+            ),
         )
 
     green = green_mask(frame) & board
@@ -1314,7 +1332,9 @@ def detect_pose(
                 args.maximum_label_pixels,
                 expected_label_pixels,
                 recovery_prediction,
-                max(20.0, min(30.0, args.tracking_radius_px)),
+                _bounded_label_prediction_distance(
+                    args.tracking_radius_px, 30.0
+                ),
             )
 
     front_label_xy: Optional[np.ndarray] = None
@@ -1342,7 +1362,9 @@ def detect_pose(
                 expected_front_label_distance_px,
                 front_label_distance_tolerance_px,
                 pair_prediction,
-                max(20.0, min(30.0, args.tracking_radius_px)),
+                _bounded_label_prediction_distance(
+                    args.tracking_radius_px, 30.0
+                ),
             )
         )
         if paired_label_xy is not None:

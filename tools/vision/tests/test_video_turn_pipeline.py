@@ -648,6 +648,20 @@ class MarkerlessSafetyGateTest(unittest.TestCase):
         self.assertEqual(count, 64)
         np.testing.assert_allclose(center, [49.5, 49.5])
 
+    def test_label_prediction_gate_honours_strict_hfr_radius(self):
+        self.assertEqual(
+            MARKERLESS._bounded_label_prediction_distance(6.0, 45.0),
+            6.0,
+        )
+        self.assertEqual(
+            MARKERLESS._bounded_label_prediction_distance(2.0, 45.0),
+            4.0,
+        )
+        self.assertEqual(
+            MARKERLESS._bounded_label_prediction_distance(60.0, 45.0),
+            45.0,
+        )
+
     def test_initial_position_seeds_primary_blue_label_tracker(self):
         args = argparse.Namespace(
             initial_x_cell=7.38,
