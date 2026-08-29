@@ -191,7 +191,6 @@ static float s_velocity_accel_comp_encoder_sum = 0.0f;
 static float s_velocity_accel_comp_accel_sum = 0.0f;
 static uint16_t s_velocity_accel_comp_index = 0U;
 static uint16_t s_velocity_accel_comp_count = 0U;
-static float s_encoder_velocity_windowed = 0.0f;
 static uint16_t s_distance_outer_count = 0U;
 static float s_distance_velocity_feedback = 0.0f;
 static uint16_t s_angle_outer_count = 0U;
@@ -344,7 +343,6 @@ static void f413_ctrl_reset_velocity_accel_comp(void)
     s_velocity_accel_comp_accel_sum = 0.0f;
     s_velocity_accel_comp_index = 0U;
     s_velocity_accel_comp_count = 0U;
-    s_encoder_velocity_windowed = 0.0f;
     s_accel_velocity = 0.0f;
 }
 
@@ -401,7 +399,6 @@ static float f413_ctrl_update_velocity_accel_comp(float encoder_velocity_mm_s,
     count = s_velocity_accel_comp_count;
     encoder_avg = s_velocity_accel_comp_encoder_sum / (float)count;
     accel_avg = s_velocity_accel_comp_accel_sum / (float)count;
-    s_encoder_velocity_windowed = encoder_avg;
     avg_time_s = (float)count * F413_CTRL_DT;
     return encoder_avg + (accel_avg * avg_time_s * 0.5f * VELOCITY_ACCEL_COMP_GAIN);
 }
@@ -1308,10 +1305,11 @@ void f413_ctrl_tick(void)
      * A turn produces lateral acceleration near v*omega.  Until the IMU-axis
      * cross-coupling is calibrated, feeding that component into the forward
      * velocity estimator makes the translation PI alternately back off and
-     * surge.  The same 30 ms encoder window is smooth enough for the coarse
-     * 200-count/rev wheel encoders and remains independent of turn direction.
+     * surge.  Use the existing 3 ms encoder LPF instead.  It remains
+     * independent of turn direction without adding the roughly 15 ms group
+     * delay of the accelerometer estimator's 30 ms moving window.
      */
-    s_real_velocity = s_omega_profile_active ? s_encoder_velocity_windowed
+    s_real_velocity = s_omega_profile_active ? s_real_velocity_lpf
                                              : s_accel_velocity;
 #endif
 #else

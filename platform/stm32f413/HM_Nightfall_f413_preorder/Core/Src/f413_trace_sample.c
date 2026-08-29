@@ -285,6 +285,9 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                f413_ctrl_velocity_accel_comp_control_enabled() ? 1U : 0U);
   trace_printf("#velocity_accel_comp_turn_control=%u\r\n",
                f413_ctrl_velocity_accel_comp_turn_control_enabled() ? 1U : 0U);
+  trace_printf("#velocity_turn_control_source=%s\r\n",
+               f413_ctrl_velocity_accel_comp_turn_control_enabled() ?
+                   "accel_comp" : "encoder_lpf");
   trace_printf("#omega_ff_lead_time_s=%.6f\r\n", (double)FF_OMEGA_LEAD_TIME_S);
   trace_printf("#omega_ff_lead_max_dps=%.3f\r\n", (double)FF_OMEGA_LEAD_MAX_DPS);
   trace_printf("#omega_ff_pwm_fan_on=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_ON);
