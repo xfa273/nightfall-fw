@@ -1645,13 +1645,15 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
 
   f413_path_run_prepare_turn_angle_control();
   /*
-   * Preserve distance tracking through the timed core.  The preceding
-   * set_velocity() contract disabled the distance outer loop, and repeating
-   * it below kept re-synchronising away the accumulated error.  On the real
-   * V90 this produced only 74 mm for a 77.5 mm target despite substantial
-   * PWM headroom, translating every following diagonal segment.
+   * Keep the timed turn core at a constant velocity setpoint.  Enabling the
+   * straight-line distance outer loop here made the 500 mm/s V90 setpoint
+   * wander from 487 to 524 mm/s and the measured velocity swing from 379 to
+   * 607 mm/s.  A timed omega profile needs repeatable speed more than it
+   * needs to recover a few millimetres of cumulative straight-line distance;
+   * the following segment starts a new distance contract from the measured
+   * endpoint.
    */
-  f413_ctrl_set_velocity_tracking(turn->velocity_mm_s);
+  f413_ctrl_set_velocity(turn->velocity_mm_s);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
