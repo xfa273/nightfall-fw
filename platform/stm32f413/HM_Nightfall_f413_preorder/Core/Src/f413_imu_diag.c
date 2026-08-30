@@ -8,6 +8,7 @@
 #define F413_IMU_DIAG_WHO_AM_I_REG (0x0FU)
 #define F413_IMU_DIAG_WHO_AM_I_EXPECTED (0x6BU)
 #define F413_IMU_DIAG_CTRL1_XL (0x10U)
+#define F413_IMU_DIAG_CTRL1_XL_833HZ_16G (0x74U)
 #define F413_IMU_DIAG_CTRL2_G (0x11U)
 #define F413_IMU_DIAG_CTRL3_C (0x12U)
 #define F413_IMU_DIAG_OUTZ_G_L (0x26U)
@@ -15,7 +16,7 @@
 #define F413_IMU_DIAG_OUTY_XL_L (0x2AU)
 #define F413_IMU_DIAG_OUTZ_XL_L (0x2CU)
 #define F413_IMU_DIAG_GYRO_SENSITIVITY (0.14f)
-#define F413_IMU_DIAG_ACCEL_SENS_MG (0.488f)
+#define F413_IMU_DIAG_ACCEL_SENS_MG (0.488f) /* FS=±16g */
 #define F413_IMU_DIAG_GRAVITY_MM_S2 (9.80665f)
 #define F413_IMU_DIAG_MANUAL_OFFSET_SAMPLES (500U)
 #define F413_IMU_DIAG_MANUAL_TEST_MS (8000U)
@@ -154,7 +155,8 @@ static bool f413_imu_diag_config_for_gyro(void)
   }
   HAL_Delay(10U);
 
-  if (!f413_imu_diag_write_reg(F413_IMU_DIAG_CTRL1_XL, 0x7CU))
+  if (!f413_imu_diag_write_reg(F413_IMU_DIAG_CTRL1_XL,
+                               F413_IMU_DIAG_CTRL1_XL_833HZ_16G))
   {
     trace_printf("[HW-TEST][IMU-ANGLE] FAIL(write CTRL1_XL)\r\n");
     return false;

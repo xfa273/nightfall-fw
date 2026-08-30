@@ -75,6 +75,7 @@
 #define F413_IMU_WHO_AM_I_REG     (0x0FU)
 #define F413_IMU_WHO_AM_I_VAL     (0x6BU)
 #define F413_IMU_CTRL1_XL         (0x10U)    /* 加速度設定 */
+#define F413_IMU_CTRL1_XL_833HZ_16G (0x74U)
 #define F413_IMU_CTRL2_G          (0x11U)    /* ジャイロ設定 */
 #define F413_IMU_CTRL3_C          (0x12U)    /* 制御レジスタ3 */
 #define F413_IMU_OUTZ_G_L         (0x26U)    /* ジャイロ Z軸 LOW byte */
@@ -82,7 +83,7 @@
 #define F413_IMU_OUTX_XL_L        (0x28U)
 #define F413_IMU_OUTY_XL_L        (0x2AU)
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
-#define F413_IMU_ACCEL_SENS_MG    (0.488f)
+#define F413_IMU_ACCEL_SENS_MG    (0.488f)   /* FS=±16g */
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
@@ -841,8 +842,8 @@ static bool imu_init_ism330(void)
     imu_write_byte(F413_IMU_CTRL2_G, 0x71U);
     HAL_Delay(10U);
 
-    /* CTRL1_XL: ODR=833Hz, FS=±16g (0x7C) */
-    imu_write_byte(F413_IMU_CTRL1_XL, 0x7CU);
+    /* CTRL1_XL: ODR=833Hz, FS=±16g */
+    imu_write_byte(F413_IMU_CTRL1_XL, F413_IMU_CTRL1_XL_833HZ_16G);
     HAL_Delay(10U);
 
     return true;
