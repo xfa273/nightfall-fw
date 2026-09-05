@@ -93,9 +93,10 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/solver_params.c
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/path.c
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/maze_grid.c
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder/shortest_run_params_split.c
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder/sensor_distance_lut.c
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder/profile.c
+    ${CMAKE_SOURCE_DIR}/params/mini_r3_0/profile.c
+    ${CMAKE_SOURCE_DIR}/board/f413/f413_machine.c
+    ${CMAKE_SOURCE_DIR}/board/f413/f413_registry.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
@@ -163,6 +164,7 @@ set(NIGHTFALL_STM32F413_DRIVERS_SRC
 
 add_library(stm32cubemx_stm32f413 INTERFACE)
 target_include_directories(stm32cubemx_stm32f413 INTERFACE
+    ${CMAKE_SOURCE_DIR}/board/f413
     ${CMAKE_SOURCE_DIR}/nvm
     ${CMAKE_SOURCE_DIR}/params/f413_preorder
     ${CMAKE_SOURCE_DIR}/platform/trace
@@ -200,6 +202,7 @@ function(nightfall_apply_stm32f405 target)
 endfunction()
 
 function(nightfall_apply_stm32f413 target)
+    target_compile_definitions(${target} PRIVATE NIGHTFALL_F413_RUNTIME_CONFIG=1)
     target_sources(${target} PRIVATE ${NIGHTFALL_STM32F413_APPLICATION_SRC})
     target_link_libraries(${target} PRIVATE stm32cubemx_stm32f413 stm32_drivers_stm32f413)
     target_link_options(${target} PRIVATE

@@ -55,12 +55,14 @@ Host-only PWM mapping regression (does not access hardware):
 sh tools/hil/run_f413_motor_pwm_tests.sh
 ```
 
-The current F413 wiring default is mini r3 with the **left motor leads swapped**
-(2026-09-06); both sides use IN2 high for forward. Original mini r2 or unswapped
-mini r3 wiring requires `NIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH=0` as a compiler
-definition for all F413 application sources. This is not automatic NVM machine
-selection. The regression tests both mappings, zero duty, and saturation across
-all 16-bit duty inputs. Encoder signs and PWM frequency are unchanged.
+F413 now selects wiring from NVM model/unit identity. mini r2 unit001 uses its
+original wiring; mini r3 unit001 has the left leads swapped. The old compiler
+polarity override is rejected. This regression tests both electrical mappings,
+zero duty, and saturation over all 16-bit inputs.
+
+`sh tools/hil/run_f413_machine_tests.sh` checks runtime selection, independent
+unit profiles, mini/classic namespace separation, invalid-ID fail-closed behavior,
+and immutable boot settings. See `docs/F413_MACHINE_CONFIG.md` for operation.
 
 This safe helper intentionally does not automate motor commands. When the
 machine is lifted and secured, use the UART commands from `docs/ai/HIL_SAFETY.md`

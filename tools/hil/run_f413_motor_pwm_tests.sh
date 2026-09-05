@@ -7,15 +7,13 @@ CC_BIN=${CC:-cc}
 mkdir -p "$TEST_OUT_DIR"
 
 # Host only: no probe, UART, firmware flashing, or motor command is used.
-# Exercise both the current mini r3 default and explicit legacy wiring.
+# Exercise both electrical polarities; runtime identity selection has its own test.
 for wiring in 1 0; do
-  set --
-  if [ "$wiring" = 0 ]; then
-    set -- -DNIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH=0
-  fi
   "$CC_BIN" -std=c11 -Wall -Wextra -Werror -Wpedantic -O1 -g \
     -fsanitize=address,undefined -fno-omit-frame-pointer \
-    -DTEST_EXPECT_LEFT_FORWARD_HIGH="$wiring" "$@" \
+    -DTEST_EXPECT_LEFT_FORWARD_HIGH="$wiring" \
+    -I"$TASK_ROOT/board/f413" -I"$TASK_ROOT/nvm" \
+    -I"$TASK_ROOT/platform/stm32f405/Core/Inc" \
     -I"$TASK_ROOT/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc" \
     "$TASK_ROOT/tools/hil/f413_motor_pwm_tests.c" \
     -o "$TEST_OUT_DIR/f413_motor_pwm_$wiring"

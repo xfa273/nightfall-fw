@@ -21,12 +21,12 @@
 /* ---------- ハードウェア定数 ---------- */
 #define F413_CTRL_DT              (0.001f)   /* 制御周期 [s] (1kHz) */
 #define F413_CTRL_ENCODER_CENTER  (30000U)   /* エンコーダカウンタ中央値 */
-#define F413_CTRL_CPR_WHEEL       (200.0f)   /* 100pr reflective disk: 50 cycles/rev x4 */
+#define F413_CTRL_CPR_WHEEL       (f413_machine_hardware()->encoder_cpr)
 #define F413_CTRL_D_TIRE          (D_TIRE)   /* タイヤ直径 [mm], F405同様params.hで調整 */
-#define F413_CTRL_TREAD           (34.5f)    /* 左右タイヤ中心間距離 [mm] */
+#define F413_CTRL_TREAD           (f413_machine_hardware()->tread_mm)
 #define F413_CTRL_PWM_MAX         F413_MOTOR_PWM_MAX
-#define F413_CTRL_ENCODER_SIGN_L  (1.0f)
-#define F413_CTRL_ENCODER_SIGN_R  (-1.0f)
+#define F413_CTRL_ENCODER_SIGN_L  (f413_machine_hardware()->encoder_sign_l)
+#define F413_CTRL_ENCODER_SIGN_R  (f413_machine_hardware()->encoder_sign_r)
 
 /* ---------- 制御ゲイン ---------- */
 #define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
@@ -88,8 +88,8 @@
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
-#define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTY_XL_L)
-#define F413_IMU_FORWARD_ACCEL_SIGN (1.0f)
+#define F413_IMU_FORWARD_ACCEL_REG  (f413_machine_hardware()->imu_forward_accel_reg)
+#define F413_IMU_FORWARD_ACCEL_SIGN (f413_machine_hardware()->imu_forward_accel_sign)
 #define F413_CTRL_VEL_EST_MAX     (1200.0f)
 #define F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS (64U)
 #define F413_CTRL_TUNE_TOTAL_MS   (800U)
@@ -98,19 +98,10 @@
 #define F413_CTRL_TUNE_DIST_LIMIT_MM (650.0f)
 #define F413_CTRL_TUNE_ANGLE_LIMIT_DEG (400.0f)
 
-#if (VELOCITY_ACCEL_COMP_WINDOW_MS < 1U)
-#undef VELOCITY_ACCEL_COMP_WINDOW_MS
-#define VELOCITY_ACCEL_COMP_WINDOW_MS 1U
-#endif
-
-#if (VELOCITY_ACCEL_COMP_WINDOW_MS > F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS)
-#undef VELOCITY_ACCEL_COMP_WINDOW_MS
-#define VELOCITY_ACCEL_COMP_WINDOW_MS F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS
-#endif
+/* Window bounds are checked by the boot profile resolver (1..64 ms). */
 
 /* ---------- エンコーダ変換定数 ---------- */
-static const float s_enc_to_mm =
-    (F413_CTRL_D_TIRE * 3.14159265f) / F413_CTRL_CPR_WHEEL;
+static float s_enc_to_mm;
 
 /* ---------- HAL ハンドル (main.c で定義) ---------- */
 extern TIM_HandleTypeDef htim2;
@@ -881,6 +872,8 @@ static void imu_get_motion_offsets(void)
 
 void f413_ctrl_init(void)
 {
+    if (!f413_machine_has(F413_CAP_DRIVE | F413_CAP_IMU)) return;
+    s_enc_to_mm = (F413_CTRL_D_TIRE * 3.14159265f) / F413_CTRL_CPR_WHEEL;
     s_running = false;
     f413_ctrl_reset_profile_state();
     f413_ctrl_reset_pid_state();
@@ -905,6 +898,7 @@ void f413_ctrl_init(void)
 
 void f413_ctrl_start(void)
 {
+    if (!f413_machine_has(F413_CAP_DRIVE | F413_CAP_IMU)) return;
     /* 走行直前に IMU オフセットを再取得（静止状態で校正） */
     if (s_imu_ok)
     {
@@ -1297,10 +1291,8 @@ void f413_ctrl_tick(void)
         s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
     }
 
-#if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
-#if (VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE != 0U)
-    s_real_velocity = s_accel_velocity;
-#else
+    if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
+    {
     /*
      * A turn produces lateral acceleration near v*omega.  Until the IMU-axis
      * cross-coupling is calibrated, feeding that component into the forward
@@ -1309,12 +1301,14 @@ void f413_ctrl_tick(void)
      * independent of turn direction without adding the roughly 15 ms group
      * delay of the accelerometer estimator's 30 ms moving window.
      */
-    s_real_velocity = s_omega_profile_active ? s_real_velocity_lpf
-                                             : s_accel_velocity;
-#endif
-#else
-    s_real_velocity = s_real_velocity_lpf;
-#endif
+      s_real_velocity = (s_omega_profile_active &&
+          VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U) ?
+          s_real_velocity_lpf : s_accel_velocity;
+    }
+    else
+    {
+      s_real_velocity = s_real_velocity_lpf;
+    }
 
     s_real_omega = omega_raw;
     s_real_angle += s_real_omega * F413_CTRL_DT;

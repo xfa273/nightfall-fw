@@ -7,6 +7,11 @@
 
 ## 0. 進捗サマリ（2026-05-06）
 
+2026-09-06追記: F413機種・個体設定のruntime選択を実装。
+`mini_r2_0_unit001` / `mini_r3_0_unit001` を同一binaryで扱い、ハード設定・走行profileを分離する。
+mini/classic namespace、未登録SAFE、UID検証、初回登録運用は `F413_MACHINE_CONFIG.md` を参照。
+classic実機のpin adapterと調整profile、機種別KERI事前計算テーブルは実機追加時の作業。
+
 - Phase 0: 完了
 - Phase 1: 完了（既存機種の実機動作確認まで完了）
 - Phase 2: 完了（`trace_printf()` 導入と `STM32F413` 起動トレース経路を整備）

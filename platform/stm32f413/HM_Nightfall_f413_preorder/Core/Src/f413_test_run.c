@@ -5,18 +5,19 @@
 #include "f413_control.h"
 #include "f413_hw.h"
 #include "f413_motor_pwm.h"
+#include "params.h"
 #include "trace.h"
 
 #define F413_TEST_RUN_VEL_MM_S       (200.0f)
-#define F413_TEST_RUN_HALF_CELL_MM   (45.0f)
+#define F413_TEST_RUN_HALF_CELL_MM   ((float)DIST_HALF_SEC)
 #define F413_TEST_RUN_COAST_MS       (200U)
 #define F413_TEST_RUN_TIMEOUT_MS     (5000U)
 #define F413_TEST_RUN_ARMED_NONE     (0U)
 #define F413_TEST_RUN_MOTOR_DUTY     (120U)
 #define F413_TEST_RUN_MOTOR_MS       (500U)
 #define F413_TEST_RUN_MOTOR_COAST_MS (300U)
-#define F413_TEST_RUN_ENCODER_SIGN_L (1L)
-#define F413_TEST_RUN_ENCODER_SIGN_R (-1L)
+#define F413_TEST_RUN_ENCODER_SIGN_L (f413_machine_hardware()->encoder_sign_l)
+#define F413_TEST_RUN_ENCODER_SIGN_R (f413_machine_hardware()->encoder_sign_r)
 
 static f413_test_run_config_t g_config;
 static volatile uint8_t g_armed_id = F413_TEST_RUN_ARMED_NONE;

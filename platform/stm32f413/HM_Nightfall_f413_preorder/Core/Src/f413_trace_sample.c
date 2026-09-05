@@ -278,6 +278,13 @@ void f413_trace_sample_update_observe_cache(void)
 
 void f413_trace_sample_emit_extra_csv_meta(void)
 {
+  trace_printf("#machine_config_status=%s\r\n#param_profile_id=%lu\r\n#params_tune_version=%s\r\n",
+      f413_machine_status_name(f413_machine_status()),
+      (unsigned long)f413_machine_profile_id(), f413_machine_profile_name());
+  trace_printf("#motor_forward_in2_high=%u,%u\r\n#encoder_sign=%d,%d\r\n",
+      f413_machine_hardware()->left_forward_in2_high,
+      f413_machine_hardware()->right_forward_in2_high,
+      f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r);
   trace_printf("#accel_velocity_mm_s=encoder_avg_plus_accel_half_window\r\n");
   trace_printf("#velocity_accel_comp_window_ms=%u\r\n",
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());

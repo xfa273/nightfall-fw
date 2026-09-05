@@ -71,16 +71,16 @@ static float g_wall_ctrl_angle_deg = 0.0f;
 static float g_wall_ctrl_error_lpf = 0.0f;
 static float g_wall_ctrl_latest_error = 0.0f;
 static bool g_wall_ctrl_active = false;
-static float g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
+static float g_wall_ctrl_kp_deg_per_adc;
 static float g_diagonal_ctrl_omega_deg_s = 0.0f;
 static float g_diagonal_ctrl_kp_deg_per_adc = 0.0f;
 static float g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
 static bool g_diagonal_ctrl_active = false;
 static bool g_wall_end_gate_active = false;
-static uint16_t g_wall_end_thr_r_high = WALL_END_THR_R_HIGH;
-static uint16_t g_wall_end_thr_r_low = WALL_END_THR_R_LOW;
-static uint16_t g_wall_end_thr_l_high = WALL_END_THR_L_HIGH;
-static uint16_t g_wall_end_thr_l_low = WALL_END_THR_L_LOW;
+static uint16_t g_wall_end_thr_r_high;
+static uint16_t g_wall_end_thr_r_low;
+static uint16_t g_wall_end_thr_l_high;
+static uint16_t g_wall_end_thr_l_low;
 
 static bool f413_wall_runtime_read_snapshot(f413_wall_sensor_snapshot_t* wall)
 {
@@ -559,6 +559,8 @@ static void f413_wall_runtime_fill_snapshot(nvm_trace_log_record_t* out,
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 {
+  g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
+  f413_wall_runtime_set_wall_end_thresholds(0U, 0U, 0U, 0U);
   if (config != NULL)
   {
     g_config = *config;

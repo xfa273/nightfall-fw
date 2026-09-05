@@ -151,7 +151,7 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
-#define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
+#define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM ((float)(DIST_HALF_SEC * 2.0))
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
 #define NIGHTFALL_F413_TUNE_TIMEOUT_MS (1500U)
 #define NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS (1500U)
@@ -1101,6 +1101,10 @@ int main(void)
   {
     g_boot_identity_status = NVM_STATUS_HW_ERROR;
   }
+  {
+    const uint32_t uid[3] = {HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2()};
+    (void)f413_machine_boot(g_boot_identity_status, &g_boot_identity, uid);
+  }
 
   /* USER CODE END Init */
 
@@ -1108,6 +1112,19 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
+  if (f413_machine_status() != F413_MACHINE_OK)
+  {
+    /* The diagnostic UART pin pair is reserved across F413 boards. Do not
+       initialize board GPIO, motor/fan timers, SPI devices, ADC or run UI. */
+    MX_USART1_UART_Init();
+    trace_init();
+    trace_printf("[SAFE] machine=%s identity_status=%d GIT=%s DIRTY=%d uid=%08lX-%08lX-%08lX\r\n",
+        f413_machine_status_name(f413_machine_status()), (int)g_boot_identity_status,
+        FW_GIT_SHA, FW_GIT_DIRTY, (unsigned long)HAL_GetUIDw0(),
+        (unsigned long)HAL_GetUIDw1(), (unsigned long)HAL_GetUIDw2());
+    while (1) { HAL_Delay(1000U); }
+  }
 
   /* USER CODE END SysInit */
 
@@ -1128,6 +1145,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   trace_init();
+  __HAL_TIM_SET_PRESCALER(&htim2, f413_machine_hardware()->motor_pwm_prescaler);
+  __HAL_TIM_SET_COUNTER(&htim2, 0U);
+  (void)HAL_TIM_GenerateEvent(&htim2, TIM_EVENTSOURCE_UPDATE);
   f413_run_features_reset();
   f413_wall_distance_init();
   {
@@ -1286,6 +1306,14 @@ int main(void)
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
+  trace_printf("[MACHINE] status=%s profile=0x%08lX tune=%s L_fwd_in2=%u R_fwd_in2=%u enc=%d,%d pwm_psc=%u half_cell_mm=%ld fan=%u\r\n",
+      f413_machine_status_name(f413_machine_status()),
+      (unsigned long)f413_machine_profile_id(), f413_machine_profile_name(),
+      f413_machine_hardware()->left_forward_in2_high,
+      f413_machine_hardware()->right_forward_in2_high,
+      f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r,
+      f413_machine_hardware()->motor_pwm_prescaler, (long)DIST_HALF_SEC,
+      f413_machine_has(F413_CAP_FAN));
   nightfall_boot_buzzer_pattern();
 
   if (g_boot_identity_status == NVM_STATUS_OK)
@@ -1307,11 +1335,6 @@ int main(void)
                  (unsigned int)g_boot_identity.hw_rev_major,
                  (unsigned int)g_boot_identity.hw_rev_minor,
                  (unsigned long)g_boot_identity.unit_serial);
-  }
-  else if ((g_boot_identity_status == NVM_STATUS_NOT_FOUND) ||
-           (g_boot_identity_status == NVM_STATUS_UNSUPPORTED))
-  {
-    trace_printf("ID status=%d (continue boot)\r\n", (int)g_boot_identity_status);
   }
   else
   {

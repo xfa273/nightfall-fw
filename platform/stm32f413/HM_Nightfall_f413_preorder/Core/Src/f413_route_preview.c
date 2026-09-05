@@ -3349,6 +3349,13 @@ static bool f413_rp_print_plan(const f413_rp_context_t* context,
 
 void f413_route_preview_run_once(void)
 {
+#if defined(NIGHTFALL_F413_RUNTIME_CONFIG)
+  if (!f413_machine_route_precomputed_compatible())
+  {
+    trace_printf("[ROUTE] blocked: no precomputed table for selected profile\r\n");
+    return;
+  }
+#endif
   void* scratch = NULL;
   size_t scratch_bytes = 0U;
   size_t scratch_used = 0U;
@@ -3496,6 +3503,13 @@ cleanup:
 
 bool f413_route_build_mode2_path(uint8_t case_index)
 {
+#if defined(NIGHTFALL_F413_RUNTIME_CONFIG)
+  if (!f413_machine_route_precomputed_compatible())
+  {
+    trace_printf("[ROUTE] blocked: no precomputed table for selected profile\r\n");
+    return false;
+  }
+#endif
   void* scratch = NULL;
   size_t scratch_bytes = 0U;
   size_t scratch_used = 0U;

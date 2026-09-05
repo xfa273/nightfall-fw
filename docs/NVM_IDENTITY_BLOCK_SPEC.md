@@ -1,4 +1,7 @@
-# NVM機体識別ブロック仕様（Phase 3 草案）
+# NVM機体識別ブロック仕様
+
+F413の現行選択・運用仕様は [F413_MACHINE_CONFIG.md](F413_MACHINE_CONFIG.md) を参照。
+wire schema v1は維持し、F413は未登録・未知個体・UID不一致も起動停止とする。
 
 この文書は、`nvm/nvm_identity.h` で定義した機体識別ブロックの仕様草案です。
 
@@ -62,7 +65,8 @@
 - 起動時判定:
   - `STM32F405` / `STM32F413` ともに `HAL_Init()` 直後に識別ブロックを読み、ペリフェラル初期化後かつ board依存初期化前に判定する
   - `NVM_STATUS_INTEGRITY_ERROR` / `NVM_STATUS_HW_ERROR` はセーフモード遷移（LED点滅ループ）
-  - `NVM_STATUS_NOT_FOUND` / `NVM_STATUS_UNSUPPORTED` は起動継続（暫定運用）
+  - F405の `NVM_STATUS_NOT_FOUND` / `NVM_STATUS_UNSUPPORTED` は従来の起動継続を維持
+  - F413は全identityエラーを拒否し、board/params/unit/layout/UIDの追加検証後にのみboard初期化する
 - 検証ロジック:
   - 先頭16byteより短い `length` は checksum 計算前に `NVM_STATUS_INTEGRITY_ERROR` として棄却する
   - checksum 仕様は従来どおり、先頭16byte以降に対する 32bit additive checksum を維持する

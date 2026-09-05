@@ -1,5 +1,5 @@
 /*
- * params.h  –  F413 preorder (mini class)
+ * params.h  –  mini_r3_0 initial tuning profile
  *
  * mini_r1_0/params.h をベースに F413 preorder 固有値を反映。
  * ハードウェア依存定数（モーター方向、センサ閾値 等）は実機調整で修正する。
@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "f413pre-t0.1"
+#define PARAMS_TUNE_VERSION "mini-r3-seed-t0.1"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -433,10 +433,6 @@
 #ifndef GOAL9_X
 #define GOAL9_X 0
 #define GOAL9_Y 0
-#endif
-
-#if defined(NIGHTFALL_F413_RUNTIME_CONFIG) && !defined(F413_PARAMS_DEFINITION)
-#include "f413_runtime_aliases.h"
 #endif
 
 #endif /* INC_PARAMS_H_ */

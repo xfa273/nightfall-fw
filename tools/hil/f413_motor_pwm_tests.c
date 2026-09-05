@@ -10,12 +10,6 @@ int main(void)
 {
   unsigned long checked = 0UL;
 
-  if (NIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH != TEST_EXPECT_LEFT_FORWARD_HIGH)
-  {
-    fputs("Unexpected default/configured left motor wiring\n", stderr);
-    return 1;
-  }
-
   for (unsigned int side = 0U; side < 2U; ++side)
   {
     const bool left = (side == 0U);
@@ -29,8 +23,8 @@ int main(void)
 
       for (uint32_t duty = 0U; duty <= UINT16_MAX; ++duty)
       {
-        const f413_motor_pwm_command_t got = f413_motor_pwm_encode(
-            left, forward, (uint16_t)duty);
+        const f413_motor_pwm_command_t got = f413_motor_pwm_encode_polarity(
+            left ? TEST_EXPECT_LEFT_FORWARD_HIGH : true, forward, (uint16_t)duty);
         const uint16_t bounded = (uint16_t)((duty > 1000U) ? 1000U : duty);
         const bool high = (duty != 0U) && expected_high;
         const uint16_t compare = high ? (uint16_t)(1000U - bounded) : bounded;
@@ -49,6 +43,6 @@ int main(void)
   }
 
   printf("PASS: %lu motor PWM cases, left-forward-IN2-high=%d\n",
-         checked, NIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH);
+         checked, TEST_EXPECT_LEFT_FORWARD_HIGH);
   return 0;
 }

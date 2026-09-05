@@ -20,6 +20,7 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
 - F413 target exists as `nightfall_stm32f413`.
 - F413 CubeMX platform is under `platform/stm32f413/HM_Nightfall_f413_preorder/`.
 - Identity read/write foundation exists. F413 identity lives in internal Flash sector 15 at `0x08160000`.
+- F413 model/unit selection is implemented in `board/f413/`: one binary selects mini r2/r3 hardware and independent run profiles, rejects missing/unknown/mismatched identity before board peripheral init, and separates mini/classic namespaces. See `docs/F413_MACHINE_CONFIG.md` for registration, unit overrides, and remaining classic pin-layout/route-table work.
 - F413 data NVM is currently FRAM-backed for distance params, sensor params, maze map, and trace log.
 - F413 FRAM SPI2 access is protected against TIM5 1kHz IMU SPI2 conflict by masking TIM5 around FRAM transactions.
 - Trace log schema is v6: `NVM_TRACE_LOG_SCHEMA_VERSION = 0x00060000`.
@@ -94,7 +95,7 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   Modes 3-7 remain parameter baselines and are constrained by explicit F413
   straight/diagonal/turn speed caps.
 - F413 `main.c` is still large and still owns important application routing.
-- `board/mini_r2_0` does not exist yet; board separation is incomplete.
+- Runtime hardware settings live in `board/f413/`; differing pin layouts still need platform init adapters. Future classic is fail-closed until registered, not presumed mini-compatible.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.
 - F405 common-binary goal is not fully realized; current F405 build still produces mini/classic binaries.
 

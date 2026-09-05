@@ -3,14 +3,15 @@
 #include <stdint.h>
 
 #include "f413_hw.h"
+#include "f413_machine.h"
 #include "stm32f4xx_hal.h"
 #include "trace.h"
 
 #define F413_HW_DIAG_ENCODER_WINDOW_MS (10000U)
 #define F413_HW_DIAG_LED_ON_WINDOW_MS (30000U)
 #define F413_HW_DIAG_MOTOR_BREAK_IN_DUTY (500U)
-#define F413_HW_DIAG_ENCODER_SIGN_L (1L)
-#define F413_HW_DIAG_ENCODER_SIGN_R (-1L)
+#define F413_HW_DIAG_ENCODER_SIGN_L (f413_machine_hardware()->encoder_sign_l)
+#define F413_HW_DIAG_ENCODER_SIGN_R (f413_machine_hardware()->encoder_sign_r)
 
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
@@ -56,6 +57,11 @@ void f413_hw_diag_run_buzzer_test_once(void)
 
 void f413_hw_diag_run_fan_pwm_test_once(void)
 {
+  if (!f413_machine_has(F413_CAP_FAN))
+  {
+    trace_printf("[HW-TEST][Fan] blocked: identity/capability\r\n");
+    return;
+  }
   const uint16_t duties[3] = {200U, 500U, 800U};
   uint32_t arr = __HAL_TIM_GET_AUTORELOAD(&htim10);
   uint8_t i;

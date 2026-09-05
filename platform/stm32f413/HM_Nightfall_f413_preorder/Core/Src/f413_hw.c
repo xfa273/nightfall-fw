@@ -249,7 +249,7 @@ void f413_hw_motor_set(bool enable,
   const f413_motor_pwm_command_t left = f413_motor_pwm_encode(true, left_forward, left_duty);
   const f413_motor_pwm_command_t right = f413_motor_pwm_encode(false, right_forward, right_duty);
 
-  if (!enable)
+  if (!enable || !f413_machine_has(F413_CAP_DRIVE))
   {
     HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
