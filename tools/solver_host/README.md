@@ -71,3 +71,10 @@ tools/solver_host/run_solver_host.sh --maze build/solver_host/kerilab_data/32MM2
 ```sh
 tools/solver_host/run_solver_host.sh --maze path/to/maze.maze --explore-sim --explore-verbose
 ```
+
+## 探索比較 UI 用の実時間オラクル
+
+`tools/exploration_sim/oracle.py` から既存の実時間最短経路プランナを呼べます。
+迷路情報の楽観下界・既知経路上界と、経路に必要な開通壁を返します。
+実装の由来・最適性の範囲・機種別プロファイルは
+[EXPLORATION_ORACLE.md](EXPLORATION_ORACLE.md) を参照してください。
