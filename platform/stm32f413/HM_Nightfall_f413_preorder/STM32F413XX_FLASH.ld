@@ -63,7 +63,9 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
 MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 1536K
+/* Nightfall policy override: keep sectors 12..15 out of every application.
+   Reapply after CubeMX regeneration; sector 15 owns the machine identity. */
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 1024K
 }
 
 /* Define output sections */
