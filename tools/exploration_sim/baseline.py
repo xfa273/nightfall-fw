@@ -110,4 +110,3 @@ def next_baseline(known, walls, visited, goals, pos, heading, phase="goal") -> d
             result["known_straight"] = following == heading
             result["next_is_turn90"] = following is not None and (following - heading) % 4 in (1, 3)
     return result
-
