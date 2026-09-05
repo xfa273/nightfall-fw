@@ -1,10 +1,10 @@
 #include "f413_hw.h"
+#include "f413_motor_pwm.h"
 
 #include "main.h"
 
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
-#define F413_HW_MOTOR_PWM_MAX (1000U)
 #define F413_HW_VIDEO_SYNC_OFF_PREAMBLE_MS (2500U)
 #define F413_HW_VIDEO_SYNC_SYNC_FIRST_ON_MS (75U)
 #define F413_HW_VIDEO_SYNC_SYNC_REEDGE_OFF_MS (50U)
@@ -246,12 +246,8 @@ void f413_hw_motor_set(bool enable,
                        uint16_t left_duty,
                        uint16_t right_duty)
 {
-  uint16_t l_duty = (left_duty > F413_HW_MOTOR_PWM_MAX) ? F413_HW_MOTOR_PWM_MAX : left_duty;
-  uint16_t r_duty = (right_duty > F413_HW_MOTOR_PWM_MAX) ? F413_HW_MOTOR_PWM_MAX : right_duty;
-  uint16_t l_compare = 0U;
-  uint16_t r_compare = 0U;
-  GPIO_PinState l_in2 = GPIO_PIN_RESET;
-  GPIO_PinState r_in2 = GPIO_PIN_RESET;
+  const f413_motor_pwm_command_t left = f413_motor_pwm_encode(true, left_forward, left_duty);
+  const f413_motor_pwm_command_t right = f413_motor_pwm_encode(false, right_forward, right_duty);
 
   if (!enable)
   {
@@ -265,57 +261,29 @@ void f413_hw_motor_set(bool enable,
     return;
   }
 
-  if (l_duty != 0U)
-  {
-    if (left_forward)
-    {
-      l_compare = l_duty;
-      l_in2 = GPIO_PIN_RESET;
-    }
-    else
-    {
-      l_compare = (uint16_t)(F413_HW_MOTOR_PWM_MAX - l_duty);
-      l_in2 = GPIO_PIN_SET;
-    }
-  }
-
-  if (r_duty != 0U)
-  {
-    if (right_forward)
-    {
-      r_compare = (uint16_t)(F413_HW_MOTOR_PWM_MAX - r_duty);
-      r_in2 = GPIO_PIN_SET;
-    }
-    else
-    {
-      r_compare = r_duty;
-      r_in2 = GPIO_PIN_RESET;
-    }
-  }
-
   (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_3);
 
-  if (l_in2 == GPIO_PIN_SET)
+  if (left.in2_high)
   {
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, l_compare);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, left.compare);
     HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_SET);
   }
   else
   {
     HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, l_compare);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, left.compare);
   }
 
-  if (r_in2 == GPIO_PIN_SET)
+  if (right.in2_high)
   {
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, r_compare);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, right.compare);
     HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_SET);
   }
   else
   {
     HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, r_compare);
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, right.compare);
   }
 
   HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_SET);

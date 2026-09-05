@@ -4,6 +4,7 @@
 
 #include "f413_control.h"
 #include "f413_hw.h"
+#include "f413_motor_pwm.h"
 #include "trace.h"
 
 #define F413_TEST_RUN_VEL_MM_S       (200.0f)
@@ -206,6 +207,10 @@ static void f413_test_run_single_motor(uint8_t test_id, const char* test_name)
 {
   bool use_left = (test_id == (uint8_t)'6') || (test_id == (uint8_t)'8');
   bool forward = (test_id == (uint8_t)'6') || (test_id == (uint8_t)'7');
+  const f413_motor_pwm_command_t left = f413_motor_pwm_encode(
+      true, forward, use_left ? F413_TEST_RUN_MOTOR_DUTY : 0U);
+  const f413_motor_pwm_command_t right = f413_motor_pwm_encode(
+      false, forward, use_left ? 0U : F413_TEST_RUN_MOTOR_DUTY);
   int32_t final_enc_l = 0;
   int32_t final_enc_r = 0;
 
@@ -232,13 +237,11 @@ static void f413_test_run_single_motor(uint8_t test_id, const char* test_name)
                (unsigned int)F413_TEST_RUN_MOTOR_DUTY,
                (unsigned long)F413_TEST_RUN_MOTOR_MS);
   trace_printf("[TEST] PWM: CH1(TIM2)=%s, CH3(TIM2)=%s\r\n",
-               use_left ? (forward ? "duty" : "inv-duty") : "0",
-               use_left ? "0" : (forward ? "inv-duty" : "duty"));
+               use_left ? (left.in2_high ? "inv-duty" : "duty") : "0",
+               use_left ? "0" : (right.in2_high ? "inv-duty" : "duty"));
   trace_printf("[TEST] IN2: L=%s, R=%s\r\n",
-               (use_left && forward) ? "RESET" :
-               (use_left && !forward) ? "SET" : "RESET",
-               (!use_left && forward) ? "SET" :
-               (!use_left && !forward) ? "RESET" : "RESET");
+               left.in2_high ? "SET" : "RESET",
+               right.in2_high ? "SET" : "RESET");
 
   if (g_config.motor_set != NULL)
   {

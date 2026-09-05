@@ -12,6 +12,7 @@
  */
 
 #include "f413_control.h"
+#include "f413_motor_pwm.h"
 #include "main.h"
 #include "params.h"
 #include <math.h>
@@ -23,7 +24,7 @@
 #define F413_CTRL_CPR_WHEEL       (200.0f)   /* 100pr reflective disk: 50 cycles/rev x4 */
 #define F413_CTRL_D_TIRE          (D_TIRE)   /* タイヤ直径 [mm], F405同様params.hで調整 */
 #define F413_CTRL_TREAD           (34.5f)    /* 左右タイヤ中心間距離 [mm] */
-#define F413_CTRL_PWM_MAX         (1000U)    /* TIM2 ARR */
+#define F413_CTRL_PWM_MAX         F413_MOTOR_PWM_MAX
 #define F413_CTRL_ENCODER_SIGN_L  (1.0f)
 #define F413_CTRL_ENCODER_SIGN_R  (-1.0f)
 
@@ -1185,10 +1186,8 @@ void f413_ctrl_tick(void)
     float out_r;
     uint32_t duty_l;
     uint32_t duty_r;
-    uint32_t compare_l = 0U;
-    uint32_t compare_r = 0U;
-    GPIO_PinState in2_l = GPIO_PIN_RESET;
-    GPIO_PinState in2_r = GPIO_PIN_RESET;
+    f413_motor_pwm_command_t pwm_l;
+    f413_motor_pwm_command_t pwm_r;
     const bool use_fan_on_gains = f413_ctrl_use_fan_on_gains();
     const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
     const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
@@ -1658,55 +1657,30 @@ void f413_ctrl_tick(void)
     duty_l = (uint32_t)fminf(fabsf(out_l), (float)F413_CTRL_PWM_MAX);
     duty_r = (uint32_t)fminf(fabsf(out_r), (float)F413_CTRL_PWM_MAX);
 
-    if (duty_l != 0U)
-    {
-        if (out_l >= 0.0f)
-        {
-            compare_l = duty_l;
-            in2_l = GPIO_PIN_RESET;
-        }
-        else
-        {
-            compare_l = F413_CTRL_PWM_MAX - duty_l;
-            in2_l = GPIO_PIN_SET;
-        }
-    }
-
-    if (duty_r != 0U)
-    {
-        if (out_r >= 0.0f)
-        {
-            compare_r = F413_CTRL_PWM_MAX - duty_r;
-            in2_r = GPIO_PIN_SET;
-        }
-        else
-        {
-            compare_r = duty_r;
-            in2_r = GPIO_PIN_RESET;
-        }
-    }
+    pwm_l = f413_motor_pwm_encode(true, out_l >= 0.0f, (uint16_t)duty_l);
+    pwm_r = f413_motor_pwm_encode(false, out_r >= 0.0f, (uint16_t)duty_r);
 
     /* ハードウェア配線: TIM2_CH1=左モータ, TIM2_CH3=右モータ
        MP6551 入力: PWM pin=IN1, DIR pin=IN2, STBY pin=EN1/EN2 */
-    if (in2_l == GPIO_PIN_SET)
+    if (pwm_l.in2_high)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, compare_l);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_l.compare);
         HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_SET);
     }
     else
     {
         HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, compare_l);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_l.compare);
     }
 
-    if (in2_r == GPIO_PIN_SET)
+    if (pwm_r.in2_high)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, compare_r);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_r.compare);
         HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_SET);
     }
     else
     {
         HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, compare_r);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_r.compare);
     }
 }
