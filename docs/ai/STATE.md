@@ -11,7 +11,8 @@
 
 - 実行者: Codex
 - 実行方式: Codex が本作業ツリーで直接実行
-- 主作業: STM32F405既存機体からSTM32F413 `mini_r2_0` 新機体への移植、実機HIL確認、ログ/ツール整備
+- 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
+- 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
 - 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
 ## Codex 実行ポリシー

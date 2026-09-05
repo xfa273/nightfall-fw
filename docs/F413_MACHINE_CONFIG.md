@@ -98,6 +98,8 @@ r2値を変更した場合も `tools/route_precompute/generate.py` / `--check` �
 ## 初回ID登録（現在接続機を必ず確認）
 
 通常のapp更新ではidentityを保持する。新機体は先にcommon appを書き込み、未登録SAFEを確認する。
+F413 linkerのアプリFlash上限は1MiBとし、既存ツールの保護対象sector12..15へ
+コード／profileが配置される前にビルドエラーにする。CubeMX再生成時もこの予約を維持する。
 
 ```sh
 python3 tools/flashing/f413_identity.py inspect --sn <STLINK_SN>
@@ -131,5 +133,18 @@ cmake --build --preset Debug-stm32f405
 git diff --check
 ```
 
-実機では未登録SAFE→r3登録→boot表示→非モータIMU/ADC→出力OFFを確認する。
-r2の接続確認は別途必要。モータや床上走行は `docs/ai/HIL_SAFETY.md` に従う。
+2026-09-06、接続中のr3で以下を確認済み（`GIT=49497cc DIRTY=1`）。
+
+- 空IDでは `[SAFE] machine=identity-invalid`、モータ／ファンtimer未初期化。
+- UID `00280047-31335117-34313932` を `mini_r3_0_unit001` として登録。
+  全sectorの退避・空判定・eraseなし書込み・全sector読戻し比較が成功。
+- 起動時にprofile `0x00030001`、左右前進IN2 High、half-cell 45mmを自動選択。
+- UART `i,w` はIMU WHO_AM_I `0x6B`、壁ADC取得ともPASS。
+  `K,+` は非対応のr2事前計算テーブル利用を拒否。いずれも非モータ／NVM読取のみ。
+- 通常のapp更新を再実施してもidentityと選択結果を保持。
+- 最終SWD確認でモータPWM・STBY・方向出力およびfan dutyはOFF、CFSR/HFSR=0。
+
+退避先は `build/identity/mini_r3_0_unit001_20260906_0203/`、詳細・ログ名・hashは
+`docs/ai/WORKLOG.md` に記録。host試験とF413/F405ビルドもPASS。
+今回モータは動かしていない。r2の実機確認、r3の走行調整、classic実機の追加は別途必要。
+モータや床上走行は `docs/ai/HIL_SAFETY.md` に従う。
