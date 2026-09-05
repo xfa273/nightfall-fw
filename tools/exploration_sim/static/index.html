@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Nightfall · 探索シミュレータ</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Nightfall exploration simulator"><span class="brand-mark">N</span><strong>NIGHTFALL</strong><span class="brand-divider"></span><span>EXPLORATION LAB</span></a>
+    <div class="top-meta"><span class="status-dot"></span>HOST SIMULATION <span class="version">01</span></div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar">
+      <div class="section-label">EXPERIMENT SETUP</div>
+      <h1>探索を、比較する。</h1>
+      <p class="intro">最速経路の確定までに、<br>どこを、どれだけ調べるか。</p>
+      <form id="setup-form">
+        <section class="form-section">
+          <div class="section-title"><span>01</span><h2>大会迷路</h2></div>
+          <div class="segmented" id="family-buttons" aria-label="競技種別">
+            <button type="button" class="active" data-family="half" aria-pressed="true">ハーフ</button>
+            <button type="button" data-family="classic" aria-pressed="false">クラシック</button>
+          </div>
+          <div class="two-fields">
+            <label>年度<select id="year-select"><option value="all">すべて</option></select></label>
+            <label>ラウンド<select id="round-select"><option value="all">すべて</option><option value="final" selected>決勝</option></select></label>
+          </div>
+          <label>迷路<select id="maze-select" required aria-describedby="maze-meta"><option>データを読み込み中…</option></select></label>
+          <p class="field-note" id="maze-meta">KeriLab 大会迷路データ</p>
+        </section>
+        <section class="form-section">
+          <div class="section-title"><span>02</span><h2>探索走行パラメータ</h2><button class="text-button" type="button" id="reset-profile">既定値へ</button></div>
+          <div class="machine-badge"><span class="machine-icon">◇</span><div><strong id="machine-name">mini_r2</strong><small>mode 1 · case 1</small></div><span class="source-tag">FW</span></div>
+          <div id="primary-params" class="parameter-fields"></div>
+          <details class="parameter-details"><summary>加速度・旋回・待ち時間</summary><div id="advanced-params" class="parameter-fields"></div></details>
+          <p class="field-note">ファームウェアから取得した値を初期設定。変更はシミュレーションにのみ適用します。</p>
+        </section>
+        <section class="form-section">
+          <div class="section-title"><span>03</span><h2>探索終了の条件</h2></div>
+          <label>最短走行プロファイル</label>
+          <div class="two-fields">
+            <label class="sub-label">Mode<select id="shortest-mode"><option value="2">mode 2</option><option value="3">mode 3</option><option value="4">mode 4</option><option value="5">mode 5</option></select></label>
+            <label class="sub-label">Case<select id="shortest-case"></select></label>
+          </div>
+          <label class="input-with-unit">最適解からの許容差<div><input id="epsilon" type="number" min="0" max="50" step="0.1" value="0"><span>%</span></div></label>
+          <label class="check-label"><input id="return-home" type="checkbox"><span>終了後のスタート帰還を含める</span></label>
+          <p class="field-note">改善版はゴール到達と経路の確定、従来版は到達可能な区画の探索完了で終了。</p>
+        </section>
+        <button id="run-button" class="primary-button" type="submit"><span class="button-icon">▶</span><span>比較を実行</span><kbd>RUN</kbd></button>
+      </form>
+      <div id="job-status" class="job-status" role="status" aria-live="polite"></div>
+      <a id="source-link" class="source-link" href="https://www.kerislab.jp/micromouse-maze-data/" target="_blank" rel="noreferrer">迷路データ · KeriLab ↗</a>
+    </aside>
+    <main>
+      <div class="page-heading">
+        <div><div class="section-label">OBSERVE · VERIFY · COMPARE</div><h2 id="experiment-title">未知の壁から、最速の経路へ。</h2><p id="experiment-subtitle">同じ迷路・同じ機体で、探索方針の違いを追います。</p></div>
+        <span class="estimate-badge">KINEMATIC ESTIMATE <span>推定時間</span></span>
+      </div>
+      <div id="empty-state" class="empty-state">
+        <div class="empty-maze" aria-hidden="true"><span></span><i></i><b></b></div>
+        <div class="section-label">A BETTER QUESTION TO ASK</div>
+        <h3>全部を知る必要は、あるだろうか。</h3>
+        <p>最速になり得る経路に残る未知壁を優先して観測。<br>未知壁を通れると仮定した下限と、既知通路だけの上限が<br>一致した時点で、必要な迷路情報が揃います。</p>
+        <div class="strategy-preview"><span class="baseline-dot"></span>全域探索<span class="preview-arrow">↔</span><span class="relevant-dot"></span>経路の不確かさを解消</div>
+        <small>左の設定で「比較を実行」を押して開始</small>
+      </div>
+      <div id="results" hidden>
+        <div class="summary-grid">
+          <article class="metric-card baseline-card"><div class="metric-label"><span class="baseline-dot"></span>従来 · 全域探索<span class="small-tag">ADACHI</span></div><div class="big-metric" id="baseline-duration">—</div><div class="metric-foot" id="baseline-foot">—</div></article>
+          <article class="metric-card relevant-card"><div class="metric-label"><span class="relevant-dot"></span>改善 · 経路優先<span class="small-tag">RELEVANT</span></div><div class="big-metric" id="relevant-duration">—</div><div class="metric-foot" id="relevant-foot">—</div></article>
+          <article class="metric-card improvement-card"><div class="metric-label">探索時間の短縮</div><div class="big-metric" id="saving-percent">—</div><div class="metric-foot" id="saving-time">同一条件での推定値</div></article>
+        </div>
+        <section class="replay-section">
+          <div class="replay-toolbar"><div class="toolbar-title">探索リプレイ<span id="cursor-label">00:00.0</span></div><div class="display-options"><label><input id="show-trail" type="checkbox" checked>軌跡</label><label><input id="show-heat" type="checkbox" checked>訪問数</label><label title="観測前の実際の壁も薄く表示します。探索アルゴリズムへは渡しません。"><input id="show-truth" type="checkbox">真の迷路</label><label title="各探索の最終時刻、または真の迷路表示時に利用できます。"><input id="show-route" type="checkbox" disabled>最短経路</label></div></div>
+          <div class="maze-grid">
+            <article class="maze-panel" data-algorithm="baseline"><div class="maze-heading"><h3><span class="baseline-dot"></span>従来アルゴリズム</h3><span id="baseline-phase" class="phase-badge">探索前</span></div><div class="canvas-wrap"><canvas id="baseline-maze" aria-label="従来アルゴリズムの迷路と探索軌跡"></canvas></div><div class="live-metrics" id="baseline-live"></div><div class="bound-row" id="baseline-bounds"></div></article>
+            <article class="maze-panel" data-algorithm="relevant"><div class="maze-heading"><h3><span class="relevant-dot"></span>改善アルゴリズム</h3><span id="relevant-phase" class="phase-badge">探索前</span></div><div class="canvas-wrap"><canvas id="relevant-maze" aria-label="改善アルゴリズムの迷路と探索軌跡"></canvas></div><div class="live-metrics" id="relevant-live"></div><div class="bound-row" id="relevant-bounds"></div></article>
+          </div>
+          <div class="legend"><span><i class="legend-unknown"></i>未知の境界</span><span><i class="legend-wall"></i>観測済みの壁</span><span><i class="legend-new"></i>今回の観測</span><span><i class="legend-goal"></i>ゴール</span><span><i class="legend-target"></i>観測目標</span></div>
+          <div class="timeline"><div class="timeline-labels"><span>START</span><span id="timeline-end">—</span></div><input id="timeline" type="range" min="0" max="1" step="0.01" value="0" aria-label="探索リプレイ位置"><div class="playback-row"><div class="playback-buttons"><button id="rewind" title="最初へ" aria-label="最初へ">|◀</button><button id="previous" title="前のステップ" aria-label="前のステップ">‹</button><button id="play" class="play-button" aria-label="再生">▶</button><button id="next" title="次のステップ" aria-label="次のステップ">›</button></div><div class="playback-options"><select id="speed" aria-label="再生速度"><option value="1">1×</option><option value="5">5×</option><option value="20" selected>20×</option><option value="50">50×</option><option value="100">100×</option></select><div class="segmented sync-mode"><button type="button" class="active" data-sync="time" aria-pressed="true">同じ時間</button><button type="button" data-sync="step" aria-pressed="false">同じ歩数</button></div></div></div></div>
+        </section>
+        <section class="analysis-section"><div class="analysis-heading"><div><h3>最速経路の不確かさ</h3><p>未知通路を許す下限と、既知通路だけの上限。線が重なると経路が確定。</p></div><div class="chart-legend"><span><i></i>上限</span><span><i class="dashed"></i>下限</span></div></div><canvas id="bounds-chart" aria-label="探索経過時間と最短走行予測時間の上下限"></canvas><p class="field-note">横軸：探索の経過時間 ／ 縦軸：最短走行の推定時間。クリックでその時刻へ移動。</p></section>
+        <section class="detail-section"><div class="detail-heading"><h3>比較結果と再現情報</h3><div class="export-buttons"><button id="export-csv">軌跡 CSV ↓</button><button id="export-json">実験 JSON ↓</button></div></div><div class="table-scroll"><table><thead><tr><th>指標</th><th>従来 · 全域探索</th><th>改善 · 経路優先</th></tr></thead><tbody id="comparison-body"></tbody></table></div><details class="model-details"><summary>モデルの前提・パラメータ出典・データ来歴</summary><div id="provenance"></div></details></section>
+      </div>
+      <footer class="page-footer"><span>NIGHTFALL FIRMWARE / EXPLORATION RESEARCH</span><span>実機の計測時間ではありません</span></footer>
+    </main>
+  </div>
+</body>
+</html>
