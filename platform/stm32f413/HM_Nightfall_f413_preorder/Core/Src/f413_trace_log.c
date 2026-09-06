@@ -13,7 +13,18 @@ static volatile uint8_t g_trace_log_auto_enabled = 0U;
 static uint32_t g_trace_log_auto_period_ms = 1U;
 static volatile uint32_t g_trace_log_auto_seq = 0U;
 static volatile uint16_t g_trace_log_auto_mode_flags = 0U;
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+#include "mcu_slalom_time_planner.h"
+static union {
+  uint64_t alignment;
+  nvm_trace_log_record_t records[F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
+  uint8_t exploration[NF_MCU_SLALOM_WORKSPACE_BYTES];
+} g_trace_workspace;
+#define g_trace_log_auto_buffer g_trace_workspace.records
+static bool g_exploration_borrowed;
+#else
 static nvm_trace_log_record_t g_trace_log_auto_buffer[F413_TRACE_LOG_AUTO_BUFFER_RECORDS];
+#endif
 static volatile uint32_t g_trace_log_auto_buffer_head = 0U;
 static volatile uint32_t g_trace_log_auto_buffer_tail = 0U;
 static volatile uint8_t g_trace_log_auto_buffer_overflow = 0U;
@@ -153,6 +164,16 @@ void f413_trace_log_auto_abort(void)
 void f413_trace_log_auto_start(void)
 {
   nvm_status_t st;
+
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+  /* Only foreground code starts capture or acquires the lease. ISR sampling
+     reads the enabled flag and cannot start capture or acquire storage. */
+  if (g_exploration_borrowed)
+  {
+    trace_printf("[TRACE-LOG] auto: busy (exploration workspace)\r\n");
+    return;
+  }
+#endif
 
   if (g_trace_log_auto_enabled != 0U)
   {
@@ -330,3 +351,22 @@ void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms)
   g_trace_log_auto_seq = seq + 1U;
   g_trace_log_auto_buffer_head = head + 1U;
 }
+
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+bool f413_trace_log_borrow_exploration(void **workspace, size_t *bytes)
+{
+  if ((workspace == NULL) || (bytes == NULL)) return false;
+  *workspace = NULL;
+  *bytes = 0U;
+  if (g_exploration_borrowed || (g_trace_log_auto_enabled != 0U)) return false;
+  g_exploration_borrowed = true;
+  *workspace = &g_trace_workspace;
+  *bytes = sizeof(g_trace_workspace);
+  return true;
+}
+
+void f413_trace_log_release_exploration(void *workspace)
+{
+  if (workspace == (void *)&g_trace_workspace) g_exploration_borrowed = false;
+}
+#endif

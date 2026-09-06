@@ -1,6 +1,7 @@
 /* SRAM-only, interrupts masked, no firmware/HAL/NVM/run dependencies. */
 #include "bench.h"
 #include <stddef.h>
+#include <string.h>
 #define REG32(a) (*(volatile uint32_t *)(a))
 extern uint32_t __bss_start__, __bss_end__, __stack_top__;
 void bench_entry(void);
@@ -13,17 +14,6 @@ const uintptr_t bench_vectors[16] = {
   (uintptr_t)bench_fault, (uintptr_t)bench_fault, (uintptr_t)bench_fault
 };
 
-void *memset(void *p, int v, size_t n) {
-  unsigned char *q = p;
-  while (n--) *q++ = (unsigned char)v;
-  return p;
-}
-void *memcpy(void *d, const void *s, size_t n) {
-  unsigned char *q = d;
-  const unsigned char *r = s;
-  while (n--) *q++ = *r++;
-  return d;
-}
 void bench_fault(void) {
   nf_bench_output.cfsr = REG32(0xE000ED28U);
   nf_bench_output.hfsr = REG32(0xE000ED2CU);

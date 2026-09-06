@@ -80,6 +80,7 @@ set(NIGHTFALL_TRACE_F413_USE_UART "1" CACHE STRING "Use USART1 trace output on S
 set_property(CACHE NIGHTFALL_TRACE_F413_USE_UART PROPERTY STRINGS "0" "1")
 set(NIGHTFALL_F413_UART_BAUD_RATE "921600" CACHE STRING "USART1 baud rate for STM32F413 UART command and trace output")
 set_property(CACHE NIGHTFALL_F413_UART_BAUD_RATE PROPERTY STRINGS "115200" "460800" "921600" "1000000")
+option(NIGHTFALL_F413_EXPLORATION_ENABLED "Enable experimental route-relevant mode1/case1 exploration (requires separate floor validation)" OFF)
 set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/nvm/nvm.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_identity.c
@@ -198,6 +199,38 @@ function(nightfall_apply_stm32f413 target)
         -T${NIGHTFALL_STM32F413_LINKER_SCRIPT}
         ${NIGHTFALL_STM32_COMMON_LINK_OPTIONS}
     )
+    if(NIGHTFALL_F413_EXPLORATION_ENABLED)
+        find_program(NIGHTFALL_HOST_CC NAMES cc clang gcc REQUIRED)
+        if(NOT TARGET nightfall_mcu_slalom_tables_check)
+            add_custom_target(nightfall_mcu_slalom_tables_check
+                COMMAND ${CMAKE_COMMAND} -E env CC=${NIGHTFALL_HOST_CC}
+                    ${CMAKE_SOURCE_DIR}/tools/solver_host/generate_mcu_slalom_tables.sh --check
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                COMMENT "Checking MCU planner tables against motion/profile sources"
+                VERBATIM
+            )
+        endif()
+        add_dependencies(${target} nightfall_mcu_slalom_tables_check)
+        target_sources(${target} PRIVATE
+            ${CMAKE_SOURCE_DIR}/common/exploration/exploration_policy.c
+            ${CMAKE_SOURCE_DIR}/common/route/mcu_slalom_time_planner.c
+            ${CMAKE_SOURCE_DIR}/common/route/mcu_slalom_tables.c
+            ${CMAKE_SOURCE_DIR}/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_exploration.c
+        )
+        target_include_directories(${target} PRIVATE
+            ${CMAKE_SOURCE_DIR}/common/exploration
+            ${CMAKE_SOURCE_DIR}/common/route
+        )
+        target_compile_definitions(${target} PRIVATE NIGHTFALL_F413_EXPLORATION_ENABLED=1)
+        # The planner's bounded work slices require optimized integer code even
+        # in a Debug firmware build. HAL/control-loop flags are unchanged.
+        set_source_files_properties(
+            ${CMAKE_SOURCE_DIR}/common/exploration/exploration_policy.c
+            ${CMAKE_SOURCE_DIR}/common/route/mcu_slalom_time_planner.c
+            ${CMAKE_SOURCE_DIR}/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_exploration.c
+            PROPERTIES COMPILE_OPTIONS "-O2"
+        )
+    endif()
 endfunction()
 
 # Validate that STM32CubeMX code is compatible with C standard
