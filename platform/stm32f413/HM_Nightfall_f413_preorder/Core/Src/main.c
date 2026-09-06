@@ -1314,6 +1314,11 @@ int main(void)
       f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r,
       f413_machine_hardware()->motor_pwm_prescaler, (long)DIST_HALF_SEC,
       f413_machine_has(F413_CAP_FAN));
+  trace_printf("[MACHINE] imu_forward_reg=0x%02X sign=%d offset_mm=%.2f battery_divider=%.6f\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg,
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm,
+      (double)f413_machine_hardware()->battery_divider_ratio);
   nightfall_boot_buzzer_pattern();
 
   if (g_boot_identity_status == NVM_STATUS_OK)

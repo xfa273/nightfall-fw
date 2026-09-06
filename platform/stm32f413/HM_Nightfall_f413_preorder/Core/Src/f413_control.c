@@ -13,6 +13,7 @@
 
 #include "f413_control.h"
 #include "f413_motor_pwm.h"
+#include "f413_measurements.h"
 #include "main.h"
 #include "params.h"
 #include <math.h>
@@ -1265,6 +1266,8 @@ void f413_ctrl_tick(void)
         omega_raw = s_omega_z_filtered;
 
         float accel_raw = imu_read_accel_forward_mm_s2() - s_accel_forward_offset;
+        accel_raw = f413_imu_centre_forward_accel(accel_raw, omega_raw,
+            f413_machine_hardware()->imu_forward_offset_mm);
         accel_forward_for_comp = accel_raw;
         if (!s_accel_forward_lpf_inited)
         {

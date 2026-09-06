@@ -1,5 +1,6 @@
 #include "f413_machine.h"
 #include "f413_motor_pwm.h"
+#include "f413_measurements.h"
 #include "params.h"
 #include "sensor_distance.h"
 #include <assert.h>
@@ -58,9 +59,25 @@ static void resolver_tests(void)
   assert(resolve(&r2, &out) == F413_MACHINE_OK);
   assert(!out.hardware.left_forward_in2_high && out.hardware.right_forward_in2_high);
   assert(out.profile == &f413_profile_mini_r2);
+  assert(out.hardware.imu_forward_accel_sign == 1 && out.hardware.imu_forward_offset_mm == 0.0f);
   assert(resolve(&r3, &out) == F413_MACHINE_OK);
   assert(out.hardware.left_forward_in2_high && out.hardware.right_forward_in2_high);
   assert(out.profile == &f413_profile_mini_r3);
+  assert(out.hardware.imu_forward_accel_reg == 0x2AU);
+  assert(out.hardware.imu_forward_accel_sign == -1 && out.hardware.imu_forward_offset_mm == -2.5f);
+  assert(f413_boards[1].hardware.imu_forward_accel_sign == -1);
+  assert(out.hardware.encoder_cpr == 200.0f && out.hardware.tread_mm == 34.5f);
+  /* 180 deg yaw mounting reverses X/Y but not Z; only accel Y changes here.
+     At omega=10 rad/s, a rear IMU sees +250 mm/s2 from centripetal motion. */
+  for (int direction = -1; direction <= 1; direction += 2) {
+    float dps = direction * 572.9577951308232f;
+    assert(fabsf(f413_imu_centre_forward_accel(350.0f, dps, -2.5f) - 100.0f) < 0.001f);
+    assert(fabsf(f413_imu_centre_forward_accel(-150.0f, dps, 2.5f) - 100.0f) < 0.001f);
+    assert(f413_imu_centre_forward_accel(12.5f, dps, 0.0f) == 12.5f);
+  }
+  assert(f413_imu_centre_forward_accel(12.5f, 0.0f, -2.5f) == 12.5f);
+  assert(fabsf(f413_battery_voltage(2111U, 3.3f, out.hardware.battery_divider_ratio) - 8.0f) < 0.01f);
+  assert(fabsf(f413_battery_voltage(3324U, 3.3f, out.hardware.battery_divider_ratio) - 12.6f) < 0.01f);
   bad = r3; bad.unit_serial = 2; expect(bad, F413_MACHINE_UNIT_UNKNOWN);
   bad = r3; bad.unit_serial = 0; expect(bad, F413_MACHINE_ID_INVALID);
   bad = r3; bad.hw_rev_minor = 1; expect(bad, F413_MACHINE_ID_INVALID);
@@ -119,6 +136,14 @@ static void resolver_tests(void)
   assert(out.profile == &profile && out.profile->scalar->v_D_TIRE == 24.0);
   assert(resolve(&r2, &out) == F413_MACHINE_OK && out.profile == &f413_profile_mini_r2);
   scalar.v_D_TIRE = NAN;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_D_TIRE = 24.0;
+  f413_hardware_config_t hw = f413_boards[1].hardware;
+  units[2].hardware_override = &hw;
+  hw.imu_forward_offset_mm = NAN;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  hw.imu_forward_offset_mm = -2.5f;
+  hw.battery_divider_ratio = 0.0f;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
 }
 

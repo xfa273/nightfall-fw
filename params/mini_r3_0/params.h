@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-seed-t0.1"
+#define PARAMS_TUNE_VERSION "mini-r3-bench-t0.2"
 
 /*============================================================
     各種定数（パラメータ）設定

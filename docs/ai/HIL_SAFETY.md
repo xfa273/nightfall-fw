@@ -36,6 +36,7 @@ python3 tools/logging/serial_terminal.py --list
 UART commands that are normally non-motor:
 
 - `p`: switch raw check
+- `|`: read-only NVM status and raw calibration blob prefixes (256 bytes per area)
 - `w`: wall sensor snapshot
 - `n`: wall sensor distance-conversion snapshot
 - `:`: detailed wall sensor distance-conversion snapshot
@@ -119,6 +120,10 @@ Motor/fan/motion commands include:
 - `~`: continuous left/right forward motor break-in at 50% duty; reset is the
   only software stop path
 - `6`, `7`, `8`, `9`: single-side motor and encoder checks
+- `{`: lifted/secured-only 7..9V bench sweep; 6/12/18% single-side and
+  12% dual-side forward/reverse, each 300ms drive + 300ms disabled coast;
+  aborts on stop switch, missing/stale ADC, supply outside nominal 7..9V, or
+  wrong/stalled encoder. Never use on 3S. This is not a floor gain-tuning test.
 - `y`: motor trace session
 - `1`, `2`, `3`, `4`, `5`: closed-loop motion tests
 - `F`: armed button-run test

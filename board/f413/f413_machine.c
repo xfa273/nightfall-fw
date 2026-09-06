@@ -61,6 +61,8 @@ f413_machine_status_t f413_machine_resolve(
       (hw->imu_forward_accel_reg != 0x28U && hw->imu_forward_accel_reg != 0x2AU) ||
       !isfinite(hw->encoder_cpr) || hw->encoder_cpr <= 0.0f ||
       !isfinite(hw->tread_mm) || hw->tread_mm <= 0.0f ||
+      !isfinite(hw->imu_forward_offset_mm) ||
+      !isfinite(hw->battery_divider_ratio) || hw->battery_divider_ratio <= 1.0f ||
       p->scalar == NULL || p->search == NULL || p->name == NULL || p->load_sensor_luts == NULL)
     return F413_MACHINE_CONFIG_INVALID;
 #define X(type, name) if (!isfinite((double)p->scalar->v_##name)) return F413_MACHINE_CONFIG_INVALID;

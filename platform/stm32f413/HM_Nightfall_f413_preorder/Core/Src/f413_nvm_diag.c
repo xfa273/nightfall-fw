@@ -12,6 +12,29 @@
 #define F413_NVM_DIAG_MAZE_WALL_KNOWN_MASK (0x0FU)
 #define F413_NVM_DIAG_SEARCH_MAP_CELL_COUNT ((uint32_t)(MAZE_SIZE * MAZE_SIZE))
 
+void f413_nvm_diag_run_calibration_dump_once(void)
+{
+  const nvm_area_t areas[] = {NVM_AREA_DISTANCE_PARAMS, NVM_AREA_FLASH_PARAMS};
+  /* A raw 256-byte prefix preserves the complete current calibration blobs,
+     including headers/CRC/reserved fields. No NVM writes or resets. */
+  uint8_t bytes[256];
+  f413_nvm_diag_run_nvm_status_once();
+  f413_nvm_diag_run_sensor_params_status_once();
+  for (unsigned a = 0U; a < 2U; ++a)
+  {
+    const nvm_status_t status = nvm_read(areas[a], 0U, bytes, sizeof(bytes));
+    trace_printf("[CAL-DUMP] area=%u bytes=%u status=%d\r\n", (unsigned)areas[a], (unsigned)sizeof(bytes), status);
+    if (status != NVM_STATUS_OK) continue;
+    for (unsigned off = 0U; off < sizeof(bytes); off += 16U)
+    {
+      trace_printf("[CAL-DUMP] %u %03u ", (unsigned)areas[a], off);
+      for (unsigned j = 0U; j < 16U; ++j) trace_printf("%02X", bytes[off + j]);
+      trace_printf("\r\n");
+    }
+  }
+  trace_printf("[CAL-DUMP] END nvm=read-only\r\n");
+}
+
 const char* f413_nvm_diag_identity_family_name(uint32_t family)
 {
   switch (family)

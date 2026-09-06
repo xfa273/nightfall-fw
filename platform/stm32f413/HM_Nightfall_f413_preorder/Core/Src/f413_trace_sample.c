@@ -285,6 +285,12 @@ void f413_trace_sample_emit_extra_csv_meta(void)
       f413_machine_hardware()->left_forward_in2_high,
       f413_machine_hardware()->right_forward_in2_high,
       f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r);
+  trace_printf("#imu_forward_accel_reg=0x%02X\r\n#imu_forward_accel_sign=%d\r\n#imu_forward_offset_mm=%.3f\r\n#battery_divider_ratio=%.6f\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg,
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm,
+      (double)f413_machine_hardware()->battery_divider_ratio);
+  trace_printf("#accel_forward_reference=yaw_centre_bias_removed_no_gravity_comp\r\n");
   trace_printf("#accel_velocity_mm_s=encoder_avg_plus_accel_half_window\r\n");
   trace_printf("#velocity_accel_comp_window_ms=%u\r\n",
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());

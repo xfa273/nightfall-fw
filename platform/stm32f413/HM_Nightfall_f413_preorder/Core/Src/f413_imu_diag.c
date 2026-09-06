@@ -1,6 +1,7 @@
 #include "f413_imu_diag.h"
 
 #include "f413_control.h"
+#include "f413_machine.h"
 #include "main.h"
 #include "params.h"
 #include "trace.h"
@@ -264,7 +265,10 @@ void f413_imu_diag_run_accel_test_once(void)
 
   trace_printf("[HW-TEST][IMU-ACCEL] offset ax=%.1f ay=%.1f az=%.1f mm/s2\r\n",
                (double)off_x, (double)off_y, (double)off_z);
-  trace_printf("[HW-TEST][IMU-ACCEL] start: move forward/backward; control forward axis is Y sign +\r\n");
+  trace_printf("[HW-TEST][IMU-ACCEL] start: sensor XYZ below; control forward=%c sign=%d offset=%.2fmm\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg == 0x28U ? 'X' : 'Y',
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm);
 
   start_ms = HAL_GetTick();
   last_ms = start_ms;
@@ -389,6 +393,7 @@ void f413_imu_diag_run_manual_turn_test_once(void)
 void f413_imu_diag_run_whoami_test_once(void)
 {
   uint8_t who = 0U;
+  uint8_t xl = 0U, gyro = 0U, ctrl3 = 0U;
   if (!f413_imu_diag_read_reg(F413_IMU_DIAG_WHO_AM_I_REG, &who))
   {
     trace_printf("[HW-TEST][IMU] FAIL(spi)\r\n");
@@ -399,4 +404,12 @@ void f413_imu_diag_run_whoami_test_once(void)
                (unsigned int)who,
                (unsigned int)F413_IMU_DIAG_WHO_AM_I_EXPECTED,
                (who == F413_IMU_DIAG_WHO_AM_I_EXPECTED) ? "PASS" : "FAIL");
+  if (f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL1_XL, &xl) &&
+      f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL2_G, &gyro) &&
+      f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL3_C, &ctrl3))
+  {
+    trace_printf("[HW-TEST][IMU] CTRL1_XL=0x%02X CTRL2_G=0x%02X CTRL3_C=0x%02X expected=74,71,44 => %s\r\n",
+        xl, gyro, ctrl3, (xl == 0x74U && gyro == 0x71U && ctrl3 == 0x44U) ? "PASS" : "FAIL");
+  }
+  else trace_printf("[HW-TEST][IMU] FAIL(config read)\r\n");
 }

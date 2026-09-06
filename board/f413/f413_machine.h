@@ -51,6 +51,10 @@ typedef struct {
   float tread_mm;
   uint8_t imu_forward_accel_reg;
   int8_t imu_forward_accel_sign;
+  /* IMU on the longitudinal centreline; positive forward of the yaw centre.
+     A lateral offset needs an additional angular-acceleration correction. */
+  float imu_forward_offset_mm;
+  float battery_divider_ratio; /* (Rtop + Rbottom) / Rbottom; nominal only. */
 } f413_hardware_config_t;
 
 typedef struct {
