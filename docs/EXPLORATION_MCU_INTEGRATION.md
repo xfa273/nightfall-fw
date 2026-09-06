@@ -140,3 +140,25 @@ GOAL の実到達をフェーズの停止・後退・再進入より前に記録
 保ったまま方向選択・到着予測・poll・完了通知の接続点を移す。
 新機体モデルの一致と、制御 IRQ を動かした固定機体での時間計測を済ませてから、
 別途許可された床上の走行試験で壁読み・加速・停止・帰還を確認する。
+
+最新 `3910fa6` に対する接続部分は、別ブランチ
+[`codex/f413-exploration-runtime-scaffold`](https://github.com/xfa273/nightfall-fw/tree/codex/f413-exploration-runtime-scaffold)
+の `6e8db0d` に保存した。既存の探索・新機体・NVM 保護を保った 5 ファイルの変更で、
+OFF/ON ともビルド済み。ただし ON でも明示的に足立法を維持する**接続枠のみ**であり、
+新機体で改善アルゴリズムが動作したという結果ではない。RAM は両方 274,120 bytes、
+Flash は OFF 367,140 / ON 367,564 bytes。通常チェックアウトには変更を加えていない。
+詳細な差分と残るモデル条件は、そのブランチの `docs/EXPLORATION_RUNTIME_SCAFFOLD.md`。
+
+条件付き primary 下界と、既知 nominal 経路の上界を組み合わせる移植案については、
+[最新モデルの監査](EXPLORATION_RUNTIME_MODEL_AUDIT.md) に整理した。局所 7,872 条件では
+小回りによる時間の逆転はなかったが、最新実行グラフへの移植・上界検証はまだ実装していない。
+
+計算予算を制限した C の探索順は、保存済みの UI リプレイでも確認できる:
+
+```sh
+tools/exploration_sim/run.sh --port 8877 \
+  --replay build/exploration_sim/mcu-policy-half2023-ui.json
+```
+
+元の計算結果から UI 用 JSON を再生成する手順は `MCU_READINESS.md` を参照。
+C 実装であることと計算予算を画面に表示し、観測・位置・時刻を元のリプレイから保持する。

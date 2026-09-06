@@ -309,3 +309,26 @@ Its explicitly overridden surrogate OFF/ON cases used these C source hashes:
 The report also includes the matching headers. Compiler/host timing and source
 changes can change artifact hashes; compare outcomes and work counts alongside
 the hashes rather than treating a hash alone as a performance test.
+
+## Inspect a saved C run in the existing UI
+
+The explicit exporter reuses a grid trace without repeating C exploration. It
+generates only the matching Adachi baseline unless `--baseline` supplies an
+existing comparison with exactly matching maze/profile data:
+
+```sh
+python3 tools/exploration_sim/mcu_policy_ui.py \
+  build/exploration_sim/policy64-progress/32MM2023HX-policy64-oracle20-hybrid0.json \
+  --source-max-steps 6000 \
+  --output build/exploration_sim/mcu-policy-half2023-ui.json
+tools/exploration_sim/run.sh --port 8877 \
+  --replay build/exploration_sim/mcu-policy-half2023-ui.json
+```
+
+The UI identifies the right pane as the C implementation and displays the work
+ceilings, surrogate setting and fixed-model limitation. Its normal calculation
+button still starts the ordinary Python comparison, as stated in the replay
+notice. The exporter preserves every original observation, pose, timestamp,
+decision and certificate state; it validates adjacent known-open movements and
+reconstructed knowledge before writing the UI-compatible file. Missing C bounds
+are left absent instead of being filled with future results.
