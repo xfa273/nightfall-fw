@@ -15,7 +15,7 @@
 | 機種 | `family + board_id`、`board/f413/f413_registry.c` | ピン構成の互換ID、搭載機能、標準ハード設定、既定profile |
 | 個体 | 上記 + `unit_serial`、同registry | 配線変更等のハード上書き、個体専用profileへの差し替え |
 | 走行profile | `params/<profile>/profile.c`等、共通binary内 | 寸法・PID/FF・フィルタ・壁閾値、探索2組、最短mode2..7各9case、センサLUT |
-| 校正 | 各機のFRAM、既存NVM API | 壁オフセット・基準値・距離warp。今回フォーマット変更／保存なし |
+| 校正 | 各機のFRAM、既存NVM API | 壁オフセット・基準値・距離warp。共通フォーマットで個体ごとに保存 |
 
 `board_id` は `0x00MMNNVV`（major/minor/variant）。miniとclassicは別namespaceで、
 同じboard_idでも衝突しない。`unit_serial` は機種内連番であり、F413全体の台数ではない。

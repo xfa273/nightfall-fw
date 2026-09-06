@@ -180,3 +180,61 @@ After that, confirm a released/pressed stop input and actual IMU axis directions
 then proceed to low-speed floor distance/velocity tuning and turns in that order.
 Normal fan-run integration, fan-on tuning, battery cell-specific safeguards and
 3S output limits remain explicit later work; do not switch to 3S on this result.
+
+## Provisional no-wall offset and OP input recovery, 2026-09-06
+
+Current calibration label: `mini-r3-open-wall-temp-20260906`. This section
+supersedes the zero-offset/dummy-sensor status above, not the historical results.
+Firmware/profile remain `40e96ea DIRTY=1` / `mini-r3-bench-t0.2`; no code change,
+build or application flash was needed.
+
+The user removed walls in every direction and requested a provisional no-wall
+reference to restore hand-operated mode selection before building a distance jig.
+Two 512-sample blocks returned on-minus-off means FR=701/702, FL=665, R=562,
+L=575, with standard deviations 2.47..4.15 counts. Thus the old OP condition
+`FR>=150 && FL<=250` could not become true: even uncovered FL was about 665.
+The thresholds had not changed; the missing background subtraction was the blocker.
+
+After backing up both 256-byte calibration prefixes, executed existing **non-motor**
+OP mode9/case9 (1500 ms settle, 10 samples at 10 ms intervals). Saved:
+
+| Channel | Provisional no-wall offset | Corrected no-wall mean / maximum (512 samples) |
+| --- | ---: | ---: |
+| FR | 700 | 2 / 11 |
+| FL | 664 | 2 / 13 |
+| R | 563 | 1 / 14 |
+| L | 574 | 1 / 12 |
+
+Offsets are subtracted from LED-on minus LED-off ADC, with negative results
+clamped to zero. OP thresholds remain FR>=150 / FL<=250; exploration wall
+thresholds and all runtime profiles are unchanged. The old sensor blob was the
+known dummy, so the existing editor initialized defaults: stored centre bases
+and stored gyro offset are now zero, not a measured centre/gyro calibration.
+Effective side-control fallback remains L=1941/R=1989. Do not save the no-wall
+reading as a wall-centre base (mode9/case8).
+
+Readback validated the 68-byte sensor blob (checksum 0x1CD), and reset loaded
+the same offsets. Corrected `w` detects front/right/left=0/0/0 with no saturation.
+In safe mode0, the user covered only FR and released it three times; UART logged
+three `execute mode=0 idle` events, and the user confirmed successful sound/LED
+response. No UART `E` was sent during this physical-input check.
+
+Sensor area was updated intentionally; distance calibration prefix was
+byte-identical, trace still held 1212 records, and identity/maze were not written.
+Before/after prefixes are in `mini_r3_open_wall_20260906.log`; post-reset data and
+physical-input events are in `mini_r3_open_wall_verified_20260906.log` under
+`tools/logging/logs/`. Sensor-prefix SHA-256 changed from
+`059f6a046b8a8b8dc1e9ebf89f108be2f1e1407ca3c586e287e75e7d7ddee760` to
+`00afa8d579a418414e21d1de763794428f19a982858c7f1569e7b2a5dd528695`.
+The original complete blob can be reconstructed from the saved prefix for a
+reviewed NVM restore; restoring dummy calibration is not normal operation.
+Final SWD motor/fan enable/PWM, DIR/STBY and fault registers were zero; UART closed.
+
+This is an offset for the **current physical setup**, not a qualified dark/optical
+calibration. Large no-wall background remains unexplained, and earlier uncorrected
+wall-present flags alone did not establish wall/no-wall contrast. On the distance
+jig, fix the mounting height, surrounding surfaces and lighting, recheck the no-wall
+offset, then collect distance-versus-corrected-delta tables and independently check
+wall thresholds/centre bases. The current seed LUT distances are not valid calibration
+results, and low/extrapolation flags at no-wall are expected. Keep floor wall-control
+tests gated on that work.
