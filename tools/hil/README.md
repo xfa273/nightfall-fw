@@ -64,6 +64,21 @@ zero duty, and saturation over all 16-bit inputs.
 unit profiles, mini/classic namespace separation, invalid-ID fail-closed behavior,
 and immutable boot settings. See `docs/F413_MACHINE_CONFIG.md` for operation.
 
+It also checks the r3 -Y IMU mounting, the rearward-offset acceleration correction,
+and each board's battery divider without changing r2 geometry or polarity.
+
+Read-only calibration-loader regression with ASan/UBSan (no hardware access):
+
+```sh
+sh tools/hil/run_f413_nvm_params_tests.sh
+```
+
+This verifies rejection of the exact historical dummy distance-calibration blob,
+preservation of real calibration and stored bytes, and CRC/schema failure paths.
+On hardware, `|` dumps both calibration prefixes without writing them; `{` is a
+separate lifted-only 7..9V bounded motor sweep, not part of the safe helper.
+See `docs/MINI_R3_COMMISSIONING.md` for limits and r3 commissioning results.
+
 This safe helper intentionally does not automate motor commands. When the
 machine is lifted and secured, use the UART commands from `docs/ai/HIL_SAFETY.md`
 directly and record the command sequence plus result in `docs/ai/WORKLOG.md`.

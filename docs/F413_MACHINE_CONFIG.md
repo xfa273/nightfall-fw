@@ -26,18 +26,25 @@
 | 個体 | family / board_id / unit | 走行profile | 左前進IN2 | Fan |
 | --- | --- | --- | --- | --- |
 | mini_r2_0_unit001 | mini / `0x00020000` / 1 | `0x00020001` / `f413pre-t0.1` | Low（元の配線） | なし |
-| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-seed-t0.1` | High（左配線を反転済み） | あり |
+| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-bench-t0.2` | High（左配線を反転済み） | あり |
 
 両機とも現時点は右前進IN2 High、encoder符号 L=+1/R=-1、TIM2 PSC=0/ARR=1000。
 r3の左配線反転は**機種標準ではなくunit001の上書き**。
 将来unit002を追加しても、この反転を無条件に引き継がない。
 旧 `NIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH` ビルド指定は廃止し、指定時はコンパイルエラー。
 
-r2の既存数値は維持した。r3は今回直前の数値を独立コピーした**未調整seed**であり、
-タイヤ径・トレッド等も初期値を継承しているだけで、新機体の実測／走行検証済みを意味しない。
+r2の既存数値は維持した。r3はr2の走行値を独立コピーした**床上走行未調整profile**である。
+2026-09-06にユーザーが同一外形・足回り構成を確認したため、寸法・encoder CPRを継承する。
+ただし有効タイヤ径の実走確認や新モータの負荷時ゲイン調整は未実施。
 r3の制御ゲイン、壁距離LUT/FRAM warp、旋回値は別途調整する。
 fan搭載判定と非駆動時のgateは接続済みだが、F413の通常走行中fan制御・fan-onゲイン選択は
 従来どおり未接続（fan testのみ、走行値のfan設定は0）。この移行では有効化しない。
+
+r3のIMUはKiCad上でr2比180度回転しているため、前進加速度は-Y（r2は+Y）、
+yaw gyroは両機+Z。旋回中心より後方2.5mmの補正をr3だけに適用する。
+電池電圧の分圧比もr2の3.2からr3の127/27へ機種別に選択する。
+これはセル数判定や3Sでのモータ／fan安全上限の実装ではない。
+浮上固定での検証結果と次の校正手順は `MINI_R3_COMMISSIONING.md` を参照。
 
 ## 起動と保護
 
@@ -59,7 +66,7 @@ board GPIO・motor/fan timer・制御IRQ・OP UIは初期化しない。復旧�
 
 - r2の数値: `params/f413_preorder/`（既存調整ツール互換のため旧directory名を維持）。
 - r3の数値: `params/mini_r3_0/`。ここを変えてもr2の値は変わらない。
-- 配線極性、encoder符号/CPR、トレッド、PWM prescaler、IMU前後軸: registryの機種定義または個体上書き。
+- 配線極性、encoder符号/CPR、トレッド、PWM prescaler、IMU前後軸・中心からの前後距離、電池分圧比: registryの機種定義または個体上書き。
 - 同じ機種の個体ごとに走行値を変える場合: 独立profileを作成し、対象unitの`profile_override`で指定する。
   profile IDは非zeroの未使用値を割り当て、family/board_idを元機種に合わせる。
   mode/case配列とLUTを含むprofile全体が切り替わる。個体が増えてもbinaryは増やさない。
