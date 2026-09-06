@@ -295,6 +295,8 @@ void f413_trace_sample_emit_extra_csv_meta(void)
       f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
       (double)F_ALIGN_TARGET_MM);
   trace_printf("#front_distance_reference_meta_source=dump_time_profile\r\n");
+  trace_printf("#side_distance_reference=%s\r\n#side_distance_reference_meta_source=dump_time_profile\r\n",
+      f413_machine_side_distance_body_centre() ? "body_centre" : "legacy_profile");
   trace_printf("#accel_velocity_mm_s=encoder_avg_plus_accel_half_window\r\n");
   trace_printf("#velocity_accel_comp_window_ms=%u\r\n",
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());

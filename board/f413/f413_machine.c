@@ -124,6 +124,8 @@ bool f413_machine_route_precomputed_compatible(void)
 { return s_status == F413_MACHINE_OK && s_selection.profile->route_precomputed_compatible; }
 bool f413_machine_front_distance_body_centre(void)
 { return s_status == F413_MACHINE_OK && s_selection.profile->front_distance_body_centre; }
+bool f413_machine_side_distance_body_centre(void)
+{ return s_status == F413_MACHINE_OK && s_selection.profile->side_distance_body_centre; }
 
 /* Overrides sensor_distance.c's weak hook without coupling the shared F405 code
    to an F413 identity. Individual FRAM warps remain a separate calibration layer. */

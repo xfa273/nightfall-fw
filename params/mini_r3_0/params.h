@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-front-centre-t0.3"
+#define PARAMS_TUNE_VERSION "mini-r3-wall-centre-t0.4"
 
 /*============================================================
     各種定数（パラメータ）設定

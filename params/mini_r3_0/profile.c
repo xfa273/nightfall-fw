@@ -17,8 +17,18 @@
 #define shortestRunCaseParamsMode7 mini_r3_cases7
 #include "search_run_params_split.c"
 #include "shortest_run_params_split.c"
-#define sensor_distance_load_profile_luts mini_r3_load_sensor_luts
+#define sensor_distance_load_profile_luts mini_r3_load_front_luts
 #include "sensor_distance_lut.c"
+#undef sensor_distance_load_profile_luts
+#define sensor_distance_load_profile_luts mini_r3_load_side_luts
+#include "side_distance_lut.c"
+#undef sensor_distance_load_profile_luts
+
+static void mini_r3_load_sensor_luts(void)
+{
+  mini_r3_load_front_luts();
+  mini_r3_load_side_luts();
+}
 
 /* Resolver copies fixed counts; reject truncated tables at compile time. */
 _Static_assert(sizeof(mini_r3_search) / sizeof(mini_r3_search[0]) == 2, "search profile count");
@@ -40,5 +50,6 @@ const f413_param_profile_t f413_profile_mini_r3 = {
   .cases = {mini_r3_cases2, mini_r3_cases3, mini_r3_cases4, mini_r3_cases5, mini_r3_cases6, mini_r3_cases7},
   .route_precomputed_compatible = false,
   .front_distance_body_centre = true,
+  .side_distance_body_centre = true,
   .load_sensor_luts = mini_r3_load_sensor_luts
 };
