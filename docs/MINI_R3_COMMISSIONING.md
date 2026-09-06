@@ -2,9 +2,10 @@
 
 Current wall calibration: `mini-r3-wall-centre-t0.4`, body-centre-to-wall front
 LUT 40..110 mm and side LUTs 23..80 mm. See the final sections for scope and HIL.
-Calibration warning (2026-09-06 08:41 UTC): sensor FRAM now contains the diagnostic
-fixture again; effective offsets are all zero. Restore is pending; current distance
-readings/OP/wall control must not be treated as calibrated despite the valid LUT.
+Calibration restored after the 2026-09-06 overwrite diagnosis: effective offsets
+FR708/FL681/R551/L570 exactly match the data used with the measured LUTs.
+Normal firmware `d5099d8` locks destructive diagnostic saves. See the final
+section for byte-for-byte verification and the remaining physical checks.
 Earlier seed-LUT and provisional-offset results below are historical.
 
 ## Confirmed construction (user, 2026-09-06)
@@ -420,3 +421,100 @@ TIM2/TIM10 enable/PWM0, DIR/STBYlow,CFSR/HFSR0,VDD3.24V, switch released,
 UART closed mode0. No motor/fan/run/trace/NVM write. Proposed next task is exact
 calibration restore plus an explicit guard on destructive UART diagnostic saves;
 both await user direction. The old trace backup remains available separately.
+
+## Exact calibration recovery and destructive-diagnostic guard, 2026-09-06
+
+The user explicitly approved restoring the previous good calibration and
+preventing diagnostic overwrites. No motor, fan or run was authorized/issued.
+The approximate no-wall scene was **not** recalibrated; changing its ADC origin
+would invalidate the relationship to the measured front/side LUT samples.
+
+Restored only the sensor blob (68 bytes, schema0x00010001, checksum0x1D6) to
+the exact bytes in `mini_r3_side_centre_verified_20260906.log`: offsets
+FR708/FL681/R551/L570, stored bases L/R/F0/0/0, gyro offset0 and reserved0.
+Effective side bases still fall back to L1941/R1989; they remain unqualified.
+The sensor256-byte prefix again hashes to
+`b1b8a0fdbd929eaa00983c23555e46ed66440018fbcfd1586c56fe1f6498376c`.
+The distance256-byte prefix remains
+`2682a96bfb5aaf9a7614c3f6dcbba9e82a3d8b19153fb9b4ceef1adc74f87c7f`;
+its historical warp fixture is still rejected, and compiled body-centre LUTs,
+thresholds, control parameters and all identity data were not changed.
+
+Recovery used a temporary boot block inside `main.c` USER CODE, after SPI/UART
+initialization and before wall/control timers start. It required all of:
+
+- UID `00280047-31335117-34313932`, valid mini board0x30000/unit1 identity,
+  runtime profile0x30001, and the expected FRAM sensor-area layout;
+- the entire currently observed diagnostic68-byte blob, including header,
+  checksum0x59A, padding and reserved bytes, to compare exactly;
+- normal sensor save/load and byte-for-byte readback to succeed (otherwise
+  safe halt with outputs never enabled).
+
+F413 sensor save uses the FRAM backend whose erase is a no-op; only the68-byte
+sensor write was performed. No identity/maze/distance/trace restore was attempted.
+The temporary image reported exact recovery PASS. The hook and its includes
+were then removed completely (`main.c` has no final diff), and the normal
+protected application was rebuilt/flashed/verified. There is **no persistent
+automatic restore** that could reintroduce these values after future calibration.
+The local recovery patch is retained only as an ignored audit artifact:
+`tools/logging/logs/mini_r3_sensor_recovery_20260906.patch`, SHA256
+`8fbe8499e74b264eda5e4fdcab0c801f1eb73d5f91a05de2337eeeeff80954f5`.
+
+Normal builds default to `NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS=OFF`.
+The actual diagnostic entry points refuse `a/d/s/m/t` test writes and
+`q/Q/r/k` trace format/synthetic append/self-test before any NVM mutation or
+trace-abort side effect. This also protects non-UART callers. An explicitly
+opted-in maintenance build is required to enable them; there is no UART unlock.
+Intentional OP calibration, normal maze saves and run logging are unchanged.
+Older firmware remains unsafe for these letters. This closes the demonstrated
+overwrite paths, but does not identify which earlier input/source caused it.
+
+Host validation: ASan/UBSan tests link the real diagnostic entry points, sensor
+serializer and trace serializer to mock NVM. Default locked build preserves
+every NVM byte and produces eight refusals (q/Q share one entry point), while
+ordinary sensor calibration remains writable. The opt-in path is also tested
+in host memory only. Machine/LUT, NVM warp, exhaustive PWM tests, route-table
+freshness, both F405 builds, F413 build and diff checks passed.
+
+HIL used ST-LINK066CFF545771485067013914, target VDD3.24V, UART
+`/dev/cu.usbmodem211202`921600, software reset and application sectors0..6
+only; protected Flash sectors12..15 were not erased/programmed. Final image
+reports `d5099d8 DIRTY=1`, t0.4, correct unit/profile and `[NVM-GUARD] LOCKED`.
+Only after verifying that build/boot, sent `a,d,s,m,t,q,Q,r,k` separately and
+received all nine refusals. Before/after `|` dumps match both calibration
+prefixes exactly and trace count remains16. The temporary restore hook is not
+present, so it cannot conceal an overwrite on a later reset.
+
+Post-restore512 fresh samples in1024ms, current approximately wall-free scene:
+
+| Channel | Effective offset | Corrected mean | Min..max | StdDev |
+| --- | ---: | ---: | --- | ---: |
+| FR | 708 | 10 | 0..26 | 4.03 |
+| FL | 681 | 14 | 3..26 | 3.32 |
+| R | 551 | 45 | 30..59 | 3.75 |
+| L | 570 | 76 | 62..85 | 3.09 |
+
+`w` confirms front/right/left=0/0/0, no saturation, and the stored offsets
+are applied. Distance validity is0 with all signals low, as expected with no
+walls. The FL<=250 entry condition has ample margin again; FR still needs a
+hand to exceed150. Independent held-out distance/placement validation remains
+pending, and side wall control is still raw ADC with unqualified bases.
+
+Artifacts in `tools/logging/logs/`: `mini_r3_calibration_restore_pre_20260906.log`,
+`mini_r3_calibration_restore_20260906.log`,
+`mini_r3_calibration_guard_verified_20260906.log`.
+Temporary recovery ELF SHA256
+`02d3d569003492cef8128c7f3f7abc214b85525563e397e68438dae17656fc0b`
+(Flash368060B); final normal ELF
+`ff4d100fd43a0528948a36f3b0f51eed97eca506742434cd8a08ec919e1a4dbb`,
+BIN `c022d94eb67b941cd924c63bb6fdd5413f72baec87b34a07cde84af456b6e68c`
+(RAM274120B, Flash367140B). The reported dirty flag reflects pre-existing
+unrelated worktree edits, not a remaining recovery hook.
+
+A further software reset of the final normal firmware retained both exact
+calibration prefixes and trace count16; `w` still applied the correct offsets
+and detected no walls. SWD checks during final HIL found TIM2/TIM10 enables
+and PWM compares0, DIR/STBYlow, CFSR/HFSR0. Left at mode0 idle with PUSH
+released and UART closed. Requested FR-only hand/LED/beep confirmation from
+the user; no reply or hand-entry event had been received by this handoff, so
+physical OP-response confirmation is still pending.
