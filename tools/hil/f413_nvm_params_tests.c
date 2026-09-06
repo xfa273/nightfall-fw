@@ -12,6 +12,8 @@ typedef struct {
 } blob_t;
 static blob_t blob;
 static unsigned applied, cleared;
+static bool body_centre;
+bool f413_machine_front_distance_body_centre(void) { return body_centre; }
 nvm_status_t nvm_read(nvm_area_t area, uint32_t off, void *out, size_t n)
 {
   assert(area == NVM_AREA_DISTANCE_PARAMS && off == 0 && n == sizeof(blob));
@@ -59,6 +61,10 @@ int main(void)
   assert(!nvm_params_distance_load_and_apply() && applied == 3);
   seal(); blob.version++;
   assert(!nvm_params_distance_load_and_apply() && applied == 3);
-  puts("PASS: F413 diagnostic fixture rejected, real calibration preserved, no NVM writes");
+  /* A genuine legacy warp must also not affect the new centre-reference LUT. */
+  seal(); before = blob; body_centre = true;
+  assert(!nvm_params_distance_load_and_apply());
+  assert(applied == 3 && cleared == 6 && memcmp(&blob, &before, sizeof(blob)) == 0);
+  puts("PASS: F413 dummy/reference-incompatible warps rejected, legacy calibration preserved, no NVM writes");
   return 0;
 }

@@ -38,6 +38,8 @@ typedef struct {
   const ShortestRunModeParams_t *modes[6];
   const ShortestRunCaseParams_t *cases[6];
   bool route_precomputed_compatible;
+  /* Only FR/FL/front-sum; side tables may still use their legacy reference. */
+  bool front_distance_body_centre;
   void (*load_sensor_luts)(void);
 } f413_param_profile_t;
 
@@ -114,6 +116,7 @@ const f413_runtime_params_t *f413_machine_params(void);
 const char *f413_machine_profile_name(void);
 uint32_t f413_machine_profile_id(void);
 bool f413_machine_route_precomputed_compatible(void);
+bool f413_machine_front_distance_body_centre(void);
 
 extern const f413_board_config_t f413_boards[];
 extern const size_t f413_board_count;

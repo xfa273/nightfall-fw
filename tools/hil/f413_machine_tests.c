@@ -1,6 +1,7 @@
 #include "f413_machine.h"
 #include "f413_motor_pwm.h"
 #include "f413_measurements.h"
+#include "f413_wall_distance.h"
 #include "params.h"
 #include "sensor_distance.h"
 #include <assert.h>
@@ -15,6 +16,79 @@ nvm_status_t nvm_read(nvm_area_t a, uint32_t o, void *p, size_t n)
 nvm_status_t nvm_write(nvm_area_t a, uint32_t o, const void *p, size_t n)
 { (void)a; (void)o; (void)p; (void)n; abort(); }
 nvm_status_t nvm_erase(nvm_area_t a) { (void)a; abort(); }
+/* Real persistence/warp acceptance is covered by f413_nvm_params_tests. */
+bool nvm_params_distance_load_and_apply(void) { return false; }
+bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t *out)
+{ (void)out; return false; }
+
+static void front_distance_tests(unsigned rev)
+{
+  assert(f413_machine_front_distance_body_centre() == (rev == 3U));
+  assert(F_ALIGN_TARGET_MM == (rev == 3U ? 45.0f : 7.0f));
+  assert(F_ALIGN_TOO_CLOSE_MM == F_ALIGN_TARGET_MM - 2.5f);
+  f413_wall_distance_init();
+  assert(sensor_distance_get_interpolation() == SENSOR_DISTANCE_INTERP_PCHIP);
+  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 15U : 13U));
+  if (rev == 2U) {
+    assert(fabsf(sensor_distance_from_fr(1680) - 7.0f) < 0.001f);
+    assert(fabsf(sensor_distance_from_fl(2050) - 7.0f) < 0.001f);
+    assert(fabsf(sensor_distance_from_fsum(3730) - 7.0f) < 0.001f);
+    return;
+  }
+  /* Independent transcription of the user's front-only jig measurements. */
+  const uint16_t fr[] = {2491,2317,1859,1444,1150,933,764,636,538,458,382,320,269,228,198};
+  const uint16_t fl[] = {2536,2387,1995,1567,1248,996,819,679,573,478,397,334,286,245,209};
+  assert(sensor_distance_lut_size_fr() == 15U);
+  assert(sensor_distance_lut_size_front_sum() == 15U);
+  f413_wall_sensor_snapshot_t adc = {.front_wall = true};
+  f413_wall_distance_snapshot_t distance;
+  const unsigned front_mask = F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL | F413_WALL_DISTANCE_CH_FSUM;
+  for (unsigned i = 0; i < 15; ++i) {
+    adc.fr_delta = fr[i]; adc.fl_delta = fl[i];
+    adc.fr_on = fr[i] + 700; adc.fl_on = fl[i] + 664;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    const float mm = 40.0f + 5.0f * i;
+    assert(fabsf(distance.fr_mm - mm) < 0.001f);
+    assert(fabsf(distance.fl_mm - mm) < 0.001f);
+    assert(fabsf(distance.front_sum_mm - mm) < 0.001f);
+    assert(distance.fr_mm == distance.fr_mm_unwarped);
+    assert(distance.fl_mm == distance.fl_mm_unwarped);
+    assert(distance.front_sum_mm == distance.front_sum_mm_unwarped);
+    assert(f413_wall_distance_front_present(&distance));
+    assert((distance.valid_mask & front_mask) == front_mask);
+  }
+  /* Every in-range integer ADC value: monotone and bounded PCHIP. */
+  float (*convert[])(uint16_t) = {sensor_distance_from_fr, sensor_distance_from_fl, sensor_distance_from_fsum};
+  bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_fr, sensor_distance_ad_in_range_fl, sensor_distance_ad_in_range_fsum};
+  const uint16_t low[] = {198,209,407}, high[] = {2491,2536,5027};
+  for (unsigned ch = 0; ch < 3; ++ch) {
+    float previous = 110.0f;
+    for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
+      const float mm = convert[ch]((uint16_t)ad);
+      assert(isfinite(mm) && mm >= 40.0f && mm <= previous);
+      assert(in_range[ch]((uint16_t)ad));
+      previous = mm;
+    }
+    assert(!in_range[ch](0) && !in_range[ch](low[ch] - 1));
+    assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
+  }
+  /* No wall, beyond either endpoint, and saturated raw ADC cannot be trusted. */
+  const int32_t invalid[][2] = {{0,0}, {197,208}, {2492,2537}, {-1,-1}};
+  for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    adc.fr_delta = invalid[i][0]; adc.fl_delta = invalid[i][1];
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(!f413_wall_distance_front_present(&distance));
+    assert((distance.extrapolated_mask & front_mask) == front_mask);
+  }
+  adc.fr_delta = 2317; adc.fl_delta = 2387; adc.fr_on = 4090;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  /* The front-only r3 table must not replace the existing side conversion. */
+  const float left = sensor_distance_from_l(1000), right = sensor_distance_from_r(1000);
+  f413_profile_mini_r2.load_sensor_luts();
+  assert(left == sensor_distance_from_l(1000) && right == sensor_distance_from_r(1000));
+  f413_profile_mini_r3.load_sensor_luts();
+}
 
 static const uint32_t uid[] = {0x00280047U, 0x31335117U, 0x34313932U};
 static void seal(nvm_identity_block_t *id)
@@ -168,8 +242,7 @@ int main(int argc, char **argv)
     assert(searchRunParams[0].velocity_turn90 == 300.0f);
     assert(shortestRunModeParams2.velocity_l_turn_90 == 500.0f);
     assert(shortestRunCaseParamsMode2[5].velocity_straight == 1000.0f);
-    sensor_distance_init();
-    assert(sensor_distance_lut_size_fl() == 13U);
+    front_distance_tests(rev);
     assert(f413_machine_has(F413_CAP_FAN) == (rev == 3U));
     assert(f413_machine_route_precomputed_compatible() == (rev == 2U));
     const f413_param_profile_t *p = rev == 2U ? &f413_profile_mini_r2 : &f413_profile_mini_r3;

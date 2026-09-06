@@ -458,6 +458,9 @@ static void nightfall_run_wall_distance_test(bool verbose)
   trace_printf("Average: %u samples, %lu ms\r\n",
                (unsigned int)avg.sample_count,
                (unsigned long)avg.elapsed_ms);
+  trace_printf("Front distance reference: %s; alignment target=%.2f mm\r\n",
+               f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
+               (double)F_ALIGN_TARGET_MM);
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
   trace_printf("\r\nCOPY INTO CALIBRATION CSV\r\n");
   HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
@@ -1320,6 +1323,10 @@ int main(void)
       (double)f413_machine_hardware()->imu_forward_offset_mm,
       (double)f413_machine_hardware()->battery_divider_ratio);
   nightfall_boot_buzzer_pattern();
+
+  trace_printf("[MACHINE] front_distance_reference=%s align_target_mm=%.2f too_close_mm=%.2f\r\n",
+      f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
+      (double)F_ALIGN_TARGET_MM, (double)F_ALIGN_TOO_CLOSE_MM);
 
   if (g_boot_identity_status == NVM_STATUS_OK)
   {

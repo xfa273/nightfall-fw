@@ -188,6 +188,7 @@ bool nvm_maze_load_map(uint16_t* cells, uint32_t cell_count)
 
 #elif defined(STM32F413xx)
 
+#include "f413_machine.h"
 #include "sensor_distance.h"
 
 #define NVM_MAZE_BLOB_MAGIC (0x4D5A4531UL)
@@ -260,6 +261,16 @@ bool nvm_params_distance_load_and_apply(void)
     float y_fr[3];
     float x_fsum[3];
     float y_fsum[3];
+
+    /* v1 warps carry neither the distance reference nor source LUT identity.
+       Do not apply legacy sensor-origin anchors to a body-centre LUT, even
+       via a diagnostic load. Preserve the stored blob for backup/migration. */
+    if (f413_machine_front_distance_body_centre()) {
+        sensor_distance_clear_warp_fl();
+        sensor_distance_clear_warp_fr();
+        sensor_distance_clear_warp_front_sum();
+        return false;
+    }
 
     st = nvm_read(NVM_AREA_DISTANCE_PARAMS, 0U, &blob, sizeof(blob));
     if (st != NVM_STATUS_OK) {

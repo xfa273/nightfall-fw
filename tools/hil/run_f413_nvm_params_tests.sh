@@ -6,6 +6,7 @@ mkdir -p "$TEST_OUT_DIR"
 "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Wpedantic -O1 -g \
   -fsanitize=address,undefined -fno-omit-frame-pointer -DSTM32F413xx \
   -I"$TASK_ROOT/tools/hil/nvm_stubs" -I"$TASK_ROOT/nvm" \
+  -I"$TASK_ROOT/board/f413" \
   -I"$TASK_ROOT/platform/stm32f405/Core/Inc" \
   "$TASK_ROOT/nvm/nvm_params.c" "$TASK_ROOT/tools/hil/f413_nvm_params_tests.c" \
   -o "$TEST_OUT_DIR/f413_nvm_params_tests"

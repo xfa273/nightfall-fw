@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-bench-t0.2"
+#define PARAMS_TUNE_VERSION "mini-r3-front-centre-t0.3"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -318,8 +318,10 @@
 
 #define WALL_ALIGN_ERR_THR  700
 
-#define F_ALIGN_TARGET_MM           7.0F
-#define F_ALIGN_TOO_CLOSE_MM        4.5F
+/* Front LUT is body-centre-to-wall mm, not the legacy sensor reference.
+ * Retain the 2.5mm target/backoff margin; floor control still needs validation. */
+#define F_ALIGN_TARGET_MM           45.0F
+#define F_ALIGN_TOO_CLOSE_MM        42.5F
 
 #define MATCH_POS_KP_TRANS_MM       10.0F
 #define MATCH_POS_KP_ROT_MM         20.0F
