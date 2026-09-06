@@ -8,6 +8,21 @@ Builds and host-only tools are always allowed. Live hardware actions are allowed
 
 If a command can move motors, spin the fan, erase/write persistent NVM, overwrite identity/calibration/map data, or run search/shortest motion, stop and make sure the current user request explicitly calls for that class of operation.
 
+### Destructive diagnostic build guard (2026-09-06)
+
+Normal F413 builds now reject `a/d/s/m/t/q/Q/r/k` before diagnostic writes or
+trace-abort side effects. These old bring-up commands overwrite real sensor,
+distance, maze or trace data; they are **not** normal calibration commands.
+`NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS=OFF` is the default CMake setting.
+Only a separately authorized maintenance build with full affected-NVM backups
+may opt in. No UART unlock exists. OP calibration and normal run logging are
+unchanged and retain their existing authorization requirements.
+
+**Older or opted-in firmware is still destructive.** Do not send these letters
+to test protection until a successful protected build/flash and its boot
+`[NVM-GUARD] LOCKED` marker are verified. Even then record the guard HIL and
+compare before/after calibration blobs. See `tools/hil/run_f413_nvm_guard_tests.sh`.
+
 ## Green: Host-Only
 
 Allowed freely:

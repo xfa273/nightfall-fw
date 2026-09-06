@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "build_info.h"
+#include "f413_diag.h"
 #include "f413_trace_log.h"
 #include "nvm.h"
 #include "trace.h"
@@ -116,6 +117,8 @@ void f413_trace_diag_print_header(const nvm_trace_log_header_t* header)
 
 void f413_trace_diag_run_format_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_status_t st;
 
@@ -141,6 +144,8 @@ void f413_trace_diag_run_format_once(void)
 
 void f413_trace_diag_run_append_sample_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_trace_log_record_t rec;
   nvm_status_t st;
@@ -572,6 +577,8 @@ static uint8_t f413_trace_diag_record_equals(const nvm_trace_log_record_t* lhs,
 
 void f413_trace_diag_run_selftest_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_status_t st;
   uint32_t i;

@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "f413_control.h"
+#include "f413_diag.h"
 #include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_imu_diag.h"
@@ -33,6 +34,11 @@ void f413_uart_cli_config(const f413_uart_cli_config_t* config)
 
 void f413_uart_cli_print_help(void)
 {
+#if NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS
+  trace_printf("[NVM-GUARD] WARNING destructive diagnostic writes ENABLED (maintenance only)\r\n");
+#else
+  trace_printf("[NVM-GUARD] LOCKED a/d/s/m/t/q/Q/r/k disabled; normal OP calibration and run logging unchanged\r\n");
+#endif
   trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");

@@ -79,6 +79,26 @@ On hardware, `|` dumps both calibration prefixes without writing them; `{` is a
 separate lifted-only 7..9V bounded motor sweep, not part of the safe helper.
 See `docs/MINI_R3_COMMISSIONING.md` for limits and r3 commissioning results.
 
+Destructive-diagnostic guard regression (ASan/UBSan, host memory only):
+
+```sh
+sh tools/hil/run_f413_nvm_guard_tests.sh
+```
+
+Normal F413 builds refuse `a/d/s/m/t/q/Q/r/k` at the diagnostic entry points,
+including non-UART callers. They cannot replace calibration/maze data with test
+fixtures or format/append synthetic trace records. Read-only dumps, intentional
+OP calibration, normal maze saves and run logging are unchanged. The test checks
+all protected entry points and every mock NVM byte, and verifies ordinary sensor
+calibration still saves/loads with the guard locked.
+
+The CMake option `NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS` defaults to `OFF`.
+Only an explicitly authorized **separate maintenance build**, after backing up
+all affected NVM, may enable it. There is no one-character UART unlock. Never
+leave that build on a calibrated robot; rebuild/reflash with the option `OFF`
+and verify the `[NVM-GUARD] LOCKED` boot message. Host tests exercise the opt-in
+path in memory; they do not enable it in the firmware build cache.
+
 This safe helper intentionally does not automate motor commands. When the
 machine is lifted and secured, use the UART commands from `docs/ai/HIL_SAFETY.md`
 directly and record the command sequence plus result in `docs/ai/WORKLOG.md`.
