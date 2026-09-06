@@ -13,7 +13,7 @@
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
-- mini_r3前壁校正: `mini-r3-front-centre-t0.3`、機体中心基準40..110mmのFR/FL/合計LUT、目標45mm。45mm治具で非駆動HIL済み。側壁・床上制御は未校正、mini_r2は旧基準のまま。詳細 `docs/MINI_R3_COMMISSIONING.md`
+- mini_r3壁距離: `mini-r3-wall-centre-t0.4`、機体中心基準FR/FL/合計40..110mm・L/R23..80mmのLUT。前壁目標45mmと45mm非駆動HIL結果を保持。横壁制御はADC生値のまま、側壁基準値・床上制御は未調整、mini_r2は旧基準。詳細 `docs/MINI_R3_COMMISSIONING.md`
 - 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
 ## Codex 実行ポリシー

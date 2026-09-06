@@ -1,7 +1,7 @@
 # mini_r3_0_unit001 commissioning
 
-Current front calibration: `mini-r3-front-centre-t0.3`, body-centre-to-wall LUT
-40..110 mm; see the final section for the 45 mm non-motor jig verification.
+Current wall calibration: `mini-r3-wall-centre-t0.4`, body-centre-to-wall front
+LUT 40..110 mm and side LUTs 23..80 mm. See the final sections for scope and HIL.
 Earlier seed-LUT and provisional-offset results below are historical.
 
 ## Confirmed construction (user, 2026-09-06)
@@ -329,3 +329,55 @@ using the appropriate fixture. The 40..110 mm front validity interval is not
 extended by extrapolated preview numbers. For mini_r2, use a documented datum
 translation only if the old reference is known; otherwise remeasure with this
 centre-reference convention before migrating its unchanged legacy profile.
+
+## Side body-centre LUT, 2026-09-06
+
+Added the user's separate L/R jig sweeps, each 12 points at 23,30,35,...80 mm.
+Original column order is distance,FR,FL,R,L: only L from the `l_delta` sweep and
+R from the `r_delta` sweep are retained. Their independent means are stored in
+`params/mini_r3_0/calibration/side_centre_20260906.csv` and generate the separate
+`side_distance_lut.c`; front tables are byte-for-byte unchanged. PCHIP, all knots
+and the non-uniform first interval are preserved. L720/R673 map exactly to 45 mm.
+
+`mini-r3-wall-centre-t0.4` selects front and side centre-reference LUTs together.
+Side reference metadata is separate from front, including a dump-time source
+label on CSV meta. Lateral feedback and wall-end detection still use ADC deltas;
+no side baseline, threshold, gain, NVM schema/warp policy or r2/F405 behavior was
+changed. Existing >300 side-distance validity gating is retained, so the supplied
+L70..80/R65..80 mm knots convert but are low-signal/invalid. A future distance
+controller must review this policy and its gains with physical validation.
+
+Host ASan/UBSan tests cover all 24 actual C side knots, every in-range integer
+ADC (bounded monotonic PCHIP), range/no-wall/saturation rejection, the 300/301
+validity boundary, unchanged front knots and legacy r2 side conversion. Machine
+and NVM tests, F413 and both F405 builds, both generator/source exact comparisons,
+route-table freshness and diff checks passed.
+
+After the user closed their UART terminal, read-only `|` backed up both 256-byte
+calibration prefixes. Built/flashed `d4ff9d6 DIRTY=1` (profile0x30001) through
+ST-LINK066CFF545771485067013914, application sectors0..6 only, verify and software
+reset successful. RAM274120 B, Flash366764 B, VDD3.24V. ELF SHA-256
+`7645c3399b7e67ba9f61461aafb5d43726bf977f04df226f36ec7859e5a1fe8f`;
+BIN SHA-256 `fb1b4ebd9781415e769fd5bf6781c4c7a8828eb1734f379fd30d11cd2494b555`.
+Pre-existing unrelated worktree edits account for DIRTY=1.
+
+UART `/dev/cu.usbmodem211202`,921600 captured reset to mode0, front/side
+`body_centre`, `side_control=adc_delta`, and unchanged front target45/42.5.
+Post-reset command sequence: `:`, `i`, read-only `|`, `p` only. One 512-sample
+1025ms block gave FR/FL/R/L=0/0/173/29, with R/L SD2.75/3.46 counts. Right delta173
+converts to78.70mm but is correctly low-signal/invalid; left29 is out of range
+(extrapolated102.90mm is not a usable distance). Valid0, extrap0x1D, low0x1F,
+saturation0. Fixture distance was not newly specified, so this is conversion and
+validity-path HIL, **not** an independent physical accuracy check. IMU ID0x6B and
+configuration74/71/44 passed, stop switch released.
+
+Both complete calibration prefixes were unchanged: sensor SHA-256
+`b1b8a0fdbd929eaa00983c23555e46ed66440018fbcfd1586c56fe1f6498376c`, distance
+`2682a96bfb5aaf9a7614c3f6dcbba9e82a3d8b19153fb9b4ceef1adc74f87c7f`.
+Offsets remain FR708/FL681/R551/L570; side bases were not saved. Trace still1212
+records. No motor/fan/run/identity/calibration/maze/trace-writing command was
+issued. Hotplug SWD confirmed TIM2 CCER/CCR1/CCR3=0, TIM10 CCER/CCR1=0,
+DIR/STBY low, CFSR/HFSR=0. UART closed in mode0. Logs:
+`mini_r3_side_centre_pre_20260906.log`, `mini_r3_side_centre_verified_20260906.log`
+under `tools/logging/logs/`. Next physical work remains held-out/repeated-placement
+distance verification and separately authorized raw side-base/control tuning.
