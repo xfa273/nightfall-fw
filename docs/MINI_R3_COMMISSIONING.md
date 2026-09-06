@@ -1,5 +1,9 @@
 # mini_r3_0_unit001 commissioning
 
+Current front calibration: `mini-r3-front-centre-t0.3`, body-centre-to-wall LUT
+40..110 mm; see the final section for the 45 mm non-motor jig verification.
+Earlier seed-LUT and provisional-offset results below are historical.
+
 ## Confirmed construction (user, 2026-09-06)
 
 - Same external envelope and drivetrain geometry as mini_r2: retain 70 x 39 mm,
@@ -238,3 +242,90 @@ offset, then collect distance-versus-corrected-delta tables and independently ch
 wall thresholds/centre bases. The current seed LUT distances are not valid calibration
 results, and low/extrapolation flags at no-wall are expected. Keep floor wall-control
 tests gated on that work.
+
+## Front body-centre LUT and 45 mm jig verification, 2026-09-06
+
+The user supplied 15 front-wall jig means at 40..110 mm in 5 mm steps and
+explicitly changed the reference to **robot body centre to wall**, with a 45 mm
+half-size cell-centering target. Used only `fr_delta` and `fl_delta`, already
+offset-corrected. The no-wall FR/FL=0/0 row is absence, not a LUT knot; R/L values
+from this front-wall fixture are not lateral-distance calibration data.
+Curated source, provenance and reproduction command:
+`params/mini_r3_0/calibration/README.md` and `front_centre_20260906.csv`.
+
+All 15 FR/FL points are retained without smoothing or monotonic adjustment;
+FR+FL is generated at the same distances. Existing PCHIP interpolation remains.
+FR=2317, FL=2387 and sum=4704 each map exactly to 45 mm. The profile marks only
+the front reference `body_centre`, changes `F_ALIGN_TARGET_MM` 7 -> 45 and
+`F_ALIGN_TOO_CLOSE_MM` 4.5 -> 42.5, retaining the 2.5 mm backoff margin. Side
+tables/bases, wall thresholds, motor/IMU/turn settings, mini_r2 and F405 behavior
+are unchanged. Floor position/yaw-loop performance is not validated by this test.
+
+The v1 NVM distance warp has no reference/source-LUT identity. For a centre-based
+profile it is skipped, even on diagnostic load, and RAM warps are cleared without
+writing FRAM. Thus `distance=MISS` and `params=0` are expected, not a missing flash
+LUT. Genuine legacy warps remain accepted on mini_r2. Future centre-based warps
+need a versioned provenance/migration path; do not use old sensor-origin anchors.
+New front-reference CSV metadata is explicitly labelled `dump_time_profile`,
+not a claim about the origin of a previously recorded trace.
+
+The user closed the measurement terminal and reset the jig to 45 mm. Before any
+flash, `p`, read-only `|`, `:` confirmed the existing sensor offsets were now
+FR=708, FL=681, R=551, L=570, not the preceding temporary 700/664/563/574 values.
+These user-side updates were preserved. Pre-flash corrected means FR=2310,
+FL=2375 reproduced the supplied data, but the old LUT returned 1.33/4.30 mm.
+
+Built and flashed `b0a5a88 DIRTY=1`, profile `0x00030001`, tune
+`mini-r3-front-centre-t0.3` through ST-LINK `066CFF545771485067013914`.
+Only application sectors 0..6 were erased/programmed; verification and software
+reset succeeded. VDD 3.24 V, RAM 274120 B / 320 KiB, Flash 366260 B / 1 MiB.
+The dirty flag covers the pre-existing unrelated worktree changes.
+ELF SHA-256 `03ae228b692c95d63176aac28e5892701cd3100f02259360b151ab009c8e5c70`;
+BIN SHA-256 `6520df472acd2a9c6b4cfa78425e0c22af159421cda2e565ec365ad06bad8767`.
+
+UART `/dev/cu.usbmodem211202`, 921600 8N1, captured reset to mode0 and the new
+`body_centre`, target 45.00 / too-close 42.50 boot line. Command sequence after
+reset was `:`, `i`, `:`, read-only `|`, `w`, `p`; no motor/fan/run, calibration,
+identity, maze or trace-writing command was issued.
+
+| 45 mm jig, 512 fresh samples each | FR | FL | Front sum |
+| --- | ---: | ---: | ---: |
+| First mean delta | 2317 | 2385 | 4702 |
+| First distance, mm | 45.00 | 45.04 | 45.02 |
+| Second mean delta | 2316 | 2381 | 4697 |
+| Second distance, mm | 45.02 | 45.12 | 45.06 |
+
+Blocks took 1024/1025 ms; FR/FL standard deviations were 3.81/5.30 and
+3.73/5.18 counts. Both `valid=0x1F`, extrapolation/saturation/low-signal=0, and
+unwarped/warped front previews identical. Side-valid flags do not qualify the
+unchanged side distance tables. This verifies repeat acquisition at one measured
+distance, not independent full-range or sub-0.1 mm physical accuracy.
+
+IMU WHO_AM_I=0x6B and configuration 0x74/0x71/0x44 passed. Final wall snapshot
+VBAT ADC=2102 (nominal about 7.97 V), switch released. Read-only hot-plug SWD
+confirmed TIM2 CCER/CCR1/CCR3=0, TIM10 CCER/CCR1=0, left/right DIR and STBY low,
+CFSR/HFSR=0. UART was closed in mode0 idle.
+
+Both full 256-byte calibration prefixes were byte-identical before/after:
+
+- Distance SHA-256 `2682a96bfb5aaf9a7614c3f6dcbba9e82a3d8b19153fb9b4ceef1adc74f87c7f`.
+- Sensor SHA-256 `b1b8a0fdbd929eaa00983c23555e46ed66440018fbcfd1586c56fe1f6498376c`.
+
+Trace still has 1212 records, schema 0x00060000, 104-byte records; it was not
+overwritten/dumped as new calibration evidence. Logs under `tools/logging/logs/`:
+`mini_r3_front_centre_pre_20260906.log` and
+`mini_r3_front_centre_verified_20260906.log` (includes boot and both averages).
+
+Host ASan/UBSan tests pass for unknown/r2/r3 boot, all 15 actual C conversion
+anchors, every in-range integer ADC (bounded monotonic PCHIP), range/no-wall/raw
+saturation rejection, unchanged side conversion/r2 7 mm target, and real/dummy/
+reference-incompatible NVM warp behavior without writes. F413 and both F405
+builds, 524288 PWM mapping cases, route-table freshness, generator/source exact
+comparison and `git diff --check` passed.
+
+Next: collect held-out distances (e.g. near 42.5/47.5 mm and further out) to check
+interpolation/placement sensitivity, then lateral-distance LUTs and side bases
+using the appropriate fixture. The 40..110 mm front validity interval is not
+extended by extrapolated preview numbers. For mini_r2, use a documented datum
+translation only if the old reference is known; otherwise remeasure with this
+centre-reference convention before migrating its unchanged legacy profile.
