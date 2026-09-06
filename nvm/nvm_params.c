@@ -289,6 +289,22 @@ bool nvm_params_distance_load_and_apply(void)
     memcpy(x_fsum, blob.x_fsum, sizeof(x_fsum));
     memcpy(y_fsum, blob.y_fsum, sizeof(y_fsum));
 
+    /* Historical bring-up fixture contains ADC-like values in distance-mm
+       anchors. It is an I/O test, never a measured sensor calibration. Keep
+       its NVM bytes for diagnostics, but do not extrapolate negative distances
+       from it. This branch is F413-only; real r2 calibrations are untouched. */
+    static const float test_values[6][3] = {
+        {230.0f, 420.0f, 680.0f}, {180.0f, 360.0f, 540.0f},
+        {235.0f, 425.0f, 685.0f}, {180.0f, 360.0f, 540.0f},
+        {465.0f, 845.0f, 1365.0f}, {180.0f, 360.0f, 540.0f}
+    };
+    if (memcmp(((const uint8_t*)&blob) + 16U, test_values, sizeof(test_values)) == 0) {
+        sensor_distance_clear_warp_fl();
+        sensor_distance_clear_warp_fr();
+        sensor_distance_clear_warp_front_sum();
+        return false;
+    }
+
     sensor_distance_set_warp_fl_3pt(x_fl, y_fl);
     sensor_distance_set_warp_fr_3pt(x_fr, y_fr);
     sensor_distance_set_warp_front_sum_3pt(x_fsum, y_fsum);

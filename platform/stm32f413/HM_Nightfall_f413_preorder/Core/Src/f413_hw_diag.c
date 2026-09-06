@@ -57,8 +57,16 @@ void f413_hw_diag_run_lifted_sweep_once(void)
   }
   f413_hw_motor_set(false, true, true, 0U, 0U);
   if (!lifted_wait(50U, &minimum_adc)) goto stopped;
-  if (HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) != HAL_OK ||
-      HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL) != HAL_OK) goto stopped;
+  /* ctrl_init already starts these timers. HAL correctly rejects a second
+     Start on a busy channel; preserve the running encoder counters. */
+  if (((htim3.Instance->CR1 & TIM_CR1_CEN) == 0U &&
+       HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL) != HAL_OK) ||
+      ((htim4.Instance->CR1 & TIM_CR1_CEN) == 0U &&
+       HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL) != HAL_OK))
+  {
+    trace_printf("[LIFTED-SWEEP] REFUSED encoder-start\r\n");
+    goto stopped;
+  }
   trace_printf("[LIFTED-SWEEP] START secured-only nominal_vref=3.3 drive=300ms coast=300ms PSC=%u\r\n",
       f413_machine_hardware()->motor_pwm_prescaler);
   for (unsigned step = 0U; step < 14U; ++step)

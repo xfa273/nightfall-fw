@@ -74,13 +74,24 @@ bool f413_diag_run_distance_nvm_test(void)
     return false;
   }
 
-  if (!nvm_params_distance_load_and_apply())
+  uint8_t readback[16U + 18U * sizeof(float)];
+  if (nvm_read(NVM_AREA_DISTANCE_PARAMS, 0U, readback, sizeof(readback)) != NVM_STATUS_OK ||
+      memcmp(readback + 16U, x_fl, sizeof(x_fl)) != 0 ||
+      memcmp(readback + 28U, y_fl, sizeof(y_fl)) != 0 ||
+      memcmp(readback + 40U, x_fr, sizeof(x_fr)) != 0 ||
+      memcmp(readback + 52U, y_fr, sizeof(y_fr)) != 0 ||
+      memcmp(readback + 64U, x_fsum, sizeof(x_fsum)) != 0 ||
+      memcmp(readback + 76U, y_fsum, sizeof(y_fsum)) != 0)
   {
-    trace_printf("[NVM-TEST][Distance] load_and_apply: FAIL\r\n");
+    trace_printf("[NVM-TEST][Distance] readback: FAIL\r\n");
     return false;
   }
-
-  trace_printf("[NVM-TEST][Distance] save/load_and_apply: PASS\r\n");
+  if (nvm_params_distance_load_and_apply())
+  {
+    trace_printf("[NVM-TEST][Distance] FAIL(test fixture accepted as calibration)\r\n");
+    return false;
+  }
+  trace_printf("[NVM-TEST][Distance] save/readback: PASS; diagnostic fixture not applied\r\n");
   return true;
 }
 

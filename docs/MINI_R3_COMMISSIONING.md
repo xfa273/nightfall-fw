@@ -63,4 +63,18 @@ Do not overwrite the CAD or claim its BOM includes the manual resistor rework.
 4. r3-specific turn/clearance tools and precomputed tables before KERI routes;
    the r2 table remains blocked for r3. Supply and fan-run integration are separate.
 
+## Calibration finding
+
+Read-only `|` found the exact historical NVM I/O-test fixtures: distance FL
+`x=230/420/680, y=180/360/540`, FR `235/425/685`, front-sum `465/845/1365`,
+and sensor bases `1111/1222/1333`, offsets `200/210/220/230`, gyro offset `1.25`.
+These are not measurements. The sensor driver already ignored the sensor fixture,
+but distance conversion applied the distance fixture and produced negative mm.
+The F413 loader now rejects that exact fixture and clears only the live warp;
+stored calibration bytes, real r2 calibrations and F405 behavior are unchanged.
+`distance=MISS` is intentional until real calibration is saved. Unwarped r3 seed
+LUT distances are still provisional, not a substitute for fixture calibration.
+Raw prefixes are backed up in `tools/logging/logs/mini_r3_fixed_bench_20260906.log`.
+Host regression: `sh tools/hil/run_f413_nvm_params_tests.sh`.
+
 Fixed-machine measurements and final firmware build are recorded below when tested.
