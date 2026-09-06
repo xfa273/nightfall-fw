@@ -193,10 +193,18 @@ function installResult(result) {
   $('empty-state').hidden = true; $('results').hidden = false;
   text('experiment-title', result.maze.name || result.maze.id || '探索比較');
   text('experiment-subtitle', `${result.maze.width} × ${result.maze.height} 区画 / ${result.profile.machine || state.machine} / 探索 mode 1 case 1 を基準${result.options?.return_home ? ' / 帰還を含む' : ' / 帰還を含まない'}`);
+  if (result.metadata?.replay_subtitle) text('experiment-subtitle', `${$('experiment-subtitle').textContent} / ${result.metadata.replay_subtitle}`);
+  text('replay-notice', result.metadata?.replay_notice_ja || '');
+  $('replay-notice').hidden = !result.metadata?.replay_notice_ja;
   const byName = Object.fromEntries(result.runs.map((run) => [run.algorithm, run]));
   for (const name of ['baseline', 'relevant']) {
     const summary = byName[name]?.summary;
     if (!summary) continue;
+    const label = byName[name].label || (name === 'baseline' ? '従来 · 全域探索' : '改善 · 経路優先');
+    const tag = byName[name].tag || (name === 'baseline' ? 'ADACHI' : 'RELEVANT');
+    document.querySelector(`.${name}-card .metric-label`).replaceChildren(element('span', `${name}-dot`), document.createTextNode(label), element('span', 'small-tag', tag));
+    document.querySelector(`[data-algorithm="${name}"] h3`).replaceChildren(element('span', `${name}-dot`), document.createTextNode(byName[name].label || (name === 'baseline' ? '従来アルゴリズム' : '改善アルゴリズム')));
+    document.querySelectorAll('.detail-section thead th')[name === 'baseline' ? 1 : 2].textContent = label;
     const metric = $(`${name}-duration`); metric.replaceChildren(document.createTextNode(clock(summary.duration_s)), element('small', '', '推定'));
     text(`${name}-foot`, `${summary.steps.toLocaleString()} 歩 · ${summary.distance_m.toFixed(2)} m${summary.completed ? '' : ' · 未完了'}`);
   }
@@ -395,7 +403,8 @@ function renderLive(name, view) {
   const phase = $(`${name}-phase`); phase.textContent = finished ? (view.run.summary.completed ? '探索終了' : '中断') : PHASES[event.phase] || event.phase;
   phase.classList.toggle('certified', event.certified);
   const bounds = $(`${name}-bounds`); bounds.replaceChildren(element('span', '', 'L'), element('strong', '', seconds(event.lower_s)), element('span', '', '→ U'), element('strong', '', seconds(event.upper_s)));
-  const gap = finite(event.upper_s) && finite(event.lower_s) && event.lower_s > 0 ? `差 ${Math.max(0, (event.upper_s / event.lower_s - 1) * 100).toFixed(1)}%` : '既知経路なし';
+  const unavailable = state.result.metadata?.replay_kind === 'mcu_finite_budget' && name === 'relevant' ? '計算結果待ち' : '既知経路なし';
+  const gap = finite(event.upper_s) && finite(event.lower_s) && event.lower_s > 0 ? `差 ${Math.max(0, (event.upper_s / event.lower_s - 1) * 100).toFixed(1)}%` : unavailable;
   bounds.append(element('span', 'gap', event.certified ? '確定済み' : gap));
 }
 function drawChart() {
@@ -464,11 +473,16 @@ function fillComparison() {
   if (runs.some((run) => finite(run?.summary.empty_transit_steps))) {
     rows.splice(5, 0, ['新たな観測のない移動', (summary) => finite(summary.empty_transit_steps) ? `${summary.empty_transit_steps} 歩` : '—']);
   }
+  if (state.result.metadata?.replay_kind === 'mcu_finite_budget') {
+    rows.push(['計算未完了で到着', (s) => finite(s.pending_arrivals) ? `${s.pending_arrivals} 回` : '—'],
+      ['足立法への復帰・方針維持', (s) => finite(s.progress_recovery_steps) ? `${s.progress_recovery_steps} 歩` : '—']);
+  }
   $('comparison-body').replaceChildren(...rows.map(([title, format]) => { const row = element('tr'); row.append(element('td', '', title), ...runs.map((run) => element('td', '', run ? format(run.summary) : '—'))); return row; }));
 }
 function fillProvenance() {
   const target = $('provenance'); target.replaceChildren();
   const { maze, profile, metadata, options } = state.result;
+  const mcuReplay = metadata?.replay_kind === 'mcu_finite_budget';
   target.append(element('h4', '', 'この比較の読み方'));
   const list = element('ul');
   [
@@ -478,8 +492,9 @@ function fillProvenance() {
     '最短走行の上下限はホスト時間プランナの同じ運動グラフから計算します。ゴール進入時間が目的関数であり、現実の機体の全ての軌道に対する最適性を保証するものではありません。',
     '両方式とも初回ゴールまでは足立法です。改善版はその後、最速になり得る経路の未知境界を観測する位置を移動時間で選びます。候補経路が観測した壁で成立しなくなったときに経路を再導出します。許容差 0% では上下限の一致が終了条件です。',
     '初回ゴールへの走行中は、計算済みの下限を保持することがあります。既知経路の上限は原則として新たに 32 境界を観測するごとに更新し、候補経路の必要境界がすべて既知になった場合は直ちに確定します。このためグラフの値は各区画での再計算値とは限りません。',
-  ].forEach((line) => list.append(element('li', '', line)));
-  if (profile.family === 'classic' || maze.family === 'classic') {
+  ].filter((line, index) => !mcuReplay || index < 4).forEach((line) => list.append(element('li', '', line)));
+  if (mcuReplay) (metadata.notes_ja || []).forEach((line) => list.append(element('li', '', line)));
+  if (!mcuReplay && (profile.family === 'classic' || maze.family === 'classic')) {
     list.append(element('li', '', 'クラシックの最短走行評価は直交経路の時間モデルを使用し、斜め走行は含みません。従来版の探索は GOAL → FULL を連続して切り替え、実機 F405 のゴール停止・後退・強制前進による再出発を省略しています。そのため、この部分は実機と探索順・所要時間が異なります。'));
   }
   target.append(list, element('h4', '', '探索速度の出典'));

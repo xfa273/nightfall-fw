@@ -2,6 +2,7 @@
 #define F413_TRACE_LOG_H_
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "nvm.h"
@@ -27,5 +28,13 @@ void f413_trace_log_auto_stop(void);
 void f413_trace_log_auto_stop_after_tail(uint32_t tail_ms);
 void f413_trace_log_auto_step(void);
 void f413_trace_log_auto_tick_sample(uint32_t timestamp_ms);
+
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+/* Foreground-only exclusive lease. Automatic capture must be stopped; search
+ * event logging uses its own record and remains available. Release at run end.
+ * The trace staging capacity and persistent FRAM format remain unchanged. */
+bool f413_trace_log_borrow_exploration(void **workspace, size_t *bytes);
+void f413_trace_log_release_exploration(void *workspace);
+#endif
 
 #endif
