@@ -14,6 +14,7 @@
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
 - mini_r3壁距離: `mini-r3-wall-centre-t0.4`、機体中心基準FR/FL/合計40..110mm・L/R23..80mmのLUT。前壁目標45mmと45mm非駆動HIL結果を保持。横壁制御はADC生値のまま、側壁基準値・床上制御は未調整、mini_r2は旧基準。詳細 `docs/MINI_R3_COMMISSIONING.md`
+- 2026-09-06 08:41UTC注意: mini_r3のsensor FRAMが再びNVM自己診断ダミーと完全一致し、実効offsetが全0。壁なし平均FR721/FL694/R597/L648でOPを阻害。前回正常708/681/551/570の完全blobはログに退避済み。今回は診断のみ、復元未実施。壁制御・距離の実用は校正復元後に再確認する。UART a/sの実校正上書き防止も要検討。
 - 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
 ## Codex 実行ポリシー

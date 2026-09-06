@@ -2,6 +2,9 @@
 
 Current wall calibration: `mini-r3-wall-centre-t0.4`, body-centre-to-wall front
 LUT 40..110 mm and side LUTs 23..80 mm. See the final sections for scope and HIL.
+Calibration warning (2026-09-06 08:41 UTC): sensor FRAM now contains the diagnostic
+fixture again; effective offsets are all zero. Restore is pending; current distance
+readings/OP/wall control must not be treated as calibrated despite the valid LUT.
 Earlier seed-LUT and provisional-offset results below are historical.
 
 ## Confirmed construction (user, 2026-09-06)
@@ -381,3 +384,39 @@ DIR/STBY low, CFSR/HFSR=0. UART closed in mode0. Logs:
 `mini_r3_side_centre_pre_20260906.log`, `mini_r3_side_centre_verified_20260906.log`
 under `tools/logging/logs/`. Next physical work remains held-out/repeated-placement
 distance verification and separately authorized raw side-base/control tuning.
+
+## Recurrent sensor-calibration overwrite: diagnosis only, 2026-09-06
+
+User reported unstable mode entry with all sensors approximately wall-free.
+No firmware change, build, flash or calibration write was requested/performed.
+Software reset to safe mode0 retained `d4ff9d6 DIRTY=1`, tune t0.4; read-only
+`|`, `w`, `:`, `:`, `p` on UART921600 showed the sensor blob is now exactly the
+NVM diagnostic fixture: bases1111/1222/1333, offsets FR220/FL230/R200/L210,
+imu_z1.25. The wall driver recognizes/rejects that entire pattern and applies
+defaults: **effective FR/FL/R/L offsets all0**, not those stored dummy numbers.
+
+Two fresh512-sample1024ms blocks both averaged FR721/FL694/R597/L648. Their
+pooled extrema were FR706..735, FL681..710, R585..608, L634..664; noise SD
+2.27..3.79 counts is small relative to the missing background subtraction.
+OP enters only when FR>=150 and FL<=250 for3 polls at40ms, so uncovered FL694
+blocks entry. Distance LUTs are not consumed by OP. Baseline restoration to
+the last verified offsets708/681/551/570 would nominally leave13/13/46/78
+counts at this setup; do not silently recalibrate approximately wall-free data
+and thereby change the ADC origin used by the measured tables.
+
+The complete256-byte sensor prefix SHA changed from the last verified
+`b1b8a0fdbd929eaa00983c23555e46ed66440018fbcfd1586c56fe1f6498376c` to
+`059f6a046b8a8b8dc1e9ebf89f108be2f1e1407ca3c586e287e75e7d7ddee760`, exactly
+the earlier dummy blob. Trace count also changed1212 ->16. UART `a` and `s`
+call the diagnostic sensor save path, which writes this data into the real
+calibration area; the current evidence establishes the matching payload, not
+which command/source/time caused the overwrite. No such command was sent here
+or during either LUT update. Safe prefix backup from the previous side-LUT HIL
+can reconstruct the whole68-byte good sensor blob for a reviewed restore.
+
+Current evidence log: `tools/logging/logs/mini_r3_offset_diagnosis_20260906.log`.
+ST-LINK066CFF545771485067013914 software reset and hotplug read only; final
+TIM2/TIM10 enable/PWM0, DIR/STBYlow,CFSR/HFSR0,VDD3.24V, switch released,
+UART closed mode0. No motor/fan/run/trace/NVM write. Proposed next task is exact
+calibration restore plus an explicit guard on destructive UART diagnostic saves;
+both await user direction. The old trace backup remains available separately.
