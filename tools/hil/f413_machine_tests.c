@@ -28,24 +28,25 @@ static void front_distance_tests(unsigned rev)
   assert(F_ALIGN_TOO_CLOSE_MM == F_ALIGN_TARGET_MM - 2.5f);
   f413_wall_distance_init();
   assert(sensor_distance_get_interpolation() == SENSOR_DISTANCE_INTERP_PCHIP);
-  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 15U : 13U));
+  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 9U : 13U));
   if (rev == 2U) {
     assert(fabsf(sensor_distance_from_fr(1680) - 7.0f) < 0.001f);
     assert(fabsf(sensor_distance_from_fl(2050) - 7.0f) < 0.001f);
     assert(fabsf(sensor_distance_from_fsum(3730) - 7.0f) < 0.001f);
     return;
   }
-  /* Independent transcription of the user's front-only jig measurements. */
-  const uint16_t fr[] = {2491,2317,1859,1444,1150,933,764,636,538,458,382,320,269,228,198};
-  const uint16_t fl[] = {2536,2387,1995,1567,1248,996,819,679,573,478,397,334,286,245,209};
-  assert(sensor_distance_lut_size_fr() == 15U);
-  assert(sensor_distance_lut_size_front_sum() == 15U);
+  /* Independent transcription after optical shielding, 2026-09-12. */
+  const uint16_t fr[] = {3048,2508,1936,1507,1196,969,797,669,565};
+  const uint16_t fl[] = {3043,2494,1924,1516,1231,1004,835,699,595};
+  assert(sensor_distance_lut_size_fr() == 9U);
+  assert(sensor_distance_lut_size_front_sum() == 9U);
   f413_wall_sensor_snapshot_t adc = {.front_wall = true};
   f413_wall_distance_snapshot_t distance;
   const unsigned front_mask = F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL | F413_WALL_DISTANCE_CH_FSUM;
-  for (unsigned i = 0; i < 15; ++i) {
+  for (unsigned i = 0; i < 9; ++i) {
     adc.fr_delta = fr[i]; adc.fl_delta = fl[i];
-    adc.fr_on = fr[i] + 700; adc.fl_on = fl[i] + 664;
+    /* Synthetic unsaturated raw ADC, independent of persisted offsets. */
+    adc.fr_on = fr[i] + 100; adc.fl_on = fl[i] + 100;
     assert(f413_wall_distance_convert_snapshot(&adc, &distance));
     const float mm = 40.0f + 5.0f * i;
     assert(fabsf(distance.fr_mm - mm) < 0.001f);
@@ -60,9 +61,9 @@ static void front_distance_tests(unsigned rev)
   /* Every in-range integer ADC value: monotone and bounded PCHIP. */
   float (*convert[])(uint16_t) = {sensor_distance_from_fr, sensor_distance_from_fl, sensor_distance_from_fsum};
   bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_fr, sensor_distance_ad_in_range_fl, sensor_distance_ad_in_range_fsum};
-  const uint16_t low[] = {198,209,407}, high[] = {2491,2536,5027};
+  const uint16_t low[] = {565,595,1160}, high[] = {3048,3043,6091};
   for (unsigned ch = 0; ch < 3; ++ch) {
-    float previous = 110.0f;
+    float previous = 80.0f;
     for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
       const float mm = convert[ch]((uint16_t)ad);
       assert(isfinite(mm) && mm >= 40.0f && mm <= previous);
@@ -73,14 +74,15 @@ static void front_distance_tests(unsigned rev)
     assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
   }
   /* No wall, beyond either endpoint, and saturated raw ADC cannot be trusted. */
-  const int32_t invalid[][2] = {{0,0}, {197,208}, {2492,2537}, {-1,-1}};
+  const int32_t invalid[][2] = {{0,0}, {564,594}, {3049,3044}, {-1,-1},
+                              {458,478}, {198,209}}; /* Old 85/110 mm data must not extend the new LUT. */
   for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
     adc.fr_delta = invalid[i][0]; adc.fl_delta = invalid[i][1];
     assert(f413_wall_distance_convert_snapshot(&adc, &distance));
     assert(!f413_wall_distance_front_present(&distance));
     assert((distance.extrapolated_mask & front_mask) == front_mask);
   }
-  adc.fr_delta = 2317; adc.fl_delta = 2387; adc.fr_on = 4090;
+  adc.fr_delta = 2508; adc.fl_delta = 2494; adc.fr_on = 4090;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(!f413_wall_distance_front_present(&distance));
   /* Loading the legacy front-only r2 table leaves side conversion untouched. */
@@ -102,15 +104,15 @@ static void side_distance_tests(unsigned rev)
     return;
   }
   const uint16_t mm[] = {23,30,35,40,45,50,55,60,65,70,75,80};
-  const uint16_t right[] = {2475,1598,1165,876,673,522,415,339,297,240,198,165};
-  const uint16_t left[] = {2498,1794,1271,942,720,564,451,371,310,263,224,188};
+  const uint16_t right[] = {2507,1572,1138,848,640,492,387,316,253,211,176,150};
+  const uint16_t left[] = {2919,1905,1361,990,733,567,448,361,298,249,210,176};
   assert(sensor_distance_lut_size_r() == 12U && sensor_distance_lut_size_l() == 12U);
   f413_wall_sensor_snapshot_t adc = {.right_wall = true, .left_wall = true};
   f413_wall_distance_snapshot_t distance;
   const unsigned side_mask = F413_WALL_DISTANCE_CH_R | F413_WALL_DISTANCE_CH_L;
   for (unsigned i = 0; i < 12; ++i) {
     adc.r_delta = right[i]; adc.l_delta = left[i];
-    adc.r_on = right[i] + 551; adc.l_on = left[i] + 570;
+    adc.r_on = right[i] + 100; adc.l_on = left[i] + 100;
     assert(f413_wall_distance_convert_snapshot(&adc, &distance));
     assert(fabsf(distance.r_mm - mm[i]) < 0.001f);
     assert(fabsf(distance.l_mm - mm[i]) < 0.001f);
@@ -122,7 +124,7 @@ static void side_distance_tests(unsigned rev)
   }
   float (*convert[])(uint16_t) = {sensor_distance_from_r, sensor_distance_from_l};
   bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_r, sensor_distance_ad_in_range_l};
-  const uint16_t low[] = {165,188}, high[] = {2475,2498};
+  const uint16_t low[] = {150,176}, high[] = {2507,2919};
   for (unsigned ch = 0; ch < 2; ++ch) {
     float previous = 80.0f;
     for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
@@ -134,17 +136,17 @@ static void side_distance_tests(unsigned rev)
     assert(!in_range[ch](0) && !in_range[ch](low[ch] - 1));
     assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
   }
-  const int32_t invalid[][2] = {{0,0}, {164,187}, {2476,2499}, {-1,-1}};
+  const int32_t invalid[][2] = {{0,0}, {149,175}, {2508,2920}, {-1,-1}};
   for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
     adc.r_delta = invalid[i][0]; adc.l_delta = invalid[i][1];
     assert(f413_wall_distance_convert_snapshot(&adc, &distance));
     assert(!distance.right_valid && !distance.left_valid);
     assert((distance.extrapolated_mask & side_mask) == side_mask);
   }
-  adc.r_delta = 673; adc.l_delta = 720; adc.r_on = 4090;
+  adc.r_delta = 640; adc.l_delta = 733; adc.r_on = 4090;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(!distance.right_valid && distance.left_valid);
-  adc.r_on = 673 + 551; adc.l_on = 4090;
+  adc.r_on = 640 + 100; adc.l_on = 4090;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(distance.right_valid && !distance.left_valid);
   /* A LUT update must not silently relax the existing low-signal safety gate. */

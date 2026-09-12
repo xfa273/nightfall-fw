@@ -1,5 +1,59 @@
 # mini_r3 wall distance calibration
 
+## Active optical-shielding measurements, 2026-09-12 (t0.5)
+
+The user added light-blocking tape between each LED and phototransistor and
+remeasured all four channels. `front_centre_20260912.csv` and
+`side_centre_20260912.csv` are the **active** curated source fixtures; the
+2026-09-06 files/sections below are historical and must not extend these LUTs.
+They retain the user-supplied means without smoothing, rescaling or an additional
+offset subtraction. Row interpretation is the existing UART `:` contract:
+`distance_mm,fr_delta,fl_delta,r_delta,l_delta`. Offsets must remain the same as
+during acquisition; do not restore the old 708/681/551/570 values merely because
+they were used before shielding. This LUT update does not itself save offsets.
+
+- Distances remain **body centre to wall**, with no sensor-position correction.
+- Front sweep: use only columns2/3 (FR/FL). All9 points40..80 mm, step5 mm,
+  are retained. FR+FL is summed at matching distances. At45 mm FR=2508,
+  FL=2494, sum=5002. ADC ranges FR565..3048, FL595..3043, sum1160..6091.
+- Side sweeps: use column4 only from R and column5 only from L; they are
+  independent placements, not a simultaneous left/right measurement.
+  All12 points23,30,35,...80 mm are retained. At45 mm R=640, L=733.
+  ADC ranges R150..2507, L176..2919. Cross-channel readings are not LUT knots.
+- Keep PCHIP, front target45 mm/too-close42.5 mm, raw side control, all control
+  bases/gains/thresholds, NVM schema and the destructive-diagnostic guard unchanged.
+  Do not turn the side45 mm measurements into saved wall-control bases here.
+- Values outside each measured range remain extrapolated/invalid, including
+  front distances beyond80 mm. The old85..110 mm front points are removed from
+  the active table because they predate the optical change.
+- The unchanged side delta>300 validity gate rejects **both** L/R65..80 mm
+  samples as low-signal, even though these knots are in the LUT. No-wall and
+  raw saturation checks are also retained. mini_r2/F405 tables are unchanged.
+
+Reproduce the active tables and run the real firmware converter regression:
+
+```sh
+python3 tools/logging/fit_sensor_distance.py \
+  params/mini_r3_0/calibration/front_centre_20260912.csv \
+  --sensors fr,fl --emit-c build/mini_r3_front_20260912_generated.c
+python3 tools/logging/fit_sensor_distance.py \
+  params/mini_r3_0/calibration/side_centre_20260912.csv \
+  --sensors r,l --emit-c build/mini_r3_side_20260912_generated.c
+diff -u params/mini_r3_0/sensor_distance_lut.c build/mini_r3_front_20260912_generated.c
+diff -u params/mini_r3_0/side_distance_lut.c build/mini_r3_side_20260912_generated.c
+sh tools/hil/run_f413_machine_tests.sh
+sh tools/hil/run_f413_nvm_params_tests.sh
+sh tools/hil/run_f413_nvm_guard_tests.sh
+```
+
+All supplied channel sequences are strictly decreasing. No monotonic correction
+or knot reduction is needed. Exact knot reproduction and leave-one-out fitting
+are numerical checks, not held-out physical accuracy; repeated jig placement
+and new distances near45 mm still need independent verification. See
+`docs/MINI_R3_COMMISSIONING.md` for acquisition-offset provenance and HIL status.
+
+## Historical front measurements, 2026-09-06 (t0.3/t0.4)
+
 `front_centre_20260906.csv` is the curated source fixture for the FR/FL LUT,
 transcribed from the user's jig measurements on mini_r3_0_unit001. It is not a
 raw trace capture. Columns contain the reported averaged, offset-corrected
@@ -28,7 +82,7 @@ These existing values are preserved, not recalibrated by the LUT update.
   front-alignment tests. The front calibration did not change side LUTs/bases;
   the subsequent side LUT is documented below. All mini_r2 settings remain unchanged.
 
-## Reproduce
+## Historical front reproduction
 
 From the repository root, generate a comparison file (not a new calibration):
 
@@ -36,10 +90,9 @@ From the repository root, generate a comparison file (not a new calibration):
 python3 tools/logging/fit_sensor_distance.py \
   params/mini_r3_0/calibration/front_centre_20260906.csv \
   --sensors fr,fl --emit-c build/mini_r3_front_generated.c
-diff -u params/mini_r3_0/sensor_distance_lut.c build/mini_r3_front_generated.c
-sh tools/hil/run_f413_machine_tests.sh
-sh tools/hil/run_f413_nvm_params_tests.sh
 ```
+
+This reproduces the old table only; it no longer matches the active t0.5 source.
 
 No monotonic adjustment is needed. The fitter's `std=0,n=1` means one supplied
 mean per distance, not noiseless hardware; exact fit at the input knots is not an
@@ -59,7 +112,7 @@ reference offset only if the old datum is known; otherwise remeasure with the
 centre-reference jig. Do not infer a universal +38 mm sensor offset merely from
 the change of alignment target.
 
-## Side LUT, 2026-09-06
+## Historical side LUT, 2026-09-06 (t0.4)
 
 `side_centre_20260906.csv` contains **two independent jig sweeps**, matched by
 body-centre-to-wall distance for convenience, not simultaneous left/right walls.
@@ -79,7 +132,6 @@ overwriting the other.
 python3 tools/logging/fit_sensor_distance.py \
   params/mini_r3_0/calibration/side_centre_20260906.csv \
   --sensors r,l --emit-c build/mini_r3_side_generated.c
-diff -u params/mini_r3_0/side_distance_lut.c build/mini_r3_side_generated.c
 ```
 
 Profile `mini-r3-wall-centre-t0.4` marks both front and side LUT references

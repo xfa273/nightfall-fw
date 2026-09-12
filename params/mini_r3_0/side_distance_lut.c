@@ -7,7 +7,7 @@ void sensor_distance_load_profile_luts(void)
     23, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80
   };
   static const uint16_t s_r_ad[] = {
-    2475, 1598, 1165, 876, 673, 522, 415, 339, 297, 240, 198, 165
+    2507, 1572, 1138, 848, 640, 492, 387, 316, 253, 211, 176, 150
   };
   (void)sensor_distance_set_lut_r(s_r_mm, s_r_ad, sizeof(s_r_mm) / sizeof(s_r_mm[0]));
 
@@ -15,7 +15,7 @@ void sensor_distance_load_profile_luts(void)
     23, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80
   };
   static const uint16_t s_l_ad[] = {
-    2498, 1794, 1271, 942, 720, 564, 451, 371, 310, 263, 224, 188
+    2919, 1905, 1361, 990, 733, 567, 448, 361, 298, 249, 210, 176
   };
   (void)sensor_distance_set_lut_l(s_l_mm, s_l_ad, sizeof(s_l_mm) / sizeof(s_l_mm[0]));
 
