@@ -669,3 +669,23 @@ same TP1/TP2-to-GND measurements on the previously functioning right side,
 with all power/debugger removed and matched motor-isolation conditions.
 No re-power, live tool access, firmware change or component removal performed
 by Codex; U2 damage/assembly fault remains unconfirmed.
+
+User then explicitly confirmed the left motor leads were disconnected and
+provided the requested right-side comparison, in TP1/TP2 order with black lead
+on GND then reversed: TP1=0.420V/0.344V, TP2=0.422V/0.345V. Left output
+similarity is therefore not due to its motor winding. Each driver has nearly
+matching output readings; left-to-right differences are84..87mV in the first
+polarity and27..28mV in the reverse. These are not a specified pass/fail test
+and do not establish a failed MOSFET, a hard short, or normal U2 operation.
+Idle heating and absent physical rotation remain the stronger fault evidence.
+
+Next unpowered checks, only if IC terminals are accessible without force:
+U2-to-U3 VIN pin2 continuity, GND pin9 continuity, and each U2 EN pin4/14 to
+the common U3 EN net. Local PCB confirms direct shared VBAT_SW/GND2/STBY
+connections; expect resistance close to shorted test leads. Touching only a
+PCB pad does not prove its joint to the IC. Inspect bridges/poor contacts before
+replacement. If these checks reveal no repairable connection problem, removal
+of U2 to inspect its underside/board pads followed by a new part is a reasonable
+repair path, not a confirmed diagnosis; no removal/replacement is performed
+here. Keep power disconnected and do not rerun motors. No firmware change or
+live device access following the thermal report.
