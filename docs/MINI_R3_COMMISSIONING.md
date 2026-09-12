@@ -631,3 +631,30 @@ before/after: sensor SHA256
 Final SWD TIM2/TIM10 enables/compares0, DIR/STBYlow, CFSR/HFSR0. Left at
 mode0 idle and closed UART. Evidence including original full trace and pulse
 results: `tools/logging/logs/mini_r3_left_motor_recheck_20260912.log`.
+
+### Subsequent idle U2 heating report: suspend powered testing
+
+User reports no apparent mechanical fault, U2 heating merely on power-up,
+and about0.23A at8V; historical healthy idle current is unknown. This is a
+user observation, not measured by Codex. Requested disconnecting both bench
+supply and debugger and allowing cooling; completion not yet confirmed.
+No live device access, reset, UART, flash, motor/fan or NVM operation followed
+this report. Input power is1.84W for the whole robot, not measured U2 loss;
+being well below the2A supply limit does not clear a local thermal fault.
+
+MPS MP6551 Rev1.0 datasheet pp4/10 specifies EN1=EN2 low enters sleep with
+outputs off and internal circuitry disabled; typical sleep current10.5uA
+and no-load awake current2.5mA are specified at VIN4V/25C, not measured at8V
+here. SR-to-GND shorting is explicitly supported, so R35=0ohm is not itself
+an invalid setting or a sufficient explanation for idle heating. Prior MCU
+STBY-low readback does not verify voltage at U2 pins4/14 or its GND contact.
+U2 internal damage, solder bridges or EN/GND contact faults are suspects;
+heat conducted from adjacent components is not excluded. Check unpowered
+assembly first, then isolated motor/board output continuity if needed.
+Local PCB confirms left output pads TP3/TP4, right TP1/TP2. Motor windings
+can normally measure low resistance, and body diodes/parallel board paths
+affect in-circuit readings; do not condemn a driver from a single beep.
+Further powered isolation, removal or replacement requires a reviewed next
+step; no faulty part or original damage mechanism has been established.
+
+Source: [MPS MP6551 datasheet](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/).
