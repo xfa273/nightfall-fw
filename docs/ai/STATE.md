@@ -13,8 +13,8 @@
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
-- mini_r3壁距離: `mini-r3-wall-centre-t0.4`、機体中心基準FR/FL/合計40..110mm・L/R23..80mmのLUT。前壁目標45mmと45mm非駆動HIL結果を保持。横壁制御はADC生値のまま、側壁基準値・床上制御は未調整、mini_r2は旧基準。詳細 `docs/MINI_R3_COMMISSIONING.md`
-- 2026-09-06校正復旧: ユーザ承認後mini_r3 unit001のsensor FRAMを前回正常68Bへ完全復元。実効offset FR708/FL681/R551/L570、壁なし512平均10/14/45/76・全壁なし判定。LUT/閾値/側壁基準値は変更なし。通常ファーム `d5099d8 DIRTY=1` は破壊的診断 a/d/s/m/t/q/Q/r/k を拒否し、全9文字の実機拒否と校正prefix不変を確認。専用復元処理は撤去して再flash済み。正規OP校正と走行ログは従来通り、旧ファームへ戻すと保護は失われる。手かざしの人手確認と距離精度の独立確認は別途。詳細は `docs/MINI_R3_COMMISSIONING.md`。
+- mini_r3壁距離: 遮光テープ追加後の2026-09-12測定で `mini-r3-wall-centre-t0.5` / commit `3cc013e` に更新・host検証/build済み。機体中心基準FR/FL/合計40..80mm各9点・L/R23..80mm各12点。遮光前85..110mmは混ぜない。前壁目標45mm、横壁制御ADC生値、閾値/ゲインを維持、mini_r2は不変。UARTがユーザ端末PID84832で占有されているため実機書込/オフセット読出しは未実施。UART終了・測定時delta/再オフセット校正の確認待ち。最新のoffsetは未確認で、下記0906の値を無断復元しない。詳細 `docs/MINI_R3_COMMISSIONING.md`
+- 遮光前の2026-09-06校正復旧（履歴）: ユーザ承認後mini_r3 unit001のsensor FRAMを前回正常68Bへ完全復元。実効offset FR708/FL681/R551/L570、壁なし512平均10/14/45/76・全壁なし判定。LUT/閾値/側壁基準値は変更なし。通常ファーム `d5099d8 DIRTY=1` は破壊的診断 a/d/s/m/t/q/Q/r/k を拒否し、全9文字の実機拒否と校正prefix不変を確認。専用復元処理は撤去して再flash済み。正規OP校正と走行ログは従来通り、旧ファームへ戻すと保護は失われる。手かざしの人手確認と距離精度の独立確認は別途。詳細は `docs/MINI_R3_COMMISSIONING.md`。
 - 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
 ## Codex 実行ポリシー

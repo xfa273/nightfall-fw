@@ -1,11 +1,12 @@
 # mini_r3_0_unit001 commissioning
 
-Current wall calibration: `mini-r3-wall-centre-t0.4`, body-centre-to-wall front
-LUT 40..110 mm and side LUTs 23..80 mm. See the final sections for scope and HIL.
-Calibration restored after the 2026-09-06 overwrite diagnosis: effective offsets
-FR708/FL681/R551/L570 exactly match the data used with the measured LUTs.
-Normal firmware `d5099d8` locks destructive diagnostic saves. See the final
-section for byte-for-byte verification and the remaining physical checks.
+Current source calibration: `mini-r3-wall-centre-t0.5`, remeasured after optical
+shielding on2026-09-12, body-centre front LUT40..80 mm and sides23..80 mm.
+Built/host-tested, but not yet flashed: UART is occupied by the user's terminal;
+acquisition offsets and a non-motor45 mm HIL check are pending. Do not assume
+or restore the pre-shielding offsets below. See the final section for handoff.
+The last verified hardware firmware was `d5099d8` (t0.4) on2026-09-06; the
+destructive diagnostic guard remains enabled in the new build.
 Earlier seed-LUT and provisional-offset results below are historical.
 
 ## Confirmed construction (user, 2026-09-06)
@@ -518,3 +519,52 @@ and PWM compares0, DIR/STBYlow, CFSR/HFSR0. Left at mode0 idle with PUSH
 released and UART closed. Requested FR-only hand/LED/beep confirmation from
 the user; no reply or hand-entry event had been received by this handoff, so
 physical OP-response confirmation is still pending.
+
+## Shielding-adjusted wall LUTs prepared, 2026-09-12
+
+User added light-blocking tape between LEDs and phototransistors to reduce
+no-wall readings, then supplied three new jig sweeps. Interpreted columns as
+the existing `distance_mm,fr_delta,fl_delta,r_delta,l_delta` UART contract;
+requested confirmation that these remain corrected deltas and whether offsets
+were recalibrated after shielding. No new no-wall data or numerical offsets
+were supplied, so no baseline was inferred or saved. Preserve the acquisition
+offsets rather than restoring the historical708/681/551/570.
+
+Source commit `3cc013e`, profile `mini-r3-wall-centre-t0.5`:
+
+- Front sweep uses only FR/FL, nine points40..80 mm in5 mm steps; FR+FL sums
+  at matching distances. At45 mm: FR2508, FL2494, sum5002. Old85..110 mm
+  points are **not** mixed in after the optical change.
+- R sweep uses only column4; L only column5. Each has12 points23,30,35,...80 mm.
+  At45 mm R640/L733. The other channels are not lateral calibration data.
+- Curated source fixtures are `front_centre_20260912.csv` and
+  `side_centre_20260912.csv` in `params/mini_r3_0/calibration/`. Old CSVs remain
+  historical; no additional offset subtraction, smoothing or knot reduction.
+- All references stay body-centre. PCHIP, target45/too-close42.5, raw side
+  control, side bases/gains, wall/low-signal thresholds, NVM schema and guards
+  are unchanged. Both side sweeps65..80 mm now fall below the existing
+  delta>300 validity gate. Front beyond80 mm is extrapolated/invalid.
+- F405 and mini_r2 profiles/tables are unchanged. This update does not qualify
+  floor alignment, side-distance control, or unmeasured front distances.
+
+Verification passed: fitter-generated C matches both sources exactly; real
+F413 host converter/ASan/UBSan tests cover all9 front pairs+sum, all24 side
+knots, every in-range integer ADC, monotonicity/bounds, endpoint rejection,
+old front-tail rejection, no-wall/saturation, low-signal gates and unchanged
+r2 behavior. NVM warp and destructive-diagnostic guard tests, F413/bothF405
+builds, route freshness and diff checks also passed. Fitter leave-one-out is
+only a numerical interpolation check, not independent physical accuracy.
+
+Built artifact `3cc013e DIRTY=1`: RAM274120B, Flash367068B;
+ELF SHA256 `0276550f1facb8e5f963d6b02d7fe404de60f9aa0a836b88c16faa9a55f6221e`,
+BIN SHA256 `c1252462d1a375c445e49f40201b07ed891a49785602e0d200ec1d60d3a4558c`.
+The CMake diagnostic-write option isOFF. No CubeMX/platform/NVM code changed.
+
+HIL **not performed**: `/dev/cu.usbmodem211202` exists but is open in the
+user's `tools/logging/serial_terminal.py` PID84832. Did not interrupt or share
+that connection, reset, flash, issue UART commands or write NVM. Asked the user
+to close it and, if possible, place the front wall45 mm from body centre.
+Next: back up `|` calibration prefixes and read `w` offsets/identity before
+application-only flash; preserve all NVM; compare prefixes and use `:` at45 mm
+afterwards. All checks non-motor/non-fan. Acquisition-offset confirmation and
+independent/repeated-placement physical validation remain pending.
