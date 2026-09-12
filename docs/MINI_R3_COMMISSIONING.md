@@ -658,3 +658,14 @@ Further powered isolation, removal or replacement requires a reviewed next
 step; no faulty part or original damage mechanism has been established.
 
 Source: [MPS MP6551 datasheet](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/).
+
+User subsequently reports diode-mode readings, black lead on GND then reversed:
+TP3=0.507V/0.317V, TP4=0.506V/0.317V. These are not near-zero hard-short
+readings, but do not clear U2's powered thermal fault. Both outputs match;
+motor isolation was requested but not explicitly confirmed, and connected
+windings can couple the outputs. Body diodes and shared-rail board paths also
+prevent interpreting these as isolated transistor tests. Next request is the
+same TP1/TP2-to-GND measurements on the previously functioning right side,
+with all power/debugger removed and matched motor-isolation conditions.
+No re-power, live tool access, firmware change or component removal performed
+by Codex; U2 damage/assembly fault remains unconfirmed.
