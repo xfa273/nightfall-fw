@@ -2,11 +2,12 @@
 
 Current source calibration: `mini-r3-wall-centre-t0.5`, remeasured after optical
 shielding on2026-09-12, body-centre front LUT40..80 mm and sides23..80 mm.
-Built/host-tested, but not yet flashed: UART is occupied by the user's terminal;
-acquisition offsets and a non-motor45 mm HIL check are pending. Do not assume
-or restore the pre-shielding offsets below. See the final section for handoff.
-The last verified hardware firmware was `d5099d8` (t0.4) on2026-09-06; the
-destructive diagnostic guard remains enabled in the new build.
+Motor-recheck boot on2026-09-12 confirms `aba28d5 DIRTY=1` / t0.5 already on
+unit001, with diagnostic writes LOCKED; no flash was performed in that recheck.
+Stored/effective offsets are FR82/FL66/R27/L43. Acquisition-offset correspondence
+and a non-motor45 mm HIL check remain pending; do not restore pre-shielding values.
+Left drive now fails both directions in the bounded open-loop test; see the final
+section before any further drive/closed-loop testing.
 Earlier seed-LUT and provisional-offset results below are historical.
 
 ## Confirmed construction (user, 2026-09-06)
@@ -568,3 +569,65 @@ Next: back up `|` calibration prefixes and read `w` offsets/identity before
 application-only flash; preserve all NVM; compare prefixes and use `:` at45 mm
 afterwards. All checks non-motor/non-fan. Acquisition-offset confirmation and
 independent/repeated-placement physical validation remain pending.
+
+## Left motor stopped: recheck, 2026-09-12
+
+User reported no apparent left rotation during a running test and freshly
+reconfirmed lifted/secured, bench8V/2A. Used the existing application without
+source changes, rebuild, flash or NVM writes. ST-LINK066CFF545771485067013914,
+UID00280047-31335117-34313932, VDD3.24V; UART `/dev/cu.usbmodem211202`,921600.
+Boot after software reset reports `aba28d5 DIRTY=1`, mini_r3_0_unit001,
+profile0x30001, t0.5, both forward IN2 high, encoder signs1/-1, PWM PSC0,
+and `[NVM-GUARD] LOCKED`. Thus the previous section's pending-flash observation
+has been superseded, but how/when the intervening flash/calibration occurred
+was not observed. Current offsets are FR82/FL66/R27/L43, bases0, imu_z0.
+
+Before reset or drive, read-only `|` and full `V` backed up the previous2112
+trace records (schema0x60000,104 bytes/record; CSV37 columns, seq0..2111, done
+marker received). Context is mode2/case0/sub1, test80, large90 turn. All left
+encoder samples are0 while left command reaches1000; right encoder spans
+-20..+21 counts/sample. Gyro angle remains within-0.157..+0.209deg despite
+the turn target. This is not a suitable turn-gain test on a fixed chassis;
+do not reproduce a closed-loop turn that cannot achieve its gyro target.
+
+After reset to mode0 and `p,w`, command sequence was `6,p,8,7,9`; then, at
+the user's explicit request to watch again, `6,8`. Each motor command is
+12% for500ms followed by disable and300ms coast, with one wheel driven only:
+
+| Direction | Signed encoder counts including coast | Repeat |
+| --- | ---: | ---: |
+| Left forward | 0 | 0 |
+| Left reverse | 0 | 0 |
+| Right forward | +2421 | not repeated |
+| Right reverse | -2146 | not repeated |
+
+The unpowered wheel always read0. `OK` in this legacy test means pulse
+completion, not an encoder/motor pass. User confirmed that the repeated left
+tests produced no movement at all and no visible supply-current change.
+This is not merely an encoder-reporting symptom or the old weak-one-direction
+asymmetry. No higher-duty pulse, fan, manual encoder window or run was issued.
+
+Read-only SWD shows expected pin configuration: PA5 AF1 left TIM2_CH1,
+PB10 AF1 right TIM2_CH3, PA4/PB1 DIR and PB2 STBY outputs; both encoders
+enabled with PA6/7 and PB6/7 AF2. TIM2 PSC0/ARR1000 and PWM1 channel modes
+match source. The drive helper, PWM mapping and encoder init have not changed
+since the successful0906 baseline. Two attempted short-pulse SWD captures
+only caught the disabled state; **active PWM compare values/waveforms were
+not verified**. These checks do not prove electrical output from MCU/driver.
+
+Prioritize power-OFF inspection of left motor leads and their board/motor-end
+solder joints, free wheel/gear movement, and the left driver U2 plus reworked
+0-ohm R35. Local main PCB nets confirm U2=left, U3=right, R35=left SR-to-GND2,
+R34=right SR-to-GND2; CAD still says220k and was not edited. U2 nFAULT is
+unconnected, so firmware cannot report its hardware fault status. Motor/lead
+continuity and driver supply/input/output remain unmeasured; no failed part
+is conclusively identified and no software repair is justified yet.
+
+Final `w,|,p`: VBAT2103 (nominal7.97V), all wall flags0, released switch;
+trace count remains2112. Both256-byte calibration prefixes byte-identical
+before/after: sensor SHA256
+`ef65dd1b727fee87a65d1ab159834bcf6ba640e77124df4011651d40bd773cde`, distance
+`2682a96bfb5aaf9a7614c3f6dcbba9e82a3d8b19153fb9b4ceef1adc74f87c7f`.
+Final SWD TIM2/TIM10 enables/compares0, DIR/STBYlow, CFSR/HFSR0. Left at
+mode0 idle and closed UART. Evidence including original full trace and pulse
+results: `tools/logging/logs/mini_r3_left_motor_recheck_20260912.log`.

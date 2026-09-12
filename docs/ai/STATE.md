@@ -13,7 +13,8 @@
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
-- mini_r3壁距離: 遮光テープ追加後の2026-09-12測定で `mini-r3-wall-centre-t0.5` / commit `3cc013e` に更新・host検証/build済み。機体中心基準FR/FL/合計40..80mm各9点・L/R23..80mm各12点。遮光前85..110mmは混ぜない。前壁目標45mm、横壁制御ADC生値、閾値/ゲインを維持、mini_r2は不変。UARTがユーザ端末PID84832で占有されているため実機書込/オフセット読出しは未実施。UART終了・測定時delta/再オフセット校正の確認待ち。最新のoffsetは未確認で、下記0906の値を無断復元しない。詳細 `docs/MINI_R3_COMMISSIONING.md`
+- mini_r3壁距離: 遮光後 `mini-r3-wall-centre-t0.5` / source `3cc013e`。2026-09-12モータ再確認で実機boot `aba28d5 DIRTY=1` / t0.5を確認（この再確認ではflashなし）。実効/保存offset FR82/FL66/R27/L43、校正prefixは試験前後不変。下記0906の値を無断復元しない。機体中心基準FR/FL/合計40..80mm各9点・L/R23..80mm各12点、前壁目標45mm、横壁制御ADC生値、閾値/ゲイン・mini_r2不変。測定時delta/offsetとの対応確認と新LUTの45mm実寸確認は未実施。詳細 `docs/MINI_R3_COMMISSIONING.md`
+- mini_r3駆動の未解決事項（2026-09-12）: 浮上固定8V/2Aで左前後進12%・各500msを2回ずつ試し、全てencoder0。ユーザ目視でも全く動かず電流変化も見えない。右は前進+2421/後退-2146。機体設定/PWM端子設定に不整合なし、波形/ドライバ入力は未測定。左配線・モータ・U2/R35周辺を電源OFFで確認する段階。追加高出力・固定機体の閉ループ旋回は実施しない。最終mode0、全駆動OFF、UART解放済み。FW変更なし。
 - 遮光前の2026-09-06校正復旧（履歴）: ユーザ承認後mini_r3 unit001のsensor FRAMを前回正常68Bへ完全復元。実効offset FR708/FL681/R551/L570、壁なし512平均10/14/45/76・全壁なし判定。LUT/閾値/側壁基準値は変更なし。通常ファーム `d5099d8 DIRTY=1` は破壊的診断 a/d/s/m/t/q/Q/r/k を拒否し、全9文字の実機拒否と校正prefix不変を確認。専用復元処理は撤去して再flash済み。正規OP校正と走行ログは従来通り、旧ファームへ戻すと保護は失われる。手かざしの人手確認と距離精度の独立確認は別途。詳細は `docs/MINI_R3_COMMISSIONING.md`。
 - 旧運用: Windsurf/Cascade前提の資料はバックアップ済み。互換資産は `docs/ai/archive/` と `.windsurf/` に保持
 
