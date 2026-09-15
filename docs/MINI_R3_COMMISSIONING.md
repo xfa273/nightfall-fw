@@ -689,3 +689,67 @@ of U2 to inspect its underside/board pads followed by a new part is a reasonable
 repair path, not a confirmed diagnosis; no removal/replacement is performed
 here. Keep power disconnected and do not rerun motors. No firmware change or
 live device access following the thermal report.
+
+## Assembly-defect hypotheses and next-board prevention, 2026-09-15
+
+User finds no visible U2-area solder defect under magnification, considers
+rework impractical because of dense SMT placement, and plans to assemble a
+second board. They report apparently degraded paste and multiple other
+assembly defects already corrected. Do not insist on further U2 rework or
+re-power the defective board. No live access, build, firmware/CAD change,
+component removal, or new-board assembly was performed in this discussion.
+
+An assembly fault is a credible initiating cause, not a proven diagnosis.
+Separate the initiating fault from the present possibly damaged IC:
+
+- Incomplete/high-resistance U2 GND pin9 wetting can disturb its local voltage
+  reference and allow out-of-spec stresses during operation. Abnormal currents
+  through unintended paths and subsequent IC damage are engineering hypotheses;
+  the actual internal path and present joint condition have not been measured.
+- Hidden solder bridges/balls can cause electrical overstress during drive or
+  apply power/output voltage to a control pin. A bridge involving only outputs
+  does not inherently explain heating while a healthy driver is disabled;
+  damage during earlier powered operation would be a second step.
+- Poor local supply/bypass connections, particularly U2 C6=100nF and C7=10uF,
+  can undermine transient suppression during switching, allowing secondary
+  damage. Local CAD confirms the values/nets; actual joints, capacitance,
+  waveforms and adequacy of the existing bulk capacitance are unqualified.
+- A simple motor-output open or EN open alone explains missing motion much
+  better than idle self-heating. MP6551 EN inputs have internal pull-downs;
+  valid EN-low sleep disables internal circuitry. Likewise, poor heat transfer
+  alone is insufficient to explain significant heat from normal sleep losses.
+
+Prior successful drive followed by failure is consistent with intermittent
+assembly or progressive damage, but does not distinguish it from electrical
+overstress with good solder. The cold diode readings have no specified
+pass/fail threshold and do not exclude any of these mechanisms. The proposed
+prevention is risk reduction, not proof that fresh paste alone prevents recurrence:
+
+1. Use fresh, correctly stored paste and new driver ICs, not recovered U2. Follow
+   that paste's alloy-specific storage/opening/reflow instructions; do not invent
+   a universal peak temperature or repair suspect paste by mixing additives.
+2. Control paste quantity/alignment with a suitable stencil and inspect deposits
+   before placing parts. Use a verified thermal profile/adequate board preheat
+   rather than judging all hidden joints from the first visible melted deposit.
+   Prioritize full U2 power/GND/output-terminal wetting and C6/C7 connections;
+   avoid gratuitous excess paste or long uncontrolled local heating.
+3. Check cold shorts/continuity first. On the new board, establish motor/fan-
+   disconnected idle current and left/right temperature behavior with verified
+   disable before any drive; stop immediately on unexpected heating. Use a
+   current limit appropriate to this non-drive stage, not the prior2A drive
+   limit as an acceptance criterion.
+4. After fresh safety confirmation, staged short low-duty open-loop single-wheel
+   tests and post-test idle-current comparisons precede higher output. Do not
+   run closed-loop gyro turns on a mechanically fixed chassis; earlier trace
+   saturation is a stress warning, not established proof of damage causation.
+5. Keep initial supply at the established8V condition, use short supply wiring,
+   avoid live connection changes, and defer3S. SR0ohm is explicitly supported,
+   but fast edges and bench-supply/motor transients remain unmeasured. Additional
+   bulk capacitance, clamps or slew/PWM changes require separate design review;
+   no arbitrary TVS/capacitor value or claim of verified surge immunity here.
+
+Primary references: [MPS MP6551, pp3/4/10/12](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP6551GQB/),
+[Indium paste degradation and printing](https://www.indium.com/blog/stencil-printing-for-success-solder-paste-handling-and-storage/),
+[Indium storage/handling guidance](https://www.indium.com/wp-content/uploads/2025/03/Solder-Paste-Storage-and-Handling-Guidelines-APPNOTE-98995-R5-1.pdf),
+[TI motor-driver transient mechanisms](https://e2e.ti.com/support/motor-drivers-group/motor-drivers/f/motor-drivers-forum/965811/faq-how-to-control-voltage-spikes-on-motor-driver-outputs),
+[TI voltage margin/bulk-capacitance/clamp design](https://www.ti.com/document-viewer/lit/html/SSZTBS1/GUID-4E20E0C2-9D92-42A8-B86E-D05394FAD546).
