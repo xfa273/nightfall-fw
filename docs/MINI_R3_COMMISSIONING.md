@@ -753,3 +753,49 @@ Primary references: [MPS MP6551, pp3/4/10/12](https://www.monolithicpower.com/en
 [Indium storage/handling guidance](https://www.indium.com/wp-content/uploads/2025/03/Solder-Paste-Storage-and-Handling-Guidelines-APPNOTE-98995-R5-1.pdf),
 [TI motor-driver transient mechanisms](https://e2e.ti.com/support/motor-drivers-group/motor-drivers/f/motor-drivers-forum/965811/faq-how-to-control-voltage-spikes-on-motor-driver-outputs),
 [TI voltage margin/bulk-capacitance/clamp design](https://www.ti.com/document-viewer/lit/html/SSZTBS1/GUID-4E20E0C2-9D92-42A8-B86E-D05394FAD546).
+
+## C21 omitted because of buzzer interference, 2026-09-15
+
+User reports a known placement defect: C21 physically interferes with the
+buzzer and has not been fitted; no unexpected reset has been noticed. They
+prefer proving maze operation on the present PCB revision before redesign.
+Read-only main CAD confirms C21=100nF, pad1 NRST/pad2 logic GND, shared with
+U5 pin7, RESET0 and K1 pin5 (K1 pin2 GND). The collision itself is a user
+observation, not an independent mechanical-clearance check in this review.
+
+C21 filters the NRST signal; it is not VDD/VCAP or motor-supply decoupling.
+ST AN4488 section3.1 says an external reset circuit is not required for normal
+power-up and recommends the capacitor for immunity to parasitic resets.
+DS11581 Rev7 section6.3.17 gives an internal30..50kohm pull-up and internal
+pulse filtering; Table4 confirms this UFQFPN48 package always uses the internal
+power supervisor. Removing C21 does not disable POR/PDR or change BOR option
+settings (actual BOR configuration not read here). RC release timing changes,
+but nominal startup is not supposed to depend solely on this capacitor.
+
+Main risk remains false reset under drive/fan/buzzer or connector-coupled
+noise. Secondary effects are loss of volatile run/position state and interruption
+of in-progress log/map/calibration writes, not automatic erasure of all saved
+data. In the current normal source, MX_GPIO_Init writes STBY/DIR low before
+output configuration and OP starts in mode0; reset-time drive-disable relies
+on the MP6551 input pull-downs while MCU pins are released. This is intended
+stop behavior, not a measurement of reset transients under loaded motion.
+C21 omission does not directly explain persistent left-driver idle heating;
+the U2 fault remains separate and powered testing of that unit stays suspended.
+
+Proceeding on the same PCB design with a healthy assembly can be reasonable
+as staged prototype validation, not EMC/maze qualification. Verify combined
+drive/fan operation and final standalone supply conditions, start low-speed,
+and investigate any unexpected reboot before escalating. Dedicated reset-cause
+logging was not found in current F413 Core sources; early RCC_CSR capture
+before clearing flags and explicit reboot indication are proposed, not implemented.
+Flags require context and are not a unique classifier of C21-related noise.
+
+Future layout should relocate C21 close to MCU NRST with a short ground return.
+A short-wire100nF NRST-to-GND patch is an optional prototype mitigation only
+if mechanically feasible; no patch location is physically verified. Avoid a
+long reset-wire loop and isolate unpopulated pads from any buzzer metal/electrode.
+No source/CAD change, build, live probe, reset, flash, UART, NVM or drive/fan
+action was performed; this assessment does not authorize a floor run.
+
+Sources: [ST AN4488 reset guidance](https://www.st.com/resource/en/application_note/dm00115714-getting-started-with-stm32f4xxxx-mcu-hardware-development-stmicroelectronics.pdf),
+[STM32F413 DS11581](https://www.st.com/resource/en/datasheet/stm32f413cg.pdf).
