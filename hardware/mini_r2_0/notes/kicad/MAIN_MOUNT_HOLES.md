@@ -62,4 +62,6 @@ KiCad 10.0.3で変更前後にゾーンを再計算してDRCを実施しまし�
 検証用出力はGit管理外の `build/main-mount-holes/` に保存しています。
 `cad/export/jlcpcb/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606/`
 は変更前の発注候補であり、このØ1.6 mm変更を含みません。
-本体基板を発注する際は更新後のKiCad PCBから再出力してください。
+2026-09-21、更新後PCBから
+[発注用ZIP・加工図](../../cad/export/jlcpcb/main_mount_1p6_20260921/README.md)
+を作成しました。こちらにはØ1.6 mmの4穴と配線変更を反映しています。
