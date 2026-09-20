@@ -144,3 +144,17 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   UART released while waiting for user direction/fan observations; all outputs
   remain stopped in mode0. Wall removal follow-up log:
   `tools/logging/logs/mini_r3_unit002_wall_clear_20260921.log`.
+
+### Direction repeat and fan confirmation
+
+- User confirms suction operation OK and requests another direction test,
+  reporting that wiring should match unit001. This suggests the left motor
+  polarity override may be needed, but physical direction is still unconfirmed.
+- Repeated `p,6,7,8,9` with spoken/text direction announcements, a5s lead-in
+  and about5s gaps. Same12%/500ms drive and300ms disabled coast. Counts:
+  left forward-2195, right forward+2570, left reverse+2568,
+  right reverse-2225; inactive encoder0 each time. Left sign mismatch repeats.
+- No polarity/encoder setting change, build, flash, reset, fan rerun or NVM
+  write. Final HOTPLUG CFSR/HFSR0, motorCCER/CCR1/CCR3=0, DIR/STBYlow,
+  fanCCR1=0; UART closed, mode0. Log:
+  `tools/logging/logs/mini_r3_unit002_direction_repeat_20260921.log`.
