@@ -35,13 +35,49 @@ No motor/fan test or floor-run clearance is implied by these results.
 | Wall ADC | Scheduler ready0x03; unpopulated channels0..1 and no-wall flags; acquisition only, no optical sensing test |
 | Switch | Released input reads high; physical pressed transition not yet tested |
 | LEDs | All-on30s command completed and switched off; user visually confirms all LEDs lit |
-| FRAM | Read calls return status0 and both256-byte calibration prefixes are all zero and unchanged after reset. Sensor/distance/trace absent. This does NOT prove physical read/write integrity; write/readback permission requested and pending |
+| FRAM | Authorized follow-up: four scattered256-byte trace-area samples, five patterns write/readback PASS; original1024B restored and verified. Both256-byte calibration prefixes unchanged. Sample test only, not full-memory or power-cycle retention qualification |
 | MCU faults / drive off | CFSR/HFSR0 after diagnostics; TIM2CCER/CCR1/CCR3=0, motor DIR/STBYlow; fanTIM10CCR1=0; buzzerTIM11CCR1=0 |
 
 `maze=OK maze_known=0` is not proof of a valid saved maze: the legacy raw-map
 fallback accepts zero data without a modern header. No maze has been measured
 or saved on this board. No FRAM calibration, map, trace-format or append writes
-were performed. Do not use a broad destructive diagnostic suite for follow-up.
+were performed; the bounded raw trace-area probe below restored its original
+contents. Do not use a broad destructive diagnostic suite for follow-up.
+
+## FRAM write/readback follow-up
+
+- User explicitly authorized FRAM testing on this empty new board. UID and
+  unit002 identity were checked before the test; motors/fan were not allowed
+  or driven.
+- Temporarily added a maintenance-only `}` command, restricted to this UID,
+  unit2 and idle mode0 with no control/test/automatic trace activity. Test
+  helper and host harness remain local in `build/hil_unit002/`; all temporary
+  firmware source edits were removed after testing.
+- Backed up four256-byte samples to RAM and UART before any write: physical
+  FRAM addresses `0x60000`, `0x7FF00`, `0xBFF00`, `0xFFF00`, entirely within
+  the trace area. Original bytes were all zero. Wrote/read back00, FF, 55, AA
+  and a position/address-dependent pattern. Every pattern passed across all
+  four samples, then original1024B were restored and verified byte-for-byte.
+- Host harness with ASan/UBSan passed normal operation, backup read failure
+  with no writes, transient read/write failure recovery and address-alias
+  detection. Both protected/maintenance NVM-guard host tests passed.
+- Built/flashed maintenance application, issued only the custom FRAM probe,
+  removed the temporary hook, rebuilt/flashed normal protected application.
+  Both app flashes verified and touched only sectors0..6. Build ID for both
+  was `001d688 DIRTY=1`; final normal binary SHA256:
+  `135ce79fdfc9559256f2c88ddb019e1b9301c3d2479f0e82de9bfc6bac497d89`.
+  Maintenance binary SHA256:
+  `972808450a3dc439873e4fc49cbe3fb67811b68e7bf0f1246470113979a7a2b2`.
+- UART sequence: baseline `|`; maintenance flash/boot; `}`; normal
+  flash/boot; `i,w,k,|`. `k` was sent only after normal LOCKED boot and was
+  refused without writes. IMU ID/config PASS, ADC ready03 and VBAT2089.
+- Full128KiB identity sector matches the registered backup exactly; both
+  sensor/distance256-byte calibration prefixes match before/after. CFSR/HFSR0,
+  motor PWM/enable/direction and fan duty off. Final mode0, UART closed.
+- UART evidence: `tools/logging/logs/mini_r3_unit002_fram_20260920.log`, SHA256
+  `99a16b255858e0b2bcbc1d1a79f9103a7901cc420e000074e5166e56e7707aeb`.
+- This establishes basic nonzero write/read communication for the sampled
+  locations, not integrity of every FRAM byte or retention after power removal.
 
 ## Reproduction and remaining checks
 
@@ -59,8 +95,8 @@ were performed. Do not use a broad destructive diagnostic suite for follow-up.
   no buzzer diagnostic was commanded. No motor/fan/run commands were sent.
 - Log: `tools/logging/logs/mini_r3_unit002_nonmotor_20260920.log`.
 - Final state: mode0 idle, UART released, normal NVM diagnostic guard LOCKED.
-- Pending: authorized bounded FRAM write/readback with backup, pressed-switch
-  check and thermal recheck after IMU activation. Current baseline is74mA. C21
+- Pending: pressed-switch check and thermal recheck after IMU activation.
+  Current baseline is74mA. C21
   population on the new board and SR resistor values have not been confirmed.
 - After missing parts are installed: individual sensor calibration, lifted motor
   and encoder direction checks with fresh permission, then staged loaded tests.
