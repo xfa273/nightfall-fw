@@ -24,3 +24,6 @@ for machine in 0 2 3; do
     UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
     "$TEST_OUT_DIR/f413_machine_tests" "$machine"
 done
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
+  UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
+  "$TEST_OUT_DIR/f413_machine_tests" 3 2
