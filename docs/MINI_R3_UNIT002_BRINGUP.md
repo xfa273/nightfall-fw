@@ -1,6 +1,9 @@
 # mini_r3_0_unit002 bring-up, 2026-09-20
 
 This is a new assembly, not the unit001 board with the unresolved hot U2.
+Current update (2026-09-21): unit002 left motor polarity is now High, matching
+its confirmed unit001-style wiring; four-direction encoder HIL passes. Earlier
+Low/pending-direction statements below are historical bring-up observations.
 User confirms 8 V / 2 A bench power, initially no noticeable heating, and IMU
 installed. Wall sensors, encoders, motors and buzzer are not installed.
 The initial results below are non-motor checks. The 2026-09-21 follow-up at
@@ -158,3 +161,31 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   write. Final HOTPLUG CFSR/HFSR0, motorCCER/CCR1/CCR3=0, DIR/STBYlow,
   fanCCR1=0; UART closed, mode0. Log:
   `tools/logging/logs/mini_r3_unit002_direction_repeat_20260921.log`.
+
+### Left motor polarity applied, 2026-09-21 JST
+
+- User visually confirms only the left wheel ran opposite to commands and
+  authorizes the matching setting. User also accepts the encoders as the
+  direction reference for subsequent checks; no encoder sign change is needed.
+- Source `18c5660`: added unit002-specific `MINI_R3_HW(true)` override. Right
+  polarity, L/R encoder signs+1/-1, model defaults, unit001/r2, run parameters,
+  IMU settings and NVM formats remain unchanged. Resolver/runtime-boot tests
+  cover unit2 forward/reverse PWM polarity and retained encoder signs; ASan/
+  UBSan machine suite and both262144-case PWM configurations PASS. Both F413
+  and F405 Debug builds and diff check PASS.
+- Rebuilt source commit and flashed/verified application sectors0..6 only.
+  Boot `18c5660 DIRTY=1` selects unit002 with L/R forward IN2=1/1,
+  enc=1/-1, PSC0 and normal NVM guard LOCKED. Binary SHA256:
+  `d8185c3d84602e69ab6417fdd947878794e37e2742bc27d2639d9ab5c72b0e02`.
+- Same authorized lifted/secured8V2A/debugger5Voff conditions. UART sequence:
+  baseline `|`, app flash/reset, `w,p,6,7,8,9,i,|`. Each motor test12%/500ms
+  plus300ms disabled coast. Left forward+2577/reverse-2233, right
+  forward+2569/reverse-2236, inactive side0 throughout. All signs now correct.
+  No closed-loop/floor/search/turn or fan retest was performed.
+- IMU ID/config PASS, wall ADC ready03/no saturation. Full128KiB identity
+  sector equals registration backup and both256B calibration prefixes are
+  unchanged; trace metadata remains400 records. No FRAM or identity writes.
+  Final CFSR/HFSR0, TIM2CCER/CCR1/CCR3=0, DIR/STBYlow, fanTIM10CCR1=0,
+  mode0/UART closed. Direction mismatch is resolved; floor gains, metric
+  odometry and individual wall calibration are not qualified by this test.
+- Log: `tools/logging/logs/mini_r3_unit002_left_polarity_20260921.log`.

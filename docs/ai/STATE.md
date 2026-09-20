@@ -13,6 +13,7 @@
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
+- unit002左極性修正完了（2026-09-21 JST）: ユーザが左のみ逆回転を目視確認し設定適用を指示、以後encoder正常として方向判定可と確認。unit002専用left-forward-IN2 Highへ変更、encoder L+1/R-1・右極性・他個体は不変。source18c5660、machine/PWM hostとF413/F405 build PASS、app sectors0..6 flash/verify、実機18c5660dirty・unit2・L/R=1/1・LOCKED。浮上固定8V2Aで12%500ms、L前+2577/後-2233・R前+2569/後-2236、非駆動側0。方向不整合は解消し下記の未解決記載は履歴。床上/閉ループは今回未実施。ID全sector/校正prefix不変、fault0・全駆動OFF、mode0/UART解放。
 - unit002再試験追記（2026-09-21 JST）: ユーザが吸引OK、配線はunit001同様のはずと報告。依頼により6/7/8/9を予告・約5秒間隔で再試験、L前-2195/後+2568、R前+2570/後-2225、非駆動側0。左符号逆は再現、目視方向回答待ちで設定未変更・閉ループ不可。全駆動停止/fault0/mode0/UART解放。以下の吸引動作追認待ちは解消（電流・温度の数値は未取得）。
 - unit002追加実装HIL（2026-09-21 JST）: 壁センサ/encoder/走行motor/fan実装、浮上固定8V/2A・debugger5V OFFをユーザ確認。FW001d688dirtyのまま6/7/8/9を各12%500ms、L前-2192/後+2581、R前+2535/後-2210、非駆動側0。左だけ想定符号が逆で目視方向確認待ち、閉ループ走行不可・極性未変更。fan20/50/80%各1.2秒→停止のコマンド完了、実回転/吸引/熱等は追認待ち。壁ADC4系統は壁設置後512平均FR1235/FL837/R1757/L1863・全壁あり、撤去後71/58/35/48・全壁なしに復帰、飽和なし/offset0。reset後mode0、全駆動OFF/fault0、NVM変更なし、UART解放。詳細 `docs/MINI_R3_UNIT002_BRINGUP.md`。
 - unit002 FRAM追試完了（2026-09-20）: ユーザ許可後、ログ領域内4か所各256Bへ00/FF/55/AA/位置依存パターンを書込み・読戻し、全PASS。元1024Bを復元し一致確認。校正prefixとidentity全sector不変。専用一時コードを撤去し通常FW `001d688 DIRTY=1`へ復帰、NVM guard LOCKEDとk拒否、IMU/ADC、fault0・motor/fan停止確認、mode0/UART解放。全容量・電源断保持試験ではない。以下のFRAM許可待ち/健全性未確定は履歴となる。詳細 `docs/MINI_R3_UNIT002_BRINGUP.md`。
