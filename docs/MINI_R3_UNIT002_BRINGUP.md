@@ -28,13 +28,13 @@ No motor/fan test or floor-run clearance is implied by these results.
 | Item | Observed result / limit |
 | --- | --- |
 | SWD / application Flash / UART | F413 device0x463; app sectors0..6 write/verify PASS, 921600bps boot and repeated software reset PASS; unit002 selected correctly |
-| Supply | ST-LINK reports VDD3.24V; VBAT ADC2100..2103, about7.96..7.97V using nominal3.3V reference; ripple/load qualification not performed |
+| Supply | ST-LINK reports VDD3.24V; VBAT ADC2100..2103, about7.96..7.97V using nominal3.3V reference; user reports idle input74mA at8V after tests (0.592W whole-board input, not a component loss); ripple/load qualification not performed |
 | IMU | Repeated WHO_AM_I0x6B, CTRL1_XL/CTRL2_G/CTRL3_C=74/71/44 PASS |
 | Stationary gyro | Local diagnostic offset0.38dps; printed corrected samples -0.38..+0.18dps; eight-second final angle0.0deg |
 | Stationary acceleration | Mean57.8,-187.8,9906.0mm/s² (about1.01g magnitude); eight-second integrated residual12,5,-8mm/s; no persistent calibration write |
 | Wall ADC | Scheduler ready0x03; unpopulated channels0..1 and no-wall flags; acquisition only, no optical sensing test |
 | Switch | Released input reads high; physical pressed transition not yet tested |
-| LEDs | All-on30s command completed and switched off; emitted PASS is software completion, visual confirmation still required |
+| LEDs | All-on30s command completed and switched off; user visually confirms all LEDs lit |
 | FRAM | Read calls return status0 and both256-byte calibration prefixes are all zero and unchanged after reset. Sensor/distance/trace absent. This does NOT prove physical read/write integrity; write/readback permission requested and pending |
 | MCU faults / drive off | CFSR/HFSR0 after diagnostics; TIM2CCER/CCR1/CCR3=0, motor DIR/STBYlow; fanTIM10CCR1=0; buzzerTIM11CCR1=0 |
 
@@ -59,8 +59,8 @@ were performed. Do not use a broad destructive diagnostic suite for follow-up.
   no buzzer diagnostic was commanded. No motor/fan/run commands were sent.
 - Log: `tools/logging/logs/mini_r3_unit002_nonmotor_20260920.log`.
 - Final state: mode0 idle, UART released, normal NVM diagnostic guard LOCKED.
-- Pending: authorized bounded FRAM write/readback with backup, LED visual and
-  pressed-switch checks, current/thermal baseline after IMU activation. C21
+- Pending: authorized bounded FRAM write/readback with backup, pressed-switch
+  check and thermal recheck after IMU activation. Current baseline is74mA. C21
   population on the new board and SR resistor values have not been confirmed.
 - After missing parts are installed: individual sensor calibration, lifted motor
   and encoder direction checks with fresh permission, then staged loaded tests.
