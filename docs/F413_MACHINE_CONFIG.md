@@ -26,8 +26,8 @@
 | 個体 | family / board_id / unit | 走行profile | 左前進IN2 | Fan |
 | --- | --- | --- | --- | --- |
 | mini_r2_0_unit001 | mini / `0x00020000` / 1 | `0x00020001` / `f413pre-t0.1` | Low（元の配線） | なし |
-| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-wall-centre-t0.5` | High（左配線を反転済み） | あり |
-| mini_r3_0_unit002 | mini / `0x00030000` / 2 | `0x00030001` / `mini-r3-wall-centre-t0.5`（暫定機種profile） | High（unit001同様の左配線を確認） | あり |
+| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-translation-t0.6` | High（左配線を反転済み） | あり |
+| mini_r3_0_unit002 | mini / `0x00030000` / 2 | `0x00030001` / `mini-r3-translation-t0.6`（2S非吸引・浮上並進の暫定profile） | High（unit001同様の左配線を確認） | あり |
 
 登録済み各機とも現時点は右前進IN2 High、encoder符号 L=+1/R=-1、TIM2 PSC=0/ARR=1000。
 r3の左配線反転は**機種標準ではなく各個体の上書き**。
@@ -42,6 +42,10 @@ sensor校正68B（offset FR82/FL66/R27/L43）をunit002へ暫定コピー済み�
 距離LUTは既存の共通t0.5を維持。unit001の無効な診断用distance blobはコピーしない。
 横壁中央基準は保存0のためL1941/R1989の暫定値で、実機確認・調整が必要。
 適用範囲と検証は `docs/MINI_R3_UNIT002_BRINGUP.md` を参照。
+2026-09-21の並進粗調整でt0.6へ更新（距離LUTはt0.5と同じ）。速度/距離ゲインを
+弱め、速度feedbackをencoder LPFへ変更。unit002浮上固定のみで検証し、床上・旋回・
+吸引・3Sは未検証。unit001のU2故障による駆動禁止は解除しない。
+詳細 `docs/MINI_R3_UNIT002_TRANSLATION_TUNING.md`。
 旧 `NIGHTFALL_F413_MOTOR_LEFT_FORWARD_IN2_HIGH` ビルド指定は廃止し、指定時はコンパイルエラー。
 
 r2の既存数値は維持した。r3はr2の走行値を独立コピーした**床上走行未調整profile**である。

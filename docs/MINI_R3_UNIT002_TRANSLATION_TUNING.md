@@ -83,7 +83,46 @@ Rc2 distance-trapezoid `^` (300mm/s,270mm target) completed, reporting265mm,
 but the inherited distance gains produced a speed-reference oscillation (steady
 target318/SD142mm/s, actual317/SD91mm/s; peak PWM64/1000). Therefore the final
 candidate reduces distance P6->2 and I0.05->0 rather than accepting rc2 for the
-cascade. Final normal-image checks are recorded below when complete.
+cascade. The final normal-image checks below passed the coarse no-load gate.
+
+## Final normal-image verification
+
+- Source `0020011`, boot `0020011 DIRTY=1`, tune `mini-r3-translation-t0.6`.
+  The dirty marker includes pre-existing host-tool changes, not a hidden bench
+  firmware patch. Temporary PWM cap/set1 changes are fully removed. Common F413
+  image RAM274120/Flash367124B; BIN SHA256:
+  `b781e9d599547a9232f810e705d7af677c9de72f9a4c2ac66a57c199c70ba7ff`.
+- `^`,300mm/s distance trapezoid:2579 complete rows,269mm vs270.002mm target,
+  peak absolute PWM54/1000. Steady target velocity345/SD10mm/s and actual317/
+  SD26mm/s versus rc2's target SD142 and actual SD91. Residual startup lag is
+  still present; this is deliberately conservative and not a precision floor
+  tune. No output saturation, minimum VBAT2063, stop completed normally.
+- `!`,300mm/s velocity step:2496 complete rows, steady303.73/SD15.43mm/s,
+  peak356mm/s (about19% transient overshoot), peak absolute PWM73/1000,
+  steady PWM about45/1000, minimum VBAT2067. No sustained oscillation or PWM
+  saturation. End distance274mm vs270.001mm is a velocity-only diagnostic,
+  not a closed-loop stopping-position result.
+- F413/F405 builds, ASan/UBSan machine resolver/runtime profiles including
+  both r3 units and unchanged r2 gains, both262144-case PWM configurations,
+  both NVM guard configurations and diffcheck PASS. The old host assertion
+  requiring all models to useP0.8 was updated to verify model-specific values.
+- All three application flashes (rc1, rc2, normal final) used the temporary
+  native CubeCLI and verified only sectors0..6; identity sector untouched.
+  Full128KiB identity readback equals registration backup. Both256-byte
+  sensor/distance prefixes equal the pre-test dump; maze still reports60 known
+  cells. No calibration/maze write, global diagnostic unlock or fan command.
+- Complete command sequence: `w,i,|,V` baseline backup; `!,V`; rc1 flash/boot,
+  `w,!,V,",V`; rc2 flash/boot, `(,V,^,V`; final flash/boot, `^,V,!,V,i,w,|`.
+  Every drive command was a separately observed bounded forward-translation
+  test; no unattended motor-command queue. Run hooks replace only trace data.
+- Final IMU ID/config PASS, wall ready03/all flags0, VBAT2083. HOTPLUG
+  CFSR/HFSR0, TIM2CCER/CCR1/CCR3=0, DIR/STBYlow, fanTIM10CCR1=0. Mode0 idle,
+  UART closed. No physical noise/temperature/current-meter claim is made;
+  the user's feedback question remained unanswered at completion.
+- Final evidence `tools/logging/logs/mini_r3_unit002_translation_final_20260921.log`
+  SHA256 `42f1a407715f12cbe9ad160a64d193e7d0240d08b0386d8fc4a9cb109043631b`.
+  Initial backup/baseline log SHA256
+  `c7b6e3d4c26b1db8cd94f2a5a7a57cdeabe81fca9ffe239a4deba7b76f396b11`.
 
 ## Remaining limits
 

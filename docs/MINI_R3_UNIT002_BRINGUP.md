@@ -1,6 +1,8 @@
 # mini_r3_0_unit002 bring-up, 2026-09-20
 
 This is a new assembly, not the unit001 board with the unresolved hot U2.
+Latest translation update: see `MINI_R3_UNIT002_TRANSLATION_TUNING.md` for the
+2S/fanOFF lifted coarse t0.6 profile; it retains the t0.5 wall LUT and offsets.
 Current update (2026-09-21): unit002 left motor polarity is now High, matching
 its confirmed unit001-style wiring; four-direction encoder HIL passes. Unit001's
 post-shield wall offsets have also been transferred at the user's request after
