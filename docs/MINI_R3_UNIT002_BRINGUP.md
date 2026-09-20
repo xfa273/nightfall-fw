@@ -3,7 +3,8 @@
 This is a new assembly, not the unit001 board with the unresolved hot U2.
 User confirms 8 V / 2 A bench power, initially no noticeable heating, and IMU
 installed. Wall sensors, encoders, motors and buzzer are not installed.
-No motor/fan test or floor-run clearance is implied by these results.
+The initial results below are non-motor checks. The 2026-09-21 follow-up at
+the end records newly populated hardware tests; no floor-run clearance is implied.
 
 ## Registration
 
@@ -100,3 +101,43 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   population on the new board and SR resistor values have not been confirmed.
 - After missing parts are installed: individual sensor calibration, lifted motor
   and encoder direction checks with fresh permission, then staged loaded tests.
+
+## Populated drive/sensor follow-up, 2026-09-21 JST
+
+- User reports wall sensors, encoders, drive motors and suction motor installed;
+  explicitly confirms lifted/secured chassis, bench8V/current-limit2A and
+  debugger5V OFF. Buzzer population was not reconfirmed.
+- No firmware change/flash. Software reset identifies unit002, normal protected
+  `001d688 DIRTY=1`, L/R forward IN2 Low/High, encoder signs+1/-1, PWM PSC0.
+  IMU6B/config74,71,44 PASS, STLINK VDD3.24V, switch releasedhigh.
+- Initial wall deltas FR98/FL100/R104/L101; later FR98/FL98/R77/L93,
+  offsets all0, ready03, no saturation and no wall flags. After user placed
+  walls/paper, `w` reports front/right/left wall flags all1 and no saturation;
+  read-only `:`512-sample average FR1235/FL837/R1757/L1863, standard deviations
+  4.60/3.61/3.67/3.55. All four optical channels respond. Removal response and
+  no-wall calibration remain unqualified. Existing unit001
+  distance LUT and side-control baselines remain provisional for this unit.
+- UART single-side tests `6,7,8,9`, each12%/500ms plus300ms disabled coast:
+
+  | Command | Intended direction | Left count | Right count |
+  | --- | --- | ---: | ---: |
+  | 6 | Left forward | -2192 | 0 |
+  | 7 | Right forward | 0 | +2535 |
+  | 8 | Left reverse | +2581 | 0 |
+  | 9 | Right reverse | 0 | -2210 |
+
+  Both motors generate encoder motion in both directions with no inactive-side
+  counts. Left sign is opposite to intended direction: user visual direction
+  confirmation is required before deciding motor-polarity versus encoder-sign
+  correction. No closed-loop, sweep, floor run or automatic polarity edit.
+- Navigated UART `P` x9, `E`, `P` x4, `E`, verifying each state, to mode9
+  case4: fan20/50/80%, each1200ms, then duty0 and PWM stopped; firmware reports
+  completion. Physical suction/rotation, abnormal noise/heat/current-limit
+  observations are pending user reply (no fan tachometer).
+- Reset to mode0 after fan test. SWD HOTPLUG shows CFSR/HFSR0,
+  TIM2CCER/CCR1/CCR3=0, DIR/STBYlow, TIM10CCR1=0. Calibration prefixes remain
+  allzero; trace status already400 records at initial read and unchanged after
+  tests. No NVM writes/format/calibration or identity operations were requested
+  or performed. Log: `tools/logging/logs/mini_r3_unit002_full_hw_20260921.log`.
+  UART released while waiting for user direction/fan observations and wall
+  removal confirmation; all outputs remain stopped in mode0.
