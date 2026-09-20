@@ -218,7 +218,8 @@ static void resolver_tests(void)
   assert(f413_imu_centre_forward_accel(12.5f, 0.0f, -2.5f) == 12.5f);
   assert(fabsf(f413_battery_voltage(2111U, 3.3f, out.hardware.battery_divider_ratio) - 8.0f) < 0.01f);
   assert(fabsf(f413_battery_voltage(3324U, 3.3f, out.hardware.battery_divider_ratio) - 12.6f) < 0.01f);
-  /* New PCB must not inherit unit001's physical left-lead swap. */
+  /* Unit002's independently confirmed left wiring matches unit001.
+     Keep the model default and encoder signs unchanged. */
   nvm_identity_block_t r3_unit2 = r3;
   const uint32_t uid2[] = {0x001D0038U, 0x32345108U, 0x36383936U};
   r3_unit2.unit_serial = 2;
@@ -226,7 +227,10 @@ static void resolver_tests(void)
   seal(&r3_unit2);
   assert(f413_machine_resolve(NVM_STATUS_OK, &r3_unit2, uid2, f413_boards,
       f413_board_count, f413_units, f413_unit_count, &out) == F413_MACHINE_OK);
-  assert(!out.hardware.left_forward_in2_high && out.hardware.right_forward_in2_high);
+  assert(out.hardware.left_forward_in2_high && out.hardware.right_forward_in2_high);
+  assert(!out.board->hardware.left_forward_in2_high);
+  assert(out.hardware.encoder_sign_l == 1 && out.hardware.encoder_sign_r == -1);
+  assert(out.hardware.motor_pwm_prescaler == 0U);
   assert(out.profile == &f413_profile_mini_r3);
   assert(out.hardware.imu_forward_accel_sign == -1 && out.hardware.imu_forward_offset_mm == -2.5f);
   expect(r3_unit2, F413_MACHINE_UID_MISMATCH);
@@ -337,7 +341,11 @@ int main(int argc, char **argv)
       assert(memcmp(&f413_machine_params()->modes[m], p->modes[m], sizeof(*p->modes[m])) == 0);
       assert(memcmp(f413_machine_params()->cases[m], p->cases[m], sizeof(f413_machine_params()->cases[m])) == 0);
     }
-    assert(f413_motor_pwm_encode(true, true, 120).in2_high == (rev == 3U && unit == 1U));
+    assert(f413_motor_pwm_encode(true, true, 120).in2_high == (rev == 3U));
+    assert(f413_motor_pwm_encode(true, false, 120).in2_high == (rev != 3U));
+    assert(f413_motor_pwm_encode(true, true, 120).compare == (rev == 3U ? 880U : 120U));
+    assert(f413_machine_hardware()->encoder_sign_l == 1 &&
+           f413_machine_hardware()->encoder_sign_r == -1);
     assert(f413_motor_pwm_encode(false, true, 120).in2_high);
     assert(!f413_motor_pwm_encode(false, false, 120).in2_high);
     assert(f413_motor_pwm_encode(true, false, 0).compare == 0);

@@ -19,12 +19,15 @@ const size_t f413_board_count = sizeof(f413_boards) / sizeof(f413_boards[0]);
 
 static const f413_hardware_config_t mini_r3_unit001_hw =
     MINI_R3_HW(true);
+static const f413_hardware_config_t mini_r3_unit002_hw =
+    MINI_R3_HW(true);
 const f413_unit_config_t f413_units[] = {
   /* Legacy r2 identity allowed zero UID; a bound UID is always checked. */
   {NVM_FAMILY_MINI, 0x00020000U, 1U, false, NULL, NULL},
   /* Left leads physically swapped on 2026-09-06. R34/R35 = 0 ohm. */
   {NVM_FAMILY_MINI, 0x00030000U, 1U, true, &mini_r3_unit001_hw, NULL},
-  /* New PCB, 2026-09-20: require bound UID; standard wiring pending motor HIL. */
-  {NVM_FAMILY_MINI, 0x00030000U, 2U, true, NULL, NULL},
+  /* 2026-09-21: visual/encoder HIL confirms unit001-style left wiring.
+     Only motor polarity changes; encoder signs remain L=+1, R=-1. */
+  {NVM_FAMILY_MINI, 0x00030000U, 2U, true, &mini_r3_unit002_hw, NULL},
 };
 const size_t f413_unit_count = sizeof(f413_units) / sizeof(f413_units[0]);
