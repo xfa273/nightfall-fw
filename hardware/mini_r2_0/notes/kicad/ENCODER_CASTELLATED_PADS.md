@@ -20,8 +20,8 @@
 | レジスト | 表裏ともランドと同寸法の開口、局所拡大量0 |
 | ペースト | 端子には開口なし |
 | 下辺以外の端子銅箔と側辺の距離 | 最小0.205 mm（輪郭中心線基準） |
-| 最小端子間銅箔間隔 | L: 0.1338 mm / R: 0.1390 mm |
-| 最小半穴間隔（穴端間） | L: 0.4338 mm / R: 0.4390 mm |
+| 最小端子間銅箔間隔 | L: 0.1338 mm / R: 0.1410 mm |
+| 最小半穴間隔（穴端間） | L: 0.4338 mm / R: 0.4410 mm |
 
 両端の端子1・4は、側辺との銅箔クリアランスを確保するため、それぞれ
 0.1988 mm / 0.2060 mmだけ内側へ寄せた。基板寸法、センサ・R・Cの位置、
@@ -66,9 +66,11 @@ JLCPCBの[半穴加工案内](https://jlcpcb.com/help/article/what-is-castellate
 > holes, 0.15 mm annular copper, corner proximity, board thickness and panel
 > support before fabrication. This is a custom-process feasibility request.
 
-シルクはインポート時の大きな参照番号が残っているため、今回のCAM確認は
-`F.Cu,B.Cu,F.Mask,B.Mask,Edge.Cuts` とPTH/NPTHドリルを対象とした。
-発注時のシルクは別途整理する。
+シルクはインポート時の大きな参照番号が残っているため、発注用出力は両面シルクなしとした。
+`F.Cu,B.Cu,F.Mask,B.Mask,Edge.Cuts` とPTHドリルを収録し、空のNPTH出力は除外している。
+左右別の発注用ZIPと加工図は
+[`cad/export/jlcpcb/encoder_castellated_20260921/`](../../cad/export/jlcpcb/encoder_castellated_20260921/README.md)
+に保存した。PCB本体のシルクや配線は変更していない。
 
 ## 検証
 
