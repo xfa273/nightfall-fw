@@ -326,7 +326,12 @@ int main(int argc, char **argv)
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_OK);
     assert(f413_machine_has(F413_CAP_DRIVE));
     assert(DIST_HALF_SEC == 45.0 && D_TIRE == 14.13);
-    assert(KP_VELOCITY_FAN_OFF == 0.8f);
+    assert(KP_VELOCITY_FAN_OFF == (rev == 3U ? 0.08f : 0.8f));
+    assert(KI_VELOCITY_FAN_OFF == (rev == 3U ? 0.001f : 0.012f));
+    assert(FF_TRANSLATION_STATIC_PWM_FAN_OFF == (rev == 3U ? 35.0f : 45.0f));
+    assert(KP_DISTANCE_FAN_OFF == (rev == 3U ? 2.0f : 6.0f));
+    assert(KI_DISTANCE_FAN_OFF == (rev == 3U ? 0.0f : 0.05f));
+    assert(VELOCITY_ACCEL_COMP_ENABLE_CONTROL == (rev == 3U ? 0U : 1U));
     assert(searchRunParams[0].velocity_turn90 == 300.0f);
     assert(shortestRunModeParams2.velocity_l_turn_90 == 500.0f);
     assert(shortestRunCaseParamsMode2[5].velocity_straight == 1000.0f);

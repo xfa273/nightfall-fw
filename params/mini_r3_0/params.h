@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-wall-centre-t0.5"
+#define PARAMS_TUNE_VERSION "mini-r3-translation-t0.6"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -58,17 +58,16 @@
 #endif
 
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_CONTROL
-#define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
+/* Encoder-only coarse 2S/fan-off tune. The accelerometer estimate is still
+ * logged, but a fixed lifted body cannot supply wheel acceleration to it. */
+#define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 0U
 #endif
 
 /*
- * The forward accelerometer estimate is useful on straight acceleration, but
- * the present IMU mounting couples a material part of lateral acceleration
- * into that axis during a slalom.  Keep the estimator available for logging,
- * while using the short-delay wheel-encoder LPF for the velocity loop for the
- * duration of an omega profile.  The 30 ms estimator window is retained for
- * the logged accelerometer-assisted estimate, but is too delayed for the
- * translation PI during a short V90 profile.
+ * Retain the accelerometer estimate for logging, including the prior guard
+ * against using it in an omega profile. The r3 coarse tune above uses the
+ * short-delay encoder LPF for all velocity feedback; re-enabling acceleration
+ * compensation needs separate floor validation (not a fixed-body test).
  */
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE
 #define VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE 0U
@@ -124,16 +123,18 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 0.8F
+/* 2S, fan OFF, unit002 lifted coarse tune (300/500 mm/s). Not floor-qualified.
+ * I is accumulated per 1 ms control tick, without an extra dt multiplier. */
+#define KP_VELOCITY_FAN_OFF 0.08F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.012F
+#define KI_VELOCITY_FAN_OFF 0.001F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
 #endif
 #ifndef FF_TRANSLATION_STATIC_PWM_FAN_OFF
-#define FF_TRANSLATION_STATIC_PWM_FAN_OFF 45.0F
+#define FF_TRANSLATION_STATIC_PWM_FAN_OFF 35.0F
 #endif
 #ifndef FF_TRANSLATION_VELOCITY_PWM_FAN_OFF
 #define FF_TRANSLATION_VELOCITY_PWM_FAN_OFF 0.035F
@@ -156,10 +157,10 @@
 #endif
 
 #ifndef KP_DISTANCE_FAN_OFF
-#define KP_DISTANCE_FAN_OFF 6.00F
+#define KP_DISTANCE_FAN_OFF 2.00F
 #endif
 #ifndef KI_DISTANCE_FAN_OFF
-#define KI_DISTANCE_FAN_OFF 0.05F
+#define KI_DISTANCE_FAN_OFF 0.0F
 #endif
 #ifndef KD_DISTANCE_FAN_OFF
 #define KD_DISTANCE_FAN_OFF 0.0F
