@@ -114,8 +114,10 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   offsets all0, ready03, no saturation and no wall flags. After user placed
   walls/paper, `w` reports front/right/left wall flags all1 and no saturation;
   read-only `:`512-sample average FR1235/FL837/R1757/L1863, standard deviations
-  4.60/3.61/3.67/3.55. All four optical channels respond. Removal response and
-  no-wall calibration remain unqualified. Existing unit001
+  4.60/3.61/3.67/3.55. After user removes walls, flags all0 and512-sample mean
+  FR71/FL58/R35/L48 (SD4.54/3.38/3.09/2.83). All four optical channels respond
+  and return to no-wall. No offsets were saved; distance/side-base calibration
+  remains pending. Existing unit001
   distance LUT and side-control baselines remain provisional for this unit.
 - UART single-side tests `6,7,8,9`, each12%/500ms plus300ms disabled coast:
 
@@ -139,5 +141,6 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   allzero; trace status already400 records at initial read and unchanged after
   tests. No NVM writes/format/calibration or identity operations were requested
   or performed. Log: `tools/logging/logs/mini_r3_unit002_full_hw_20260921.log`.
-  UART released while waiting for user direction/fan observations and wall
-  removal confirmation; all outputs remain stopped in mode0.
+  UART released while waiting for user direction/fan observations; all outputs
+  remain stopped in mode0. Wall removal follow-up log:
+  `tools/logging/logs/mini_r3_unit002_wall_clear_20260921.log`.
