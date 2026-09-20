@@ -19,6 +19,7 @@
 
 ## JLCPCB 発注データ
 
+- 2026-09-21に本体基板の取付穴4か所をØ1.6 mmへ変更し、周辺配線を調整しました。以下の20260606候補は変更前です。本体基板の発注時は再出力してください。詳細は [MAIN_MOUNT_HOLES.md](MAIN_MOUNT_HOLES.md) を参照してください。
 - 旧 Eagle 発注済み Gerber: `cad/export/reference/eagle_ordered_2026-03-22/HM_Nightfall-mini-2e_v1_eagle_ordered_2026-03-22.zip`
 - KiCad 正式候補 Gerber: `cad/export/jlcpcb/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606.zip`
 - Eagle 参照アーカイブ: `cad/export/reference/eagle_archive_20260606/mini_r2_0_eagle_sources_20260606.zip` / `mini_r2_0_eagle_exports_20260606.zip`
