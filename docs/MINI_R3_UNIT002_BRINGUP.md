@@ -2,7 +2,9 @@
 
 This is a new assembly, not the unit001 board with the unresolved hot U2.
 Current update (2026-09-21): unit002 left motor polarity is now High, matching
-its confirmed unit001-style wiring; four-direction encoder HIL passes. Earlier
+its confirmed unit001-style wiring; four-direction encoder HIL passes. Unit001's
+post-shield wall offsets have also been transferred at the user's request after
+transplanting the same optical hardware; see the final section. Earlier
 Low/pending-direction statements below are historical bring-up observations.
 User confirms 8 V / 2 A bench power, initially no noticeable heating, and IMU
 installed. Wall sensors, encoders, motors and buzzer are not installed.
@@ -189,3 +191,71 @@ contents. Do not use a broad destructive diagnostic suite for follow-up.
   mode0/UART closed. Direction mismatch is resolved; floor gains, metric
   odometry and individual wall calibration are not qualified by this test.
 - Log: `tools/logging/logs/mini_r3_unit002_left_polarity_20260921.log`.
+
+## Unit001 wall calibration transfer, 2026-09-21 JST
+
+- User transplanted the same wall sensors and explicitly requested provisional
+  reuse of unit001 calibration, with remeasurement if maze performance differs.
+  Source is the post-shield read-only dump in
+  `tools/logging/logs/mini_r3_left_motor_recheck_20260912.log`, not the obsolete
+  pre-shield offsets. Sensor offsets are FR82/FL66/R27/L43; stored side/front
+  bases and gyro offset are zero. The shared `mini-r3-wall-centre-t0.5` LUT was
+  already selected and was not changed (body-centre front40..80mm, side23..80mm).
+- Unit001's distance FRAM blob is an invalid old diagnostic fixture, not usable
+  calibration; it was deliberately NOT copied. Unit002 distance data remains
+  zero/MISS. Side-wall control still uses provisional fallback L1941/R1989:
+  the transfer does not provide measured corridor-centre baselines.
+- Backed up unit002's sensor/distance256-byte prefixes through UART; both were
+  zero. A temporary pre-timer startup hook checked exact UID, unit/model/profile,
+  NVM layout, expected68-byte format and empty256-byte destination before saving
+  only the68-byte sensor blob. It verified load and full-prefix readback, with
+  rollback on failure and safe halt on rejection. Already-matching data was
+  idempotent. ASan/UBSan host checks passed identity/layout/data rejection,
+  backup read failure, partial write failure/rollback, verification failure/
+  rollback and repeat invocation; existing NVM params and both NVM guard tests
+  also passed. Local helpers remain ignored under `build/hil_unit002/`.
+- Built/flashed temporary application with destructive diagnostics OFF, observed
+  exact transfer PASS, removed all temporary `main.c` changes, built/flashed
+  normal protected application. Both flashes verified app sectors0..6 only.
+  Final boot `974b280 DIRTY=1`, unit2, L/R forwardIN2=1/1, encoder1/-1,
+  profile0x30001/t0.5, normal guard LOCKED. No persistent source change this turn.
+  Normal build RAM274120/Flash367124B; binary SHA256:
+  `d77a433046116b552edc3dba6a236b1bca8c900c7e9058edf1b5c35a9f93f8c3`.
+- UART921600 sequence: baseline `|,w`; temporary flash/boot and `|`; normal
+  flash/boot and `w,:,|`. Normal firmware loads offsets from NVM. Final corrected
+  512-sample means FR17/FL6/R35/L63, SD3.78/3.10/3.32/2.67, all wall flags off,
+  ready03 and no saturation in the current scene (not a calibrated fixture).
+  Source and both post-transfer sensor256-byte prefixes match exactly, SHA256:
+  `ef65dd1b727fee87a65d1ab159834bcf6ba640e77124df4011651d40bd773cde`.
+  Bytes68..255 and distance prefixes are unchanged; full128KiB identity matches
+  registration backup. Trace count remains400. No maze/trace/identity writes.
+- No motors/fan/run commands were authorized or issued this turn. Final SWD
+  CFSR/HFSR0, motorTIM2CCER/CCR1/CCR3=0, DIR/STBYlow, fanTIM10CCR1=0;
+  mode0, UART closed. Persistence was checked across firmware reset/reflash,
+  not a physical power-cycle or floor-run qualification.
+- Log: `tools/logging/logs/mini_r3_unit002_sensor_transfer_20260921.log`, SHA256
+  `4ecd6813e5b27f0a9287119b0c544078f4b5442b49bede32a284c294c1d3e543`.
+
+### Remaining tuning order
+
+1. Keep2S/8V and fanOFF initially. Check front45mm and corridor-centre side
+   values; establish side baselines and check wall thresholds/end detection.
+   Reuse transferred LUT initially; remeasure only if alignment is inaccurate.
+2. Short straight floor runs: actual distance/stopping point, effective tyre
+   diameter if needed, then larger-motor velocity feedforward/PID and heading.
+3. Low-speed90-degree/U turns, front alignment and wall-end timing, then basic
+   maze exploration/map persistence/return and conservative shortest runs.
+4. Implement normal run fan start/stabilization/stop/abort integration before
+   fan-on tuning. Currently `f413_ctrl_use_fan_on_gains()` always returns false;
+   diagnostic fan operation does not qualify fan-on normal running. Tune gains,
+   turn traction and verify current/temperature with suction separately.
+5. Before3S, implement/verify cell-specific battery warnings/cutoff and motor/
+   fan voltage/duty limits;2S results do not qualify3S.
+6. Higher-speed/large/diagonal turns and the precomputed KERI route table need
+   separate qualification. The r3 profile deliberately reports precomputed
+   table incompatibility; normal r2-table preview/selection is blocked.
+
+Body geometry, half-cell distances, encoder configuration and the r3 IMU
+orientation/rearward2.5mm position are already represented in machine settings.
+This does not establish dynamic equivalence to r2: larger motors, suction and
+supply changes require tuning, and fan/3S/route integration still needs software.
