@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nightfall · ターンシミュレータ</title>
+  <style>
+    :root{color-scheme:light;--bg:#f3f5f7;--panel:#fff;--ink:#172832;--muted:#627480;--line:#dce3e7;--accent:#087b80;--accent-bg:#e6f4f2;--ideal:#59758c;--measured:#c78540;--warn:#83570f;--warn-bg:#fff8e8;--red:#b34040}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif}button,input{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:7px;padding:9px 13px;background:white;color:var(--ink);font-weight:600}button:hover{background:#f4f8f9;border-color:#a8bec8}button:disabled{opacity:.45;cursor:not-allowed}button.primary{background:var(--accent);border-color:var(--accent);color:#fff}button.primary:hover{background:#086b6f}button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #67b7ba;outline-offset:3px}input[type=range]{accent-color:var(--accent);width:100%;margin:12px 0 0;height:16px}input[type=number]{width:100%;border:1px solid #cad6dc;border-radius:5px;padding:7px 9px;background:#fff;color:var(--ink);font-family:ui-monospace,SFMono-Regular,monospace;font-size:14px}input:invalid{border-color:var(--red)}input[type=checkbox]{accent-color:var(--accent)}h1,h2,h3,p{margin:0}h1{font-size:23px;letter-spacing:.025em}h2{font-size:15px;font-weight:700}h3{font-size:13px}small,.muted{color:var(--muted)}.mono{font-family:ui-monospace,SFMono-Regular,monospace}.masthead{background:#162b36;color:white;padding:21px 32px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{color:#8ec6cb;font:11px/1.4 ui-monospace,monospace;letter-spacing:.2em;margin-bottom:4px}.masthead p{color:#b8cbd4;font-size:12px;margin-top:5px}.mode{border:1px solid #4a6573;border-radius:5px;padding:5px 9px;color:#bed7df;font:11px ui-monospace,monospace;white-space:nowrap}.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;max-width:1540px;margin:0 auto;padding:24px 28px 32px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}.panel-head{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}.section{padding:18px}.section+.section{border-top:1px solid var(--line)}.section-kicker{color:var(--muted);font-size:10px;letter-spacing:.14em;font-weight:700;margin-bottom:12px}.field{margin:0 0 19px}.field:last-child{margin-bottom:0}.field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.field-head label{font-size:12px;font-weight:600}.field-head .number{width:109px;display:flex;align-items:center;gap:5px}.field-head .number input{width:82px}.unit{font-size:10px;color:var(--muted);white-space:nowrap}.field-hint{font-size:10px;color:var(--muted);margin-top:3px}.target-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.target-fields .wide{grid-column:1/-1}.target-fields label{font-size:11px;display:block;margin-bottom:4px}.buttons{display:flex;gap:8px}.buttons button{flex:1}.full{width:100%}.hint{font-size:11px;color:var(--muted);margin-top:10px}.badge{border-radius:4px;background:#eaf0f3;color:#5b6c77;padding:3px 7px;font-size:10px;white-space:nowrap}.badge.fresh{background:var(--accent-bg);color:#087778}.badge.stale{background:var(--warn-bg);color:var(--warn)}.workspace{min-width:0;display:flex;flex-direction:column;gap:16px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{padding:15px 17px}.stat-label{font-size:11px;color:var(--muted)}.stat-value{font:23px/1.4 ui-monospace,SFMono-Regular,monospace;margin-top:5px;letter-spacing:-.04em}.stat-unit{font-size:11px;color:var(--muted);margin-left:4px}.stat-sub{font-size:10px;color:var(--muted);margin-top:3px;min-height:16px}.plot-wrap{position:relative;min-width:0}.xy-svg{width:100%;height:440px;display:block}.yaw-svg{width:100%;height:180px;display:block}.chart-caption{font-size:11px;color:var(--muted);padding:0 18px 14px}.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;color:var(--muted)}.legend label{display:flex;align-items:center;gap:6px;cursor:pointer}.swatch{width:19px;height:0;border-top:3px solid var(--accent);display:inline-block}.swatch.ideal{border-top:2px dashed var(--ideal)}.swatch.measured{border-top:2px solid var(--measured)}.chart-controls{display:flex;align-items:center;gap:12px;padding:10px 18px;background:#fafcfc;border-top:1px solid var(--line)}.chart-controls button{padding:5px 11px;min-width:68px;font-size:11px}.chart-controls input{margin:0;flex:1;min-width:50px}.chart-controls output{font:11px ui-monospace,monospace;min-width:80px;text-align:right}.bottom{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.note{font-size:11px;color:var(--warn);background:var(--warn-bg);border:1px solid #ecdba7;border-radius:6px;padding:11px 12px;margin-bottom:12px;line-height:1.8}.note:empty{display:none}.warning-list{margin:0;padding-left:17px;font-size:12px;color:var(--warn)}.warning-list li+li{margin-top:6px}.kv{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 13px;font-size:11px}.kv dt{color:var(--muted);overflow-wrap:anywhere}.kv dd{margin:0;text-align:right;font-family:ui-monospace,monospace;overflow-wrap:anywhere;max-width:220px}.kv dt.heading{grid-column:1/-1;color:var(--ink);font-weight:700;margin-top:6px}.code{background:#f5f7f9;border:1px solid var(--line);border-radius:6px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.7 ui-monospace,SFMono-Regular,monospace;max-height:240px;overflow:auto}.error{display:none;background:#fff1f0;border:1px solid #e9b3ae;color:#942f29;padding:12px 16px;border-radius:7px;font-size:12px}.error.visible{display:block}.state-text{font-size:11px;color:var(--muted);min-height:18px;margin-top:10px}.details{margin-top:12px;font-size:11px}.details summary{cursor:pointer;color:var(--muted)}.source-list{margin:9px 0 0;padding-left:17px;color:var(--muted);font-size:11px;overflow-wrap:anywhere}.foot{max-width:1540px;margin:0 auto;padding:0 28px 25px;color:var(--muted);font-size:10px}.empty{fill:#899ba5;font-size:13px}.plot-label{fill:#69808e;font:10px ui-monospace,monospace}.plot-grid{stroke:#e5ecef;stroke-width:1}.plot-axis{stroke:#c7d4dc;stroke-width:1.2}svg{overflow:hidden}.endpoint{fill:var(--accent);stroke:white;stroke-width:2}.target{fill:none;stroke:#71627c;stroke-width:1.8}
+    @media(min-width:1400px){.xy-svg{height:485px}}@media(max-width:1000px){.layout{grid-template-columns:270px minmax(0,1fr);padding:18px;gap:16px}.stats{grid-template-columns:1fr 1fr}.bottom{grid-template-columns:1fr}.legend{gap:8px}.xy-svg{height:380px}.panel-head{flex-wrap:wrap}}@media(max-width:720px){.masthead{padding:18px 20px}.masthead .mode{display:none}.layout{display:flex;flex-direction:column;padding:14px}.sidebar .section{padding:16px}.sidebar .fields{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.sidebar .fields .section-kicker{grid-column:1/-1}.field-head{flex-wrap:wrap}.field-head .number{width:auto}.xy-svg{height:390px}.stat-value{font-size:21px}.foot{padding:0 18px 20px}}@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <header class="masthead"><div><div class="brand">NIGHTFALL / MOTION LAB</div><h1>ターンシミュレータ</h1><p>走行動画の実測軌跡と理想軌道から、次のパラメータを検討する。</p></div><div class="mode">STM32F413 · mini_r2_0 · HOST ONLY</div></header>
+  <main class="layout">
+    <aside class="sidebar panel">
+      <div class="panel-head"><h2>走行パラメータ</h2><span class="badge" id="result-state">読込中</span></div>
+      <form id="parameters-form">
+        <div class="section fields" id="motion-fields"><div class="section-kicker">01 / TURN PROFILE</div></div>
+        <div class="section"><div class="section-kicker">02 / TARGET POSE</div><div class="target-fields" id="target-fields"></div><p class="hint">開始点を (0, 0)、前方を +Y とした終点。左回りが正の角度です。</p></div>
+        <div class="section"><div class="buttons"><button type="submit" class="primary" id="simulate">軌跡を計算</button><button type="button" id="reset">初期値</button></div><button type="button" id="tune" class="full" style="margin-top:9px">目標位置・角度に合わせる</button><p class="hint">速度と旋回角を固定し、角加速度・入口距離・出口距離の候補を計算します。</p><div id="request-status" class="state-text" role="status" aria-live="polite">モデルを読み込んでいます…</div></div>
+      </form>
+      <div class="section"><h3>モデルの適用範囲</h3><p class="hint" id="model-status">確認中</p><dl class="kv" id="coverage"></dl></div>
+    </aside>
+    <div class="workspace">
+      <div id="error" class="error" role="alert"></div>
+      <section class="stats" aria-label="計算結果の指標">
+        <div class="panel stat"><div class="stat-label">終点の位置誤差</div><div class="stat-value"><span id="metric-position">—</span><span class="stat-unit">mm</span></div><div class="stat-sub" id="metric-position-sub">目標に対する予測</div></div>
+        <div class="panel stat"><div class="stat-label" id="heading-metric-label">終点の角度誤差</div><div class="stat-value"><span id="metric-heading">—</span><span class="stat-unit">deg</span></div><div class="stat-sub" id="heading-metric-sub">目標に対する予測</div></div>
+        <div class="panel stat"><div class="stat-label">走行時間</div><div class="stat-value"><span id="metric-duration">—</span><span class="stat-unit">ms</span></div><div class="stat-sub">入口直進から出口まで</div></div>
+        <div class="panel stat"><div class="stat-label">予測終点</div><div class="stat-value" style="font-size:18px"><span id="metric-endpoint">—</span></div><div class="stat-sub">X / Y [mm]</div></div>
+      </section>
+      <section class="panel" aria-labelledby="trajectory-heading">
+        <div class="panel-head"><h2 id="trajectory-heading">走行軌跡</h2><div class="legend"><label><input type="checkbox" id="show-predicted" checked><i class="swatch"></i>予測</label><label><input type="checkbox" id="show-ideal" checked><i class="swatch ideal"></i>理想</label><label><input type="checkbox" id="show-measured" checked><i class="swatch measured"></i>実測</label></div></div>
+        <div class="plot-wrap"><svg id="xy-chart" class="xy-svg" role="img" aria-label="ターンの平面軌跡。Xは右、Yは前方。等縮尺。"></svg></div>
+        <div class="chart-caption">X：右 / Y：前方 [mm] · 縦横は等縮尺 · 紫の十字：目標終点 · 実測は個別の過去試行</div>
+        <div class="chart-controls"><button type="button" id="play" disabled>▶ 再生</button><input id="scrub" aria-label="軌跡の表示時刻" type="range" min="0" max="1000" value="1000" disabled><output id="time-label">— ms</output></div>
+      </section>
+      <section class="panel" aria-labelledby="yaw-heading"><div class="panel-head"><h2 id="yaw-heading">姿勢角の時間変化</h2><span class="muted" style="font-size:10px">左回り ＋ / 右回り −</span></div><svg id="yaw-chart" class="yaw-svg" role="img" aria-label="走行時間と姿勢角の関係"></svg></section>
+      <div class="bottom">
+        <section class="panel"><div class="panel-head"><h2>予測の根拠と制約</h2><span class="badge">実機検証前</span></div><div class="section"><div class="note" id="validation-note">シミュレーションの小さな終点誤差だけでは、迷路での走行成立を判定できません。実測範囲と検証誤差を併せて確認してください。</div><p id="validation-summary" class="hint" style="margin:0 0 12px"></p><ul id="warnings" class="warning-list"></ul><dl id="metrics" class="kv"></dl><details class="details"><summary>表示中の実測データ</summary><ul id="sources" class="source-list"></ul></details><details class="details"><summary>モデルの検証指標</summary><dl id="model-metrics" class="kv"></dl></details></div></section>
+        <section class="panel"><div class="panel-head"><h2>パラメータ候補</h2><button type="button" id="download" disabled style="padding:5px 9px;font-size:11px">JSON を保存 ↓</button></div><div class="section"><p class="muted" style="font-size:11px;margin-bottom:10px">計算結果と適用範囲を保存して、実測結果との比較に使えます。</p><pre id="assignments" class="code">計算結果がここに表示されます。</pre><p id="optimization" class="hint"></p></div></section>
+      </div>
+    </div>
+  </main>
+  <footer class="foot">NIGHTFALL TURN SIMULATOR · ホスト上の軌跡検討ツール · 実機での予測精度・迷路走行は別途検証が必要です。</footer>
+  <script>
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const fields = [
+      {key:'velocity', label:'走行速度', unit:'mm/s', min:10, max:5000, step:1, value:500},
+      {key:'alpha', label:'角加速度', unit:'deg/s²', min:100, max:200000, step:1, value:9750},
+      {key:'angle', label:'実効指令角度', unit:'deg', min:-180, max:180, step:0.01, value:-135, hint:'右回り − / 左回り ＋ · params の設定角と異なる場合あり'},
+      {key:'dist_in', label:'入口距離', unit:'mm', min:0, max:150, step:0.01, value:4},
+      {key:'dist_out', label:'出口距離', unit:'mm', min:0, max:150, step:0.01, value:17.5}
+    ];
+    const targetFields = [
+      {key:'target_x', label:'目標 X [mm]', value:95.46},
+      {key:'target_y', label:'目標 Y [mm]', value:31.82},
+      {key:'target_theta', label:'目標角度 [deg]', value:-135}
+    ];
+    let initialState = {}, lastResult = null, busy = false, stale = true, playFrame = null;
+    let xyTransform = null, lastMeasured = [], chartWidth = 0;
+    const fmt = (value, digits=2) => typeof value === 'number' && Number.isFinite(value) ? value.toFixed(digits) : '—';
+    const finite = value => typeof value === 'number' && Number.isFinite(value);
+    const element = (tag, attrs={}, text='') => {
+      const e = document.createElement(tag);
+      Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+      if (text !== '') e.textContent = text;
+      return e;
+    };
+    const svgNode = (tag, attrs={}, text='') => {
+      const e = document.createElementNS('http://www.w3.org/2000/svg',tag);
+      Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k,v));
+      if (text !== '') e.textContent = text;
+      return e;
+    };
+    function markStale() {
+      stale = true;
+      $('result-state').className = 'badge stale';
+      $('result-state').textContent = '未計算の変更';
+      $('request-status').textContent = '表示中の軌跡は前回の計算結果です。';
+      $('download').disabled = true;
+      stopPlaying();
+    }
+    for (const f of fields) {
+      const container = element('div',{class:'field'});
+      const head = element('div',{class:'field-head'});
+      head.append(element('label',{for:f.key},f.label));
+      const number = element('div',{class:'number'});
+      const input = element('input',{type:'number',id:f.key,name:f.key,min:f.min,max:f.max,step:f.step,value:f.value,required:''});
+      number.append(input,element('span',{class:'unit'},f.unit));
+      head.append(number);
+      const range = element('input',{type:'range',id:f.key+'-range','aria-label':f.label,min:f.min,max:f.max,step:f.step,value:f.value});
+      range.addEventListener('input',() => { input.value = range.value; markStale(); });
+      input.addEventListener('input',() => { range.value = input.value; markStale(); });
+      container.append(head,range);
+      if(f.hint) container.append(element('div',{class:'field-hint'},f.hint));
+      $('motion-fields').append(container);
+    }
+    for (const f of targetFields) {
+      const wrapper = element('div',{class:f.key==='target_theta'?'wide':''});
+      const input = element('input',{type:'number',id:f.key,name:f.key,step:'0.01',value:f.value,required:''});
+      input.addEventListener('input',markStale);
+      wrapper.append(element('label',{for:f.key},f.label),input);
+      $('target-fields').append(wrapper);
+    }
+    function readParameters() {
+      return Object.fromEntries([...fields,...targetFields].map(f => [f.key,Number($(f.key).value)]));
+    }
+    function writeParameters(parameters) {
+      for(const f of [...fields,...targetFields]) {
+        if(!finite(parameters[f.key])) continue;
+        $(f.key).value = String(Math.round(parameters[f.key]*10000)/10000);
+        // Keep optimized and server default values representable by native validation.
+        if($(f.key).hasAttribute('min') && parameters[f.key] < Number($(f.key).min)) $(f.key).min = parameters[f.key];
+        if($(f.key).hasAttribute('max') && parameters[f.key] > Number($(f.key).max)) $(f.key).max = parameters[f.key];
+        $(f.key).step = 'any';
+        if($(f.key+'-range')) {
+          $(f.key+'-range').min = $(f.key).min;
+          $(f.key+'-range').max = $(f.key).max;
+          $(f.key+'-range').value = parameters[f.key];
+        }
+      }
+    }
+    function setBusy(value, action='simulate') {
+      busy = value;
+      for(const e of $('parameters-form').querySelectorAll('input,button')) e.disabled = value;
+      $('download').disabled = value || stale || !lastResult;
+      if(value) $('request-status').textContent = action==='tune' ? '目標に合わせて候補を探索しています…' : '軌跡を計算しています…';
+    }
+    function showError(message) {
+      $('error').textContent = message;
+      $('error').classList.toggle('visible',Boolean(message));
+    }
+    async function api(path,body) {
+      const options = body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
+      const response = await fetch(path,options);
+      const type = response.headers.get('content-type') || '';
+      if(!type.includes('application/json')) throw new Error('シミュレータの HTTP サーバーからこのページを開いてください。');
+      const result = await response.json();
+      if(!response.ok || result.error) throw new Error(result.error || `HTTP ${response.status}`);
+      return result;
+    }
+    async function calculate(action='simulate') {
+      if(busy || !$('parameters-form').reportValidity()) return;
+      const parameters = readParameters();
+      if(Object.values(parameters).some(v => !finite(v))) { showError('すべてのパラメータに有限の数値を入力してください。'); return; }
+      stopPlaying();
+      showError('');
+      setBusy(true,action);
+      try {
+        const result = await api('/api/'+action,parameters);
+        if(!Array.isArray(result.predicted) || !result.predicted.length) throw new Error('予測軌跡が返されませんでした。入力値とモデルを確認してください。');
+        lastResult = {...result, parameters:{...parameters,...(result.parameters||{})}};
+        if(action==='tune' && result.parameters) writeParameters(result.parameters);
+        stale = false;
+        $('result-state').textContent = action==='tune'?'調整候補':'計算済み';
+        $('result-state').className = 'badge fresh';
+        $('request-status').textContent = action==='tune'?'候補を入力欄とグラフに反映しました。':'計算結果を更新しました。';
+        $('scrub').value = 1000;
+        $('scrub').disabled = false;
+        $('play').disabled = false;
+        renderResult();
+      } catch(error) {
+        showError(error.message || String(error));
+        $('request-status').textContent = '計算できませんでした。';
+      } finally { setBusy(false); }
+    }
+    const labels = {
+      velocity:'速度 [mm/s]',alpha:'角加速度 [deg/s²]',angle:'旋回角 [deg]',dist_in:'入口距離 [mm]',dist_out:'出口距離 [mm]',
+      velocity_mm_s:'速度 [mm/s]',alpha_deg_s2:'角加速度 [deg/s²]',angle_deg:'旋回角 [deg]',
+      position_error_mm:'終点誤差 [mm]',heading_error_deg:'角度誤差 [deg]',duration_ms:'走行時間 [ms]',
+      endpoint_rmse_mm:'終点 RMSE [mm]',trajectory_rmse_mm:'軌跡 RMSE [mm]',heading_rmse_deg:'角度 RMSE [deg]',
+      train_count:'学習試行数',test_count:'検証試行数',sample_count:'試行数',count:'件数',status:'状態',
+      min:'最小',max:'最大',mae_mm:'MAE [mm]',rmse_mm:'RMSE [mm]',max_mm:'最大誤差 [mm]',
+      training:'学習データ',validation:'検証データ',leave_one_out:'試行除外検証',position:'位置',heading:'角度',
+      calibrated:'実測による補正',in_domain:'実測範囲内',extrapolation:'実測範囲外',nearest_distance:'近傍距離',
+      ideal:'理想軌道の誤差',held_out_rmse_mm:'条件除外検証 RMSE [mm]',held_out_worst_path_error_mm:'条件除外検証の最大誤差 [mm]',
+      held_out_improves_ideal:'理想軌道から精度改善',worst_path_error_mm:'最大軌跡誤差 [mm]',worst_endpoint_mm:'最大終点誤差 [mm]',
+      endpoint_x_mm:'終点 X [mm]',endpoint_y_mm:'終点 Y [mm]',endpoint_theta_deg:'終点の機体角度 [deg]',endpoint_error_mm:'終点誤差 [mm]',
+      within_observed_bounds:'観測したパラメータ範囲内',safe_recommendation_available:'走行保証を伴う推奨値',runs:'試行別の指標',
+      endpoint_course_deg:'終点の進行方向 [deg]',duration_s:'走行時間 [s]',command_duration_s:'指令時間 [s]',
+      endpoint:'終点',x_mm:'X [mm]',y_mm:'Y [mm]',theta_deg:'機体角度 [deg]',max_velocity_mm_s:'最大速度 [mm/s]',
+      max_omega_deg_s:'最大角速度 [deg/s]',max_alpha_deg_s2:'最大角加速度 [deg/s²]',max_lateral_accel_mm_s2:'最大横加速度 [mm/s²]',
+      max_reference_lateral_accel_mm_s2:'指令の最大横加速度 [mm/s²]',max_slip_deg:'最大スリップ角 [deg]',
+      limit_ratios:'性能上限に対する比率',limits_checked:'性能上限を設定済み',limits_passed:'設定した性能上限を満たす',exceeded_limits:'超過した性能上限'
+    };
+    function displayValue(value) {
+      if(value === null || value === undefined) return '未評価';
+      if(typeof value === 'boolean') return value?'はい':'いいえ';
+      if(typeof value === 'number') return Number.isInteger(value)?String(value):fmt(value,3);
+      if(Array.isArray(value)) {
+        if(value.some(v=>v&&typeof v==='object')) return `${value.length} 件（JSON に保存）`;
+        if(value.length===2&&value.every(finite)) return value[0]===value[1]?`${displayValue(value[0])}（固定）`:`${displayValue(value[0])} ～ ${displayValue(value[1])}`;
+        return value.map(displayValue).join(' / ');
+      }
+      return String(value);
+    }
+    function showKeyValues(id,data) {
+      const root = $(id); root.replaceChildren();
+      const add = (obj,level=0) => {
+        if(!obj || typeof obj !== 'object') { root.append(element('dt',{},'状態'),element('dd',{},displayValue(obj))); return; }
+        for(const [key,value] of Object.entries(obj)) {
+          if(value && typeof value === 'object' && !Array.isArray(value)) {
+            root.append(element('dt',{class:'heading'},labels[key]||key));
+            if(level<3) add(value,level+1);
+          } else root.append(element('dt',{},labels[key]||key),element('dd',{},displayValue(value)));
+        }
+      };
+      add(data);
+    }
+    function samples(trace) { return (Array.isArray(trace)?trace:[]).filter(p => finite(p.x_mm)&&finite(p.y_mm)); }
+    function headingIdentified() { return initialState.model?.heading_identified === true; }
+    function displayedAngle(point,ideal=false) { return headingIdentified()||ideal ? point.theta_deg : point.course_deg; }
+    function measured() {
+      const source = lastResult?.measured || initialState.measured || [];
+      return source.map((trace,i) => ({label:trace.label||trace.run_id||`実測 ${i+1}`,samples:samples(trace.samples||trace.trajectory||[])})).filter(t=>t.samples.length);
+    }
+    function renderResult() {
+      const r = lastResult, trajectory = samples(r.predicted), end = trajectory.at(-1);
+      const p = {...readParameters(),...(r.parameters||{})};
+      if(end) {
+        const dx=end.x_mm-p.target_x,dy=end.y_mm-p.target_y;
+        const angle=displayedAngle(end);
+        const dtheta=finite(angle)?((angle-p.target_theta+180)%360+360)%360-180:NaN;
+        $('metric-position').textContent=fmt(Math.hypot(dx,dy));
+        $('metric-position-sub').textContent=`ΔX ${fmt(dx)} / ΔY ${fmt(dy)} mm`;
+        $('metric-heading').textContent=fmt(dtheta);
+        $('metric-duration').textContent=fmt(end.t_ms,0);
+        $('metric-endpoint').textContent=`${fmt(end.x_mm,1)} / ${fmt(end.y_mm,1)}`;
+      }
+      $('warnings').replaceChildren();
+      for(const warning of r.warnings||[]) $('warnings').append(element('li',{},typeof warning==='string'?warning:JSON.stringify(warning)));
+      showKeyValues('metrics',r.metrics||{});
+      $('assignments').textContent = r.assignments || JSON.stringify(r.parameters||p,null,2);
+      $('optimization').textContent = r.optimization ?
+        (typeof r.optimization==='string'?r.optimization:`調整前の位置誤差 ${fmt(r.optimization.initial_error_mm)} mm → ${fmt(r.metrics?.endpoint_error_mm)} mm。${r.optimization.converged?'探索は収束しました。':'探索は未収束です。候補として確認してください。'}`) : '';
+      lastMeasured=measured();
+      $('sources').replaceChildren(...lastMeasured.map(t=>element('li',{},t.label)));
+      if(!lastMeasured.length) $('sources').append(element('li',{},'この条件で表示できる実測軌跡はありません。'));
+      drawCharts();
+    }
+    function chartBase(id) {
+      const svg=$(id),width=Math.max(280,svg.clientWidth),height=svg.clientHeight;
+      svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.replaceChildren();
+      return {svg,width,height};
+    }
+    function line(svg,x1,y1,x2,y2,className,extra={}) { svg.append(svgNode('line',{x1,y1,x2,y2,class:className,...extra})); }
+    function text(svg,x,y,value,extra={}) { svg.append(svgNode('text',{x,y,class:'plot-label',...extra},value)); }
+    function niceStep(span,targetCount=7) {
+      const raw=Math.max(0.000001,span/targetCount),power=10**Math.floor(Math.log10(raw)),v=raw/power;
+      return (v<=1?1:v<=2?2:v<=5?5:10)*power;
+    }
+    function plotPath(svg,points,x,y,stroke,dash='',opacity=1) {
+      if(!points.length)return;
+      const path=points.map((p,i)=>(i?'L':'M')+x(p).toFixed(2)+' '+y(p).toFixed(2)).join(' ');
+      svg.append(svgNode('path',{d:path,fill:'none',stroke,'stroke-width':stroke==='var(--accent)'?2.8:1.7,'stroke-dasharray':dash,opacity,'stroke-linejoin':'round','stroke-linecap':'round'}));
+    }
+    function heading(svg,x,y,theta,color,size=17) {
+      if(!finite(theta)) return;
+      const rad=theta*Math.PI/180,dx=-Math.sin(rad)*size,dy=-Math.cos(rad)*size;
+      line(svg,x,y,x+dx,y+dy,'',{stroke:color,'stroke-width':2});
+      const tipx=x+dx,tipy=y+dy,angle=Math.atan2(dy,dx);
+      svg.append(svgNode('path',{d:`M ${tipx-6*Math.cos(angle-.5)} ${tipy-6*Math.sin(angle-.5)} L ${tipx} ${tipy} L ${tipx-6*Math.cos(angle+.5)} ${tipy-6*Math.sin(angle+.5)}`,fill:'none',stroke:color,'stroke-width':2}));
+    }
+    function drawCharts() {
+      stopPlaying();
+      drawXY();drawYaw();updateCursor();
+    }
+    function drawXY() {
+      const {svg,width,height}=chartBase('xy-chart');
+      if(!lastResult) { text(svg,width/2,height/2,'パラメータを設定して軌跡を計算',{'text-anchor':'middle'}); return; }
+      const predicted=samples(lastResult.predicted),ideal=samples(lastResult.ideal),p={...readParameters(),...(lastResult.parameters||{})};
+      const points=[{x_mm:0,y_mm:0},{x_mm:p.target_x,y_mm:p.target_y},...predicted,...ideal,...lastMeasured.flatMap(t=>t.samples)];
+      const xs=points.map(p=>p.x_mm),ys=points.map(p=>p.y_mm);
+      let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);
+      const area={x:58,y:26,w:width-90,h:height-72};
+      const spanX=Math.max(90,xmax-xmin),spanY=Math.max(90,ymax-ymin);
+      const scale=Math.min(area.w/(spanX*1.25),area.h/(spanY*1.25));
+      const cx=(xmin+xmax)/2,cy=(ymin+ymax)/2;
+      xmin=cx-area.w/(2*scale);xmax=cx+area.w/(2*scale);ymin=cy-area.h/(2*scale);ymax=cy+area.h/(2*scale);
+      const x=v=>area.x+(v-xmin)*scale,y=v=>area.y+area.h-(v-ymin)*scale;
+      xyTransform={x,y};
+      const step=niceStep(Math.max(xmax-xmin,ymax-ymin));
+      for(let n=Math.ceil(xmin/step)*step;n<=xmax;n+=step) { line(svg,x(n),area.y,x(n),area.y+area.h,n===0?'plot-axis':'plot-grid');text(svg,x(n),height-22,String(Math.round(n*100)/100),{'text-anchor':'middle'}); }
+      for(let n=Math.ceil(ymin/step)*step;n<=ymax;n+=step) { line(svg,area.x,y(n),area.x+area.w,y(n),n===0?'plot-axis':'plot-grid');text(svg,area.x-10,y(n)+3,String(Math.round(n*100)/100),{'text-anchor':'end'}); }
+      text(svg,width-18,height-8,'X [mm]',{'text-anchor':'end'});text(svg,16,16,'Y [mm]');
+      // 90 mm is one half-size maze cell; this bar stays physically scaled.
+      if(90*scale<area.w*.6) { const bx=area.x+area.w-90*scale,by=area.y+12;line(svg,bx,by,bx+90*scale,by,'plot-axis',{'stroke-width':2});text(svg,bx+45*scale,by-5,'90 mm',{'text-anchor':'middle'}); }
+      if($('show-measured').checked) for(const t of lastMeasured) plotPath(svg,t.samples,p=>x(p.x_mm),p=>y(p.y_mm),'var(--measured)','',.48);
+      if($('show-ideal').checked) plotPath(svg,ideal,p=>x(p.x_mm),p=>y(p.y_mm),'var(--ideal)','6 5');
+      if($('show-predicted').checked) plotPath(svg,predicted,p=>x(p.x_mm),p=>y(p.y_mm),'var(--accent)');
+      const tx=x(p.target_x),ty=y(p.target_y);
+      line(svg,tx-8,ty,tx+8,ty,'target');line(svg,tx,ty-8,tx,ty+8,'target');
+      heading(svg,tx,ty,p.target_theta,'#71627c',23);text(svg,tx+11,ty+14,'TARGET');
+      svg.append(svgNode('circle',{cx:x(0),cy:y(0),r:3.5,fill:'#203e4e'}));text(svg,x(0)+9,y(0)+13,'START');
+      svg.append(svgNode('g',{id:'robot-cursor'}));
+    }
+    function drawYaw() {
+      const {svg,width,height}=chartBase('yaw-chart');
+      if(!lastResult)return;
+      const angleSamples=(trace,ideal=false)=>samples(trace).map(p=>({...p,chart_angle:displayedAngle(p,ideal)})).filter(p=>finite(p.chart_angle)&&finite(p.t_ms));
+      const predicted=angleSamples(lastResult.predicted);
+      const ideal=angleSamples(lastResult.ideal,true);
+      const real=lastMeasured.map(t=>angleSamples(t.samples));
+      const points=[...predicted,...ideal,...real.flat()];if(!points.length)return;
+      const tmax=Math.max(1,...points.map(p=>p.t_ms)),angles=points.map(p=>p.chart_angle);
+      const amin=Math.min(0,...angles),amax=Math.max(0,...angles),pad=Math.max(5,(amax-amin)*.15);
+      const ylo=amin-pad,yhi=amax+pad,area={x:58,y:18,w:width-87,h:height-53};
+      const x=v=>area.x+v/tmax*area.w,y=v=>area.y+area.h-(v-ylo)/(yhi-ylo)*area.h;
+      for(let t=0,step=niceStep(tmax);t<=tmax;t+=step) {line(svg,x(t),area.y,x(t),area.y+area.h,'plot-grid');text(svg,x(t),height-16,fmt(t,0),{'text-anchor':'middle'});}
+      const step=niceStep(yhi-ylo,4);
+      for(let a=Math.ceil(ylo/step)*step;a<=yhi;a+=step) {line(svg,area.x,y(a),area.x+area.w,y(a),a===0?'plot-axis':'plot-grid');text(svg,area.x-9,y(a)+3,fmt(a,0),{'text-anchor':'end'});}
+      text(svg,13,13,'deg');text(svg,width-8,height-4,'ms',{'text-anchor':'end'});
+      if($('show-measured').checked) for(const t of real) plotPath(svg,t,p=>x(p.t_ms),p=>y(p.chart_angle),'var(--measured)','',.48);
+      if($('show-ideal').checked) plotPath(svg,ideal,p=>x(p.t_ms),p=>y(p.chart_angle),'var(--ideal)','6 5');
+      if($('show-predicted').checked) plotPath(svg,predicted,p=>x(p.t_ms),p=>y(p.chart_angle),'var(--accent)');
+      svg.append(svgNode('line',{id:'yaw-cursor',y1:area.y,y2:area.y+area.h,stroke:'#637c87','stroke-dasharray':'3 3','data-x0':area.x,'data-w':area.w,'data-tmax':tmax}));
+    }
+    function updateCursor() {
+      if(!lastResult)return;
+      const trace=samples(lastResult.predicted),end=trace.at(-1);if(!end)return;
+      const time=end.t_ms*Number($('scrub').value)/1000;
+      const point=trace.reduce((best,p)=>Math.abs(p.t_ms-time)<Math.abs(best.t_ms-time)?p:best,trace[0]);
+      $('time-label').textContent=`${fmt(time,0)} / ${fmt(end.t_ms,0)} ms`;
+      const cursor=$('robot-cursor');
+      if(cursor&&xyTransform) {
+        cursor.replaceChildren();
+        if($('show-predicted').checked) { const {x,y}=xyTransform;cursor.append(svgNode('circle',{cx:x(point.x_mm),cy:y(point.y_mm),r:5,class:'endpoint'}));heading(cursor,x(point.x_mm),y(point.y_mm),displayedAngle(point),'var(--accent)',22); }
+      }
+      const yaw=$('yaw-cursor');if(yaw) {const x=Number(yaw.dataset.x0)+time/Number(yaw.dataset.tmax)*Number(yaw.dataset.w);yaw.setAttribute('x1',x);yaw.setAttribute('x2',x);}
+    }
+    function stopPlaying() { if(playFrame!==null)cancelAnimationFrame(playFrame);playFrame=null;$('play').textContent='▶ 再生'; }
+    $('play').addEventListener('click',()=>{
+      if(playFrame!==null){stopPlaying();return;}
+      if(!lastResult)return;
+      const end=lastResult.predicted.at(-1),duration=Math.max(1000,end.t_ms*2);
+      const initial=Number($('scrub').value)>=1000?0:Number($('scrub').value),start=performance.now();
+      $('play').textContent='Ⅱ 停止';
+      const step=now=>{const fraction=Math.min(1000,initial+(now-start)/duration*1000);$('scrub').value=fraction;updateCursor();if(fraction<1000)playFrame=requestAnimationFrame(step);else stopPlaying();};
+      playFrame=requestAnimationFrame(step);
+    });
+    $('scrub').addEventListener('input',()=>{stopPlaying();updateCursor();});
+    for(const id of ['show-predicted','show-ideal','show-measured']) $(id).addEventListener('change',drawCharts);
+    $('parameters-form').addEventListener('submit',event=>{event.preventDefault();calculate();});
+    $('tune').addEventListener('click',()=>calculate('tune'));
+    $('reset').addEventListener('click',()=>{writeParameters(initialState.defaults||{});markStale();calculate();});
+    $('download').addEventListener('click',()=>{
+      if(!lastResult||stale)return;
+      const data={schema:'nightfall_turn_simulator_export_v1',created_at:new Date().toISOString(),model:initialState.model||{},...lastResult,hardware_validated:false};
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'}));
+      const link=element('a',{href:url,download:'nightfall-turn-candidate.json'});document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+    new ResizeObserver(()=>{const width=$('xy-chart').clientWidth;if(Math.abs(width-chartWidth)>1){chartWidth=width;drawCharts();}}).observe($('xy-chart'));
+    async function initialize() {
+      setBusy(true);
+      try {
+        initialState=await api('/api/state');
+        writeParameters(initialState.defaults||{});
+        const model=initialState.model||{};
+        const statuses={diagnostic_calibrated:'実測で補正済み（診断用・迷路走行未検証）',diagnostic_insufficient_validation:'実測による補正あり・検証データ不足',uncalibrated:'未校正 · 理想軌道のみ'};
+        $('model-status').textContent=statuses[model.status]||model.status||'モデル情報を読み込みました。';
+        $('yaw-heading').textContent=headingIdentified()?'姿勢角の時間変化':'進行方向 / 指令角度';
+        $('yaw-chart').setAttribute('aria-label',headingIdentified()?'走行時間と姿勢角の関係':'予測の進行方向と理想の指令角度の時間変化');
+        $('heading-metric-label').textContent=headingIdentified()?'終点の角度誤差':'終点の進行方向誤差';
+        $('heading-metric-sub').textContent=headingIdentified()?'目標に対する予測':'機体姿勢は未同定';
+        const validation=model.metrics||{};
+        $('validation-summary').textContent=finite(validation.held_out_rmse_mm)?`条件を一つずつ学習から除いた検証: 軌跡 RMSE ${fmt(validation.held_out_rmse_mm)} mm / 観測最大誤差 ${fmt(validation.held_out_worst_path_error_mm)} mm。理想軌道の RMSE ${fmt(validation.ideal?.rmse_mm)} mm。`:'独立した条件での予測誤差は未評価です。';
+        showKeyValues('coverage',model.coverage||{});
+        showKeyValues('model-metrics',model.metrics||{});
+        setBusy(false);
+        await calculate();
+      } catch(error) {
+        showError(error.message||String(error));
+        $('model-status').textContent='モデルを取得できませんでした。';
+        $('request-status').textContent='サーバーへの接続を確認してページを再読み込みしてください。';
+        $('result-state').textContent='未接続';
+        setBusy(false);
+      }
+    }
+    initialize();
+  </script>
+</body>
+</html>

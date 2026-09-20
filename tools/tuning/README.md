@@ -2,6 +2,15 @@
 
 Host-side tuning helpers live here.
 
+## Measured-data turn simulator
+
+[`turn_simulator.py`](turn_simulator.py) adds video-based response identification,
+parameter-condition holdout validation, bounded tuning, and a local browser UI.
+See [TURN_SIMULATOR.md](TURN_SIMULATOR.md) for startup, the historical-data adapter,
+measured accuracy, and supported scope. Start with
+`python3 tools/tuning/turn_simulator.py serve`; use `fit` and `--model` for measured
+predictions. This is host-only and never applies parameters to firmware/hardware.
+
 ## `turn_tune.py`
 
 `turn_tune.py` simulates and replays F413 turn trajectories in the same
