@@ -3,7 +3,7 @@
 The user reports that fan-off exploration and mode2 shortest running work on
 mini_r3. Mode4 now starts the suction tuning phase at 50% duty (`500/1000`),
 with mini_r2 mode4's configured turn speeds. Tune version:
-`mini-r3-mode4-fan50-t0.12`. This is an initial case0 tuning profile; no suction
+`mini-r3-mode4-fan50-t0.13`. This is an initial case0 tuning profile; no suction
 motion, firmware flash, or NVM operation was performed for this change.
 
 ## Simulator and selected parameters
@@ -56,9 +56,17 @@ Local calculation artifacts are in `build/mini_r3_mode4/` (not versioned).
 
 ## case0 operation
 
-Select mode4 → case0 → sub0..9 using the normal OP UI. The fan starts after the
-optical START signal, stabilizes for the existing100 ms, then drive starts.
-It remains on through deceleration and turns off before optical STOP/log tail.
+Select mode4 → case0 → sub0..9 using the normal OP UI. After optical START,
+IMU calibration completes with the fan off. Control then holds the original
+zero distance and zero angle for20 ms before starting the fan at50%.
+Holding continues through the existing100 ms minimum fan stabilization wait.
+Before advancing, require angle within0.5 degree, angular speed within10 deg/s,
+distance within1 mm and speed within10 mm/s for20 consecutive guarded observations (at least20 ms, normally40 ms because
+STM32 `HAL_Delay(1)` adds one SysTick tick).
+Failure to settle within an additional1000 ms aborts without starting the path.
+Control stays active into the first straight without recalibration or re-zeroing
+its angle. The fan remains on through deceleration and turns off before optical
+STOP/log tail.
 Stop-switch and sensor/encoder/IMU guard aborts, timeout and PWM-start failure
 all lead through cleanup; failed preflight never starts the fan or motors.
 
@@ -96,8 +104,15 @@ current40..110 mm LUT; case0 does not use this front correction.
 - ASan/UBSan actual mode4 dispatch + production path preflight: all10 subs;
   800/1000/1200 mm/s turn selection and unchanged other-mode caps.
 - ASan/UBSan production session with mocked hardware: normal finish,
-  failed fan start, every guard abort during spinup and driving, stuck-distance
-  timeout, pressed switch, invalid path and busy-trace refusal.
+  calibration/control before fan,20 ms control lead, continuous control through
+  startup with both1/2 ms guarded polling, disturbance recovery/restart of the settled window, isolated
+  angle/omega/distance/velocity/nonfinite settling failures, failed fan start,
+  every guard abort before fan/during spinup/settling/driving, stuck-distance
+  timeout, pressed switch, invalid path and busy-trace refusal; fan-off mode2
+  retains immediate departure after control start.
+- ASan/UBSan production1 kHz control tick: stationary output zero, both yaw
+  directions and both fore/aft displacements produce opposing motor outputs;
+  initial angle remains referenced to its pre-fan origin into the first straight.
 - Production fan PWM helper with mocked HAL:50% compare, capability/stop/range
   refusal, PWM failure cleanup.
 - Runtime machine/identity/profile and front-distance reference tests,
@@ -107,3 +122,40 @@ current40..110 mm LUT; case0 does not use this front correction.
   metadata also accounts for the pre-existing uncommitted r2 case3/4 edits;
   committed metadata excludes those unrelated edits.
 - No live HIL; physical suction turns and floor/maze runs remain untested.
+
+## Fan startup heading fix (t0.13)
+
+The user observed a small chassis rotation when suction started. Latest local
+trace: `tools/logging/logs/trace_bin_20260921_215000.csv`, mode4/case0/sub2
+(large R180), test80,2762 records, SHA256
+`58156d3bc31fd15ea2c342dae30a0461de66bb14da696036d46359b25d298635`.
+No firmware SHA is recorded in this decoded CSV; live firmware identity was not
+queried. Relative to the first record, gyro/angle/velocity/right PWM first
+become nonzero at1321 ms and commanded velocity at1324 ms. VBAT ADC drops from
+2031 at0 ms to1814 at40 ms, consistent with fan loading before wheel control.
+The trace does not contain a fan-duty channel, so that drop is supporting
+evidence rather than an exact fan-start timestamp.
+
+In t0.12, the path runner started the fan, waited100 ms, then called
+`f413_ctrl_start()`. That call first performs blocking IMU stationary-offset
+calibration (200 ms settle plus500 samples/SPI/delays), resets the angle origin,
+and only then enables wheel control. Consequently the fan's startup impulse
+occurred with wheel control off, and motion during calibration could contaminate
+the offset. `f413_ctrl_tick()` does not sample motion while stopped: the zero
+angle samples in this interval are stale values, not proof of physical stillness.
+The actual startup yaw cannot be recovered from this log.
+
+The revised sequence above removes that uncontrolled interval. It uses the
+existing controller's distance hold from `start()` and an explicit angle-zero
+hold; calling `set_velocity(0)` here would disable position feedback. Powered
+holding is marked with the existing MOTOR_COAST trace flag so automatic NVM
+flushes cannot occupy shared SPI2 during IMU control. No trace schema changes.
+The same continuous control records fan-start yaw rather than hiding it with a
+second reset. Suction duty, gains, turn speed/alpha/offset and fan-off sequencing
+are unchanged. The timing fix applies to any F413 path mode with nonzero fan
+power; currently the r3 mode4 profile is the configured user of this path.
+
+Validation is host-only: the controller test verifies correction direction,
+not the real traction or disturbance magnitude. No live command, flash, motor,
+fan or NVM operation was performed. Repeat case0 on hardware to verify that
+the fan-start heading remains stable and the new settle gate passes.

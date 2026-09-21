@@ -46,6 +46,42 @@ static void tick_at_position(float mm)
 
 int main(void)
 {
+  /* Suction startup uses start()'s zero-distance hold, not set_velocity(0).
+   * Exercise the production 1 kHz controller against either direction of
+   * startup yaw and fore/aft displacement before releasing it into a run.
+   */
+  for (int sign = -1; sign <= 1; sign += 2)
+  {
+    setup();
+    f413_ctrl_stop();
+    f413_ctrl_start();
+    f413_ctrl_set_angle_target(0);
+    for (unsigned i = 0; i < 20; ++i) tick_at_position(0);
+    assert(f413_ctrl_get_motor_out_l() == 0 && f413_ctrl_get_motor_out_r() == 0);
+    s_real_angle = (float)sign * 3.0f;
+    for (unsigned i = 0; i < 100; ++i) tick_at_position(0);
+    assert(s_running && s_distance_feedback_enabled && s_angle_target_enabled);
+    assert(f413_ctrl_get_target_angle() == 0 && f413_ctrl_get_target_distance() == 0);
+    assert((float)sign * f413_ctrl_get_target_omega() < 0);
+    /* Positive yaw is CCW: right minus left output must oppose it. */
+    assert(sign * (f413_ctrl_get_motor_out_r() - f413_ctrl_get_motor_out_l()) < 0);
+    assert(f413_ctrl_get_motor_out_l() * f413_ctrl_get_motor_out_r() < 0);
+    f413_ctrl_clear_angle_target();
+    f413_ctrl_set_velocity_profile(0, 100, 10);
+    tick_at_position(0);
+    assert(f413_ctrl_get_target_angle() == 0); /* Do not re-zero to shifted yaw. */
+    assert(fabsf(f413_ctrl_get_angle() - (float)sign * 3.0f) < .001f);
+
+    setup();
+    f413_ctrl_stop();
+    f413_ctrl_start();
+    f413_ctrl_set_angle_target(0);
+    for (unsigned i = 0; i < 100; ++i) tick_at_position((float)sign * 2.0f);
+    assert(f413_ctrl_get_target_distance() == 0);
+    assert((float)sign * f413_ctrl_get_motor_out_l() < 0);
+    assert((float)sign * f413_ctrl_get_motor_out_r() < 0);
+  }
+
   setup();
   f413_ctrl_set_velocity_profile(331.662f, 0, 45);
   assert(test_primask == 0U);
@@ -89,6 +125,6 @@ int main(void)
   for (unsigned i = 0; i < 500; ++i) f413_ctrl_tick();
   assert(s_velocity_interrupt == 300 && s_acceleration_interrupt == 0);
   assert(f413_ctrl_get_target_velocity() <= 300);
-  puts("PASS: production control tick, exact stop endpoint, bounded correction, FF sign, nonzero clamps");
+  puts("PASS: production control tick, suction yaw/position hold, exact stop endpoint, bounded correction, FF sign, nonzero clamps");
   return 0;
 }

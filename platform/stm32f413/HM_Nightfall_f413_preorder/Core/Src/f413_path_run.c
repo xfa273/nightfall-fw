@@ -1961,6 +1961,46 @@ static f413_run_session_abort_reason_t f413_path_run_first_section(
                                      trace_flags);
 }
 
+#define F413_PATH_RUN_SUCTION_CONTROL_LEAD_MS (20U)
+#define F413_PATH_RUN_SUCTION_SETTLE_MAX_MS   (1000U)
+#define F413_PATH_RUN_SUCTION_SETTLE_SAMPLES  (20U)
+
+static f413_run_session_abort_reason_t f413_path_run_wait_suction_settle(
+    f413_run_session_guard_t* guard)
+{
+  const uint32_t deadline = HAL_GetTick() + F413_PATH_RUN_SUCTION_SETTLE_MAX_MS;
+  uint32_t settled_samples = 0U;
+
+  /* Keep the pre-fan angle/position origin until the startup impulse settles. */
+  while ((int32_t)(HAL_GetTick() - deadline) < 0)
+  {
+    const f413_run_session_abort_reason_t reason =
+        f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+    if ((fabsf(f413_ctrl_get_angle()) <= 0.5f) &&
+        (fabsf(f413_ctrl_get_real_omega()) <= 10.0f) &&
+        (fabsf(f413_ctrl_get_distance()) <= 1.0f) &&
+        (fabsf(f413_ctrl_get_real_velocity()) <= 10.0f))
+    {
+      /* Count observations, not assumed 1 ms periods: HAL_Delay(1) adds a
+       * SysTick tick, so this is normally a 40 ms window (at least 20 ms).
+       */
+      if (++settled_samples >= F413_PATH_RUN_SUCTION_SETTLE_SAMPLES)
+      {
+        return F413_RUN_SESSION_ABORT_NONE;
+      }
+    }
+    else
+    {
+      settled_samples = 0U;
+    }
+  }
+  return F413_RUN_SESSION_ABORT_TIMEOUT;
+}
+
 void f413_path_run_session_once(uint8_t mode,
                                 uint8_t case_index,
                                 uint16_t base_trace_flag,
@@ -2049,8 +2089,24 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_trace_on_run_start();
   if (mode_params->fan_power > 0)
   {
-    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing\r\n",
+    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan\r\n",
                  (unsigned int)mode_params->fan_power);
+    /* Defer NVM/SPI trace flushes throughout powered stationary holding. */
+    f413_trace_log_set_mode_flags((uint16_t)(base_trace_flag |
+                                             NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
+                                             NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
+    /* Calibrate with the fan off, then hold distance=0 and angle=0 at 1 kHz.
+     * Do not call set_velocity(0): that would disable distance feedback.
+     * Do not restart control after spinup: it would discard the starting yaw.
+     */
+    f413_ctrl_start();
+    f413_ctrl_set_angle_target(0.0f);
+    abort_reason = f413_run_session_wait_with_auto_step_guarded(
+        F413_PATH_RUN_SUCTION_CONTROL_LEAD_MS, &guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      goto cleanup;
+    }
     if (!f413_hw_fan_start((uint16_t)mode_params->fan_power))
     {
       abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
@@ -2063,8 +2119,16 @@ void f413_path_run_session_once(uint8_t mode,
     {
       goto cleanup;
     }
+    abort_reason = f413_path_run_wait_suction_settle(&guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      goto cleanup;
+    }
   }
-  f413_ctrl_start();
+  else
+  {
+    f413_ctrl_start();
+  }
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
 
