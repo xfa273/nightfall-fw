@@ -1,7 +1,7 @@
 #include "shortest_run_params.h"
 #include "solver_params.h"
 
-/* mini r3 seed from mini r2: fan remains OFF until running is tuned. */
+/* mini r3: mode4 is the fan-50% tuning seed; other modes remain fan-off. */
 
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
@@ -264,60 +264,62 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
 };
 
 // ========================= Mode 4 =========================
+/* PR #21 ideal-response seed, exact runtime angles; see
+ * docs/MINI_R3_MODE4_SUCTION_TUNING.md. Not yet measured with suction. */
 const ShortestRunModeParams_t shortestRunModeParams4 = {
     // 90deg
     .velocity_turn90 = 800.0f,
-    .alpha_turn90 = 51500.0f,
+    .alpha_turn90 = 50000.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 4.0f,
-    .dist_offset_out = 14.0f,
+    .dist_offset_in = 0.6f,
+    .dist_offset_out = 1.0f,
     .val_offset_in = 98.0f,
     .fwall_kx = 0.6f,
     .angle_turn_90 = 90.0f,
     .dist_wall_end = 0.0f,
     // Large 90deg
     .velocity_l_turn_90 = 1000.0f,
-    .alpha_l_turn_90 = 17300.0f,
+    .alpha_l_turn_90 = 20500.0f,
     .angle_l_turn_90 = 90.0f,
-    .dist_l_turn_in_90 = 1.0f,
-    .dist_l_turn_out_90 = 6.0f,
+    .dist_l_turn_in_90 = 3.6f,
+    .dist_l_turn_out_90 = 3.7f,
     // Large 180deg
     .velocity_l_turn_180 = 1000.0f,
-    .alpha_l_turn_180 = 15000.0f,
+    .alpha_l_turn_180 = 18000.0f,
     .angle_l_turn_180 = 180.0f,
-    .dist_l_turn_in_180 = 0.0f,
-    .dist_l_turn_out_180 = 0.0f,
+    .dist_l_turn_in_180 = 1.0f,
+    .dist_l_turn_out_180 = 1.5f,
     // 45deg In
     .velocity_turn45in = 1200.0f,
-    .alpha_turn45in = 16422.0f,
+    .alpha_turn45in = 47250.0f,
     .angle_turn45in = 45.0f,
-    .dist_turn45in_in = 0.0f,
-    .dist_turn45in_out = 20.0f,
+    .dist_turn45in_in = 2.1f,
+    .dist_turn45in_out = 20.8f,
     // 45deg Out
     .velocity_turn45out = 1200.0f,
-    .alpha_turn45out = 16422.0f,
+    .alpha_turn45out = 47250.0f,
     .angle_turn45out = 45.0f,
-    .dist_turn45out_in = 18.0f,
-    .dist_turn45out_out = 2.0f,
+    .dist_turn45out_in = 20.8f,
+    .dist_turn45out_out = 2.2f,
     // V90deg
     .velocity_turnV90 = 1200.0f,
-    .alpha_turnV90 = 25838.0f,
+    .alpha_turnV90 = 115250.0f,
     .angle_turnV90 = 90.0f,
-    .dist_turnV90_in = 5.0f,
-    .dist_turnV90_out = 7.0f,
+    .dist_turnV90_in = 17.5f,
+    .dist_turnV90_out = 18.5f,
     // 135deg In
     .velocity_turn135in = 1200.0f,
-    .alpha_turn135in = 17395.0f,
+    .alpha_turn135in = 47500.0f,
     .angle_turn135in = 135.0f,
-    .dist_turn135in_in = 8.0f,
-    .dist_turn135in_out = 2.0f,
+    .dist_turn135in_in = 16.6f,
+    .dist_turn135in_out = 9.5f,
     // 135deg Out
     .velocity_turn135out = 1200.0f,
-    .alpha_turn135out = 17736.0f,
+    .alpha_turn135out = 50250.0f,
     .angle_turn135out = 135.0f,
-    .dist_turn135out_in = 2.0f,
-    .dist_turn135out_out = 10.0f,
-    .fan_power = 0,
+    .dist_turn135out_in = 12.1f,
+    .dist_turn135out_out = 20.1f,
+    .fan_power = 500,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）

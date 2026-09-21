@@ -1,6 +1,8 @@
 #include "f413_mode4.h"
 
 #include "f413_mode_shortest.h"
+#include "params.h"
+#include "shortest_run_params.h"
 
 typedef struct {
   uint8_t case_index;
@@ -11,7 +13,7 @@ typedef struct {
 typedef struct {
   uint8_t case_index;
   const char* label;
-  uint16_t codes[4];
+  uint16_t codes[5];
   uint16_t code_count;
 } f413_mode4_case0_sub_t;
 
@@ -58,6 +60,22 @@ static const f413_mode4_case0_sub_t k_case0_subs[10] = {
   {5U, "mode4-case0-sub9 straight case5", {209U, 0U, 0U, 0U},         1U},
 };
 
+/* Same sub-number meanings as mode2. A diagonal exit/V90 is approached
+ * through an entry turn, never from a cardinal heading. S4 gives 1200 mm/s
+ * sufficient run-up with mode4 case8; DS3 gives room for terminal braking. */
+static const f413_mode4_case0_sub_t k_suction_case0_subs[10] = {
+  {3U, "mode4-case0-sub0 small R90",  {203U, 300U, 203U},                3U},
+  {3U, "mode4-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
+  {3U, "mode4-case0-sub2 large R180", {204U, 502U, 203U},                3U},
+  {8U, "mode4-case0-sub3 R45 in",     {204U, 701U, 1003U},               3U},
+  {8U, "mode4-case0-sub4 L45 out",    {204U, 701U, 1003U, 704U, 203U},   5U},
+  {8U, "mode4-case0-sub5 L-V90",      {204U, 701U, 1003U, 802U, 1003U},  5U},
+  {8U, "mode4-case0-sub6 R135 in",    {204U, 901U, 1003U},               3U},
+  {8U, "mode4-case0-sub7 L135 out",   {204U, 901U, 1003U, 904U, 203U},   5U},
+  {1U, "mode4-case0-sub8 straight case1", {209U},                       1U},
+  {5U, "mode4-case0-sub9 straight case5", {209U},                       1U},
+};
+
 void f413_mode4_run_case(uint8_t op_case)
 {
   f413_shortest_case_config_t config;
@@ -83,9 +101,11 @@ void f413_mode4_run_case0_sub(uint8_t sub)
     return;
   }
 
-  f413_mode_shortest_run_case0_path(k_case0_subs[sub].label,
+  const f413_mode4_case0_sub_t* tests = (shortestRunModeParams4.fan_power > 0)
+      ? k_suction_case0_subs : k_case0_subs;
+  f413_mode_shortest_run_case0_path(tests[sub].label,
                                     4U,
-                                    k_case0_subs[sub].case_index,
-                                    k_case0_subs[sub].codes,
-                                    k_case0_subs[sub].code_count);
+                                    tests[sub].case_index,
+                                    tests[sub].codes,
+                                    tests[sub].code_count);
 }

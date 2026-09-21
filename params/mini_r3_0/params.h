@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-2s-fanoff-t0.11"
+#define PARAMS_TUNE_VERSION "mini-r3-mode4-fan50-t0.12"
 
 /*============================================================
     各種定数（パラメータ）設定

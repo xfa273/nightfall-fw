@@ -17,6 +17,7 @@
 #define F413_HW_VIDEO_SYNC_FINAL_OFF_MS (500U)
 
 extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim10;
 extern TIM_HandleTypeDef htim11;
 
 static volatile uint16_t g_buzzer_async_remaining_ms = 0U;
@@ -287,4 +288,30 @@ void f413_hw_motor_set(bool enable,
   }
 
   HAL_GPIO_WritePin(MOTOR_STBY_GPIO_Port, MOTOR_STBY_Pin, GPIO_PIN_SET);
+}
+
+/* TIM10 fan command is in per-mille units, as in the legacy mode params. */
+void f413_hw_fan_stop(void)
+{
+  __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, 0U);
+  (void)HAL_TIM_PWM_Stop(&htim10, TIM_CHANNEL_1);
+}
+
+bool f413_hw_fan_start(uint16_t duty_per_mille)
+{
+  f413_hw_fan_stop();
+  if (!f413_machine_has(F413_CAP_FAN) || (duty_per_mille == 0U) ||
+      (duty_per_mille > 1000U) || f413_hw_stop_switch_pressed())
+  {
+    return false;
+  }
+  const uint32_t compare =
+      ((uint32_t)duty_per_mille * (__HAL_TIM_GET_AUTORELOAD(&htim10) + 1U)) / 1000U;
+  __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, compare);
+  if (HAL_TIM_PWM_Start(&htim10, TIM_CHANNEL_1) != HAL_OK)
+  {
+    f413_hw_fan_stop();
+    return false;
+  }
+  return true;
 }

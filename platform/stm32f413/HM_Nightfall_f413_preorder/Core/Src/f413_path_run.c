@@ -246,6 +246,25 @@ static bool f413_path_run_is_large_turn_code(uint16_t code)
          (code == NF_LEGACY_PATH_LARGE_LEFT_180);
 }
 
+/* The first suction tune opts in through mode4's fan setting. Other modes
+ * and the fanless mini r2 profile retain the existing bring-up caps. */
+static bool f413_path_run_suction_mode(const ShortestRunModeParams_t* params)
+{
+  return (params == &shortestRunModeParams4) && (params->fan_power > 0);
+}
+
+static float f413_path_run_turn_velocity_cap(const ShortestRunModeParams_t* params)
+{
+  return f413_path_run_suction_mode(params) ? 1200.0f :
+      NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP;
+}
+
+static float f413_path_run_diagonal_velocity_cap(const ShortestRunModeParams_t* params)
+{
+  return f413_path_run_suction_mode(params) ? 1200.0f :
+      NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP;
+}
+
 static bool f413_path_run_turn_velocity_from_code(
     uint16_t code,
     const ShortestRunModeParams_t* params,
@@ -295,7 +314,7 @@ static bool f413_path_run_turn_velocity_from_code(
       return false;
   }
   *out_velocity_mm_s = f413_path_run_cap_positive(
-      velocity, NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP);
+      velocity, f413_path_run_turn_velocity_cap(params));
   return isfinite(*out_velocity_mm_s) && (*out_velocity_mm_s > 0.0f);
 }
 
@@ -319,6 +338,7 @@ static bool f413_path_run_straight_limits(
 }
 
 static bool f413_path_run_diagonal_limits(
+    const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
     NfLinearLimits* out)
 {
@@ -329,7 +349,7 @@ static bool f413_path_run_diagonal_limits(
 
   out->vmax_mm_s = f413_path_run_cap_positive(
       case_params->velocity_d_straight,
-      NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP);
+      f413_path_run_diagonal_velocity_cap(mode_params));
   out->switch_velocity_mm_s = 0.0;
   out->accel_low_mm_s2 = case_params->acceleration_d_straight;
   out->accel_high_mm_s2 = case_params->acceleration_d_straight_dash;
@@ -401,7 +421,7 @@ static float f413_path_run_next_diagonal_exit_velocity(
   {
     return f413_path_run_cap_positive(
         case_params->velocity_d_straight,
-        NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP);
+        f413_path_run_diagonal_velocity_cap(mode_params));
   }
   if ((next_code == 0U) && isfinite(test_terminal_velocity_mm_s) &&
       (test_terminal_velocity_mm_s > 0.0f))
@@ -412,7 +432,12 @@ static float f413_path_run_next_diagonal_exit_velocity(
      * implicit 45 mm tail below then performs the stop.  Normal shortest paths
      * pass zero here and retain the cardinal-terminal invariant.
      */
-    return test_terminal_velocity_mm_s;
+    /* Suction tests brake in the explicit DS tail before the final 45 mm.
+     * 1200 -> 0 in 45 mm would exceed the inherited case8 deceleration. */
+    return f413_path_run_suction_mode(mode_params)
+        ? fminf(test_terminal_velocity_mm_s,
+                f413_path_run_goal_entry_speed(case_params))
+        : test_terminal_velocity_mm_s;
   }
   return 0.0f;
 }
@@ -661,7 +686,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
       float exit_velocity;
       NfLinearPlan plan;
 
-      if (!f413_path_run_diagonal_limits(case_params, &diagonal_limits))
+      if (!f413_path_run_diagonal_limits(mode_params, case_params, &diagonal_limits))
       {
         result.status = F413_PATH_RUN_PREFLIGHT_INVALID_ARGUMENT;
         result.index = index;
@@ -1952,7 +1977,7 @@ void f413_path_run_session_once(uint8_t mode,
   const float diagonal_velocity = f413_path_run_velocity_or_cap(
       case_params->velocity_d_straight,
       straight_velocity,
-      NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP);
+      f413_path_run_diagonal_velocity_cap(mode_params));
   const float first_speed = f413_path_run_cap_positive(
       sqrtf(fmaxf(0.0f,
                   2.0f * case_params->acceleration_straight *
@@ -1961,7 +1986,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
   bool diagonal = false;
-  uint16_t pi;
+  uint16_t pi = 0U;
   uint16_t code;
   size_t prepared_linear_index = 0U;
 
@@ -2001,8 +2026,8 @@ void f413_path_run_session_once(uint8_t mode,
                (double)straight_velocity,
                (double)diagonal_velocity,
                (double)NIGHTFALL_F413_PATH_VELOCITY_CAP,
-               (double)NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP,
-               (double)NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP);
+               (double)f413_path_run_diagonal_velocity_cap(mode_params),
+               (double)f413_path_run_turn_velocity_cap(mode_params));
 
   if (!f413_path_run_print_turn_profiles_before_run(mode_params))
   {
@@ -2022,6 +2047,23 @@ void f413_path_run_session_once(uint8_t mode,
                                             mode_params->wall_end_thr_l_high,
                                             mode_params->wall_end_thr_l_low);
   f413_path_run_trace_on_run_start();
+  if (mode_params->fan_power > 0)
+  {
+    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing\r\n",
+                 (unsigned int)mode_params->fan_power);
+    if (!f413_hw_fan_start((uint16_t)mode_params->fan_power))
+    {
+      abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
+      trace_printf("[RUN-TEST] path canceled(fan start failed)\r\n");
+      goto cleanup;
+    }
+    abort_reason = f413_run_session_wait_with_auto_step_guarded(
+        (uint32_t)SUCTION_FAN_STABILIZE_DELAY_MS, &guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      goto cleanup;
+    }
+  }
   f413_ctrl_start();
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
@@ -2199,6 +2241,7 @@ void f413_path_run_session_once(uint8_t mode,
                    NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG));
   }
 
+cleanup:
   f413_ctrl_clear_angle_target();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
@@ -2207,6 +2250,10 @@ void f413_path_run_session_once(uint8_t mode,
                                            NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG));
   (void)f413_run_session_wait_with_auto_step_guarded(NIGHTFALL_F413_PATH_COAST_MS, &guard);
   f413_ctrl_stop();
+  if (mode_params->fan_power > 0)
+  {
+    f413_hw_fan_stop();
+  }
   f413_path_run_distance_cursor_invalidate(
       &g_f413_path_run_distance_cursor);
   f413_wall_runtime_reset_wall_end_thresholds();
