@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-mode4-fan50-t0.14"
+#define PARAMS_TUNE_VERSION "mini-r3-mode4-fan50-t0.15"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -168,7 +168,7 @@
 #define FF_DISTANCE_FAN_OFF 1.0F
 #endif
 
-#define SUCTION_FAN_STABILIZE_DELAY_MS 100
+#define SUCTION_FAN_STABILIZE_DELAY_MS 300
 
 #ifndef SUCTION_GAIN_ON_THRESHOLD_PERCENT
 #define SUCTION_GAIN_ON_THRESHOLD_PERCENT 50U

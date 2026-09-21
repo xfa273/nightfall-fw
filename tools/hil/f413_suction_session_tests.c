@@ -14,7 +14,8 @@ typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
 static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
 static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
 static unsigned wait_extra_ms;
-static uint16_t fan_duty;
+static uint16_t fan_duty, requested_duty;
+static uint32_t expected_ramp_ms;
 static uint16_t flags;
 static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
 static bool suction, disturbed, duty_fail;
@@ -35,17 +36,17 @@ bool f413_hw_fan_start(uint16_t duty)
 bool f413_hw_fan_set_duty(uint16_t duty)
 {
   assert(running && holding && fan && profiles == 0);
-  assert(duty >= fan_duty && duty <= 500);
+  assert(duty >= fan_duty && duty <= requested_duty);
   uint32_t elapsed = tick - fan_tick;
-  uint16_t expected = elapsed >= F413_PATH_RUN_SUCTION_RAMP_MS ? 500 :
-      (uint16_t)((500 * elapsed + F413_PATH_RUN_SUCTION_RAMP_MS - 1) / F413_PATH_RUN_SUCTION_RAMP_MS);
+  uint16_t expected = elapsed >= expected_ramp_ms ? requested_duty :
+      (uint16_t)((requested_duty * elapsed + expected_ramp_ms - 1) / expected_ramp_ms);
   assert(duty == expected);
   if (duty_fail) return false;
   duty_updates++; fan_duty = duty;
-  if (duty == 500)
+  if (duty == requested_duty)
   {
-    assert(elapsed >= F413_PATH_RUN_SUCTION_RAMP_MS);
-    assert(elapsed < F413_PATH_RUN_SUCTION_RAMP_MS + F413_PATH_RUN_SUCTION_RAMP_STEP_MS + wait_extra_ms);
+    assert(elapsed >= expected_ramp_ms);
+    assert(elapsed < expected_ramp_ms + F413_PATH_RUN_SUCTION_RAMP_STEP_MS + wait_extra_ms);
     full_duty_tick = tick;
   }
   return true;
@@ -71,9 +72,9 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
     assert(starts == 1 && running && fan == suction);
     if (suction)
     {
-      assert(tick - fan_tick >= F413_PATH_RUN_SUCTION_RAMP_MS + SUCTION_FAN_STABILIZE_DELAY_MS);
-      assert(fan_duty == 500 && duty_updates > 0);
-      assert(tick - full_duty_tick == SUCTION_FAN_STABILIZE_DELAY_MS + wait_extra_ms);
+      assert(tick - fan_tick >= expected_ramp_ms + 300U);
+      assert(fan_duty == requested_duty && duty_updates > 0);
+      assert(tick - full_duty_tick == 300U + wait_extra_ms);
       if (disturbed) assert(angle == 2.655f); /* Preserve the measured start origin. */
     }
   }
@@ -103,7 +104,7 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
   /* Cover guarded polling overruns as well as exact millisecond waits. */
   tick += ms + wait_extra_ms;
   phase_t phase = cleanup ? CLEANUP : profiles ? DRIVE :
-      !fan ? LEAD : fan_duty < 500 ? RAMP : SPINUP;
+      !fan ? LEAD : fan_duty < requested_duty ? RAMP : SPINUP;
   if (phase == LEAD || phase == RAMP || phase == SPINUP)
   {
     assert(running && holding && profiles == 0);
@@ -138,7 +139,7 @@ static void reset(void)
 {
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
-  wait_extra_ms = 0; fan_duty = 0;
+  wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
   position = velocity = target = angle = omega = 0;
@@ -155,6 +156,21 @@ static void stopped(unsigned expected_fan_starts)
 }
 int main(void)
 {
+  /* The user specifies a rate, not a fixed duration for every target. */
+  const struct { uint16_t duty; uint32_t ms; } ramps[] = {
+    {250, 300}, {500, 600}, {750, 900}, {1000, 1200}
+  };
+  for (unsigned i = 0; i < sizeof(ramps) / sizeof(ramps[0]); ++i)
+  {
+    reset(); requested_duty = ramps[i].duty; expected_ramp_ms = ramps[i].ms;
+    flags = NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG;
+    f413_ctrl_start(); f413_ctrl_set_angle_target(0);
+    f413_run_session_guard_t guard = {0};
+    assert(f413_run_session_wait_with_auto_step_guarded(20, &guard) == F413_RUN_SESSION_ABORT_NONE);
+    assert(f413_path_run_start_suction(requested_duty, &guard) == F413_RUN_SESSION_ABORT_NONE);
+    assert(fan_duty == requested_duty && full_duty_tick - fan_tick == ramps[i].ms);
+    f413_ctrl_stop(); f413_hw_fan_stop();
+  }
   reset(); run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); wait_extra_ms=3; run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); tick=UINT32_MAX-1610U; run(); stopped(1); assert(position > 400);
@@ -175,5 +191,5 @@ int main(void)
   reset(); suction=false; run();
   assert(starts == 1 && fan_starts == 0 && fan_stops == 0 && profiles > 0);
   assert(first_drive_tick == control_tick && !running && !tracing);
-  puts("suction session: hold before fan, elapsed-time ramp, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
+  puts("suction session: hold before fan, 25/50/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
 }

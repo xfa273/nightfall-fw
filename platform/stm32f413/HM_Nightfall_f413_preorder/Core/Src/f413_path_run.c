@@ -1962,14 +1962,21 @@ static f413_run_session_abort_reason_t f413_path_run_first_section(
 }
 
 #define F413_PATH_RUN_SUCTION_CONTROL_LEAD_MS (20U)
-#define F413_PATH_RUN_SUCTION_RAMP_MS         (300U)
+#define F413_PATH_RUN_SUCTION_RAMP_FULL_SCALE_MS (1200U)
 #define F413_PATH_RUN_SUCTION_RAMP_STEP_MS    (10U)
+
+static uint32_t f413_path_run_suction_ramp_ms(uint16_t target_duty)
+{
+  /* Constant slew rate: 500/1000 takes 600 ms; 1000/1000 takes 1200 ms. */
+  return ((uint32_t)target_duty * F413_PATH_RUN_SUCTION_RAMP_FULL_SCALE_MS + 999U) / 1000U;
+}
 
 static f413_run_session_abort_reason_t f413_path_run_start_suction(
     uint16_t target_duty,
     f413_run_session_guard_t* guard)
 {
   uint32_t start_ms;
+  const uint32_t ramp_ms = f413_path_run_suction_ramp_ms(target_duty);
 
   if ((target_duty == 0U) || (target_duty > 1000U) || !f413_hw_fan_start(1U))
   {
@@ -1991,18 +1998,17 @@ static f413_run_session_abort_reason_t f413_path_run_start_suction(
       return reason;
     }
     elapsed_ms = HAL_GetTick() - start_ms;
-    if (elapsed_ms > F413_PATH_RUN_SUCTION_RAMP_MS)
+    if (elapsed_ms > ramp_ms)
     {
-      elapsed_ms = F413_PATH_RUN_SUCTION_RAMP_MS;
+      elapsed_ms = ramp_ms;
     }
     duty = (uint16_t)(((uint32_t)target_duty * elapsed_ms +
-                       F413_PATH_RUN_SUCTION_RAMP_MS - 1U) /
-                      F413_PATH_RUN_SUCTION_RAMP_MS);
+                       ramp_ms - 1U) / ramp_ms);
     if (!f413_hw_fan_set_duty(duty))
     {
       return F413_RUN_SESSION_ABORT_IMU_FAULT;
     }
-    if (elapsed_ms >= F413_PATH_RUN_SUCTION_RAMP_MS)
+    if (elapsed_ms >= ramp_ms)
     {
       return F413_RUN_SESSION_ABORT_NONE;
     }
@@ -2097,8 +2103,10 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_trace_on_run_start();
   if (mode_params->fan_power > 0)
   {
-    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan ramp=300ms\r\n",
-                 (unsigned int)mode_params->fan_power);
+    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan ramp=%lums wait=%lums\r\n",
+                 (unsigned int)mode_params->fan_power,
+                 (unsigned long)f413_path_run_suction_ramp_ms((uint16_t)mode_params->fan_power),
+                 (unsigned long)SUCTION_FAN_STABILIZE_DELAY_MS);
     /* Defer NVM/SPI trace flushes throughout powered stationary holding. */
     f413_trace_log_set_mode_flags((uint16_t)(base_trace_flag |
                                              NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |

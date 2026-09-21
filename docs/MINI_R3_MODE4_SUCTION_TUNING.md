@@ -3,7 +3,7 @@
 The user reports that fan-off exploration and mode2 shortest running work on
 mini_r3. Mode4 now starts the suction tuning phase at 50% duty (`500/1000`),
 with mini_r2 mode4's configured turn speeds. Tune version:
-`mini-r3-mode4-fan50-t0.14`. This is an initial case0 tuning profile; no suction
+`mini-r3-mode4-fan50-t0.15`. This is an initial case0 tuning profile; no suction
 motion, firmware flash, or NVM operation was performed for this change.
 
 ## Simulator and selected parameters
@@ -58,8 +58,9 @@ Local calculation artifacts are in `build/mini_r3_mode4/` (not versioned).
 
 Select mode4 → case0 → sub0..9 using the normal OP UI. After optical START,
 IMU calibration completes with the fan off. Control then holds the original
-zero distance and zero angle for20 ms. Fan PWM starts at1/1000, increases over
-300 ms to50%, then stays at50% during the existing100 ms stabilization wait.
+zero distance and zero angle for20 ms. Fan PWM starts at1/1000 and increases
+at a fixed rate:50% in600 ms,100% in1200 ms. At the configured50% target,
+it then stays at50% for300 ms before departure.
 The ramp uses elapsed milliseconds and updates the running PWM compare every
 10 ms guarded wait; it does not stop/restart the PWM between updates.
 Control stays active into the first straight without recalibration or re-zeroing
@@ -102,7 +103,8 @@ current40..110 mm LUT; case0 does not use this front correction.
 - ASan/UBSan actual mode4 dispatch + production path preflight: all10 subs;
   800/1000/1200 mm/s turn selection and unchanged other-mode caps.
 - ASan/UBSan production session with mocked hardware: normal finish,
-  calibration/control before fan,20 ms control lead, monotonic ramp to50%,
+  calibration/control before fan,20 ms control lead, monotonic ramp at25/50/75/100%
+  taking300/600/900/1200 ms respectively,300 ms wait after reaching50%,
   elapsed-time ramp under delayed waits and SysTick wrap, continuous control,
   latest-log pose observation regression (no extra startup timeout), failed
   fan start/duty update, every guard abort before fan/during ramp/stabilization/
@@ -158,7 +160,7 @@ not the real traction or disturbance magnitude. No live command, flash, motor,
 fan or NVM operation was performed. The next recorded trial below exposed the
 settling failure that those direction-only host tests did not establish.
 
-## Startup timeout correction (t0.14)
+## Startup timeout correction (t0.14 history; ramp/wait extended in t0.15)
 
 The user then reported that the fan spun but the run ended before moving.
 Latest local trace `tools/logging/logs/trace_bin_20260921_220753.csv` has2777
@@ -201,3 +203,21 @@ All startup phases retain switch/sensor/IMU/encoder guards and failure cleanup.
 F413/F405 builds, production PWM/session/control host tests, all10 mode4 paths,
 225 path-linear and14210 route numeric checks pass. No UART, flash, reset,
 fan/motor command or NVM operation was performed by the agent.
+
+## Slower fan startup (t0.15)
+
+The user reports substantial improvement with t0.14 but some remaining
+instability, and requests half the ramp rate plus a300 ms post-target wait.
+Use `ceil(target_per_mille *1200 /1000)` milliseconds for the ramp duration:
+50% takes600 ms and100% takes1200 ms, rather than assigning one duration to
+every target. Keep the elapsed-time interpolation and10 ms guarded PWM updates.
+Set mini_r3's runtime `SUCTION_FAN_STABILIZE_DELAY_MS` to300 ms; its currently
+configured target remains50%. Thus departure occurs about900 ms after fan
+startup (600+300 ms), with continuous pose feedback and the original heading.
+The startup message reports the actual ramp duration and post-target wait.
+
+The existing host session tests check25/50/75/100% endpoint times, the300 ms
+post-target wait, delayed polls, timer wrap, all-phase aborts and cleanup.
+Runtime machine/profile and route-table tests and F413/F405 builds pass.
+No live hardware command or firmware flash was performed; the user's requested
+slower startup remains to be evaluated physically.
