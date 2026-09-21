@@ -111,7 +111,7 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 
 ## FRAM trace CSV表示（調整時の標準運用）
 
-調整作業ではWeb版ビューアを使います。Web UI起動後は、左サイドバーのCSVメニューでログを選ぶだけで、FRAM v2ログ用の固定グラフが即時表示されます。
+調整作業ではWeb版ビューアを使います。Web UI起動後は、左サイドバーのCSVメニューでログを選ぶだけで、FRAM traceログ用の固定グラフが表示されます。
 
 ```bash
 tools/logging/visualizer/run_visualizer.sh
@@ -120,13 +120,27 @@ tools/logging/visualizer/run_visualizer.sh
 表示対象:
 
 - `*.plotjuggler.csv` は一覧から除外します。
-- FRAM v2ログは `distance / velocity / motor / angle / omega / flags` の固定グラフで表示します。
-- 各グラフには単位付きY軸、個別の時間軸、右側の系列名を表示します。
-- `tune_ref` / `tune_error` などの派生列は内部で自動生成します。
+- 物理量は基本的にSI単位へ換算し、ユーザ指定により角度・角速度はdeg・deg/sで表示します。時間軸・X min/max・Durationは秒です。
+- 距離m、速度m/s、加速度m/s²、角度deg、角速度deg/s。各グラフの軸・系列名にも単位を付けます。
+- モータ指令は符号付き比率（1=100%、元ログの1000に相当）。ADC/エンコーダはカウント、flags/予約欄はrawとして明示し、校正情報なしに電圧や距離へ換算しません。
+- `tune_ref_m_s` / `tune_error_dps` などの派生列は、TUNEフラグと軸番号があるログのみ生成して対応する物理量のグラフに配置します。壁観測の予約欄は調整指令とみなしません。
+- 元のmdps/mdegと換算値を同じ軸に重ねません。元CSV・binary・firmwareの保存単位/スキーマは維持し、読み込み時に換算します。
 - アップロードしたCSVは `tools/logging/logs/uploaded/` に保存されます。
-- 旧8列CSVは従来通り、プリセットや列名指定で表示できます。
+- 旧8列CSVはプリセットや列名指定で表示できます。時刻は秒へ換算し、単位情報のない任意のparam列はrawのまま表示します。
 
 新しいログを取得した後は、Web UI左側の `Refresh log list` を押してからCSVを選びます。`Auto-refresh log list` を有効にすると、数秒ごとに一覧が更新されます。PlotJugglerのCSV読み込みポップアップは使わないため、調整作業中は毎回同じ操作で確認できます。
+
+表示モジュールを更新した際はビューアを再起動してください。古いimport済みモジュールが
+プロセス内に残る場合があります。表示単位の単体/図生成試験は次で実行できます。
+
+```bash
+python3 -m unittest discover -s tools/logging -p 'test_trace_units.py' -v
+```
+
+2026-09-21修正: 23:04:42のmode6/case0/sub1ログ（3866行）で、実角速度
+`-1684200 mdps`を未換算のまま`deg/s`軸に描画していた。正しくは
+`-1684.2 deg/s`。角度にも同じ1000倍混在があった。
+修正後の時間幅は3.986 s、実角度最小-90.359 deg。
 
 ## PlotJugglerでのFRAM trace CSV表示（詳細確認用）
 
@@ -156,7 +170,7 @@ tools/logging/run_plotjuggler.sh tools/logging/logs/stm32_log_20260510_153411.cs
 tools/logging/run_plotjuggler.sh --pick
 ```
 
-内部では、元CSVを相対秒 `time` 列付きの `*.plotjuggler.csv` に変換してから、次の形で起動します。
+内部では、元CSVを相対秒 `time` 列付き・SI単位（角度deg・角速度deg/s）の `*.plotjuggler.csv` に変換してから、次の形で起動します。標準テンプレートも同じ単位の列を使い、角度と角速度は別のグラフに表示します。
 
 ```bash
 plotjuggler --nosplash --datafile path/to/log.plotjuggler.csv --layout tools/logging/plotjuggler/nightfall_f413_tune.xml
@@ -181,15 +195,21 @@ tools/logging/run_plotjuggler.sh --layout path/to/custom.xml tools/logging/logs/
 
 まず見ると便利な系列:
 
-- `distance_mm` と `tune_ref`: distance調整の目標と実測
-- `target_velocity_mm_s` と `real_velocity_mm_s`: 速度追従
-- `velocity_error_mm_s`: 速度誤差
-- `motor_out_l` と `motor_out_r`: 左右モータ出力
+- `target_distance_m` と `distance_m`: 距離の目標と実測
+- `target_velocity_m_s` と `real_velocity_m_s`: 速度追従
+- `velocity_error_m_s`: 速度誤差
+- `motor_duty_l` と `motor_duty_r`: 左右モータ出力比率
 - `angle_deg` と `target_angle_deg`: 角度追従
 - `target_omega_dps` と `real_omega_dps`: 角速度追従
 - `flag_motor_forward` / `flag_motor_coast` / `flag_motor_reverse`: 走行位相
 
-調整用ログの場合、`tune_ref` と `tune_error` も追加されます。`reserved_i32_0` は生値のまま残し、`tune_ref` は `reserved_i32_0 / 1000` に変換した値です。
+調整用ログの場合、軸に応じて `tune_ref_m` / `tune_ref_m_s` / `tune_ref_deg` /
+`tune_ref_dps` と対応する `tune_error_*` を追加します。`reserved_i32_0` は生値を保持。
+前壁合わせのyaw errorはFR-FL距離差なのでmで表示し、角度とは区別します。
+
+旧単位の列名を使う独自レイアウトには、変換時に `--legacy-units` を指定できます。
+標準テンプレートは、このオプションなしで新たに変換したCSVと組み合わせてください。
+`--no-derived` は派生列を省略しますが、既定の単位換算（s/m/m/s/m/s²/deg/deg/s）は適用します。
 
 ## `render_search_dump.py` の探索map表示
 

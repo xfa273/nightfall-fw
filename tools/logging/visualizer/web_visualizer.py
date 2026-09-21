@@ -11,7 +11,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[1]
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 
-from export_plotjuggler_csv import _build_output, _load_nightfall_csv
+from export_plotjuggler_csv import _build_display_output, _load_nightfall_csv
 
 
 def _repo_root_from_this_file() -> Path:
@@ -202,9 +202,9 @@ def _load_nightfall_trace_df(path: Path):
     import pandas as pd
 
     columns, rows, meta = _load_nightfall_csv(path)
-    out_columns, out_rows = _build_output(columns, rows, meta, True)
+    out_columns, out_rows = _build_display_output(columns, rows, meta)
     df = pd.DataFrame(out_rows, columns=out_columns)
-    df = df.apply(pd.to_numeric, errors="coerce").fillna(0)
+    df = df.apply(pd.to_numeric, errors="coerce")
     return df, meta
 
 
@@ -213,7 +213,7 @@ def _build_plot(df, y_cols: List[str], mode: str):
     import plotly.express as px
     from plotly.subplots import make_subplots
 
-    x = df["time_ms"]
+    x = df["time_ms"] * 0.001
     palette = px.colors.qualitative.Plotly
 
     if mode == "Stacked (multiple graphs)":
@@ -226,7 +226,7 @@ def _build_plot(df, y_cols: List[str], mode: str):
                 col=1,
             )
             fig.update_yaxes(title_text=col, row=i + 1, col=1)
-        fig.update_xaxes(title_text="time_ms", row=len(y_cols), col=1)
+        fig.update_xaxes(title_text="Time [s]", row=len(y_cols), col=1)
         fig.update_layout(height=max(450, 180 * len(y_cols)), margin=dict(l=40, r=20, t=40, b=40))
         return fig
 
@@ -237,8 +237,8 @@ def _build_plot(df, y_cols: List[str], mode: str):
     fig.update_layout(
         height=650,
         margin=dict(l=40, r=20, t=40, b=40),
-        xaxis_title="time_ms",
-        yaxis_title="value",
+        xaxis_title="Time [s]",
+        yaxis_title="value [raw; legacy units unspecified]",
         legend_title_text="params",
     )
     fig.update_xaxes(rangeslider_visible=False)
@@ -251,21 +251,23 @@ def _build_nightfall_plot(df):
     import plotly.express as px
 
     groups = [
-        ("Trace", "raw", ["timestamp_ms", "seq", "op_mode", "op_case", "op_sub", "test_id"]),
-        ("Distance", "mm", ["target_distance_mm", "distance_mm", "distance_error_mm"]),
-        ("Velocity", "mm/s", ["target_velocity_mm_s", "real_velocity_mm_s", "accel_velocity_mm_s", "velocity_error_mm_s", "accel_velocity_error_mm_s"]),
-        ("IMU Accel", "mm/s2", ["accel_forward_mm_s2"]),
-        ("Encoder", "count/tick", ["encoder_l", "encoder_r"]),
-        ("Motor", "Duty", ["motor_out_avg", "motor_out_diff", "motor_out_l", "motor_out_r"]),
-        ("Wall Sensor", "ADC", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
-        ("Search Wall Read", "ADC", ["wall_read_fr", "wall_read_r", "wall_read_fl", "wall_read_l"]),
-        ("Battery", "ADC", ["adc_vbat"]),
-        ("Angle", "deg", ["angle_deg", "target_angle_deg", "angle_mdeg", "target_angle_mdeg"]),
-        ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "gyro_z_raw_dps", "omega_error_dps", "target_omega_mdps", "real_omega_mdps", "gyro_z_raw_mdps"]),
+        ("Trace", "raw", ["seq", "op_mode", "op_case", "op_sub", "test_id"]),
+        ("Timestamp", "s", ["timestamp_s"]),
+        ("Distance", "m", ["target_distance_m", "distance_m", "distance_error_m", "tune_ref_m", "tune_error_m"]),
+        ("Velocity", "m/s", ["target_velocity_m_s", "real_velocity_m_s", "accel_velocity_m_s", "velocity_error_m_s", "accel_velocity_error_m_s", "tune_ref_m_s", "tune_error_m_s"]),
+        ("IMU Accel", "m/s²", ["accel_forward_m_s2"]),
+        ("Encoder", "count", ["encoder_l", "encoder_r"]),
+        ("Motor duty", "1", ["motor_duty_avg", "motor_duty_diff", "motor_duty_l", "motor_duty_r"]),
+        ("Wall Sensor", "ADC count", ["adc_fr", "adc_r", "adc_fl", "adc_l"]),
+        ("Search Wall Read", "ADC count", ["wall_read_fr", "wall_read_r", "wall_read_fl", "wall_read_l"]),
+        ("Battery", "ADC count", ["adc_vbat"]),
+        ("Angle", "deg", ["angle_deg", "target_angle_deg", "tune_ref_deg", "tune_error_deg"]),
+        ("Omega", "deg/s", ["target_omega_dps", "real_omega_dps", "gyro_z_raw_dps", "omega_z_dps", "omega_error_dps", "tune_ref_dps", "tune_error_dps"] + [c for c in df.columns if c.startswith("gyro_z_lpf_") and c.endswith("_dps")]),
+        ("Event duration", "s", [c for c in df.columns if c.startswith("event_") and c.endswith("_duration_s")]),
+        ("Front match error", "m", [c for c in df.columns if c.startswith("event_front_match_") and c.endswith("_error_m")]),
         ("Flags", "raw / 0-1", ["flags", "flag_idle", "flag_motor_forward", "flag_motor_coast", "flag_motor_reverse", "flag_abort_switch", "flag_abort_wall_fault", "flag_abort_encoder_fault", "flag_abort_imu_fault", "flag_angle_target", "flag_auto"]),
         ("Reserved i32", "raw", ["reserved_i32_0", "reserved_i32_1", "reserved_i32_2", "reserved_i32_3"]),
         ("Reserved u16", "raw", ["reserved_u16_0", "reserved_u16_1"]),
-        ("Tune", "raw", ["tune_ref", "tune_error"]),
     ]
 
     grouped_cols = {col for _title, _unit, cols in groups for col in cols}
@@ -274,7 +276,7 @@ def _build_nightfall_plot(df):
         if col not in grouped_cols and col not in {"time", "time_ms"}
     ]
     if extra_cols:
-        groups.append(("Other", "raw", extra_cols))
+        groups.append(("Other diagnostics", "raw", extra_cols))
 
     available_groups = [(title, unit, cols) for title, unit, cols in groups if any(c in df.columns for c in cols)]
     fig = make_subplots(
@@ -294,7 +296,7 @@ def _build_nightfall_plot(df):
                 continue
             color = palette[color_i % len(palette)]
             line = dict(color=color)
-            trace_kwargs = dict(x=df["time_ms"], y=df[col], mode="lines", name=col, line=line, showlegend=False)
+            trace_kwargs = dict(x=df["time"], y=df[col], mode="lines", name=col, line=line, showlegend=False)
             fig.add_trace(
                 go.Scatter(**trace_kwargs),
                 row=row,
@@ -303,7 +305,7 @@ def _build_nightfall_plot(df):
             legend_lines.append(f"<span style='color:{color}'>■</span> {col}")
             color_i += 1
         fig.update_yaxes(title_text=f"{title} [{unit}]", row=row, col=1)
-        fig.update_xaxes(showticklabels=True, showgrid=True, gridcolor="rgba(128,128,128,0.25)", row=row, col=1)
+        fig.update_xaxes(title_text="Time [s]", showticklabels=True, showgrid=True, gridcolor="rgba(128,128,128,0.25)", row=row, col=1)
         y_domain = fig.layout[f"yaxis{row if row > 1 else ''}"].domain
         annotations.append(
             dict(
@@ -348,12 +350,12 @@ def _trace_op_label(meta: Dict[str, str], df) -> str:
     return f"mode{mode} / case{case if case is not None else '?'} / sub{sub if sub is not None else '?'}"
 
 
-def _render_trace_summary(rows: int, duration_ms: float, log_format: str, git_sha: str, op_label: str) -> None:
+def _render_trace_summary(rows: int, duration_s: float, log_format: str, git_sha: str, op_label: str) -> None:
     import streamlit as st
 
     items = [
         ("Rows", str(rows)),
-        ("Duration", f"{duration_ms:.0f} ms"),
+        ("Duration", f"{duration_s:.3f} s"),
         ("Format", log_format),
         ("Git", git_sha),
         ("Op", op_label),
@@ -514,7 +516,7 @@ def main() -> int:
     st.caption(f"CSV: {selected_csv}")
 
     @st.cache_data(show_spinner=False)
-    def _load_trace_cached(path_str: str, mtime: float):
+    def _load_trace_cached(path_str: str, mtime: float, units_version: str):
         return _load_nightfall_trace_df(Path(path_str))
 
     @st.cache_data(show_spinner=False)
@@ -527,31 +529,31 @@ def main() -> int:
         return _coerce_8cols(df0), mm_cols
 
     selected_mtime = selected_csv.stat().st_mtime
-    x_min = sidebar.text_input("X min (ms)", value="")
-    x_max = sidebar.text_input("X max (ms)", value="")
+    x_min = sidebar.text_input("X min (s)", value="")
+    x_max = sidebar.text_input("X max (s)", value="")
     max_points = sidebar.number_input("Max points (downsample)", min_value=1000, max_value=500000, value=80000, step=1000)
 
     if _is_nightfall_trace_csv(selected_csv):
-        df_named, meta = _load_trace_cached(str(selected_csv), selected_mtime)
+        df_named, meta = _load_trace_cached(str(selected_csv), selected_mtime, "metric-degrees-v1")
         df_view = df_named
 
         try:
             left = float(x_min) if x_min.strip() else None
             right = float(x_max) if x_max.strip() else None
             if left is not None:
-                df_view = df_view[df_view["time_ms"] >= left]
+                df_view = df_view[df_view["time"] >= left]
             if right is not None:
-                df_view = df_view[df_view["time_ms"] <= right]
+                df_view = df_view[df_view["time"] <= right]
         except ValueError:
             st.warning("X min / X max は数値で入力してください（空欄は自動）。")
 
         df_view = _downsample(df_view, int(max_points))
         fig = _build_nightfall_plot(df_view)
 
-        duration_ms = float(df_named["time_ms"].max()) if "time_ms" in df_named.columns else 0.0
+        duration_s = float(df_named["time"].max()) if "time" in df_named.columns else 0.0
         _render_trace_summary(
             len(df_named),
-            duration_ms,
+            duration_s,
             meta.get("log_format", "nightfall_trace"),
             meta.get("fw_git_sha", "-"),
             _trace_op_label(meta, df_named),
@@ -598,9 +600,9 @@ def main() -> int:
         left = float(x_min) if x_min.strip() else None
         right = float(x_max) if x_max.strip() else None
         if left is not None:
-            df_view = df_view[df_view["time_ms"] >= left]
+            df_view = df_view[df_view["time_ms"] * 0.001 >= left]
         if right is not None:
-            df_view = df_view[df_view["time_ms"] <= right]
+            df_view = df_view[df_view["time_ms"] * 0.001 <= right]
     except ValueError:
         st.warning("X min / X max は数値で入力してください（空欄は自動）。")
 
