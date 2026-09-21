@@ -26,6 +26,16 @@ int main(void)
         : FF_TRANSLATION_STATIC_PWM_FAN_OFF + 100 * (FF_TRANSLATION_VELOCITY_PWM_FAN_OFF + KP_VELOCITY_FAN_OFF + KI_VELOCITY_FAN_OFF);
     assert(f413_ctrl_get_motor_out_l() == lrintf(expected));
     assert(f413_ctrl_get_motor_out_r() == lrintf(expected));
+    /* Translation gain tests must use the selected angle gains as well. */
+    setup(); fan_active=on;
+    f413_ctrl_tune_start(F413_CTRL_TUNE_AXIS_VELOCITY,0,F413_CTRL_TUNE_PATTERN_STEP);
+    s_real_angle=2;
+    tick_at_position(0);
+    expected = -2 * (on ? KP_ANGLE_FAN_ON + KI_ANGLE_FAN_ON : KP_ANGLE_FAN_OFF + KI_ANGLE_FAN_OFF);
+    assert(fabsf(f413_ctrl_get_target_omega()-expected) < .001f);
+    f413_ctrl_tune_stop();
+    setup(); fan_active=on;
+    f413_ctrl_set_velocity(100);
     /* Turning the fan off selects OFF again without re-zeroing the robot. */
     fan_active=false;
     assert(!f413_ctrl_use_fan_on_gains() && s_running);

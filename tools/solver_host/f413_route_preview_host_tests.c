@@ -1137,11 +1137,8 @@ f413_test_runner_preflight_mode2_case(uint8_t case_index)
 {
   const ShortestRunCaseParams_t* run_case =
       &shortestRunCaseParamsMode2[case_index - 1U];
-  const float first_speed = f413_path_run_cap_positive(
-      sqrtf(fmaxf(0.0f,
-                  2.0f * run_case->acceleration_straight *
-                      (float)DIST_FIRST_SEC)),
-      NIGHTFALL_F413_PATH_VELOCITY_CAP);
+  const float first_speed = f413_path_run_boundary_speed(
+      &shortestRunModeParams2, run_case, (float)DIST_FIRST_SEC);
 
   return f413_path_run_preflight(
       path, ROUTE_MAX_LEN, &shortestRunModeParams2, run_case, first_speed,

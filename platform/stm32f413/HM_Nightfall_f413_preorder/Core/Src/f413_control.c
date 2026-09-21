@@ -32,26 +32,10 @@
 #define F413_CTRL_ENCODER_SIGN_R  (f413_machine_hardware()->encoder_sign_r)
 
 /* ---------- 制御ゲイン ---------- */
-#define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
-#define F413_CTRL_KI_ANGLE        (0.0f)
-#define F413_CTRL_KD_ANGLE        (0.0f)
 #define F413_CTRL_ANGLE_OMEGA_MAX (4000.0f)
-#ifndef F413_CTRL_TUNE_STRAIGHT_KP_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KP_ANGLE (4.0f)
-#endif
-#ifndef F413_CTRL_TUNE_STRAIGHT_KI_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KI_ANGLE (0.0f)
-#endif
-#ifndef F413_CTRL_TUNE_STRAIGHT_KD_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KD_ANGLE (0.0f)
-#endif
 #ifndef F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX
 #define F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX (60.0f)
 #endif
-#define F413_CTRL_OMEGA_I_LIMIT   (6000.0f)
-#define F413_CTRL_ROT_PWM_MIN     (100.0f)
-#define F413_CTRL_ROT_MIN_OMEGA_REF (10.0f)
-#define F413_CTRL_ROT_MIN_VEL_ABS (1.0f)
 #define F413_CTRL_TRANS_FF_MIN_VEL_ABS (1.0f)
 #define F413_CTRL_TRANS_FF_MIN_ACCEL_ABS (1.0f)
 #ifndef CTRL_ENABLE_ANTI_WINDUP
@@ -93,7 +77,6 @@
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
 #define F413_IMU_FORWARD_ACCEL_REG  (f413_machine_hardware()->imu_forward_accel_reg)
 #define F413_IMU_FORWARD_ACCEL_SIGN (f413_machine_hardware()->imu_forward_accel_sign)
-#define F413_CTRL_VEL_EST_MAX     (1200.0f)
 #define F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS (64U)
 #define F413_CTRL_TUNE_TOTAL_MS   (800U)
 #define F413_CTRL_TUNE_RAMP_MS    (400U)
@@ -1318,14 +1301,8 @@ void f413_ctrl_tick(void)
     }
 
     s_accel_velocity = f413_ctrl_update_velocity_accel_comp(real_velocity_raw, accel_forward_for_comp);
-    if (s_accel_velocity > F413_CTRL_VEL_EST_MAX)
-    {
-        s_accel_velocity = F413_CTRL_VEL_EST_MAX;
-    }
-    else if (s_accel_velocity < -F413_CTRL_VEL_EST_MAX)
-    {
-        s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
-    }
+    /* Feedback must represent actual motion, including overspeed. Do not
+     * clip the estimate to a bring-up ceiling or the commanded velocity. */
 
     if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
     {
@@ -1487,9 +1464,9 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = f413_ctrl_clamp_omega_abs((F413_CTRL_TUNE_STRAIGHT_KP_ANGLE * s_angle_error) +
-                                                                    (F413_CTRL_TUNE_STRAIGHT_KI_ANGLE * s_angle_integral) +
-                                                                    (F413_CTRL_TUNE_STRAIGHT_KD_ANGLE * s_angle_error_error),
+                        s_target_omega = f413_ctrl_clamp_omega_abs((kp_a * s_angle_error) +
+                                                                    (ki_a * s_angle_integral) +
+                                                                    (kd_a * s_angle_error_error),
                                                                     F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX);
                     }
                 }

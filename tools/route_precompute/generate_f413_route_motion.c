@@ -102,16 +102,6 @@ static NfTurnSpec scaled_turn(const NfTurnSpec* source, double scale)
   return result;
 }
 
-static double capped_positive(double candidate, double fallback, double cap)
-{
-  double value = candidate;
-  if (!isfinite(value) || (value <= 0.0))
-  {
-    value = fallback;
-  }
-  return (value > cap) ? cap : value;
-}
-
 static uint32_t seconds_to_u32_us(double seconds)
 {
   uint64_t value = 0U;
@@ -158,29 +148,25 @@ static void make_specs(NfTurnSpec timing[KIND_COUNT],
       true, mode->velocity_turn90, mode->alpha_turn90, 90.0,
       mode->dist_offset_in, mode->dist_offset_out};
 
-  for (size_t kind = 0U; kind < KIND_COUNT; kind++)
-  {
-    timing[kind].velocity_mm_s = capped_positive(
-        timing[kind].velocity_mm_s, NIGHTFALL_F413_PATH_VELOCITY,
-        NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP);
-  }
-
+  /* Canonical lattice geometry is independent of the runtime speed/alpha.
+   * These seed speeds define only the shape sampled by the route planner;
+   * timing[] above is the actual configured controller profile. */
   geometry[KIND_LARGE_90] = (NfTurnSpec){
-      true, timing[KIND_LARGE_90].velocity_mm_s, 4700.0, 90.0,
+      true, 500.0, 4700.0, 90.0,
       0.352912418, 0.352912418};
   geometry[KIND_LARGE_180] = (NfTurnSpec){
-      true, timing[KIND_LARGE_180].velocity_mm_s, 4422.213141, 180.0,
+      true, 500.0, 4422.213141, 180.0,
       15.500, 15.500};
   geometry[KIND_45_IN] = (NfTurnSpec){
-      true, timing[KIND_45_IN].velocity_mm_s, 7234.4, 45.0, 0.0, 18.640};
+      true, 500.0, 7234.4, 45.0, 0.0, 18.640};
   geometry[KIND_45_OUT] = (NfTurnSpec){
-      true, timing[KIND_45_OUT].velocity_mm_s, 7234.4, 45.0, 18.640, 0.0};
+      true, 500.0, 7234.4, 45.0, 18.640, 0.0};
   geometry[KIND_V90] = (NfTurnSpec){
-      true, timing[KIND_V90].velocity_mm_s, 12200.0, 90.0, 7.997, 7.997};
+      true, 500.0, 12200.0, 90.0, 7.997, 7.997};
   geometry[KIND_135_IN] = (NfTurnSpec){
-      true, timing[KIND_135_IN].velocity_mm_s, 8500.0, 135.0, 18.932, 11.212};
+      true, 500.0, 8500.0, 135.0, 18.932, 11.212};
   geometry[KIND_135_OUT] = (NfTurnSpec){
-      true, timing[KIND_135_OUT].velocity_mm_s, 8500.0, 135.0, 11.212, 18.932};
+      true, 500.0, 8500.0, 135.0, 11.212, 18.932};
   geometry[KIND_SMALL_90] = (NfTurnSpec){
       true, 300.0, 8920.0, 90.0, 5.956032993, 5.956032993};
 
@@ -219,7 +205,7 @@ static void calculate(Geometry geometry[KIND_COUNT],
   double expected_lateral[KIND_COUNT];
   double expected_heading[KIND_COUNT];
   const NfTurnEnvironment geometry_environment = {
-      NIGHTFALL_F413_PATH_OMEGA_CAP, 1.2};
+      0.0, 1.2};
 
   make_specs(nominal_timing, geometry_specs, expected_forward,
              expected_lateral, expected_heading);
@@ -283,16 +269,12 @@ static void calculate(Geometry geometry[KIND_COUNT],
 
     memset(output, 0, sizeof(*output));
     output->orthogonal = (NfLinearLimits){
-        capped_positive(run_case->velocity_straight,
-                        NIGHTFALL_F413_PATH_VELOCITY,
-                        NIGHTFALL_F413_PATH_VELOCITY_CAP),
+        run_case->velocity_straight,
         mode->accel_switch_velocity,
         run_case->acceleration_straight,
         run_case->acceleration_straight_dash};
     output->diagonal = (NfLinearLimits){
-        capped_positive(run_case->velocity_d_straight,
-                        output->orthogonal.vmax_mm_s,
-                        NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP),
+        run_case->velocity_d_straight,
         0.0,
         run_case->acceleration_d_straight,
         run_case->acceleration_d_straight_dash};
@@ -409,7 +391,7 @@ static void calculate(Geometry geometry[KIND_COUNT],
       for (size_t kind = 0U; kind < KIND_COUNT; kind++)
       {
         NfTurnEnvironment environment = {
-            NIGHTFALL_F413_PATH_OMEGA_CAP, 1.2};
+            mode->turn_omega_max, TURN_OMEGA_PROFILE_ROUNDING_SCALE};
         const double scale = output->speed_mm_s[speed] /
             nominal_timing[kind].velocity_mm_s;
         output->timing[speed][kind] =

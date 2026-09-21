@@ -1,5 +1,10 @@
 # mini_r3 mode4 suction tuning seed (2026-09-21)
 
+Update (t0.17): shared speed caps are removed; the simulator's 2200 deg/s
+limit is now the mode's explicit `turn_omega_max`. Case0 braking distance
+follows configured acceleration. See [current behavior](F413_RUN_PARAMETER_LIMITS.md).
+The remainder records the original tuning preparation.
+
 The user reports that fan-off exploration and mode2 shortest running work on
 mini_r3. Mode4 now starts the suction tuning phase at 50% duty (`500/1000`),
 with mini_r2 mode4's configured turn speeds. Tune version:

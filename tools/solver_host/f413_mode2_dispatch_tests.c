@@ -80,41 +80,17 @@ void f413_mode_shortest_run_path_config(const char* label,
   }
 }
 
-static void check_case6_fixed_path(void)
-{
-  static const uint16_t expected[] = {
-      203U, 701U, 1001U, 802U, 1001U, 703U, 202U};
-
-  f413_mode2_run_case(6U);
-
-  CHECK(g_path_calls == 1U);
-  CHECK(g_config_calls == 0U);
-  CHECK(g_last_mode == 2U);
-  CHECK(g_last_case == 6U);
-  CHECK(g_last_code_count ==
-        (uint16_t)(sizeof(expected) / sizeof(expected[0])));
-  for (size_t index = 0U; index < sizeof(expected) / sizeof(expected[0]); index++)
-  {
-    CHECK(g_last_codes[index] == expected[index]);
-  }
-  CHECK(!g_last_features.wall_control_enabled);
-  CHECK(!g_last_features.wall_end_correction_enabled);
-  CHECK(!g_last_features.front_wall_correction_enabled);
-  CHECK(g_last_features.angle_accum_mode);
-  CHECK(!g_last_features.test_mode_run);
-}
-
-static void check_case7_keeps_saved_maze_planner(void)
+static void check_saved_maze_planner(uint8_t selected_case)
 {
   g_config_calls = 0U;
   g_path_calls = 0U;
 
-  f413_mode2_run_case(7U);
+  f413_mode2_run_case(selected_case);
 
   CHECK(g_path_calls == 0U);
   CHECK(g_config_calls == 1U);
   CHECK(g_last_config.mode == 2U);
-  CHECK(g_last_config.op_case == 7U);
+  CHECK(g_last_config.op_case == selected_case);
   CHECK(g_last_config.diagonal_time_plan);
   CHECK(g_last_config.features.wall_control_enabled);
   CHECK(g_last_config.features.wall_end_correction_enabled);
@@ -125,8 +101,7 @@ static void check_case7_keeps_saved_maze_planner(void)
 
 int main(void)
 {
-  check_case6_fixed_path();
-  check_case7_keeps_saved_maze_planner();
+  for (uint8_t c = 6; c <= 9; ++c) check_saved_maze_planner(c);
 
   if (g_failures != 0U)
   {

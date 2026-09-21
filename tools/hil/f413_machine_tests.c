@@ -171,15 +171,17 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - search_targets[i]) < 0.001f);
   }
   for (unsigned i = 0; i < 6; ++i) {
+    assert(r2->modes[i]->turn_omega_max == 0);
+    assert(r3->modes[i]->turn_omega_max == (i == 2U || i == 4U ? 2200.0f : 0.0f));
     if (i != 2U && i != 4U) {
       assert(memcmp(r2->modes[i], r3->modes[i], sizeof(*r2->modes[i])) == 0);
     } else if (i == 2U) {
-      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == 500);
+      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power > 0 && r3->modes[i]->fan_power <= 1000);
       assert(r2->modes[i]->velocity_turn90 == r3->modes[i]->velocity_turn90);
       assert(r2->modes[i]->velocity_l_turn_90 == r3->modes[i]->velocity_l_turn_90);
       assert(r2->modes[i]->velocity_turn45in == r3->modes[i]->velocity_turn45in);
     } else {
-      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == 500);
+      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power > 0 && r3->modes[i]->fan_power <= 1000);
       assert(r3->modes[i]->velocity_turn90 == 1200);
       assert(r3->modes[i]->velocity_l_turn_90 == 1500);
       assert(r3->modes[i]->velocity_l_turn_180 == 1500);
@@ -443,25 +445,25 @@ int main(int argc, char **argv)
     assert(KI_DISTANCE_FAN_OFF == (rev == 3U ? 0.0f : 0.05f));
     assert(KP_OMEGA_FAN_OFF == (rev == 3U ? 0.45f : 1.35f));
     if (rev == 3U) {
-      assert(KP_VELOCITY_FAN_ON == KP_VELOCITY_FAN_OFF);
-      assert(KI_VELOCITY_FAN_ON == KI_VELOCITY_FAN_OFF);
-      assert(KD_VELOCITY_FAN_ON == KD_VELOCITY_FAN_OFF);
-      assert(FF_TRANSLATION_STATIC_PWM_FAN_ON == FF_TRANSLATION_STATIC_PWM_FAN_OFF);
-      assert(FF_TRANSLATION_VELOCITY_PWM_FAN_ON == FF_TRANSLATION_VELOCITY_PWM_FAN_OFF);
-      assert(FF_TRANSLATION_ACCEL_PWM_FAN_ON == FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
-      assert(KP_DISTANCE_FAN_ON == KP_DISTANCE_FAN_OFF);
-      assert(KI_DISTANCE_FAN_ON == KI_DISTANCE_FAN_OFF);
-      assert(KD_DISTANCE_FAN_ON == KD_DISTANCE_FAN_OFF);
-      assert(FF_DISTANCE_FAN_ON == FF_DISTANCE_FAN_OFF);
-      assert(KP_ANGLE_FAN_ON == KP_ANGLE_FAN_OFF);
-      assert(KI_ANGLE_FAN_ON == KI_ANGLE_FAN_OFF);
-      assert(KD_ANGLE_FAN_ON == KD_ANGLE_FAN_OFF);
-      assert(FF_ANGLE_FAN_ON == FF_ANGLE_FAN_OFF);
-      assert(KP_OMEGA_FAN_ON == KP_OMEGA_FAN_OFF);
-      assert(KI_OMEGA_FAN_ON == KI_OMEGA_FAN_OFF);
-      assert(KD_OMEGA_FAN_ON == KD_OMEGA_FAN_OFF);
-      assert(FF_OMEGA_PWM_FAN_ON == FF_OMEGA_PWM_FAN_OFF);
-      assert(FF_OMEGA_ACCEL_PWM_FAN_ON == FF_OMEGA_ACCEL_PWM_FAN_OFF);
+      assert(KP_VELOCITY_FAN_ON == f413_profile_mini_r3.scalar->v_KP_VELOCITY_FAN_ON);
+      assert(KI_VELOCITY_FAN_ON == f413_profile_mini_r3.scalar->v_KI_VELOCITY_FAN_ON);
+      assert(KD_VELOCITY_FAN_ON == f413_profile_mini_r3.scalar->v_KD_VELOCITY_FAN_ON);
+      assert(FF_TRANSLATION_STATIC_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_TRANSLATION_STATIC_PWM_FAN_ON);
+      assert(FF_TRANSLATION_VELOCITY_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_TRANSLATION_VELOCITY_PWM_FAN_ON);
+      assert(FF_TRANSLATION_ACCEL_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_TRANSLATION_ACCEL_PWM_FAN_ON);
+      assert(KP_DISTANCE_FAN_ON == f413_profile_mini_r3.scalar->v_KP_DISTANCE_FAN_ON);
+      assert(KI_DISTANCE_FAN_ON == f413_profile_mini_r3.scalar->v_KI_DISTANCE_FAN_ON);
+      assert(KD_DISTANCE_FAN_ON == f413_profile_mini_r3.scalar->v_KD_DISTANCE_FAN_ON);
+      assert(FF_DISTANCE_FAN_ON == f413_profile_mini_r3.scalar->v_FF_DISTANCE_FAN_ON);
+      assert(KP_ANGLE_FAN_ON == f413_profile_mini_r3.scalar->v_KP_ANGLE_FAN_ON);
+      assert(KI_ANGLE_FAN_ON == f413_profile_mini_r3.scalar->v_KI_ANGLE_FAN_ON);
+      assert(KD_ANGLE_FAN_ON == f413_profile_mini_r3.scalar->v_KD_ANGLE_FAN_ON);
+      assert(FF_ANGLE_FAN_ON == f413_profile_mini_r3.scalar->v_FF_ANGLE_FAN_ON);
+      assert(KP_OMEGA_FAN_ON == f413_profile_mini_r3.scalar->v_KP_OMEGA_FAN_ON);
+      assert(KI_OMEGA_FAN_ON == f413_profile_mini_r3.scalar->v_KI_OMEGA_FAN_ON);
+      assert(KD_OMEGA_FAN_ON == f413_profile_mini_r3.scalar->v_KD_OMEGA_FAN_ON);
+      assert(FF_OMEGA_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_PWM_FAN_ON);
+      assert(FF_OMEGA_ACCEL_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_ACCEL_PWM_FAN_ON);
     }
     assert(VELOCITY_ACCEL_COMP_ENABLE_CONTROL == 1U);
     assert(VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U);

@@ -200,7 +200,7 @@ const NfAuditProfile nf_slalom_profiles[] = {
         true,
         2U,
         10.0,
-        {2200.0, 1.2},
+        {0.0, 1.2},
         g_current_mode2,
         g_seed_mode2,
     },

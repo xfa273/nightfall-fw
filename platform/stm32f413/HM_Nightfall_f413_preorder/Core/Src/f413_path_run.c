@@ -37,14 +37,6 @@ typedef struct
  */
 #define F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS (256U)
 
-/*
- * Primitive calibration paths always finish with the runner's fixed 45 mm
- * stop tail.  Low-acceleration shortest-run cases may legitimately need a
- * stronger terminal-only deceleration than their route-planning limit; this
- * does not alter the approach or any tuned turn primitive.
- */
-#define F413_PATH_RUN_TEST_TERMINAL_ACCEL_MIN_MM_S2 (3000.0)
-
 typedef struct
 {
   uint16_t path_index;
@@ -60,6 +52,7 @@ typedef struct
 {
   f413_path_run_prepared_linear_t actions[F413_PATH_RUN_MAX_PREPARED_LINEAR_ACTIONS];
   size_t count;
+  float stop_distance_mm;
 } f413_path_run_prepared_path_t;
 
 #if !defined(NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST) || \
@@ -207,19 +200,6 @@ static bool f413_path_run_make_linear_plan(float distance_mm,
                                out) == NF_MOTION_OK;
 }
 
-static float f413_path_run_cap_positive(float value, float cap)
-{
-  if (value < 0.0f)
-  {
-    value = -value;
-  }
-  if ((cap > 0.0f) && (value > cap))
-  {
-    value = cap;
-  }
-  return value;
-}
-
 static bool f413_path_run_is_straight_code(uint16_t code)
 {
   return (code > NF_LEGACY_PATH_STRAIGHT_BASE) &&
@@ -244,28 +224,6 @@ static bool f413_path_run_is_large_turn_code(uint16_t code)
          (code == NF_LEGACY_PATH_LARGE_RIGHT_180) ||
          (code == NF_LEGACY_PATH_LARGE_LEFT_90) ||
          (code == NF_LEGACY_PATH_LARGE_LEFT_180);
-}
-
-/* Suction tuning opts in through mode4/mode6's fan setting. Other modes
- * and the fanless mini r2 profile retain the existing bring-up caps. */
-static bool f413_path_run_suction_mode(const ShortestRunModeParams_t* params)
-{
-  return ((params == &shortestRunModeParams4) || (params == &shortestRunModeParams6)) &&
-      (params->fan_power > 0);
-}
-
-static float f413_path_run_turn_velocity_cap(const ShortestRunModeParams_t* params)
-{
-  return f413_path_run_suction_mode(params)
-      ? ((params == &shortestRunModeParams6) ? 1500.0f : 1200.0f) :
-      NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP;
-}
-
-static float f413_path_run_diagonal_velocity_cap(const ShortestRunModeParams_t* params)
-{
-  return f413_path_run_suction_mode(params)
-      ? ((params == &shortestRunModeParams6) ? 1500.0f : 1200.0f) :
-      NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP;
 }
 
 static bool f413_path_run_turn_velocity_from_code(
@@ -316,8 +274,7 @@ static bool f413_path_run_turn_velocity_from_code(
     default:
       return false;
   }
-  *out_velocity_mm_s = f413_path_run_cap_positive(
-      velocity, f413_path_run_turn_velocity_cap(params));
+  *out_velocity_mm_s = velocity;
   return isfinite(*out_velocity_mm_s) && (*out_velocity_mm_s > 0.0f);
 }
 
@@ -331,8 +288,7 @@ static bool f413_path_run_straight_limits(
     return false;
   }
 
-  out->vmax_mm_s = f413_path_run_cap_positive(
-      case_params->velocity_straight, NIGHTFALL_F413_PATH_VELOCITY_CAP);
+  out->vmax_mm_s = case_params->velocity_straight;
   out->switch_velocity_mm_s = mode_params->accel_switch_velocity;
   out->accel_low_mm_s2 = case_params->acceleration_straight;
   out->accel_high_mm_s2 = case_params->acceleration_straight_dash;
@@ -345,39 +301,40 @@ static bool f413_path_run_diagonal_limits(
     const ShortestRunCaseParams_t* case_params,
     NfLinearLimits* out)
 {
-  if ((case_params == NULL) || (out == NULL))
+  if ((mode_params == NULL) || (case_params == NULL) || (out == NULL))
   {
     return false;
   }
 
-  out->vmax_mm_s = f413_path_run_cap_positive(
-      case_params->velocity_d_straight,
-      f413_path_run_diagonal_velocity_cap(mode_params));
+  out->vmax_mm_s = case_params->velocity_d_straight;
   out->switch_velocity_mm_s = 0.0;
   out->accel_low_mm_s2 = case_params->acceleration_d_straight;
   out->accel_high_mm_s2 = case_params->acceleration_d_straight_dash;
   return (out->vmax_mm_s > 0.0) && (out->accel_high_mm_s2 > 0.0);
 }
 
-static float f413_path_run_goal_entry_speed(
-    const ShortestRunCaseParams_t* case_params)
+/* Start and final half-cell use one constant-acceleration controller command.
+ * Honour vmax and every acceleration regime that command crosses. */
+static float f413_path_run_boundary_speed(
+    const ShortestRunModeParams_t* mode_params,
+    const ShortestRunCaseParams_t* case_params, float distance_mm)
 {
-  float speed;
-
-  if (case_params == NULL)
+  NfLinearLimits limits;
+  if (!f413_path_run_straight_limits(mode_params, case_params, &limits) ||
+      !isfinite(limits.vmax_mm_s) || !isfinite(limits.switch_velocity_mm_s) ||
+      !isfinite(limits.accel_low_mm_s2) || !isfinite(limits.accel_high_mm_s2) ||
+      !isfinite(distance_mm) || distance_mm <= 0.0f)
   {
-    return 0.0f;
+    return NAN;
   }
-  speed = sqrtf(fmaxf(
-      0.0f,
-      2.0f * case_params->acceleration_straight * (float)DIST_HALF_SEC));
-  if (speed > f413_path_run_cap_positive(
-                  case_params->velocity_straight,
-                  NIGHTFALL_F413_PATH_VELOCITY_CAP))
+  const float switch_speed = (float)limits.switch_velocity_mm_s;
+  const float accel = (float)(switch_speed <= 0.0f
+      ? limits.accel_high_mm_s2 : limits.accel_low_mm_s2);
+  float speed = fminf((float)limits.vmax_mm_s, sqrtf(2.0f * distance_mm * accel));
+  if (switch_speed > 0.0f && speed > switch_speed)
   {
-    speed = f413_path_run_cap_positive(
-        case_params->velocity_straight,
-        NIGHTFALL_F413_PATH_VELOCITY_CAP);
+    const float shared_accel = fminf(accel, (float)limits.accel_high_mm_s2);
+    speed = fminf(speed, fmaxf(switch_speed, sqrtf(2.0f * distance_mm * shared_accel)));
   }
   return speed;
 }
@@ -396,13 +353,11 @@ static float f413_path_run_next_straight_exit_velocity(
   }
   if (next_code == 0U)
   {
-    return f413_path_run_goal_entry_speed(case_params);
+    return f413_path_run_boundary_speed(mode_params, case_params, (float)DIST_HALF_SEC);
   }
   if (f413_path_run_is_straight_code(next_code) && (case_params != NULL))
   {
-    return f413_path_run_cap_positive(
-        case_params->velocity_straight,
-        NIGHTFALL_F413_PATH_VELOCITY_CAP);
+    return case_params->velocity_straight;
   }
   return 0.0f;
 }
@@ -422,25 +377,14 @@ static float f413_path_run_next_diagonal_exit_velocity(
   }
   if (f413_path_run_is_diagonal_code(next_code) && (case_params != NULL))
   {
-    return f413_path_run_cap_positive(
-        case_params->velocity_d_straight,
-        f413_path_run_diagonal_velocity_cap(mode_params));
+    return case_params->velocity_d_straight;
   }
   if ((next_code == 0U) && isfinite(test_terminal_velocity_mm_s) &&
       (test_terminal_velocity_mm_s > 0.0f))
   {
-    /*
-     * A case0 primitive test may intentionally finish on a diagonal heading.
-     * Keep the tuned turn velocity through its explicit DS tail; the common
-     * implicit 45 mm tail below then performs the stop.  Normal shortest paths
-     * pass zero here and retain the cardinal-terminal invariant.
-     */
-    /* Suction tests brake in the explicit DS tail before the final 45 mm
-     * whenever the selected case cannot stop directly from turn speed. */
-    return f413_path_run_suction_mode(mode_params)
-        ? fminf(test_terminal_velocity_mm_s,
-                f413_path_run_goal_entry_speed(case_params))
-        : test_terminal_velocity_mm_s;
+    /* Keep the primitive's exit speed. Case0 stopping distance is derived
+     * from the selected case's acceleration limits during preflight. */
+    return test_terminal_velocity_mm_s;
   }
   return 0.0f;
 }
@@ -450,38 +394,32 @@ static bool f413_path_run_make_test_terminal_profile(
     const NfLinearLimits* limits,
     NfConstantAccelProfile* out)
 {
-  NfLinearLimits terminal_limits;
   double acceleration_limit;
-
-  if ((limits == NULL) || (out == NULL))
+  double distance_mm;
+  if ((limits == NULL) || (out == NULL) || !isfinite(entry_velocity_mm_s) ||
+      (entry_velocity_mm_s < 0.0f))
   {
     return false;
   }
-  terminal_limits = *limits;
-  acceleration_limit = fmax(
-      F413_PATH_RUN_TEST_TERMINAL_ACCEL_MIN_MM_S2,
-      fmax(limits->accel_low_mm_s2, limits->accel_high_mm_s2));
-  if (!isfinite(acceleration_limit) || (acceleration_limit <= 0.0))
+  /* A single monotonic stop must fit every acceleration regime it crosses.
+   * Extend only the explicit case0 test's free-space tail, never raise the
+   * configured acceleration to squeeze a stop into 45 mm. */
+  acceleration_limit = limits->switch_velocity_mm_s <= 0.0
+      ? limits->accel_high_mm_s2 : limits->accel_low_mm_s2;
+  if (entry_velocity_mm_s > limits->switch_velocity_mm_s)
+  {
+    acceleration_limit = fmin(acceleration_limit, limits->accel_high_mm_s2);
+  }
+  if (!isfinite(acceleration_limit) || acceleration_limit <= 0.0)
   {
     return false;
   }
-
-  /*
-   * The legacy case0 runner commands one monotonic velocity profile over its
-   * final half cell.  Bound that direct controller command by at least the
-   * dedicated calibration-stop limit and otherwise the larger of the
-   * selected case's declared limits.  Do not apply this terminal-only rule to
-   * solver-generated shortest paths.
-   */
-  terminal_limits.switch_velocity_mm_s = 0.0;
-  terminal_limits.accel_low_mm_s2 = acceleration_limit;
-  terminal_limits.accel_high_mm_s2 = acceleration_limit;
+  distance_mm = fmax((double)DIST_HALF_SEC,
+      (double)entry_velocity_mm_s * entry_velocity_mm_s / (2.0 * acceleration_limit));
+  /* Round upward so the float sent to the controller cannot shorten braking. */
+  distance_mm = ceil(distance_mm * 1000.0) / 1000.0;
   return nf_motion_constant_accel_profile(
-             &terminal_limits,
-             (double)DIST_HALF_SEC,
-             (double)entry_velocity_mm_s,
-             0.0,
-             out) == NF_MOTION_OK;
+      limits, distance_mm, entry_velocity_mm_s, 0.0, out) == NF_MOTION_OK;
 }
 
 static bool f413_path_run_make_wall_end_approach_plan(
@@ -584,6 +522,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
   if (prepared != NULL)
   {
     prepared->count = 0U;
+    prepared->stop_distance_mm = 0.0f;
   }
 
   if ((codes == NULL) || (capacity == 0U) || (mode_params == NULL) ||
@@ -769,7 +708,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
     NfConstantAccelProfile stop_profile;
     const bool valid_stop = test_mode_run
         ? f413_path_run_make_test_terminal_profile(
-              speed_now, &straight_limits, &stop_profile)
+              speed_now, diagonal ? &diagonal_limits : &straight_limits, &stop_profile)
         : (nf_motion_constant_accel_profile(
                &straight_limits, (double)DIST_HALF_SEC, (double)speed_now,
                0.0, &stop_profile) == NF_MOTION_OK);
@@ -779,6 +718,10 @@ static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
       result.index = index;
       result.code = 0U;
       return result;
+    }
+    if (prepared != NULL)
+    {
+      prepared->stop_distance_mm = (float)stop_profile.distance_mm;
     }
   }
   return result;
@@ -820,6 +763,7 @@ static f413_path_run_preflight_result_t f413_path_run_preflight(
 typedef struct {
   float signed_angle_deg;
   float alpha_deg_s2;
+  float omega_max_deg_s;
   float velocity_mm_s;
   float dist_in_mm;
   float dist_out_mm;
@@ -877,26 +821,6 @@ static const ShortestRunCaseParams_t* f413_path_run_case_params(uint8_t mode, ui
     case 7U: return &shortestRunCaseParamsMode7[idx];
     default: return &shortestRunCaseParamsMode2[idx];
   }
-}
-
-static float f413_path_run_velocity_or_cap(float candidate, float fallback, float cap)
-{
-  float v = candidate;
-
-  if (v <= 0.0f)
-  {
-    v = fallback;
-  }
-  if (v <= 0.0f)
-  {
-    v = NIGHTFALL_F413_PATH_VELOCITY;
-  }
-  if ((cap > 0.0f) && (v > cap))
-  {
-    v = cap;
-  }
-
-  return v;
 }
 
 static void f413_path_run_prepare_straight_angle_control(void)
@@ -1063,17 +987,16 @@ static bool f413_path_run_turn_from_code(uint16_t code,
     default: return false;
   }
 
-  if (angle <= 0.0f)
-  {
-    angle = 90.0f;
-  }
   if (f413_run_features_angle_accum_mode() && (accum_angle > 0.0f))
   {
     angle = accum_angle;
   }
-  if (alpha <= 0.0f)
+  if (!isfinite(angle) || angle <= 0.0f || !isfinite(alpha) || alpha <= 0.0f ||
+      !isfinite(params->turn_omega_max) || params->turn_omega_max < 0.0f ||
+      !isfinite(turn->dist_in_mm) || turn->dist_in_mm < 0.0f ||
+      !isfinite(turn->dist_out_mm) || turn->dist_out_mm < 0.0f)
   {
-    alpha = 10000.0f;
+    return false;
   }
 
   if (!f413_path_run_turn_velocity_from_code(code, params, &velocity))
@@ -1082,6 +1005,7 @@ static bool f413_path_run_turn_from_code(uint16_t code,
   }
   turn->signed_angle_deg = right ? -fabsf(angle) : fabsf(angle);
   turn->alpha_deg_s2 = alpha;
+  turn->omega_max_deg_s = params->turn_omega_max;
   turn->velocity_mm_s = velocity;
   return true;
 }
@@ -1100,7 +1024,10 @@ static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn(float angle_d
   }
 
   profile.omega_peak_deg_s = sqrtf((2.0f * alpha_deg_s2 * angle_abs) / 3.0f);
-  profile.omega_peak_deg_s = f413_path_run_cap_positive(profile.omega_peak_deg_s, omega_cap_deg_s);
+  if (omega_cap_deg_s > 0.0f)
+  {
+    profile.omega_peak_deg_s = fminf(profile.omega_peak_deg_s, omega_cap_deg_s);
+  }
   if (profile.omega_peak_deg_s <= 0.0f)
   {
     return profile;
@@ -1117,7 +1044,10 @@ static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn(float angle_d
   {
     profile.t_cruise_s = 0.0f;
     profile.omega_peak_deg_s = angle_abs / profile.t_acc_s;
-    profile.omega_peak_deg_s = f413_path_run_cap_positive(profile.omega_peak_deg_s, omega_cap_deg_s);
+    if (omega_cap_deg_s > 0.0f)
+    {
+      profile.omega_peak_deg_s = fminf(profile.omega_peak_deg_s, omega_cap_deg_s);
+    }
     profile.t_cruise_s = (angle_abs / profile.omega_peak_deg_s) - profile.t_acc_s;
     if (profile.t_cruise_s < 0.0f)
     {
@@ -1154,7 +1084,7 @@ static bool f413_path_run_print_turn_profiles_before_run(
     }
     profile = f413_path_run_build_smooth_turn(turn.signed_angle_deg,
                                               turn.alpha_deg_s2,
-                                              NIGHTFALL_F413_PATH_OMEGA_CAP);
+                                              turn.omega_max_deg_s);
     if (profile.t_total_s <= 0.0f)
     {
       return false;
@@ -1631,7 +1561,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
 
   profile = f413_path_run_build_smooth_turn(turn->signed_angle_deg,
                                             turn->alpha_deg_s2,
-                                            NIGHTFALL_F413_PATH_OMEGA_CAP);
+                                            turn->omega_max_deg_s);
   if (profile.t_total_s <= 0.0f)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
@@ -2027,19 +1957,10 @@ void f413_path_run_session_once(uint8_t mode,
   f413_run_session_guard_t guard = {0};
   const ShortestRunModeParams_t* mode_params = f413_path_run_mode_params(mode);
   const ShortestRunCaseParams_t* case_params = f413_path_run_case_params(mode, case_index);
-  const float straight_velocity = f413_path_run_velocity_or_cap(
-      case_params->velocity_straight,
-      NIGHTFALL_F413_PATH_VELOCITY,
-      NIGHTFALL_F413_PATH_VELOCITY_CAP);
-  const float diagonal_velocity = f413_path_run_velocity_or_cap(
-      case_params->velocity_d_straight,
-      straight_velocity,
-      f413_path_run_diagonal_velocity_cap(mode_params));
-  const float first_speed = f413_path_run_cap_positive(
-      sqrtf(fmaxf(0.0f,
-                  2.0f * case_params->acceleration_straight *
-                      (float)DIST_FIRST_SEC)),
-      NIGHTFALL_F413_PATH_VELOCITY_CAP);
+  const float straight_velocity = case_params->velocity_straight;
+  const float diagonal_velocity = case_params->velocity_d_straight;
+  const float first_speed = f413_path_run_boundary_speed(
+      mode_params, case_params, (float)DIST_FIRST_SEC);
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
   bool diagonal = false;
@@ -2076,15 +1997,14 @@ void f413_path_run_session_once(uint8_t mode,
         (unsigned int)preflight.code);
     return;
   }
-  trace_printf("[RUN-TEST] path session start %s mode=%u case=%u v=%.0f diag_v=%.0f caps=%.0f/%.0f/%.0f, press switch to abort\r\n",
+  trace_printf("[RUN-TEST] path session start %s mode=%u case=%u v=%.0f diag_v=%.0f omega_max=%.0f stop_mm=%.3f, press switch to abort\r\n",
                (label != NULL) ? label : "path",
                (unsigned int)mode,
                (unsigned int)case_index,
                (double)straight_velocity,
                (double)diagonal_velocity,
-               (double)NIGHTFALL_F413_PATH_VELOCITY_CAP,
-               (double)f413_path_run_diagonal_velocity_cap(mode_params),
-               (double)f413_path_run_turn_velocity_cap(mode_params));
+               (double)mode_params->turn_omega_max,
+               (double)g_f413_path_run_prepared_path.stop_distance_mm);
 
   if (!f413_path_run_print_turn_profiles_before_run(mode_params))
   {
@@ -2301,7 +2221,7 @@ void f413_path_run_session_once(uint8_t mode,
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
     abort_reason = f413_path_run_drive_segment_ex(
-        (float)DIST_HALF_SEC,
+        g_f413_path_run_prepared_path.stop_distance_mm,
         0.0f,
         &speed_now,
         &guard,

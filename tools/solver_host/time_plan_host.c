@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define NF_HOST_F413_OMEGA_CAP_DEG_S 2200.0
 
 static const ShortestRunModeParams_t *nf_host_mode_params(uint8_t mode)
 {
@@ -110,7 +109,7 @@ static NfOrthogonalPlannerConfig nf_host_config(
     config.straight.switch_velocity_mm_s = mode_params->accel_switch_velocity;
     config.straight.accel_low_mm_s2 = case_params->acceleration_straight;
     config.straight.accel_high_mm_s2 = case_params->acceleration_straight_dash;
-    config.turn_environment.omega_cap_deg_s = NF_HOST_F413_OMEGA_CAP_DEG_S;
+    config.turn_environment.omega_cap_deg_s = mode_params->turn_omega_max;
     config.turn_environment.rounding_scale = TURN_OMEGA_PROFILE_ROUNDING_SCALE;
 
     config.small_90.enabled = true;

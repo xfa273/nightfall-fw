@@ -187,6 +187,10 @@ static void alignment_tests(void)
 
 int main(void)
 {
+  /* Search profiles, too, must use configured alpha without a 2200 dps cap. */
+  const f413_search_step_smooth_turn_t fast_turn =
+      f413_search_step_build_smooth_turn(90.0f, 134000.0f);
+  assert(fast_turn.omega_peak_deg_s > 2200.0f);
   profile_tests();
   reset_fixture(); scenario = FOLLOW;
   assert(wait_stop(false) == F413_RUN_SESSION_ABORT_NONE);

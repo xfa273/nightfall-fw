@@ -160,9 +160,21 @@ def load_constants(args: argparse.Namespace) -> Constants:
         if args.f413_path_h
         else root / "platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc/f413_path_run.h"
     )
+    omega_max = 0.0
+    if getattr(args, "runner", None) == "shortest":
+        shortest_path = (Path(args.shortest_params) if args.shortest_params else
+                         root / "params/f413_preorder/shortest_run_params_split.c")
+        omega_max = parse_shortest_modes(shortest_path).get(args.mode, {}).get("turn_omega_max", 0.0)
+    if args.f413_path_h:
+        # Explicit legacy header supports replay of pre-parameter firmware.
+        omega_max = _parse_define_float(path_h, "NIGHTFALL_F413_PATH_OMEGA_CAP", omega_max)
+    if getattr(args, "omega_max", None) is not None:
+        omega_max = args.omega_max
+    if not math.isfinite(omega_max) or omega_max < 0.0:
+        raise ValueError("omega-max must be finite and nonnegative")
     return Constants(
         rounding_scale=_parse_define_float(params_h, "TURN_OMEGA_PROFILE_ROUNDING_SCALE", 1.2),
-        omega_cap_deg_s=_parse_define_float(path_h, "NIGHTFALL_F413_PATH_OMEGA_CAP", 2200.0),
+        omega_cap_deg_s=omega_max,
     )
 
 
@@ -1238,10 +1250,11 @@ def print_fit_summary(initial: SimResult, fitted: SimResult, target_pose: Pose, 
 
 def add_common_paths(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--params-h", default=None, help="params.h path for TURN_OMEGA_PROFILE_ROUNDING_SCALE")
-    parser.add_argument("--f413-path-h", default=None, help="f413_path_run.h path for NIGHTFALL_F413_PATH_OMEGA_CAP")
+    parser.add_argument("--f413-path-h", default=None, help="legacy firmware header with NIGHTFALL_F413_PATH_OMEGA_CAP")
 
 
 def add_turn_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--omega-max", type=float, default=None, help="angular profile limit [deg/s], 0 disables; defaults to selected mode turn_omega_max")
     parser.add_argument("--runner", choices=("shortest", "search", "manual"), default="shortest")
     parser.add_argument("--shortest-params", default=None, help="shortest_run_params_split.c path")
     parser.add_argument("--search-params", default=None, help="search_run_params_split.c path")

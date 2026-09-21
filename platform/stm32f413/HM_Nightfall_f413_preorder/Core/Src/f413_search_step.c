@@ -1521,11 +1521,6 @@ static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn(float a
   }
 
   profile.omega_peak_deg_s = sqrtf((2.0f * alpha_deg_s2 * angle_abs) / 3.0f);
-  if ((NIGHTFALL_F413_PATH_OMEGA_CAP > 0.0f) &&
-      (profile.omega_peak_deg_s > NIGHTFALL_F413_PATH_OMEGA_CAP))
-  {
-    profile.omega_peak_deg_s = NIGHTFALL_F413_PATH_OMEGA_CAP;
-  }
   if (profile.omega_peak_deg_s <= 0.0f)
   {
     return profile;
@@ -1537,11 +1532,6 @@ static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn(float a
   {
     profile.t_cruise_s = 0.0f;
     profile.omega_peak_deg_s = angle_abs / profile.t_acc_s;
-    if ((NIGHTFALL_F413_PATH_OMEGA_CAP > 0.0f) &&
-        (profile.omega_peak_deg_s > NIGHTFALL_F413_PATH_OMEGA_CAP))
-    {
-      profile.omega_peak_deg_s = NIGHTFALL_F413_PATH_OMEGA_CAP;
-    }
     profile.t_cruise_s = (angle_abs / profile.omega_peak_deg_s) - profile.t_acc_s;
     if (profile.t_cruise_s < 0.0f)
     {

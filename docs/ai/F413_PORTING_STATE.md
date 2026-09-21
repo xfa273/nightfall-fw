@@ -92,8 +92,9 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
   with <=1.0 mm held-out p95 and <=1.5 mm maximum error, and only then a new
   label-plane five-pose fit.  The failed five-pose set remains diagnostic and
   must not change turn parameters.
-  Modes 3-7 remain parameter baselines and are constrained by explicit F413
-  straight/diagonal/turn speed caps.
+  Modes 3-7 remain parameter baselines; F413 bring-up velocity caps were
+  removed on 2026-09-21. Runtime limits now come from run parameters.
+  See `docs/F413_RUN_PARAMETER_LIMITS.md` for scope and host-only validation.
 - F413 `main.c` is still large and still owns important application routing.
 - Runtime hardware settings live in `board/f413/`; differing pin layouts still need platform init adapters. Future classic is fail-closed until registered, not presumed mini-compatible.
 - Official name migration from `f413_preorder` to `mini_r2_0` is incomplete.
@@ -121,16 +122,11 @@ Bring the F413 `mini_r2_0` machine to F405-equivalent micromouse behavior:
     preview alone may use the built-in diagnostic fixture.  This module builds
     but never starts motor/fan execution or writes NVM.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_mode2.c`
-  - Mode2 case6 is temporarily assigned to a deterministic open-floor diagonal
-    validation path `S3,R45-in,DS1,L-V90,DS1,R45-out,S2`.  It bypasses saved-maze
-    path generation and disables wall control, wall-end correction, and front-
-    wall correction while retaining the canonical accumulated gyro-angle
-    contract used to tune the turns.  The common F413 shortest/search
-    `first_section` is 10 mm, derived from the 45 mm first centre line minus the
-    measured 35 mm centre-to-rear overhang, so the machine starts with its rear
-    against the start wall.  Cases7--9 still use the saved-maze KERI planner.
-    Restore case6 to that planner after the measured composite path agrees with
-    the intended centre lines.
+  - Mode2 case6--9 use saved-maze route generation. The temporary case6
+    open-floor route and forced wall-correction disable were removed on
+    2026-09-21. Case0 remains the explicit turn calibration entry.
+    The common F413 shortest/search first section is 10 mm, derived from
+    the 45 mm first centre line minus the 35 mm centre-to-rear overhang.
 - `platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_route_motion_table.c`
   - PC-generated const geometry, pose, turn-time, connector-time, and
     wall-end-approach tables for mode2 case6--9.
@@ -198,12 +194,9 @@ Treat motor, fan, turn, search, shortest, and NVM-destructive operations as gate
    - `tools/solver_host/run_solver_host.sh --explore-sim`
    - UART `@` dump rendering
    - solver from search dump
-5. Validate diagonal shortest running in stages: first run the temporary
-   open-floor/no-wall-correction mode2 case6 path and compare its measured
-   composite trajectory with the intended centre lines; then restore case6 to
-   saved-maze KERI generation, inspect the generated path, and run the low
-   profile before case7 and case8.  Current
-   orthogonal/diagonal speed and acceleration ladders are
-   `1000/800 @ 1000`, `1250/900 @ 3000`, and `1500/1000 @ 4000`
-   (mm/s and mm/s^2).  Keep case9 as a later comparison profile.
+5. Validate diagonal shortest running in stages: use case0 for primitive
+   calibration, inspect the saved-maze case6 path, then validate the low
+   profile before case7 and case8. Case6 no longer selects a fixed open-floor
+   route. Settings above former bring-up caps need floor validation; see
+   `docs/F413_RUN_PARAMETER_LIMITS.md`. Keep case9 as a later comparison profile.
 6. Only after basic tuning: floor low-speed one-step exploration, then short maze exploration.

@@ -267,6 +267,8 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
 /* PR #21 ideal-response seed, exact runtime angles; see
  * docs/MINI_R3_MODE4_SUCTION_TUNING.md. Not yet measured with suction. */
 const ShortestRunModeParams_t shortestRunModeParams4 = {
+    /* Explicit simulator input; preserves the tuned turn geometry. */
+    .turn_omega_max = 2200.0f,
     // 90deg
     .velocity_turn90 = 800.0f,
     .alpha_turn90 = 50000.0f,
@@ -497,6 +499,8 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
 /* PR #21 ideal-response seed for gain tuning at 1200/1500 mm/s.
  * See docs/MINI_R3_MODE6_SUCTION_TUNING.md; physical tracking is unverified. */
 const ShortestRunModeParams_t shortestRunModeParams6 = {
+    /* Explicit simulator input; preserves the tuned turn geometry. */
+    .turn_omega_max = 2200.0f,
     // 90deg
     .velocity_turn90 = 1200.0f,
     .alpha_turn90 = 134000.0f,

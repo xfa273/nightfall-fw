@@ -149,7 +149,12 @@ static void reset(void)
   const f413_run_features_t features={false,false,false,true,true};
   f413_run_features_set(&features);
 }
-static void run(void) { f413_path_run_session_once(suction ? selected_mode : 2,1,0,"host suction"); }
+static void run(void)
+{
+  requested_duty = f413_path_run_mode_params(selected_mode)->fan_power;
+  expected_ramp_ms = f413_path_run_suction_ramp_ms(requested_duty);
+  f413_path_run_session_once(suction ? selected_mode : 2,1,0,"host suction");
+}
 static void stopped(unsigned expected_fan_starts)
 {
   assert(!running && !fan && !tracing);
@@ -157,6 +162,20 @@ static void stopped(unsigned expected_fan_starts)
 }
 int main(void)
 {
+  /* No common angular ceiling; an explicit mode limit preserves tuned shapes. */
+  f413_path_run_turn_t turn;
+  ShortestRunModeParams_t mode = shortestRunModeParams6;
+  mode.turn_omega_max = 0;
+  assert(f413_path_run_turn_from_code(300, &mode, &turn));
+  f413_path_run_smooth_turn_t p = f413_path_run_build_smooth_turn(
+      turn.signed_angle_deg, turn.alpha_deg_s2, turn.omega_max_deg_s);
+  assert(p.omega_peak_deg_s > 2200);
+  mode.turn_omega_max = 2600;
+  assert(f413_path_run_turn_from_code(300, &mode, &turn));
+  p = f413_path_run_build_smooth_turn(turn.signed_angle_deg, turn.alpha_deg_s2, turn.omega_max_deg_s);
+  assert(p.omega_peak_deg_s == 2600);
+  mode.alpha_turn90 = 0;
+  assert(!f413_path_run_turn_from_code(300, &mode, &turn));
   /* The user specifies a rate, not a fixed duration for every target. */
   const struct { uint16_t duty; uint32_t ms; } ramps[] = {
     {250, 300}, {500, 600}, {750, 900}, {1000, 1200}

@@ -20,7 +20,7 @@ esac
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
   UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \
   "$TEST_OUT_DIR/f413_stop_approach_tests"
-for CONTROL_TEST_NAME in f413_control_stop_tests f413_control_gain_tests; do
+for CONTROL_TEST_NAME in f413_control_stop_tests f413_control_gain_tests f413_control_velocity_tests; do
 "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -O1 -g -DSTM32F413xx \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
   -I"$TASK_ROOT/tools/hil/control_stubs" -I"$TASK_ROOT/tools/hil/nvm_stubs" \

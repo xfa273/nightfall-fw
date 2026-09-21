@@ -97,9 +97,6 @@ static void check_mode2_case_profiles(void)
                       expected_acceleration[offset], 1.0e-6));
     CHECK(close_value(run_case->acceleration_d_straight_dash,
                       expected_acceleration[offset], 1.0e-6));
-    CHECK(run_case->velocity_straight <= NIGHTFALL_F413_PATH_VELOCITY_CAP);
-    CHECK(run_case->velocity_d_straight <=
-          NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP);
 
     straight = (NfLinearLimits){
         run_case->velocity_straight,
@@ -176,9 +173,9 @@ static void check_start_runup_contract(void)
                                        &case8, &plan));
   CHECK(f413_path_run_make_test_terminal_profile(
       500.0f, &case6, &terminal_profile));
-  CHECK(close_value(terminal_profile.distance_mm, 45.0, 1.0e-9));
+  CHECK(close_value(terminal_profile.distance_mm, 125.0, 1.0e-9));
   CHECK(close_value(terminal_profile.acceleration_mm_s2,
-                    -2777.777777777778, 1.0e-6));
+                    -1000.0, 1.0e-6));
 }
 
 static void check_wall_end_approach_contract(void)
