@@ -1,7 +1,7 @@
 #include "shortest_run_params.h"
 #include "solver_params.h"
 
-/* mini r3: mode4 is the fan-50% tuning seed; other modes remain fan-off. */
+/* mini r3: mode4 and mode6 are fan-50% tuning profiles. */
 
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
@@ -494,101 +494,146 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode5[9] = {
 };
 
 // ========================= Mode 6 =========================
+/* PR #21 ideal-response seed for gain tuning at 1200/1500 mm/s.
+ * See docs/MINI_R3_MODE6_SUCTION_TUNING.md; physical tracking is unverified. */
 const ShortestRunModeParams_t shortestRunModeParams6 = {
     // 90deg
-    .velocity_turn90 = 1000.0f,
-    .alpha_turn90 = 74000.0f,
+    .velocity_turn90 = 1200.0f,
+    .alpha_turn90 = 134000.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 2.0f,
-    .dist_offset_out = 21.5f,
-    .val_offset_in = 15.0f,
-    .fwall_kx = 1.1f,
-    .angle_turn_90 = 82.6f,
-    .dist_wall_end = 1.0f,
+    .dist_offset_in = 0.9f,
+    .dist_offset_out = 1.7f,
+    .val_offset_in = 98.0f,
+    .fwall_kx = 0.6f,
+    .angle_turn_90 = 90.0f,
+    .dist_wall_end = 0.0f,
     // Large 90deg
-    .velocity_l_turn_90 = 1400.0f,
-    .alpha_l_turn_90 = 34800.0f,
-    .angle_l_turn_90 = 87.0f,
-    .dist_l_turn_in_90 = 0.0f,
-    .dist_l_turn_out_90 = 23.5f,
+    .velocity_l_turn_90 = 1500.0f,
+    .alpha_l_turn_90 = 45500.0f,
+    .angle_l_turn_90 = 90.0f,
+    .dist_l_turn_in_90 = 2.8f,
+    .dist_l_turn_out_90 = 2.9f,
     // Large 180deg
-    .velocity_l_turn_180 = 1400.0f,
-    .alpha_l_turn_180 = 32000.0f,
-    .angle_l_turn_180 = 174.3f,
-    .dist_l_turn_in_180 = 5.0f,
-    .dist_l_turn_out_180= 50.0f,
-    .fan_power          = 0,
+    .velocity_l_turn_180 = 1500.0f,
+    .alpha_l_turn_180 = 41000.0f,
+    .angle_l_turn_180 = 180.0f,
+    .dist_l_turn_in_180 = 1.0f,
+    .dist_l_turn_out_180 = 1.3f,
+    // 45deg In
+    .velocity_turn45in = 1500.0f,
+    .alpha_turn45in = 71000.0f,
+    .angle_turn45in = 45.0f,
+    .dist_turn45in_in = 1.2f,
+    .dist_turn45in_out = 20.5f,
+    // 45deg Out
+    .velocity_turn45out = 1500.0f,
+    .alpha_turn45out = 65500.0f,
+    .angle_turn45out = 45.0f,
+    .dist_turn45out_in = 18.0f,
+    .dist_turn45out_out = 0.6f,
+    // V90deg
+    .velocity_turnV90 = 1500.0f,
+    .alpha_turnV90 = 159500.0f,
+    .angle_turnV90 = 90.0f,
+    .dist_turnV90_in = 11.1f,
+    .dist_turnV90_out = 11.7f,
+    // 135deg In
+    .velocity_turn135in = 1500.0f,
+    .alpha_turn135in = 98000.0f,
+    .angle_turn135in = 135.0f,
+    .dist_turn135in_in = 17.4f,
+    .dist_turn135in_out = 10.2f,
+    // 135deg Out
+    .velocity_turn135out = 1500.0f,
+    .alpha_turn135out = 117000.0f,
+    .angle_turn135out = 135.0f,
+    .dist_turn135out_in = 13.7f,
+    .dist_turn135out_out = 22.8f,
+    .fan_power = 500,
     .makepath_type_case3 = 0,
-    .makepath_type_case47= 1,
+    .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 140, .wall_end_thr_r_low = 130,
-    .wall_end_thr_l_high = 140, .wall_end_thr_l_low = 130,
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1500.0f
 };
 
+/* Uniform gain-tuning baseline: 1500 mm/s maximum, 25000 mm/s^2.
+ * 1500 -> 0 in the shortest 45 mm tail needs exactly 25000 mm/s^2;
+ * starting and the 1200 <-> 1500 mm/s connectors need less. */
 const ShortestRunCaseParams_t shortestRunCaseParamsMode6[9] = {
-    // case1 (index 0) - mode5と同じ値
+    // case1 (index 0)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.25f,
-        .solver_profile = SOLVER_PROFILE_STANDARD
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.25f,
+        .solver_profile = SOLVER_PROFILE_STANDARD,
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f, .kp_diagonal = 0.05f
     },
     // case2 (index 1)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.25f,
-        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.25f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f, .kp_diagonal = 0.05f
     },
     // case3 (index 2)
     {
-        .acceleration_straight = 15000.0f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 1400.0f, .kp_wall = 0.5f,
-        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.5f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f, .kp_diagonal = 0.05f
     },
     // case4 (index 3)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.5f,
-        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.5f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f, .kp_diagonal = 0.05f
     },
     // case5 (index 4)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 8000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.5f,
-        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.5f,
+        .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f, .kp_diagonal = 0.05f
     },
     // case6 (index 5)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 28000.0f,
-        .velocity_straight = 5000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
-        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
-        .velocity_d_straight = 3000.0f
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f
     },
     // case7 (index 6)
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 30000.0f,
-        .velocity_straight = 5200.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
-        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
-        .velocity_d_straight = 3500.0f
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f
     },
     // case8 (index 7): diagonal-use
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 20000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 6000.0f, .acceleration_d_straight_dash = 12000.0f,
-        .velocity_d_straight = 3000.0f
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f
     },
     // case9 (index 8): diagonal-use
     {
-        .acceleration_straight = 11111.11f, .acceleration_straight_dash = 23000.0f,
-        .velocity_straight = 4500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 7000.0f, .acceleration_d_straight_dash = 14000.0f,
-        .velocity_d_straight = 3500.0f
+        .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
+        .velocity_d_straight = 1500.0f
     },
 };
 

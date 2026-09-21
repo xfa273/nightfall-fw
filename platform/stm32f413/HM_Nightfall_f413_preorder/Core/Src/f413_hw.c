@@ -291,7 +291,12 @@ void f413_hw_motor_set(bool enable,
 }
 
 /* TIM10 fan command is in per-mille units, as in the legacy mode params. */
-static bool s_fan_running = false;
+static volatile bool s_fan_running = false;
+
+bool f413_hw_fan_is_running(void)
+{
+  return s_fan_running;
+}
 
 void f413_hw_fan_stop(void)
 {

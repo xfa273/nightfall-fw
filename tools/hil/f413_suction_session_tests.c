@@ -17,6 +17,7 @@ static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
 static uint16_t flags;
+static uint8_t selected_mode;
 static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
 static bool suction, disturbed, duty_fail;
 static float position, velocity, target, angle, omega;
@@ -139,7 +140,7 @@ static void reset(void)
 {
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
-  wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
+  selected_mode = 4; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
   position = velocity = target = angle = omega = 0;
@@ -148,7 +149,7 @@ static void reset(void)
   const f413_run_features_t features={false,false,false,true,true};
   f413_run_features_set(&features);
 }
-static void run(void) { f413_path_run_session_once(suction ? 4 : 2,1,0,"host suction"); }
+static void run(void) { f413_path_run_session_once(suction ? selected_mode : 2,1,0,"host suction"); }
 static void stopped(unsigned expected_fan_starts)
 {
   assert(!running && !fan && !tracing);
@@ -172,6 +173,7 @@ int main(void)
     f413_ctrl_stop(); f413_hw_fan_stop();
   }
   reset(); run(); stopped(1); assert(starts == 1 && position > 400);
+  reset(); selected_mode=6; run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); wait_extra_ms=3; run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); tick=UINT32_MAX-1610U; run(); stopped(1); assert(position > 400);
   reset(); fan_fail=true; run(); stopped(1); assert(starts == 1 && profiles == 0);

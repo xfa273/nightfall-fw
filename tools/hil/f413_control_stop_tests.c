@@ -4,6 +4,8 @@
 
 TIM_HandleTypeDef htim2, htim3, htim4, htim5;
 SPI_HandleTypeDef hspi2;
+static bool fan_active;
+bool f413_hw_fan_is_running(void) { return fan_active; }
 static const f413_hardware_config_t hardware = {
   .encoder_cpr = 4096, .encoder_sign_l = 1, .encoder_sign_r = -1, .tread_mm = 36.0f
 };
@@ -29,6 +31,7 @@ HAL_StatusTypeDef HAL_SPI_Transmit(SPI_HandleTypeDef* h, uint8_t* tx,
 
 static void setup(void)
 {
+  fan_active = false;
   f413_ctrl_reset_pid_state();
   f413_ctrl_reset_profile_state();
   f413_ctrl_reset_distance();

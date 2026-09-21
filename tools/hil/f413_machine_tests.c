@@ -160,7 +160,7 @@ static void front_entry_reference_tests(void)
   assert(datum_delta == 38.0f);
   assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
   const float search_targets[] = {82.0f, 80.0f};
-  const float mode_targets[] = {82.8f, 86.0f, 89.4f, 86.0f, 88.0f, 80.0f};
+  const float mode_targets[] = {82.8f, 86.0f, 89.4f, 86.0f, 89.1f, 80.0f};
   for (unsigned i = 0; i < 2; ++i) {
     assert(r2->search[i].dist_offset_in == r3->search[i].dist_offset_in);
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
@@ -171,13 +171,23 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - search_targets[i]) < 0.001f);
   }
   for (unsigned i = 0; i < 6; ++i) {
-    if (i != 2U) {
+    if (i != 2U && i != 4U) {
       assert(memcmp(r2->modes[i], r3->modes[i], sizeof(*r2->modes[i])) == 0);
-    } else {
+    } else if (i == 2U) {
       assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == 500);
       assert(r2->modes[i]->velocity_turn90 == r3->modes[i]->velocity_turn90);
       assert(r2->modes[i]->velocity_l_turn_90 == r3->modes[i]->velocity_l_turn_90);
       assert(r2->modes[i]->velocity_turn45in == r3->modes[i]->velocity_turn45in);
+    } else {
+      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == 500);
+      assert(r3->modes[i]->velocity_turn90 == 1200);
+      assert(r3->modes[i]->velocity_l_turn_90 == 1500);
+      assert(r3->modes[i]->velocity_l_turn_180 == 1500);
+      assert(r3->modes[i]->velocity_turn45in == 1500);
+      assert(r3->modes[i]->velocity_turn45out == 1500);
+      assert(r3->modes[i]->velocity_turnV90 == 1500);
+      assert(r3->modes[i]->velocity_turn135in == 1500);
+      assert(r3->modes[i]->velocity_turn135out == 1500);
     }
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
         (float)r2->scalar->v_DIST_HALF_SEC - r2->modes[i]->dist_offset_in;
@@ -432,6 +442,27 @@ int main(int argc, char **argv)
     assert(KP_DISTANCE_FAN_OFF == (rev == 3U ? 2.0f : 6.0f));
     assert(KI_DISTANCE_FAN_OFF == (rev == 3U ? 0.0f : 0.05f));
     assert(KP_OMEGA_FAN_OFF == (rev == 3U ? 0.45f : 1.35f));
+    if (rev == 3U) {
+      assert(KP_VELOCITY_FAN_ON == KP_VELOCITY_FAN_OFF);
+      assert(KI_VELOCITY_FAN_ON == KI_VELOCITY_FAN_OFF);
+      assert(KD_VELOCITY_FAN_ON == KD_VELOCITY_FAN_OFF);
+      assert(FF_TRANSLATION_STATIC_PWM_FAN_ON == FF_TRANSLATION_STATIC_PWM_FAN_OFF);
+      assert(FF_TRANSLATION_VELOCITY_PWM_FAN_ON == FF_TRANSLATION_VELOCITY_PWM_FAN_OFF);
+      assert(FF_TRANSLATION_ACCEL_PWM_FAN_ON == FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
+      assert(KP_DISTANCE_FAN_ON == KP_DISTANCE_FAN_OFF);
+      assert(KI_DISTANCE_FAN_ON == KI_DISTANCE_FAN_OFF);
+      assert(KD_DISTANCE_FAN_ON == KD_DISTANCE_FAN_OFF);
+      assert(FF_DISTANCE_FAN_ON == FF_DISTANCE_FAN_OFF);
+      assert(KP_ANGLE_FAN_ON == KP_ANGLE_FAN_OFF);
+      assert(KI_ANGLE_FAN_ON == KI_ANGLE_FAN_OFF);
+      assert(KD_ANGLE_FAN_ON == KD_ANGLE_FAN_OFF);
+      assert(FF_ANGLE_FAN_ON == FF_ANGLE_FAN_OFF);
+      assert(KP_OMEGA_FAN_ON == KP_OMEGA_FAN_OFF);
+      assert(KI_OMEGA_FAN_ON == KI_OMEGA_FAN_OFF);
+      assert(KD_OMEGA_FAN_ON == KD_OMEGA_FAN_OFF);
+      assert(FF_OMEGA_PWM_FAN_ON == FF_OMEGA_PWM_FAN_OFF);
+      assert(FF_OMEGA_ACCEL_PWM_FAN_ON == FF_OMEGA_ACCEL_PWM_FAN_OFF);
+    }
     assert(VELOCITY_ACCEL_COMP_ENABLE_CONTROL == 1U);
     assert(VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U);
     assert(searchRunParams[0].velocity_turn90 == 300.0f);

@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-mode4-fan50-t0.15"
+#define PARAMS_TUNE_VERSION "mini-r3-mode6-fan50-t0.16"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -102,23 +102,25 @@
 #define KI_VELOCITY 0.30F
 #define KD_VELOCITY 0.0F
 
+/* Suction tuning starts with the current FAN_OFF values. Keep independent
+ * numeric FAN_ON entries so subsequent suction tuning leaves fan-off intact. */
 #ifndef KP_VELOCITY_FAN_ON
-#define KP_VELOCITY_FAN_ON  2.5F
+#define KP_VELOCITY_FAN_ON  0.24F
 #endif
 #ifndef KI_VELOCITY_FAN_ON
-#define KI_VELOCITY_FAN_ON  0.03F
+#define KI_VELOCITY_FAN_ON  0.001F
 #endif
 #ifndef KD_VELOCITY_FAN_ON
-#define KD_VELOCITY_FAN_ON  0.0
+#define KD_VELOCITY_FAN_ON  0.0F
 #endif
 #ifndef FF_TRANSLATION_STATIC_PWM_FAN_ON
-#define FF_TRANSLATION_STATIC_PWM_FAN_ON 0.0F
+#define FF_TRANSLATION_STATIC_PWM_FAN_ON 35.0F
 #endif
 #ifndef FF_TRANSLATION_VELOCITY_PWM_FAN_ON
-#define FF_TRANSLATION_VELOCITY_PWM_FAN_ON 0.0F
+#define FF_TRANSLATION_VELOCITY_PWM_FAN_ON 0.035F
 #endif
 #ifndef FF_TRANSLATION_ACCEL_PWM_FAN_ON
-#define FF_TRANSLATION_ACCEL_PWM_FAN_ON 0.0F
+#define FF_TRANSLATION_ACCEL_PWM_FAN_ON 0.0040F
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
@@ -143,7 +145,7 @@
 #endif
 
 #ifndef KP_DISTANCE_FAN_ON
-#define KP_DISTANCE_FAN_ON  0.10F
+#define KP_DISTANCE_FAN_ON  2.00F
 #endif
 #ifndef KI_DISTANCE_FAN_ON
 #define KI_DISTANCE_FAN_ON  0.0F
@@ -175,10 +177,10 @@
 #endif
 
 #ifndef KP_ANGLE_FAN_ON
-#define KP_ANGLE_FAN_ON 80.0F
+#define KP_ANGLE_FAN_ON 10.0F
 #endif
 #ifndef KI_ANGLE_FAN_ON
-#define KI_ANGLE_FAN_ON 8.0F
+#define KI_ANGLE_FAN_ON 0.1F
 #endif
 #ifndef KD_ANGLE_FAN_ON
 #define KD_ANGLE_FAN_ON 0.0F
@@ -205,13 +207,13 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  0.9F
+#define KP_OMEGA_FAN_ON  0.45F
 #endif
 #ifndef KI_OMEGA_FAN_ON
-#define KI_OMEGA_FAN_ON  0.035F
+#define KI_OMEGA_FAN_ON  0.006F
 #endif
 #ifndef KD_OMEGA_FAN_ON
-#define KD_OMEGA_FAN_ON  1.0F
+#define KD_OMEGA_FAN_ON  0.0F
 #endif
 #ifndef FF_OMEGA_PWM_FAN_ON
 #define FF_OMEGA_PWM_FAN_ON 0.0F

@@ -246,22 +246,25 @@ static bool f413_path_run_is_large_turn_code(uint16_t code)
          (code == NF_LEGACY_PATH_LARGE_LEFT_180);
 }
 
-/* The first suction tune opts in through mode4's fan setting. Other modes
+/* Suction tuning opts in through mode4/mode6's fan setting. Other modes
  * and the fanless mini r2 profile retain the existing bring-up caps. */
 static bool f413_path_run_suction_mode(const ShortestRunModeParams_t* params)
 {
-  return (params == &shortestRunModeParams4) && (params->fan_power > 0);
+  return ((params == &shortestRunModeParams4) || (params == &shortestRunModeParams6)) &&
+      (params->fan_power > 0);
 }
 
 static float f413_path_run_turn_velocity_cap(const ShortestRunModeParams_t* params)
 {
-  return f413_path_run_suction_mode(params) ? 1200.0f :
+  return f413_path_run_suction_mode(params)
+      ? ((params == &shortestRunModeParams6) ? 1500.0f : 1200.0f) :
       NIGHTFALL_F413_PATH_TURN_VELOCITY_CAP;
 }
 
 static float f413_path_run_diagonal_velocity_cap(const ShortestRunModeParams_t* params)
 {
-  return f413_path_run_suction_mode(params) ? 1200.0f :
+  return f413_path_run_suction_mode(params)
+      ? ((params == &shortestRunModeParams6) ? 1500.0f : 1200.0f) :
       NIGHTFALL_F413_PATH_DIAGONAL_VELOCITY_CAP;
 }
 
@@ -432,8 +435,8 @@ static float f413_path_run_next_diagonal_exit_velocity(
      * implicit 45 mm tail below then performs the stop.  Normal shortest paths
      * pass zero here and retain the cardinal-terminal invariant.
      */
-    /* Suction tests brake in the explicit DS tail before the final 45 mm.
-     * 1200 -> 0 in 45 mm would exceed the inherited case8 deceleration. */
+    /* Suction tests brake in the explicit DS tail before the final 45 mm
+     * whenever the selected case cannot stop directly from turn speed. */
     return f413_path_run_suction_mode(mode_params)
         ? fminf(test_terminal_velocity_mm_s,
                 f413_path_run_goal_entry_speed(case_params))
@@ -2103,7 +2106,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_trace_on_run_start();
   if (mode_params->fan_power > 0)
   {
-    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan ramp=%lums wait=%lums\r\n",
+    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=FAN_ON hold-before-fan ramp=%lums wait=%lums\r\n",
                  (unsigned int)mode_params->fan_power,
                  (unsigned long)f413_path_run_suction_ramp_ms((uint16_t)mode_params->fan_power),
                  (unsigned long)SUCTION_FAN_STABILIZE_DELAY_MS);

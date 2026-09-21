@@ -6,6 +6,11 @@ with mini_r2 mode4's configured turn speeds. Tune version:
 `mini-r3-mode4-fan50-t0.15`. This is an initial case0 tuning profile; no suction
 motion, firmware flash, or NVM operation was performed for this change.
 
+Follow-up: the user reports stable suction running with t0.15. In t0.16,
+mode4 keeps these turn values and startup timing, while fan-driven control
+selects independently tunable FAN_ON gains initialized from the current
+FAN_OFF values. See [mode6 gain tuning](MINI_R3_MODE6_SUCTION_TUNING.md).
+
 ## Simulator and selected parameters
 
 Used [PR #21](https://github.com/xfa273/nightfall-fw/pull/21), exact simulator
@@ -90,9 +95,10 @@ wall-control behavior retained. The case arrays remain the mini_r2 baseline.
 The straight cap remains1500 mm/s; only suction mode4's turn/diagonal caps
 become1200 mm/s. This change does not enable an r3 KERI precomputed table.
 
-F413 currently selects the already tuned `FAN_OFF` gains regardless of fan
-state. This behavior is deliberately retained for the initial suction tune;
-legacy untested `FAN_ON` gains are not activated. No control-loop code changed.
+Through t0.15, F413 selected the already tuned `FAN_OFF` gains regardless of
+fan state. Starting in t0.16, fan PWM activity selects `FAN_ON`, whose19 r3
+values initially equal the current `FAN_OFF` values. Both mode4 and mode6
+use this shared gain selection; subsequent FAN_ON tuning applies to both.
 Search/mode2, other modes, r2 parameters and its case0 mapping, F405, LUTs,
 identity/calibration/maze/log schemas, `.ioc` and stable snapshots are unchanged.
 Mode4's new small90 entry moves its front-distance target to89.4 mm, within the

@@ -16,6 +16,7 @@
 #include "f413_measurements.h"
 #include "f413_motion_stop.h"
 #include "main.h"
+#include "f413_hw.h"
 #include "params.h"
 #include <math.h>
 #include <string.h>
@@ -206,7 +207,7 @@ static volatile float s_tune_reference = 0.0f;
 
 static bool f413_ctrl_use_fan_on_gains(void)
 {
-    return false;
+    return f413_hw_fan_is_running();
 }
 
 static void f413_ctrl_cancel_omega_profile(void)

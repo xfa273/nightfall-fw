@@ -56,29 +56,29 @@ HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* h,unsigned c)
 int main(void)
 {
  htim10.arr=999;
- assert(f413_hw_fan_start(500)); assert(active && htim10.compare[0]==500);
- f413_hw_fan_stop(); assert(!active && htim10.compare[0]==0);
+ assert(f413_hw_fan_start(500)); assert(active && f413_hw_fan_is_running() && htim10.compare[0]==500);
+ f413_hw_fan_stop(); assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  assert(!f413_hw_fan_set_duty(500)); assert(!active);
  assert(f413_hw_fan_start(1));
  unsigned starts=pwm_starts, stops=pwm_stops;
  for (uint16_t duty=1; duty<=500; ++duty)
  {
    assert(f413_hw_fan_set_duty(duty));
-   assert(active && htim10.compare[0]==duty);
+   assert(active && f413_hw_fan_is_running() && htim10.compare[0]==duty);
    assert(pwm_starts==starts && pwm_stops==stops);
  }
  pressed=true; assert(!f413_hw_fan_set_duty(500)); pressed=false;
- assert(!active && htim10.compare[0]==0);
+ assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  assert(f413_hw_fan_start(1));
  capable=false; assert(!f413_hw_fan_set_duty(500)); capable=true;
- assert(!active && htim10.compare[0]==0);
+ assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  assert(f413_hw_fan_start(1)); assert(!f413_hw_fan_set_duty(1001));
- assert(!active && htim10.compare[0]==0);
+ assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  assert(f413_hw_fan_start(1)); assert(!f413_hw_fan_set_duty(0));
- assert(!active && htim10.compare[0]==0);
+ assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  capable=false; assert(!f413_hw_fan_start(500)); capable=true;
  pressed=true; assert(!f413_hw_fan_start(500)); pressed=false;
  assert(!f413_hw_fan_start(0)); assert(!f413_hw_fan_start(1001));
- fail=true; assert(!f413_hw_fan_start(500)); assert(!active && htim10.compare[0]==0);
+ fail=true; assert(!f413_hw_fan_start(500)); assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
  puts("fan PWM: continuous ramp updates, 50 percent, capability/stop/range refusal and failed-start cleanup PASS");
 }
