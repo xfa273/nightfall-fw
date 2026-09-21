@@ -60,28 +60,26 @@ typedef struct {
   uint16_t settled_ms;
 } f413_stop_state_t;
 
-/* Called once per guarded 1 ms wait. Near extrapolation is used only to stop,
- * never to authorize forward travel or a successful wall handoff. */
+/* Near/saturated readings cancel forward approach and hand off to bounded
+ * alignment recovery, not to a run abort. Called once per guarded 1 ms wait. */
 static inline f413_stop_action_t f413_stop_approach_step(
     f413_stop_state_t* state, float remaining_mm, float velocity_mm_s,
     bool profile_complete, bool allow_wall_handoff, bool front_valid,
     bool front_saturated, float fr_mm, float fl_mm, float sum_mm,
-    float wall_target_mm, float too_close_mm)
+    float wall_target_mm)
 {
-  if (!isfinite(fr_mm) || !isfinite(fl_mm) || !isfinite(sum_mm) ||
-      front_saturated || fr_mm < too_close_mm || fl_mm < too_close_mm)
+  if (!isfinite(fr_mm) || !isfinite(fl_mm) || !isfinite(sum_mm))
   {
     return F413_STOP_WALL_FAULT;
   }
-  if (allow_wall_handoff && front_valid && sum_mm <= wall_target_mm)
+  if (allow_wall_handoff &&
+      (front_saturated || fr_mm <= wall_target_mm || fl_mm <= wall_target_mm ||
+       (front_valid && sum_mm <= wall_target_mm)))
   {
     state->wall_handoff = true;
   }
-  /* A handoff must still be valid when we finish braking. */
-  if (state->wall_handoff && !front_valid)
-  {
-    return F413_STOP_WALL_FAULT;
-  }
+  /* Latch through near-range invalidity while braking. Alignment then decides
+   * between retreat, correction, and wall lost. */
   const bool at_target = state->wall_handoff ||
       (profile_complete && isfinite(remaining_mm) &&
        fabsf(remaining_mm) <= F413_STOP_POSITION_TOL_MM);

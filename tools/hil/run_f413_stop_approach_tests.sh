@@ -15,6 +15,7 @@ esac
   -I"$TASK_ROOT/platform/trace" -I"$TASK_ROOT/platform/stm32f405/Core/Inc" \
   -I"$TASK_ROOT/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc" \
   "$TASK_ROOT/tools/hil/f413_stop_approach_tests.c" \
+  "$TASK_ROOT/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_front_match.c" \
   $GC_FLAGS -lm -o "$TEST_OUT_DIR/f413_stop_approach_tests"
 ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 \
   UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 \

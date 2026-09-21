@@ -973,6 +973,16 @@ void f413_ctrl_set_velocity(float velocity_mm_s)
     __set_PRIMASK(primask);
 }
 
+void f413_ctrl_clear_velocity_feedback(void)
+{
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    s_velocity_integral = 0.0f;
+    s_previous_velocity_error = s_target_velocity - s_real_velocity;
+    s_velocity_error_error = 0.0f;
+    __set_PRIMASK(primask);
+}
+
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
                                     float target_velocity_mm_s,
                                     float distance_mm)

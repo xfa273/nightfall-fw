@@ -70,6 +70,15 @@ int main(void)
   assert(!f413_ctrl_stop_profile_complete() && f413_ctrl_get_target_velocity() == 0);
 
   setup();
+  tick_at_position(12.0f);
+  s_velocity_integral = 100000.0f; /* Prior forward pushing must not defeat retreat. */
+  f413_ctrl_set_velocity(-30);
+  f413_ctrl_clear_velocity_feedback();
+  assert(s_velocity_integral == 0 && f413_ctrl_get_distance() == 12.0f && s_running);
+  assert(test_primask == 0U);
+  tick_at_position(12.0f);
+  assert(f413_ctrl_get_motor_out_l() < 0 && f413_ctrl_get_motor_out_r() < 0);
+  setup();
   f413_ctrl_set_velocity_profile(600, 300, 135);
   for (unsigned i = 0; i < 500; ++i) f413_ctrl_tick();
   assert(s_velocity_interrupt == 300 && s_acceleration_interrupt == 0);

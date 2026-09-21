@@ -2,8 +2,8 @@
 
 ## Current: user-accepted 2S/fan-off gains
 
-Latest motion implementation: `mini-r3-2s-fanoff-t0.10` fixes the goal-cell
-deceleration timeout before front alignment, preserving these accepted gains
+Latest motion implementation: `mini-r3-2s-fanoff-t0.11` replaces the t0.10
+near-wall abort with bounded retreat/alignment recovery, preserving these accepted gains
 and the t0.9 LUT. See `F413_STOP_APPROACH_FIX.md` for evidence, shared-F413
 impact, host regression checks and the pending physical validation/flash.
 
