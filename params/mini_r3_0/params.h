@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-translation-t0.6"
+#define PARAMS_TUNE_VERSION "mini-r3-translation-t0.7"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -58,16 +58,16 @@
 #endif
 
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_CONTROL
-/* Encoder-only coarse 2S/fan-off tune. The accelerometer estimate is still
- * logged, but a fixed lifted body cannot supply wheel acceleration to it. */
-#define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 0U
+/* Restore encoder + IMU acceleration feedback for floor tuning.
+ * The t0.6 gains were only coarse-tuned with encoder feedback while lifted;
+ * validate them again on the floor with this estimator before raising speed. */
+#define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
 #endif
 
 /*
- * Retain the accelerometer estimate for logging, including the prior guard
- * against using it in an omega profile. The r3 coarse tune above uses the
- * short-delay encoder LPF for all velocity feedback; re-enabling acceleration
- * compensation needs separate floor validation (not a fixed-body test).
+ * Preserve the existing omega-profile guard: use the short-delay encoder LPF
+ * during turns until IMU-axis cross-coupling is separately floor-qualified.
+ * This exception does not disable IMU-assisted straight/translation tuning.
  */
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE
 #define VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE 0U
