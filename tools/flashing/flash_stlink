@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+from cube_cli_runtime import cube_cli_runtime
+
 
 CUBE_CLI_CANDIDATES = [
     "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOS/bin/STM32_Programmer_CLI",
@@ -80,7 +82,11 @@ def main() -> int:
     ap.add_argument("--reset-only", action="store_true", help="only connect and perform reset without flashing")
     args = ap.parse_args()
 
-    cli = find_cube_cli(args.cli)
+    with cube_cli_runtime(find_cube_cli(args.cli)) as cli:
+        return execute(args, cli, repo_root)
+
+
+def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
 
     if args.list:
         run([cli, "-l", "stlink-only"])
