@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-translation-t0.7"
+#define PARAMS_TUNE_VERSION "mini-r3-2s-fanoff-t0.8"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -58,9 +58,8 @@
 #endif
 
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_CONTROL
-/* Restore encoder + IMU acceleration feedback for floor tuning.
- * The t0.6 gains were only coarse-tuned with encoder feedback while lifted;
- * validate them again on the floor with this estimator before raising speed. */
+/* Encoder + IMU acceleration feedback for floor use. User accepted the
+ * unit002 2S/fan-off tune on 2026-09-21; suction and 3S remain unqualified. */
 #define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
 #endif
 
@@ -123,9 +122,9 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-/* 2S, fan OFF, unit002 lifted coarse tune (300/500 mm/s). Not floor-qualified.
+/* 2S, fan OFF, unit002 user-accepted floor tune, 2026-09-21.
  * I is accumulated per 1 ms control tick, without an extra dt multiplier. */
-#define KP_VELOCITY_FAN_OFF 0.08F
+#define KP_VELOCITY_FAN_OFF 0.24F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
 #define KI_VELOCITY_FAN_OFF 0.001F
@@ -222,7 +221,7 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
-#define KP_OMEGA_FAN_OFF 1.35F
+#define KP_OMEGA_FAN_OFF 0.45F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
 #define KI_OMEGA_FAN_OFF 0.006F
