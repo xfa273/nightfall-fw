@@ -1,5 +1,30 @@
 # mini_r3 unit002 lifted translation tune, 2026-09-21 JST
 
+## Current follow-up: restore IMU feedback for floor tuning
+
+The user explicitly requested restoration of IMU-assisted velocity feedback before
+floor tuning. Source `82157c1`, profile `mini-r3-translation-t0.7`, sets
+`VELOCITY_ACCEL_COMP_ENABLE_CONTROL=1`. The existing omega-profile exception
+(`VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE=0`) remains: straight and
+translation tuning use encoder + acceleration, active omega profiles use the
+3 ms encoder LPF. The 30 ms window, compensation gain1, translation PI/FF and
+distance gains are unchanged. The user's uncommitted omega P0.2 is preserved
+and included in the local build, but not committed as part of this restoration.
+The t0.6 no-load results below do not qualify t0.7 floor stability.
+
+F413/F405 builds and ASan/UBSan machine tests (r2 and both r3 units) pass.
+**Application flash is pending:** ST-LINK listing succeeds with the native CLI,
+but HOTPLUG at4MHz and1MHz times out with `Unable to get core ID / No STM32
+target found`. The intended read-only identity-sector backup did not complete;
+no application erase/write/reset or UART/motor/fan command was issued.
+The existing V3 MINIE USB recovery helper found no matching USB device and made
+no reset. Ask the user to check target power/debug cable and reseat the probe.
+Last agent-verified application remains `0020011dirty/t0.6`; do not assume
+t0.7 is on the board until flash/verify and runtime confirmation succeed.
+Local BIN SHA256 `6cdc5dfb1500c9fe55ab6ed5efcad2f3f4b3c4338004e59a3b354068a0c5dac5`.
+
+## Historical no-load test
+
 Scope: user-authorized lifted/secured **translation only**, 8 V / 2 A bench
 supply (2S-equivalent), debugger5V OFF, fan OFF. This is a coarse no-load tune,
 not a floor, turn, suction,3S or maze qualification. Encoder direction is trusted
