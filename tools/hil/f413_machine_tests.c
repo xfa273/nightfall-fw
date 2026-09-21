@@ -2,6 +2,7 @@
 #include "f413_motor_pwm.h"
 #include "f413_measurements.h"
 #include "f413_wall_distance.h"
+#include "f413_motion_stop.h"
 #include "params.h"
 #include "sensor_distance.h"
 #include <assert.h>
@@ -121,6 +122,21 @@ static void front_distance_tests(unsigned rev)
     }
   }
   assert(crossed82);
+  /* Front approach handoff uses the real LUT; near extrapolation never means
+   * permission to continue creeping. Replay the two failed-run ADC snapshots. */
+  const int32_t stop_adc[][2] = {{2508,2494}, {3086,3021}, {2901,3174}};
+  for (unsigned i = 0; i < 3; ++i) {
+    adc.fr_delta = stop_adc[i][0]; adc.fl_delta = stop_adc[i][1];
+    adc.fr_on = (uint16_t)(adc.fr_delta + 100);
+    adc.fl_on = (uint16_t)(adc.fl_delta + 100);
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    f413_stop_state_t state = {0};
+    const f413_stop_action_t action = f413_stop_approach_step(&state, 6.4f, 3.0f,
+        true, true, distance.front_valid, distance.saturated_mask != 0,
+        distance.fr_mm_unwarped, distance.fl_mm_unwarped,
+        distance.front_sum_mm_unwarped, F_ALIGN_TARGET_MM, F_ALIGN_TOO_CLOSE_MM);
+    assert(action == (i == 0 ? F413_STOP_BRAKE : F413_STOP_WALL_FAULT));
+  }
   /* One invalid channel must still reject a plausible front sum. */
   adc.fr_delta = 222; adc.fl_delta = 500;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));

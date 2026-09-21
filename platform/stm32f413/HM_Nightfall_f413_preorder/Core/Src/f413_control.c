@@ -14,6 +14,7 @@
 #include "f413_control.h"
 #include "f413_motor_pwm.h"
 #include "f413_measurements.h"
+#include "f413_motion_stop.h"
 #include "main.h"
 #include "params.h"
 #include <math.h>
@@ -118,6 +119,8 @@ static bool s_imu_ok = false;
 static volatile float s_acceleration_interrupt = 0.0f;
 static volatile float s_velocity_interrupt = 0.0f;
 static volatile float s_velocity_profile_target = 0.0f;
+static volatile float s_velocity_profile_direction = 0.0f;
+static volatile float s_velocity_profile_end_distance = 0.0f;
 static volatile uint8_t s_velocity_profile_clamp_enabled = 0U;
 static volatile uint8_t s_distance_feedback_enabled = 1U;
 static volatile float s_omega_interrupt = 0.0f;
@@ -458,6 +461,8 @@ static void f413_ctrl_reset_profile_state(void)
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = 0.0f;
     s_velocity_profile_target = 0.0f;
+    s_velocity_profile_direction = 0.0f;
+    s_velocity_profile_end_distance = 0.0f;
     s_velocity_profile_clamp_enabled = 0U;
     s_distance_feedback_enabled = 1U;
     s_omega_interrupt = 0.0f;
@@ -952,6 +957,8 @@ void f413_ctrl_stop(void)
 
 void f413_ctrl_set_velocity(float velocity_mm_s)
 {
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
     if (s_distance_feedback_enabled != 0U)
     {
         f413_ctrl_sync_distance_feedback_to_real();
@@ -960,8 +967,10 @@ void f413_ctrl_set_velocity(float velocity_mm_s)
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = velocity_mm_s;
     s_velocity_profile_target = velocity_mm_s;
+    s_velocity_profile_direction = 0.0f;
     s_velocity_profile_clamp_enabled = 0U;
     s_target_velocity = velocity_mm_s;
+    __set_PRIMASK(primask);
 }
 
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
@@ -974,6 +983,9 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
         return;
     }
 
+    /* Publish the endpoint and profile atomically to the 1 kHz interrupt. */
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
     f413_ctrl_sync_distance_feedback_to_real();
     s_distance_feedback_enabled = 1U;
     s_velocity_interrupt = start_velocity_mm_s;
@@ -984,6 +996,16 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
         ((target_velocity_mm_s * target_velocity_mm_s) -
          (start_velocity_mm_s * start_velocity_mm_s)) /
         (2.0f * distance_mm);
+    s_velocity_profile_direction = s_acceleration_interrupt;
+    s_velocity_profile_end_distance = s_target_distance + distance_mm;
+    __set_PRIMASK(primask);
+}
+
+bool f413_ctrl_stop_profile_complete(void)
+{
+    return s_velocity_profile_clamp_enabled &&
+           s_velocity_profile_target == 0.0f &&
+           s_velocity_interrupt == 0.0f && s_acceleration_interrupt == 0.0f;
 }
 
 void f413_ctrl_set_omega(float omega_deg_s)
@@ -1517,21 +1539,29 @@ void f413_ctrl_tick(void)
     {
         f413_ctrl_update_omega_profile();
 
-        s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
-        if (s_velocity_profile_clamp_enabled && (s_acceleration_interrupt != 0.0f))
+        if (s_velocity_profile_clamp_enabled)
         {
-            if ((s_acceleration_interrupt > 0.0f) &&
-                (s_velocity_interrupt > s_velocity_profile_target))
-            {
-                s_velocity_interrupt = s_velocity_profile_target;
-            }
-            else if ((s_acceleration_interrupt < 0.0f) &&
-                     (s_velocity_interrupt < s_velocity_profile_target))
-            {
-                s_velocity_interrupt = s_velocity_profile_target;
-            }
+            float velocity = s_velocity_interrupt;
+            float acceleration = s_acceleration_interrupt;
+            f413_motion_profile_advance(&velocity, &acceleration,
+                                       s_velocity_profile_target, F413_CTRL_DT);
+            s_velocity_interrupt = velocity;
+            s_acceleration_interrupt = acceleration;
         }
-        s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
+        else
+        {
+            s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
+        }
+        const bool stop_profile_complete = f413_ctrl_stop_profile_complete();
+        if (stop_profile_complete)
+        {
+            /* Avoid a permanently short endpoint from discrete integration. */
+            s_target_distance = s_velocity_profile_end_distance;
+        }
+        else
+        {
+            s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
+        }
 
         if (s_distance_feedback_enabled != 0U)
         {
@@ -1560,29 +1590,9 @@ void f413_ctrl_tick(void)
         s_target_velocity = (ff_d * s_velocity_interrupt) + s_distance_velocity_feedback;
         if (s_velocity_profile_clamp_enabled != 0U)
         {
-            if ((s_acceleration_interrupt > 0.0f) &&
-                (s_target_velocity > s_velocity_profile_target))
-            {
-                s_target_velocity = s_velocity_profile_target;
-            }
-            else if ((s_acceleration_interrupt < 0.0f) &&
-                     (s_target_velocity < s_velocity_profile_target))
-            {
-                s_target_velocity = s_velocity_profile_target;
-            }
-            else if (s_acceleration_interrupt == 0.0f)
-            {
-                if ((s_velocity_profile_target >= 0.0f) &&
-                    (s_target_velocity > s_velocity_profile_target))
-                {
-                    s_target_velocity = s_velocity_profile_target;
-                }
-                else if ((s_velocity_profile_target < 0.0f) &&
-                         (s_target_velocity < s_velocity_profile_target))
-                {
-                    s_target_velocity = s_velocity_profile_target;
-                }
-            }
+            s_target_velocity = f413_motion_profile_limit(s_target_velocity,
+                s_velocity_profile_target, s_velocity_profile_direction,
+                stop_profile_complete);
         }
 
         s_velocity_error = s_target_velocity - s_real_velocity;
@@ -1607,7 +1617,7 @@ void f413_ctrl_tick(void)
                 s_velocity_integral = v_i_next;
             }
             s_out_translation =
-                f413_ctrl_translation_ff_output(s_velocity_interrupt,
+                f413_ctrl_translation_ff_output(stop_profile_complete ? s_target_velocity : s_velocity_interrupt,
                                                 s_acceleration_interrupt,
                                                 ff_ts,
                                                 ff_tv,

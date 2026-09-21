@@ -5,6 +5,7 @@
 
 #include "f413_control.h"
 #include "f413_front_match.h"
+#include "f413_motion_stop.h"
 #include "f413_hw.h"
 #include "f413_path_run.h"
 #include "f413_run_features.h"
@@ -1599,11 +1600,106 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
   return F413_RUN_SESSION_ABORT_NONE;
 }
 
-static f413_run_session_abort_reason_t f413_search_step_drive_segment(float distance_mm,
+static f413_run_session_abort_reason_t f413_search_step_wait_stop_approach(
+    float target_distance, bool allow_wall_handoff,
+    f413_run_session_guard_t* guard, uint16_t trace_flags)
+{
+  const uint32_t deadline = f413_search_step_tick() + g_config.path_timeout_ms;
+  f413_stop_state_t state = {0};
+  uint32_t last_wall_sequence = 0U;
+  uint32_t last_wall_tick = f413_search_step_tick();
+  bool braking = false;
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+
+  while (reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_wall_distance_snapshot_t wall;
+    reason = f413_run_session_guard_check(guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+    if (!f413_wall_distance_read_snapshot(&wall))
+    {
+      reason = F413_RUN_SESSION_ABORT_WALL_FAULT;
+      break;
+    }
+    if (wall.adc.sample_sequence != last_wall_sequence)
+    {
+      last_wall_sequence = wall.adc.sample_sequence;
+      last_wall_tick = f413_search_step_tick();
+    }
+    if ((wall.adc.sample_sequence == 0U) ||
+        ((f413_search_step_tick() - last_wall_tick) >= F413_STOP_WALL_MAX_AGE_MS))
+    {
+      reason = F413_RUN_SESSION_ABORT_WALL_FAULT;
+      break;
+    }
+    const f413_stop_action_t action = f413_stop_approach_step(
+        &state, target_distance - f413_ctrl_get_distance(),
+        f413_ctrl_get_real_velocity(), f413_ctrl_stop_profile_complete(),
+        allow_wall_handoff, wall.front_valid,
+        (wall.saturated_mask & (F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL)) != 0U,
+        wall.fr_mm_unwarped, wall.fl_mm_unwarped, wall.front_sum_mm_unwarped,
+        F_ALIGN_TARGET_MM, F_ALIGN_TOO_CLOSE_MM);
+    if (action == F413_STOP_WALL_FAULT)
+    {
+      f413_ctrl_stop(); /* Disable drive before potentially blocking trace output. */
+      trace_printf("[SEARCH-STOP] unsafe-front FR=%.2f FL=%.2f valid=%u sat=%u\r\n",
+                   (double)wall.fr_mm_unwarped, (double)wall.fl_mm_unwarped,
+                   (unsigned)wall.front_valid, (unsigned)wall.saturated_mask);
+      reason = F413_RUN_SESSION_ABORT_WALL_FAULT;
+      break;
+    }
+    if (action == F413_STOP_COMPLETE)
+    {
+      f413_ctrl_set_velocity(0.0f);
+      f413_ctrl_set_omega(0.0f);
+      f413_wall_runtime_control_clear();
+      trace_printf("[SEARCH-STOP] complete source=%s remaining=%.2fmm\r\n",
+                   state.wall_handoff ? "front-wall" : "encoder",
+                   (double)(target_distance - f413_ctrl_get_distance()));
+      return F413_RUN_SESSION_ABORT_NONE;
+    }
+    if ((action == F413_STOP_BRAKE) && !braking)
+    {
+      braking = true;
+      f413_ctrl_set_velocity(0.0f); /* Cancel pending encoder creep before alignment. */
+      f413_ctrl_set_omega(0.0f);
+      f413_wall_runtime_control_clear();
+      f413_ctrl_set_angle_target(f413_ctrl_get_angle());
+      trace_printf("[SEARCH-STOP] front-wall handoff %.2fmm\r\n",
+                   (double)wall.front_sum_mm_unwarped);
+    }
+    if ((int32_t)(f413_search_step_tick() - deadline) >= 0)
+    {
+      f413_ctrl_stop();
+      trace_printf("[SEARCH-STOP] timeout remaining=%.2fmm velocity=%.2f\r\n",
+                   (double)(target_distance - f413_ctrl_get_distance()),
+                   (double)f413_ctrl_get_real_velocity());
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
+      break;
+    }
+    f413_search_step_set_mode_flags(braking ? g_config.trace_search_safe_flag : trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (!braking && (reason == F413_RUN_SESSION_ABORT_NONE) &&
+        (g_config.wall_control_apply_straight != NULL))
+    {
+      g_config.wall_control_apply_straight();
+    }
+  }
+  /* No map update, spin, or alignment may follow an unsafe/failed approach. */
+  f413_ctrl_stop();
+  f413_wall_runtime_control_clear();
+  return reason;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_drive_segment_impl(float distance_mm,
                                                                       float target_velocity_mm_s,
                                                                       float* speed_now_mm_s,
                                                                       f413_run_session_guard_t* guard,
-                                                                      uint16_t trace_flags)
+                                                                      uint16_t trace_flags,
+                                                                      bool allow_wall_handoff)
 {
   float target_distance;
   f413_run_session_abort_reason_t reason;
@@ -1623,9 +1719,21 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment(float dist
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
 
-  reason = f413_search_step_wait_ctrl_target(target_distance, false, guard, trace_flags);
+  reason = (target_velocity_mm_s == 0.0f)
+      ? f413_search_step_wait_stop_approach(target_distance, allow_wall_handoff, guard, trace_flags)
+      : f413_search_step_wait_ctrl_target(target_distance, false, guard, trace_flags);
   *speed_now_mm_s = target_velocity_mm_s;
   return reason;
+}
+
+static f413_run_session_abort_reason_t f413_search_step_drive_segment(float distance_mm,
+                                                                      float target_velocity_mm_s,
+                                                                      float* speed_now_mm_s,
+                                                                      f413_run_session_guard_t* guard,
+                                                                      uint16_t trace_flags)
+{
+  return f413_search_step_drive_segment_impl(distance_mm, target_velocity_mm_s,
+                                            speed_now_mm_s, guard, trace_flags, false);
 }
 
 static bool f413_search_step_front_wall_distance_mm(float* distance_mm)
@@ -3054,8 +3162,9 @@ static f413_run_session_abort_reason_t f413_search_step_run_back_turn(
   const uint16_t fwd_flags = (uint16_t)(g_config.trace_search_safe_flag |
                                        g_config.trace_motor_fwd_flag);
 
-  reason = f413_search_step_drive_segment((float)DIST_HALF_SEC, 0.0f,
-                                          speed_now_mm_s, guard, fwd_flags);
+  reason = f413_search_step_drive_segment_impl((float)DIST_HALF_SEC, 0.0f,
+      speed_now_mm_s, guard, fwd_flags,
+      (params != NULL) && (params->wall_align_enable != 0U));
   if (reason != F413_RUN_SESSION_ABORT_NONE)
   {
     return reason;

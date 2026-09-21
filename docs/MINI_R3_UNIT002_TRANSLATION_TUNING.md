@@ -2,6 +2,11 @@
 
 ## Current: user-accepted 2S/fan-off gains
 
+Latest motion implementation: `mini-r3-2s-fanoff-t0.10` fixes the goal-cell
+deceleration timeout before front alignment, preserving these accepted gains
+and the t0.9 LUT. See `F413_STOP_APPROACH_FIX.md` for evidence, shared-F413
+impact, host regression checks and the pending physical validation/flash.
+
 On 2026-09-21 the user completed non-suction tuning and reported basic maze
 running with the same run parameters as mini_r2. Save the working-tree gains
 velocity P0.24 and omega P0.45 as source `929f000`, version

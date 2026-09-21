@@ -37,6 +37,7 @@ void f413_ctrl_set_velocity(float velocity_mm_s);
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
                                     float target_velocity_mm_s,
                                     float distance_mm);
+bool f413_ctrl_stop_profile_complete(void);
 void f413_ctrl_set_omega(float omega_deg_s);
 void f413_ctrl_start_omega_profile(float signed_omega_peak_deg_s,
                                    float accel_time_s,
