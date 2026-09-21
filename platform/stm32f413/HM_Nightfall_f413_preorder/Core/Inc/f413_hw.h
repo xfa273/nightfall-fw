@@ -30,6 +30,8 @@ bool f413_hw_stop_switch_pressed(void);
 GPIO_PinState f413_hw_stop_switch_raw(void);
 int32_t f413_hw_encoder_delta_signed(uint32_t now, uint32_t prev);
 bool f413_hw_fan_start(uint16_t duty_per_mille);
+/* Update an already running fan without stopping/restarting its PWM. */
+bool f413_hw_fan_set_duty(uint16_t duty_per_mille);
 void f413_hw_fan_stop(void);
 void f413_hw_motor_set(bool enable,
                        bool left_forward,

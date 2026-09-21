@@ -3,7 +3,7 @@
 The user reports that fan-off exploration and mode2 shortest running work on
 mini_r3. Mode4 now starts the suction tuning phase at 50% duty (`500/1000`),
 with mini_r2 mode4's configured turn speeds. Tune version:
-`mini-r3-mode4-fan50-t0.13`. This is an initial case0 tuning profile; no suction
+`mini-r3-mode4-fan50-t0.14`. This is an initial case0 tuning profile; no suction
 motion, firmware flash, or NVM operation was performed for this change.
 
 ## Simulator and selected parameters
@@ -58,15 +58,13 @@ Local calculation artifacts are in `build/mini_r3_mode4/` (not versioned).
 
 Select mode4 → case0 → sub0..9 using the normal OP UI. After optical START,
 IMU calibration completes with the fan off. Control then holds the original
-zero distance and zero angle for20 ms before starting the fan at50%.
-Holding continues through the existing100 ms minimum fan stabilization wait.
-Before advancing, require angle within0.5 degree, angular speed within10 deg/s,
-distance within1 mm and speed within10 mm/s for20 consecutive guarded observations (at least20 ms, normally40 ms because
-STM32 `HAL_Delay(1)` adds one SysTick tick).
-Failure to settle within an additional1000 ms aborts without starting the path.
+zero distance and zero angle for20 ms. Fan PWM starts at1/1000, increases over
+300 ms to50%, then stays at50% during the existing100 ms stabilization wait.
+The ramp uses elapsed milliseconds and updates the running PWM compare every
+10 ms guarded wait; it does not stop/restart the PWM between updates.
 Control stays active into the first straight without recalibration or re-zeroing
-its angle. The fan remains on through deceleration and turns off before optical
-STOP/log tail.
+its angle. There is no additional pose-settling timeout before departure.
+The fan remains on through deceleration and turns off before optical STOP/log tail.
 Stop-switch and sensor/encoder/IMU guard aborts, timeout and PWM-start failure
 all lead through cleanup; failed preflight never starts the fan or motors.
 
@@ -104,26 +102,26 @@ current40..110 mm LUT; case0 does not use this front correction.
 - ASan/UBSan actual mode4 dispatch + production path preflight: all10 subs;
   800/1000/1200 mm/s turn selection and unchanged other-mode caps.
 - ASan/UBSan production session with mocked hardware: normal finish,
-  calibration/control before fan,20 ms control lead, continuous control through
-  startup with both1/2 ms guarded polling, disturbance recovery/restart of the settled window, isolated
-  angle/omega/distance/velocity/nonfinite settling failures, failed fan start,
-  every guard abort before fan/during spinup/settling/driving, stuck-distance
-  timeout, pressed switch, invalid path and busy-trace refusal; fan-off mode2
-  retains immediate departure after control start.
+  calibration/control before fan,20 ms control lead, monotonic ramp to50%,
+  elapsed-time ramp under delayed waits and SysTick wrap, continuous control,
+  latest-log pose observation regression (no extra startup timeout), failed
+  fan start/duty update, every guard abort before fan/during ramp/stabilization/
+  driving, stuck-distance timeout, pressed switch, invalid path and busy-trace
+  refusal; fan-off mode2 retains departure immediately after control start.
 - ASan/UBSan production1 kHz control tick: stationary output zero, both yaw
   directions and both fore/aft displacements produce opposing motor outputs;
   initial angle remains referenced to its pre-fan origin into the first straight.
-- Production fan PWM helper with mocked HAL:50% compare, capability/stop/range
-  refusal, PWM failure cleanup.
+- Production fan PWM helper with mocked HAL:50% compare, uninterrupted PWM
+  across500 duty updates, idle/capability/stop/range refusal, PWM failure cleanup.
 - Runtime machine/identity/profile and front-distance reference tests,
   existing225 path-linear checks,14210 route-table numeric checks, F413/F405
   Debug builds, diff check. The mode2 route table values are unchanged; only
   input SHA metadata is refreshed for the shared runner source. The local
   metadata also accounts for the pre-existing uncommitted r2 case3/4 edits;
   committed metadata excludes those unrelated edits.
-- No live HIL; physical suction turns and floor/maze runs remain untested.
+- No agent-run live HIL; the new ramp and physical startup heading remain unverified.
 
-## Fan startup heading fix (t0.13)
+## Fan startup heading fix (t0.13 history; settle gate removed in t0.14)
 
 The user observed a small chassis rotation when suction started. Latest local
 trace: `tools/logging/logs/trace_bin_20260921_215000.csv`, mode4/case0/sub2
@@ -145,7 +143,7 @@ the offset. `f413_ctrl_tick()` does not sample motion while stopped: the zero
 angle samples in this interval are stale values, not proof of physical stillness.
 The actual startup yaw cannot be recovered from this log.
 
-The revised sequence above removes that uncontrolled interval. It uses the
+Starting control before the fan removes that uncontrolled interval. It uses the
 existing controller's distance hold from `start()` and an explicit angle-zero
 hold; calling `set_velocity(0)` here would disable position feedback. Powered
 holding is marked with the existing MOTOR_COAST trace flag so automatic NVM
@@ -157,5 +155,49 @@ power; currently the r3 mode4 profile is the configured user of this path.
 
 Validation is host-only: the controller test verifies correction direction,
 not the real traction or disturbance magnitude. No live command, flash, motor,
-fan or NVM operation was performed. Repeat case0 on hardware to verify that
-the fan-start heading remains stable and the new settle gate passes.
+fan or NVM operation was performed. The next recorded trial below exposed the
+settling failure that those direction-only host tests did not establish.
+
+## Startup timeout correction (t0.14)
+
+The user then reported that the fan spun but the run ended before moving.
+Latest local trace `tools/logging/logs/trace_bin_20260921_220753.csv` has2777
+records, mode4/case0/sub2/test80, SHA256
+`1fc9ddc358bdec59a14df974b1dc36828ca04beaae68fc2cb29f9de1fa49c8e7`.
+No firmware SHA is embedded in the decoded CSV and no live ID was queried.
+The following times are relative to its first record:
+
+- 1205 ms: angle-target flag/control observations become active; VBAT drops after
+  approximately1225 ms, consistent with the20 ms control lead before fan start.
+- 1325..2324 ms: commanded distance remains0, no forward path phase, but actual
+  angle ranges-1.717..+2.664 degrees and velocity samples range-18..+25 mm/s.
+- 2325 ms: angle hold is released into cleanup, exactly1120 ms after control
+  start (20 ms lead +100 ms fan wait +1000 ms failed settling).
+- 2386 ms: `flags=0x9480` includes the shared timeout/encoder-class abort bit;
+  no switch/wall/IMU fault bit. The phase timing and unmet angle gate identify
+  the added startup timeout. The trace bit alone cannot distinguish an encoder
+  fault from timeout.
+
+At the nominal zero-angle crossing (1450 ms), target omega is still-26.6 deg/s;
+at1700 ms the angle is-1.714 degrees and target omega+18.6 deg/s. The existing
+cascaded integral control is responding to the disturbance and reversing;
+this is not evidence that stationary holding has settled. The t0.13 hard gate
+assumed a stationary precision that had not been demonstrated on the robot and
+blocked departure. Host direction-of-correction tests did not cover that
+physical behavior.
+
+Remove that added gate, retaining normal guarded startup and the pre-fan
+reference. Replace the abrupt50% duty step with the300 ms ramp above to spread
+the reaction impulse; after reaching50%, keep the existing100 ms stabilization
+wait before advancing. This is a command-sequence correction, not a claim that
+physical yaw is now within0.5 degree. Gains, angle reference, turn geometry,
+non-suction mode sequencing and F405 remain unchanged. Physical heading during
+the ramp and into the first straight still requires a new trace/video.
+
+The session regression injects the observed timeout pose (+2.655 degrees,
+-1 deg/s, approximately0.666 mm, -3 mm/s) to verify that it cannot recreate an
+extra startup timeout. It does not simulate the physical response to the ramp.
+All startup phases retain switch/sensor/IMU/encoder guards and failure cleanup.
+F413/F405 builds, production PWM/session/control host tests, all10 mode4 paths,
+225 path-linear and14210 route numeric checks pass. No UART, flash, reset,
+fan/motor command or NVM operation was performed by the agent.

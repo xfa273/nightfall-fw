@@ -10,14 +10,14 @@ void HAL_Delay(uint32_t ms);
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_run_features.c"
 
 uint16_t path[ROUTE_MAX_LEN];
-typedef enum { LEAD, SPINUP, SETTLE, DRIVE, CLEANUP } phase_t;
-static uint32_t tick, control_tick, fan_tick, first_drive_tick;
-static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, settle_polls;
-static unsigned unsettled_axis;
-static unsigned poll_ms;
+typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
+static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
+static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
+static unsigned wait_extra_ms;
+static uint16_t fan_duty;
 static uint16_t flags;
 static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
-static bool suction, disturbed, never_settles;
+static bool suction, disturbed, duty_fail;
 static float position, velocity, target, angle, omega;
 static f413_run_session_abort_reason_t injected_abort;
 static phase_t abort_phase;
@@ -27,10 +27,28 @@ int trace_printf(const char* fmt, ...) { (void)fmt; return 0; }
 bool f413_hw_stop_switch_pressed(void) { return pressed; }
 bool f413_hw_fan_start(uint16_t duty)
 {
-  assert(running && holding && duty == 500 && profiles == 0);
+  assert(running && holding && duty == 1 && profiles == 0);
   assert(tick - control_tick >= F413_PATH_RUN_SUCTION_CONTROL_LEAD_MS);
   assert(velocity == 0 && target == 0);
-  fan_starts++; fan_tick = tick; fan = !fan_fail; return fan;
+  fan_starts++; fan_tick = tick; fan_duty = duty; fan = !fan_fail; return fan;
+}
+bool f413_hw_fan_set_duty(uint16_t duty)
+{
+  assert(running && holding && fan && profiles == 0);
+  assert(duty >= fan_duty && duty <= 500);
+  uint32_t elapsed = tick - fan_tick;
+  uint16_t expected = elapsed >= F413_PATH_RUN_SUCTION_RAMP_MS ? 500 :
+      (uint16_t)((500 * elapsed + F413_PATH_RUN_SUCTION_RAMP_MS - 1) / F413_PATH_RUN_SUCTION_RAMP_MS);
+  assert(duty == expected);
+  if (duty_fail) return false;
+  duty_updates++; fan_duty = duty;
+  if (duty == 500)
+  {
+    assert(elapsed >= F413_PATH_RUN_SUCTION_RAMP_MS);
+    assert(elapsed < F413_PATH_RUN_SUCTION_RAMP_MS + F413_PATH_RUN_SUCTION_RAMP_STEP_MS + wait_extra_ms);
+    full_duty_tick = tick;
+  }
+  return true;
 }
 void f413_hw_fan_stop(void) { assert(!running); fan_stops++; fan = false; }
 void f413_hw_emit_video_sync_start_pattern(void) { assert(!running && !fan); }
@@ -53,10 +71,10 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
     assert(starts == 1 && running && fan == suction);
     if (suction)
     {
-      assert(tick - fan_tick >= SUCTION_FAN_STABILIZE_DELAY_MS + poll_ms * F413_PATH_RUN_SUCTION_SETTLE_SAMPLES);
-      assert(settle_polls >= F413_PATH_RUN_SUCTION_SETTLE_SAMPLES);
-      assert(fabsf(angle) <= .5f && fabsf(omega) <= 10 && fabsf(position) <= 1);
-      assert(fabsf(velocity) <= 10);
+      assert(tick - fan_tick >= F413_PATH_RUN_SUCTION_RAMP_MS + SUCTION_FAN_STABILIZE_DELAY_MS);
+      assert(fan_duty == 500 && duty_updates > 0);
+      assert(tick - full_duty_tick == SUCTION_FAN_STABILIZE_DELAY_MS + wait_extra_ms);
+      if (disturbed) assert(angle == 2.655f); /* Preserve the measured start origin. */
     }
   }
   target = position + distance; velocity = end;
@@ -82,26 +100,23 @@ void f413_run_session_guard_cleanup(f413_run_session_guard_t* g) { (void)g; }
 f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uint32_t ms, f413_run_session_guard_t* g)
 {
   (void)g;
-  /* STM32 HAL_Delay(1) waits two SysTick ticks; also cover an exact 1 ms host. */
-  tick += ms == 1 ? poll_ms : ms;
+  /* Cover guarded polling overruns as well as exact millisecond waits. */
+  tick += ms + wait_extra_ms;
   phase_t phase = cleanup ? CLEANUP : profiles ? DRIVE :
-      !fan ? LEAD : ms == SUCTION_FAN_STABILIZE_DELAY_MS ? SPINUP : SETTLE;
-  if (phase == LEAD || phase == SPINUP || phase == SETTLE)
+      !fan ? LEAD : fan_duty < 500 ? RAMP : SPINUP;
+  if (phase == LEAD || phase == RAMP || phase == SPINUP)
   {
     assert(running && holding && profiles == 0);
     assert(flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
   }
   if (injected_abort && phase == abort_phase) return injected_abort;
-  if (phase == SETTLE)
+  if (disturbed && (phase == RAMP || phase == SPINUP))
   {
-    settle_polls++;
-    /* Recover, then disturb it once more: the consecutive window must restart. */
-    const bool moving = never_settles || (disturbed && (settle_polls <= 12 || settle_polls == 17));
-    angle = moving && (unsettled_axis == 0 || unsettled_axis == 1) ? 3 : 0;
-    omega = moving && (unsettled_axis == 0 || unsettled_axis == 2) ? 20 : 0;
-    position = moving && (unsettled_axis == 0 || unsettled_axis == 3) ? 2 : 0;
-    velocity = moving && (unsettled_axis == 0 || unsettled_axis == 4) ? 15 : 0;
-    if (moving && unsettled_axis == 5) angle = NAN;
+    /* 22:07 trace at the old gate timeout: these observations must not add
+     * another startup timeout. This is a sequencing regression, not a model
+     * of the physical response to the new fan ramp.
+     */
+    angle = 2.655f; omega = -1.0f; position = .666f; velocity = -3.0f;
   }
   if (phase == DRIVE && !stuck) position = target;
   return F413_RUN_SESSION_ABORT_NONE;
@@ -121,12 +136,11 @@ bool f413_wall_runtime_poll_wall_end(bool b) { (void)b; return false; }
 bool f413_wall_distance_front_unwarped_mm(float* out) { (void)out; return false; }
 static void reset(void)
 {
-  tick = control_tick = fan_tick = first_drive_tick = 0;
-  starts = fan_starts = fan_stops = trace_stops = profiles = settle_polls = flags = 0;
-  unsettled_axis = 0;
-  poll_ms = 2;
+  tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
+  starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
+  wait_extra_ms = 0; fan_duty = 0;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
-  disturbed = never_settles = false; suction = true;
+  disturbed = duty_fail = false; suction = true;
   position = velocity = target = angle = omega = 0;
   injected_abort = F413_RUN_SESSION_ABORT_NONE; abort_phase = DRIVE;
   memset(path,0,sizeof(path)); path[0]=209;
@@ -142,8 +156,10 @@ static void stopped(unsigned expected_fan_starts)
 int main(void)
 {
   reset(); run(); stopped(1); assert(starts == 1 && position > 400);
-  reset(); poll_ms=1; run(); stopped(1); assert(starts == 1 && position > 400);
+  reset(); wait_extra_ms=3; run(); stopped(1); assert(starts == 1 && position > 400);
+  reset(); tick=UINT32_MAX-1610U; run(); stopped(1); assert(position > 400);
   reset(); fan_fail=true; run(); stopped(1); assert(starts == 1 && profiles == 0);
+  reset(); duty_fail=true; run(); stopped(1); assert(starts == 1 && profiles == 0);
   for (unsigned reason=F413_RUN_SESSION_ABORT_SWITCH; reason<=F413_RUN_SESSION_ABORT_TIMEOUT; ++reason)
     for (phase_t phase=LEAD; phase<=DRIVE; ++phase)
     {
@@ -151,12 +167,7 @@ int main(void)
       stopped(phase == LEAD ? 0 : 1); assert(starts == 1);
       if (phase != DRIVE) assert(profiles == 0);
     }
-  reset(); disturbed=true; run(); stopped(1); assert(settle_polls == 37 && profiles > 0);
-  for (unsigned axis = 1; axis <= 5; ++axis)
-  {
-    reset(); never_settles=true; unsettled_axis=axis; run(); stopped(1);
-    assert(profiles == 0 && settle_polls * poll_ms == F413_PATH_RUN_SUCTION_SETTLE_MAX_MS);
-  }
+  reset(); disturbed=true; run(); stopped(1); assert(profiles > 0 && position > 400);
   reset(); stuck=true; run(); stopped(1); assert(tick >= NIGHTFALL_F413_PATH_TIMEOUT_MS);
   reset(); pressed=true; run(); assert(fan_starts == 0 && starts == 0);
   reset(); path[0]=1001; run(); assert(fan_starts == 0 && starts == 0);
@@ -164,5 +175,5 @@ int main(void)
   reset(); suction=false; run();
   assert(starts == 1 && fan_starts == 0 && fan_stops == 0 && profiles > 0);
   assert(first_drive_tick == control_tick && !running && !tracing);
-  puts("suction session: hold before fan, continuous control, settling, all-phase aborts, cleanup and fan-off PASS");
+  puts("suction session: hold before fan, elapsed-time ramp, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
 }

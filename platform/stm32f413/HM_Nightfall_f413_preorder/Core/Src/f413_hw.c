@@ -291,8 +291,11 @@ void f413_hw_motor_set(bool enable,
 }
 
 /* TIM10 fan command is in per-mille units, as in the legacy mode params. */
+static bool s_fan_running = false;
+
 void f413_hw_fan_stop(void)
 {
+  s_fan_running = false;
   __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, 0U);
   (void)HAL_TIM_PWM_Stop(&htim10, TIM_CHANNEL_1);
 }
@@ -313,5 +316,21 @@ bool f413_hw_fan_start(uint16_t duty_per_mille)
     f413_hw_fan_stop();
     return false;
   }
+  s_fan_running = true;
+  return true;
+}
+
+bool f413_hw_fan_set_duty(uint16_t duty_per_mille)
+{
+  if (!s_fan_running || !f413_machine_has(F413_CAP_FAN) ||
+      (duty_per_mille == 0U) || (duty_per_mille > 1000U) ||
+      f413_hw_stop_switch_pressed())
+  {
+    f413_hw_fan_stop();
+    return false;
+  }
+  const uint32_t compare =
+      ((uint32_t)duty_per_mille * (__HAL_TIM_GET_AUTORELOAD(&htim10) + 1U)) / 1000U;
+  __HAL_TIM_SET_COMPARE(&htim10, TIM_CHANNEL_1, compare);
   return true;
 }

@@ -1962,43 +1962,51 @@ static f413_run_session_abort_reason_t f413_path_run_first_section(
 }
 
 #define F413_PATH_RUN_SUCTION_CONTROL_LEAD_MS (20U)
-#define F413_PATH_RUN_SUCTION_SETTLE_MAX_MS   (1000U)
-#define F413_PATH_RUN_SUCTION_SETTLE_SAMPLES  (20U)
+#define F413_PATH_RUN_SUCTION_RAMP_MS         (300U)
+#define F413_PATH_RUN_SUCTION_RAMP_STEP_MS    (10U)
 
-static f413_run_session_abort_reason_t f413_path_run_wait_suction_settle(
+static f413_run_session_abort_reason_t f413_path_run_start_suction(
+    uint16_t target_duty,
     f413_run_session_guard_t* guard)
 {
-  const uint32_t deadline = HAL_GetTick() + F413_PATH_RUN_SUCTION_SETTLE_MAX_MS;
-  uint32_t settled_samples = 0U;
+  uint32_t start_ms;
 
-  /* Keep the pre-fan angle/position origin until the startup impulse settles. */
-  while ((int32_t)(HAL_GetTick() - deadline) < 0)
+  if ((target_duty == 0U) || (target_duty > 1000U) || !f413_hw_fan_start(1U))
   {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  start_ms = HAL_GetTick();
+  /* Spread the startup impulse while keeping the original pose under control.
+   * Use elapsed time so guarded waits/HAL tick rounding cannot shorten the ramp.
+   */
+  while (1)
+  {
+    uint32_t elapsed_ms;
+    uint16_t duty;
     const f413_run_session_abort_reason_t reason =
-        f413_run_session_wait_with_auto_step_guarded(1U, guard);
+        f413_run_session_wait_with_auto_step_guarded(
+            F413_PATH_RUN_SUCTION_RAMP_STEP_MS, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
       return reason;
     }
-    if ((fabsf(f413_ctrl_get_angle()) <= 0.5f) &&
-        (fabsf(f413_ctrl_get_real_omega()) <= 10.0f) &&
-        (fabsf(f413_ctrl_get_distance()) <= 1.0f) &&
-        (fabsf(f413_ctrl_get_real_velocity()) <= 10.0f))
+    elapsed_ms = HAL_GetTick() - start_ms;
+    if (elapsed_ms > F413_PATH_RUN_SUCTION_RAMP_MS)
     {
-      /* Count observations, not assumed 1 ms periods: HAL_Delay(1) adds a
-       * SysTick tick, so this is normally a 40 ms window (at least 20 ms).
-       */
-      if (++settled_samples >= F413_PATH_RUN_SUCTION_SETTLE_SAMPLES)
-      {
-        return F413_RUN_SESSION_ABORT_NONE;
-      }
+      elapsed_ms = F413_PATH_RUN_SUCTION_RAMP_MS;
     }
-    else
+    duty = (uint16_t)(((uint32_t)target_duty * elapsed_ms +
+                       F413_PATH_RUN_SUCTION_RAMP_MS - 1U) /
+                      F413_PATH_RUN_SUCTION_RAMP_MS);
+    if (!f413_hw_fan_set_duty(duty))
     {
-      settled_samples = 0U;
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
+    if (elapsed_ms >= F413_PATH_RUN_SUCTION_RAMP_MS)
+    {
+      return F413_RUN_SESSION_ABORT_NONE;
     }
   }
-  return F413_RUN_SESSION_ABORT_TIMEOUT;
 }
 
 void f413_path_run_session_once(uint8_t mode,
@@ -2089,7 +2097,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_trace_on_run_start();
   if (mode_params->fan_power > 0)
   {
-    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan\r\n",
+    trace_printf("[RUN-TEST] suction duty=%u/1000 gains=existing hold-before-fan ramp=300ms\r\n",
                  (unsigned int)mode_params->fan_power);
     /* Defer NVM/SPI trace flushes throughout powered stationary holding. */
     f413_trace_log_set_mode_flags((uint16_t)(base_trace_flag |
@@ -2107,10 +2115,9 @@ void f413_path_run_session_once(uint8_t mode,
     {
       goto cleanup;
     }
-    if (!f413_hw_fan_start((uint16_t)mode_params->fan_power))
+    abort_reason = f413_path_run_start_suction((uint16_t)mode_params->fan_power, &guard);
+    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
     {
-      abort_reason = F413_RUN_SESSION_ABORT_IMU_FAULT;
-      trace_printf("[RUN-TEST] path canceled(fan start failed)\r\n");
       goto cleanup;
     }
     abort_reason = f413_run_session_wait_with_auto_step_guarded(
@@ -2119,11 +2126,10 @@ void f413_path_run_session_once(uint8_t mode,
     {
       goto cleanup;
     }
-    abort_reason = f413_path_run_wait_suction_settle(&guard);
-    if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
-    {
-      goto cleanup;
-    }
+    /* The t0.13 angle/velocity settling gate timed out on observed startup
+     * oscillation before the first section. Continue after the fixed spinup
+     * wait; retain pose feedback, its original reference, and all run guards.
+     */
   }
   else
   {

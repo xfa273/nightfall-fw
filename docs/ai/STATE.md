@@ -12,6 +12,7 @@
 - 実行者: Codex
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）
+- mini_r3吸引後の即終了修正（2026-09-21 JST）: 22:07 mode4/case0/sub2ログはctrl開始1205ms→20ms先行＋fan100ms＋整定1秒で2325msにcleanup、2386msにtimeout/encoder共通flag。角度-1.717..+2.664degで前回追加0.5deg条件に達せず、発進しない原因は未検証の整定gate。t0.14でgate撤去、fan OFF校正→位置/角度保持20ms→fanを300msで50%へramp→100ms待機→同じ角度基準・連続制御で発進。fan duty更新はPWM停止/再起動なし、guard/全終了cleanup継続。ゲイン/ターン幾何/非吸引/F405不変。実ログ相当poseでも余分なtimeoutなし、ramp遅延/時刻wrap/PWM連続/全phase異常・既存path/route/制御と両MCU build PASS。実機操作なし、rampの実際の反力抑制と開始yawは追試待ち。詳細 `docs/MINI_R3_MODE4_SUCTION_TUNING.md`。下記t0.13整定gateは撤去済み履歴。
 - mini_r3吸引始動姿勢保持（2026-09-21 JST）: 21:50 mode4/case0/sub2ログで最初の制御値更新が開始1321ms後。fan→100ms→IMU静止校正→ctrl開始という順序で反力を抑えられず、停止中IMU未更新＋開始時角度resetのため始動yaw実量はログから復元不可。t0.13はfan OFF校正→位置/角度0保持20ms→fan50%→保持下100ms→角度0.5deg/角速度10deg/s/位置1mm/速度10mm/s以内20回連続確認（HAL実待機では通常40ms）→連続制御で発進。追加1秒未収束は中止、保持中NVM flush抑止。ゲイン/ターン幾何/非吸引順序不変。production session全phase中止・整定gate、実1kHz制御の両方向姿勢/位置補正、既存path/routeと両MCU build PASS。実機書込/駆動なし、始動姿勢の実測再確認待ち。詳細 `docs/MINI_R3_MODE4_SUCTION_TUNING.md`。
 - mini_r3吸引調整準備（2026-09-21 JST）: ユーザが非吸引探索・mode2最短の動作確認を報告。mode4をr2準拠800/1000/1200mm/s・fan50%で準備、PR21/ab377c8理想モデルからalpha/in/outを算出（実測r2モデルは外挿せず）。case0全subを有効な入口/停止列に整理、mode4吸引時のみturn/diagonal上限1200へ。既存調整済みゲイン維持。hostで経路・fan開始/全終了・PWMを検証、実機操作なし。斜めの保守的3mm余裕は未達でcase0調整初期値、吸引迷路走行の資格は未取得。詳細 `docs/MINI_R3_MODE4_SUCTION_TUNING.md`。
 - 機体選択: NVM identityの機種・個体IDからハード設定と走行profileを起動時選択。運用は `docs/F413_MACHINE_CONFIG.md`、未登録IDは安全停止
