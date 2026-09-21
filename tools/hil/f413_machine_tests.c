@@ -18,8 +18,14 @@ nvm_status_t nvm_write(nvm_area_t a, uint32_t o, const void *p, size_t n)
 nvm_status_t nvm_erase(nvm_area_t a) { (void)a; abort(); }
 /* Real persistence/warp acceptance is covered by f413_nvm_params_tests. */
 bool nvm_params_distance_load_and_apply(void) { return false; }
+static bool s_test_wall_available;
+static f413_wall_sensor_snapshot_t s_test_wall;
 bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t *out)
-{ (void)out; return false; }
+{
+  if (!s_test_wall_available || out == NULL) return false;
+  *out = s_test_wall;
+  return true;
+}
 
 static void front_distance_tests(unsigned rev)
 {
@@ -28,22 +34,23 @@ static void front_distance_tests(unsigned rev)
   assert(F_ALIGN_TOO_CLOSE_MM == F_ALIGN_TARGET_MM - 2.5f);
   f413_wall_distance_init();
   assert(sensor_distance_get_interpolation() == SENSOR_DISTANCE_INTERP_PCHIP);
-  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 9U : 13U));
+  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 15U : 13U));
   if (rev == 2U) {
     assert(fabsf(sensor_distance_from_fr(1680) - 7.0f) < 0.001f);
     assert(fabsf(sensor_distance_from_fl(2050) - 7.0f) < 0.001f);
     assert(fabsf(sensor_distance_from_fsum(3730) - 7.0f) < 0.001f);
     return;
   }
-  /* Independent transcription after optical shielding, 2026-09-12. */
-  const uint16_t fr[] = {3048,2508,1936,1507,1196,969,797,669,565};
-  const uint16_t fl[] = {3043,2494,1924,1516,1231,1004,835,699,595};
-  assert(sensor_distance_lut_size_fr() == 9U);
-  assert(sensor_distance_lut_size_front_sum() == 9U);
+  /* Shielded40..75mm (09-12), latest80..110mm (09-21); no averaging
+   * of the superseded80mm point and no reuse of pre-shielding data. */
+  const uint16_t fr[] = {3048,2508,1936,1507,1196,969,797,669,599,504,422,357,306,260,223};
+  const uint16_t fl[] = {3043,2494,1924,1516,1231,1004,835,699,568,488,422,364,312,269,233};
+  assert(sensor_distance_lut_size_fr() == 15U);
+  assert(sensor_distance_lut_size_front_sum() == 15U);
   f413_wall_sensor_snapshot_t adc = {.front_wall = true};
   f413_wall_distance_snapshot_t distance;
   const unsigned front_mask = F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL | F413_WALL_DISTANCE_CH_FSUM;
-  for (unsigned i = 0; i < 9; ++i) {
+  for (unsigned i = 0; i < 15; ++i) {
     adc.fr_delta = fr[i]; adc.fl_delta = fl[i];
     /* Synthetic unsaturated raw ADC, independent of persisted offsets. */
     adc.fr_on = fr[i] + 100; adc.fl_on = fl[i] + 100;
@@ -61,9 +68,9 @@ static void front_distance_tests(unsigned rev)
   /* Every in-range integer ADC value: monotone and bounded PCHIP. */
   float (*convert[])(uint16_t) = {sensor_distance_from_fr, sensor_distance_from_fl, sensor_distance_from_fsum};
   bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_fr, sensor_distance_ad_in_range_fl, sensor_distance_ad_in_range_fsum};
-  const uint16_t low[] = {565,595,1160}, high[] = {3048,3043,6091};
+  const uint16_t low[] = {223,233,456}, high[] = {3048,3043,6091};
   for (unsigned ch = 0; ch < 3; ++ch) {
-    float previous = 80.0f;
+    float previous = 110.0f;
     for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
       const float mm = convert[ch]((uint16_t)ad);
       assert(isfinite(mm) && mm >= 40.0f && mm <= previous);
@@ -74,8 +81,8 @@ static void front_distance_tests(unsigned rev)
     assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
   }
   /* No wall, beyond either endpoint, and saturated raw ADC cannot be trusted. */
-  const int32_t invalid[][2] = {{0,0}, {564,594}, {3049,3044}, {-1,-1},
-                              {458,478}, {198,209}}; /* Old 85/110 mm data must not extend the new LUT. */
+  const int32_t invalid[][2] = {{0,0}, {222,232}, {3049,3044}, {-1,-1},
+                              {198,209}}; /* Beyond the new measured far endpoint. */
   for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
     adc.fr_delta = invalid[i][0]; adc.fl_delta = invalid[i][1];
     assert(f413_wall_distance_convert_snapshot(&adc, &distance));
@@ -85,6 +92,42 @@ static void front_distance_tests(unsigned rev)
   adc.fr_delta = 2508; adc.fl_delta = 2494; adc.fr_on = 4090;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(!f413_wall_distance_front_present(&distance));
+  adc.fr_on = 2608; adc.fl_on = 4090;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  /* Nominal90mm entry and the82mm turn target are now in the measured range.
+   * Integer ADC pairs around the interpolated target must bracket its crossing. */
+  adc.fr_on = adc.fl_on = 1000;
+  adc.fr_delta = adc.fl_delta = 422;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(f413_wall_distance_front_present(&distance));
+  assert(fabsf(distance.front_sum_mm_unwarped - 90.0f) < 0.001f);
+  s_test_wall_available = true;
+  s_test_wall = adc;
+  float entry_distance;
+  assert(f413_wall_distance_front_unwarped_mm(&entry_distance));
+  assert(fabsf(entry_distance - 90.0f) < 0.001f);
+  bool crossed82 = false;
+  for (unsigned sum = 992; sum <= 1167; ++sum) {
+    /* Interpolate ADC ratio only to construct unsaturated test input. */
+    adc.fr_delta = 504 + (int32_t)((sum - 992) * 95 / 175);
+    adc.fl_delta = (int32_t)sum - adc.fr_delta;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(f413_wall_distance_front_present(&distance));
+    if (distance.front_sum_mm_unwarped <= 82.0f) {
+      crossed82 = true;
+    } else {
+      assert(!crossed82);
+    }
+  }
+  assert(crossed82);
+  /* One invalid channel must still reject a plausible front sum. */
+  adc.fr_delta = 222; adc.fl_delta = 500;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  s_test_wall = adc;
+  assert(!f413_wall_distance_front_unwarped_mm(&entry_distance));
+  s_test_wall_available = false;
   /* Loading the legacy front-only r2 table leaves side conversion untouched. */
   const float left = sensor_distance_from_l(1000), right = sensor_distance_from_r(1000);
   f413_profile_mini_r2.load_sensor_luts();
@@ -121,9 +164,8 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - old_target - datum_delta) < 0.001f);
     assert(fabsf(new_target - mode_targets[i]) < 0.001f);
   }
-  /* The nominal entry is 90 mm from the wall, outside r3's measured 40..80
-   * range. Target80 alone is insufficient: the runner requires a valid
-   * initial reading before enabling correction. Do not extrapolate LUT data. */
+  /* The nominal entry is90mm. The09-21 LUT extension covers both the entry
+   * and all80..88mm turn references; the runner's validity guard is unchanged. */
   assert(r3->scalar->v_F_ALIGN_TARGET_MM + r3->scalar->v_DIST_HALF_SEC == 90.0);
 }
 

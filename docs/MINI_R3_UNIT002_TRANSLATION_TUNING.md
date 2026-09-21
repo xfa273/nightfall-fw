@@ -11,12 +11,14 @@ This acceptance is the user's report, not a new agent HIL or verification of
 the exact on-device binary. The earlier SWD communication failure below is
 historical; this task does not retry flash/reset or operate the board.
 
-Front-turn correction is separate and pending additional front-wall measurements.
-The existing distance-domain references already implement the r2-to-r3 datum
-shift; ADC compatibility fields are not used. The 40..80mm r3 LUT does not cover
-the nominal90mm entry or most80..88mm targets. See
-`docs/MINI_R3_FRONT_TURN_REFERENCE.md`. The user will measure additional points;
-do not extrapolate or change the LUT/entry geometry in this task.
+Subsequent user80..110mm measurements extend the front LUT tot0.9, preserving
+allt0.8 gains and its immutable recovery checkpoint. The existing distance-domain
+references already implement the r2-to-r3 datum shift; ADC compatibility fields
+are not used. The new40..110mm/15-point LUT covers nominal90mm entry and all
+80..88mm targets. Latest80mm FR599/FL568 replaces the old knot;40..75mm stays.
+See `docs/MINI_R3_FRONT_TURN_REFERENCE.md`. Host conversion/guard checks and
+builds pass, but this table update has not been flashed or floor-tested by the
+agent. Entry geometry/thresholds/side LUTs/calibration NVM remain unchanged.
 
 ## Historical follow-up: restore IMU feedback for floor tuning
 

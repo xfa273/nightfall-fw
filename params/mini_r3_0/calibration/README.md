@@ -1,10 +1,36 @@
 # mini_r3 wall distance calibration
 
-## Active optical-shielding measurements, 2026-09-12 (t0.5)
+## Active front extension, 2026-09-21 (t0.9)
+
+`front_centre_20260921.csv` is the active merged front fixture, 15 points at
+40..110mm from the body centre. Preserve40..75mm from the shielded09-12 sweep;
+replace80mm with the latest FR599/FL568 and append85..110mm. Do not average the
+old80mm FR565/FL595 with the new measurement or swap the FR/FL columns.
+The full new user rows are retained in `front_centre_extension_20260921.csv`;
+their R/L readings are not side calibration knots and are not used.
+
+FR/FL/FR+FL remain strictly decreasing, with no fitted smoothing or extra offset
+subtraction. The active ranges are FR223..3048, FL233..3043, sum456..6091.
+90mm maps to FR422/FL422/sum844;80mm maps to599/568/1167. The45mm anchor remains
+2508/2494/5002. PCHIP is unchanged; endpoint replacement can also change adjacent
+interpolation slopes, not only the far-range output.
+
+The normal90mm entry and all80..88mm front-turn targets are now within measured
+coverage. Actual wall detection, both-channel validity, signal>160/channel and
+raw saturation guards remain required. All supplied110mm signals pass the
+unchanged minimum signal check. Beyond110mm remains invalid for control.
+Host knot/range/entry-accessor checks do not independently qualify floor accuracy.
+
+Non-suction gains fromt0.8, side LUTs, sensor offsets/FRAM, turn geometry and all
+r2/F405 values are unchanged. Thet0.8 recovery checkpoint remains immutable.
+This source update/build does not imply an application flash or a new physical
+run verification. See `docs/MINI_R3_FRONT_TURN_REFERENCE.md`.
+
+## Historical optical-shielding measurements, 2026-09-12 (t0.5)
 
 The user added light-blocking tape between each LED and phototransistor and
-remeasured all four channels. `front_centre_20260912.csv` and
-`side_centre_20260912.csv` are the **active** curated source fixtures; the
+remeasured all four channels. `front_centre_20260912.csv` is the historical front
+fixture; `side_centre_20260912.csv` remains the active side fixture. The
 2026-09-06 files/sections below are historical and must not extend these LUTs.
 They retain the user-supplied means without smoothing, rescaling or an additional
 offset subtraction. Row interpretation is the existing UART `:` contract:
@@ -30,16 +56,16 @@ they were used before shielding. This LUT update does not itself save offsets.
   samples as low-signal, even though these knots are in the LUT. No-wall and
   raw saturation checks are also retained. mini_r2/F405 tables are unchanged.
 
-Reproduce the active tables and run the real firmware converter regression:
+Reproduce the **current** tables and run the real firmware converter regression:
 
 ```sh
 python3 tools/logging/fit_sensor_distance.py \
-  params/mini_r3_0/calibration/front_centre_20260912.csv \
-  --sensors fr,fl --emit-c build/mini_r3_front_20260912_generated.c
+  params/mini_r3_0/calibration/front_centre_20260921.csv \
+  --sensors fr,fl --emit-c build/mini_r3_front_20260921_generated.c
 python3 tools/logging/fit_sensor_distance.py \
   params/mini_r3_0/calibration/side_centre_20260912.csv \
   --sensors r,l --emit-c build/mini_r3_side_20260912_generated.c
-diff -u params/mini_r3_0/sensor_distance_lut.c build/mini_r3_front_20260912_generated.c
+diff -u params/mini_r3_0/sensor_distance_lut.c build/mini_r3_front_20260921_generated.c
 diff -u params/mini_r3_0/side_distance_lut.c build/mini_r3_side_20260912_generated.c
 sh tools/hil/run_f413_machine_tests.sh
 sh tools/hil/run_f413_nvm_params_tests.sh
