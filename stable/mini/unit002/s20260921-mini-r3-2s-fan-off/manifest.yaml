@@ -1,0 +1,38 @@
+stable_name: s20260921-mini-r3-2s-fan-off
+description: mini_r3 unit002のユーザ確認済み2S非吸引ゲイン保存点
+checkpoint_kind: parameter_baseline
+fw_commit: 929f00038770ca0e027278f057b4c1f513e8a3d4
+fw_target: nightfall_stm32f413
+fw_build_type: Debug
+machine_name: mini_r3_0
+machine_unit: mini_r3_0_unit002
+family: mini
+hw_rev_major: 3
+hw_rev_minor: 0
+board_id: "0x00030000"
+unit_serial: 2
+mcu_uid: "001D0038-32345108-36383936"
+params_profile: mini_r3_0
+params_profile_id: "0x00030001"
+params_tune_version: mini-r3-2s-fanoff-t0.8
+qualification:
+  date: "2026-09-21"
+  basis: user_report
+  supply: 2S
+  suction: false
+  status: gains_accepted_front_wall_correction_pending
+  exact_tested_binary: not_captured
+source_sha256:
+  params.h: d38348b3f530cae5fa0446a58bca700f0040d99744f3fbfa87b2020df2c5a52c
+  search_run_params_split.c: dbb01bb82f7c7aeba024456038a00e5f74384e1ff94f77266b7520534fac1a57
+  shortest_run_params_split.c: f7b37f7029d5af7b1f7431d06e7e981eba9b15aea548970dd209cfaf134d1d1f
+  sensor_distance_lut.c: e44365431cb859f993320228b16678d5b299e31587471fef5d764f536d6eb3fd
+  side_distance_lut.c: f868dd7c6120c7d3d87e739ad831928b50f29943ce22c9a471a738495abecad4
+calibration_note: Existing unit002 FRAM is not modified or newly backed up by this checkpoint.
+known_limitations:
+  - Front-wall LUT extension beyond 80 mm and turn correction remain pending.
+  - User accepted the non-suction tune; no new agent-driven HIL or flash in this task.
+  - No suction or 3S qualification; no exhaustive high-speed or shortest-mode qualification.
+  - r3 precomputed-route compatibility remains disabled; mode2 case6 retains its fixed test path.
+  - Model profile is shared with unit001; unit001 hardware fault still prohibits driving.
+  - This is a source parameter checkpoint, not a complete firmware and FRAM recovery image.

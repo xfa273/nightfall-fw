@@ -92,6 +92,41 @@ static void front_distance_tests(unsigned rev)
   f413_profile_mini_r3.load_sensor_luts();
 }
 
+/* Audit the existing distance-domain turn references; raw val_offset_in is
+ * not consumed by the F413 entry correction. This does not qualify floor use. */
+static void front_entry_reference_tests(void)
+{
+  const f413_param_profile_t *r2 = &f413_profile_mini_r2;
+  const f413_param_profile_t *r3 = &f413_profile_mini_r3;
+  const float datum_delta = r3->scalar->v_F_ALIGN_TARGET_MM - r2->scalar->v_F_ALIGN_TARGET_MM;
+  assert(datum_delta == 38.0f);
+  assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
+  const float search_targets[] = {82.0f, 80.0f};
+  const float mode_targets[] = {82.8f, 86.0f, 86.0f, 86.0f, 88.0f, 80.0f};
+  for (unsigned i = 0; i < 2; ++i) {
+    assert(r2->search[i].dist_offset_in == r3->search[i].dist_offset_in);
+    const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
+        (float)r2->scalar->v_DIST_HALF_SEC - r2->search[i].dist_offset_in;
+    const float new_target = r3->scalar->v_F_ALIGN_TARGET_MM +
+        (float)r3->scalar->v_DIST_HALF_SEC - r3->search[i].dist_offset_in;
+    assert(fabsf(new_target - old_target - datum_delta) < 0.001f);
+    assert(fabsf(new_target - search_targets[i]) < 0.001f);
+  }
+  for (unsigned i = 0; i < 6; ++i) {
+    assert(r2->modes[i]->dist_offset_in == r3->modes[i]->dist_offset_in);
+    const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
+        (float)r2->scalar->v_DIST_HALF_SEC - r2->modes[i]->dist_offset_in;
+    const float new_target = r3->scalar->v_F_ALIGN_TARGET_MM +
+        (float)r3->scalar->v_DIST_HALF_SEC - r3->modes[i]->dist_offset_in;
+    assert(fabsf(new_target - old_target - datum_delta) < 0.001f);
+    assert(fabsf(new_target - mode_targets[i]) < 0.001f);
+  }
+  /* The nominal entry is 90 mm from the wall, outside r3's measured 40..80
+   * range. Target80 alone is insufficient: the runner requires a valid
+   * initial reading before enabling correction. Do not extrapolate LUT data. */
+  assert(r3->scalar->v_F_ALIGN_TARGET_MM + r3->scalar->v_DIST_HALF_SEC == 90.0);
+}
+
 static void side_distance_tests(unsigned rev)
 {
   assert(f413_machine_side_distance_body_centre() == (rev == 3U));
@@ -338,6 +373,7 @@ int main(int argc, char **argv)
     assert(shortestRunModeParams2.velocity_l_turn_90 == 500.0f);
     assert(shortestRunCaseParamsMode2[5].velocity_straight == 1000.0f);
     front_distance_tests(rev);
+    front_entry_reference_tests();
     side_distance_tests(rev);
     assert(f413_machine_has(F413_CAP_FAN) == (rev == 3U));
     assert(f413_machine_route_precomputed_compatible() == (rev == 2U));

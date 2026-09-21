@@ -1,0 +1,9 @@
+# Operator reference only: the current firmware does not import this YAML.
+# Gains and goals still require rebuilding; never treat this as an NVM write plan.
+machine_unit: mini_r3_0_unit002
+battery_cells: 2
+suction_enabled: false
+default_mode: 0
+goal_x: 1
+goal_y: 0
+notes: 前壁の85/90/95mm追加測定待ち。今回は既存LUTを保持。

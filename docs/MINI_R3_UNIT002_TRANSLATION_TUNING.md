@@ -1,6 +1,24 @@
 # mini_r3 unit002 lifted translation tune, 2026-09-21 JST
 
-## Current follow-up: restore IMU feedback for floor tuning
+## Current: user-accepted 2S/fan-off gains
+
+On 2026-09-21 the user completed non-suction tuning and reported basic maze
+running with the same run parameters as mini_r2. Save the working-tree gains
+velocity P0.24 and omega P0.45 as source `929f000`, version
+`mini-r3-2s-fanoff-t0.8`; other current gains and IMU-assisted feedback remain.
+Recovery metadata is in `stable/mini/unit002/s20260921-mini-r3-2s-fan-off/`.
+This acceptance is the user's report, not a new agent HIL or verification of
+the exact on-device binary. The earlier SWD communication failure below is
+historical; this task does not retry flash/reset or operate the board.
+
+Front-turn correction is separate and pending additional front-wall measurements.
+The existing distance-domain references already implement the r2-to-r3 datum
+shift; ADC compatibility fields are not used. The 40..80mm r3 LUT does not cover
+the nominal90mm entry or most80..88mm targets. See
+`docs/MINI_R3_FRONT_TURN_REFERENCE.md`. The user will measure additional points;
+do not extrapolate or change the LUT/entry geometry in this task.
+
+## Historical follow-up: restore IMU feedback for floor tuning
 
 The user explicitly requested restoration of IMU-assisted velocity feedback before
 floor tuning. Source `82157c1`, profile `mini-r3-translation-t0.7`, sets
