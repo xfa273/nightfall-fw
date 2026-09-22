@@ -18,6 +18,9 @@
 #include "search.h"
 #include "search_run_params.h"
 #include "trace.h"
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+#include "f413_exploration.h"
+#endif
 
 #define F413_SEARCH_STEP_MAZE_WALL_W (0x01U)
 #define F413_SEARCH_STEP_MAZE_WALL_S (0x02U)
@@ -1595,6 +1598,9 @@ static f413_run_session_abort_reason_t f413_search_step_wait_ctrl_target(float t
     {
       return reason;
     }
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+    f413_exploration_poll();
+#endif
   }
   return F413_RUN_SESSION_ABORT_NONE;
 }
@@ -3640,6 +3646,9 @@ void f413_search_step_run_config_once(uint8_t op_case,
   f413_hw_emit_video_sync_start_pattern();
   HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
 
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+  f413_exploration_begin(op_case, case_config->param_index);
+#endif
   f413_ctrl_start();
   f413_ctrl_reset_distance();
   f413_ctrl_reset_angle();
@@ -3759,6 +3768,14 @@ void f413_search_step_run_config_once(uint8_t op_case,
 
       if (f413_search_step_target_reached(target))
       {
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+        /* Capture true GOAL arrival before the phase restart advances pose. */
+        if (target == F413_SEARCH_STEP_TARGET_GOAL && !f413_exploration_observe_goal())
+        {
+          route_failed = true;
+          break;
+        }
+#endif
         trace_printf("[SEARCH-RUN] phase%u reached target=%s pos=(%u,%u,%u)\r\n",
                      (unsigned int)phase_index,
                      f413_search_step_target_name(target),
@@ -3900,6 +3917,20 @@ void f413_search_step_run_config_once(uint8_t op_case,
                                                                     &next_after_forward);
         next_is_turn90 = (next_after_forward == 1U) || (next_after_forward == 3U);
       }
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+      {
+        uint8_t choice = f413_exploration_decide(target, acceled, &next_rel,
+                                                &known_straight, &next_is_turn90);
+        if (choice == 2U) { phase_done = true; break; }
+        if (choice == 3U) { route_failed = true; break; }
+        if (choice == 1U)
+        {
+          next_after_forward = known_straight ? 0U : 0xFFU;
+          f413_search_step_set_action_context(op_case, (uint8_t)mouse.x,
+            (uint8_t)mouse.y, (uint8_t)mouse.dir, next_rel);
+        }
+      }
+#endif
       trace_printf("[SEARCH-RUN] action%u phase=%u next=%s(%u) pos=(%u,%u,%u) smap=%d wall=0x%04X cell=0x%04X\r\n",
                    (unsigned int)action_count,
                    (unsigned int)phase_index,
@@ -3945,6 +3976,9 @@ void f413_search_step_run_config_once(uint8_t op_case,
                                g_config.trace_search_safe_flag);
       f413_search_step_motion_detail_init(&motion_detail);
       motion_start_ms = f413_search_step_tick();
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+      f413_exploration_prepare(target, next_rel);
+#endif
       abort_reason = f413_search_step_run_search_motion(next_rel,
                                                         params,
                                                         &speed_now_mm_s,
@@ -4109,6 +4143,9 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
 
   f413_ctrl_stop();
+#if NIGHTFALL_F413_EXPLORATION_ENABLED
+  f413_exploration_end();
+#endif
   trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
   f413_hw_emit_video_sync_stop_pattern();
   if (event_log_started)

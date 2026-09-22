@@ -80,6 +80,7 @@ set(NIGHTFALL_TRACE_F413_USE_UART "1" CACHE STRING "Use USART1 trace output on S
 set_property(CACHE NIGHTFALL_TRACE_F413_USE_UART PROPERTY STRINGS "0" "1")
 set(NIGHTFALL_F413_UART_BAUD_RATE "921600" CACHE STRING "USART1 baud rate for STM32F413 UART command and trace output")
 set_property(CACHE NIGHTFALL_F413_UART_BAUD_RATE PROPERTY STRINGS "115200" "460800" "921600" "1000000")
+option(NIGHTFALL_F413_EXPLORATION_ENABLED "Compile exploration port seams (runtime model unsupported; retains Adachi)" OFF)
 option(NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS "DANGER: enable F413 diagnostic writes that overwrite real calibration/map/trace data" OFF)
 if(NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS)
     message(WARNING "F413 destructive NVM diagnostics ENABLED: maintenance build only; back up all NVM first")
@@ -208,6 +209,15 @@ endfunction()
 
 function(nightfall_apply_stm32f413 target)
     target_compile_definitions(${target} PRIVATE NIGHTFALL_F413_RUNTIME_CONFIG=1)
+    if(NIGHTFALL_F413_EXPLORATION_ENABLED)
+        message(STATUS "Exploration: runtime route model unsupported; compiling Adachi fallback only")
+        target_sources(${target} PRIVATE
+            ${CMAKE_SOURCE_DIR}/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_exploration.c
+        )
+        target_compile_definitions(${target} PRIVATE NIGHTFALL_F413_EXPLORATION_ENABLED=1)
+        # The pinned generic oracle and its tables are deliberately not linked.
+        # Re-enable them only with a proved lower-bound/execution-model adapter.
+    endif()
     target_sources(${target} PRIVATE ${NIGHTFALL_STM32F413_APPLICATION_SRC})
     target_link_libraries(${target} PRIVATE stm32cubemx_stm32f413 stm32_drivers_stm32f413)
     target_link_options(${target} PRIVATE
