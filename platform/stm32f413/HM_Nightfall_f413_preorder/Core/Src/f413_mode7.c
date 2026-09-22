@@ -55,7 +55,7 @@ static const f413_mode7_case0_sub_t k_case0_subs[10] = {
   {8U, "mode7-case0-sub4 R135 in",        {204U, 901U, 1001U, 0U},    3U},
   {8U, "mode7-case0-sub5 R135 out",       {204U, 1001U, 904U, 1001U}, 4U},
   {8U, "mode7-case0-sub6 large R90 + S1", {204U, 501U, 201U, 0U},     3U},
-  {8U, "mode7-case0-sub7 large R180 + S1",{204U, 502U, 201U, 0U},     3U},
+  {8U, "mode7-case0-sub7 large R180 + S1",{206U, 502U, 201U, 0U},     3U},
   {1U, "mode7-case0-sub8 straight case1", {203U, 0U, 0U, 0U},         1U},
   {5U, "mode7-case0-sub9 straight case5", {203U, 0U, 0U, 0U},         1U},
 };
@@ -64,7 +64,7 @@ static const f413_mode7_case0_sub_t k_case0_subs[10] = {
 static const f413_mode7_case0_sub_t k_suction_case0_subs[10] = {
   {1U, "mode7-case0-sub0 small R90",  {203U, 300U, 203U},                3U},
   {2U, "mode7-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
-  {2U, "mode7-case0-sub2 large R180", {204U, 502U, 203U},                3U},
+  {2U, "mode7-case0-sub2 large R180", {206U, 502U, 203U},                3U},
   {8U, "mode7-case0-sub3 R45 in",     {204U, 701U, 1003U},               3U},
   {8U, "mode7-case0-sub4 L45 out",    {204U, 701U, 1003U, 704U, 203U},   5U},
   {8U, "mode7-case0-sub5 L-V90",      {204U, 701U, 1003U, 802U, 1003U},  5U},

@@ -223,7 +223,7 @@ int main(void)
     for (unsigned t=0; t<3; ++t)
     {
       reset(); selected_mode=m; selected_case=t == 0 ? 1 : 2;
-      path[0]=t == 0 ? 203 : 204; path[1]=t == 0 ? 300 : t == 1 ? 501 : 502; path[2]=203;
+      path[0]=t == 0 ? 203 : t == 1 ? 204 : 206; path[1]=t == 0 ? 300 : t == 1 ? 501 : 502; path[2]=203;
       run(); stopped(1);
       assert(peak_command == (t == 0 ? small[m-3] : large[m-3]));
       assert(completed_sessions == 1 && profiles >= 6);

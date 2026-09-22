@@ -57,7 +57,7 @@ static const f413_mode2_case_t k_cases[9] = {
 static const f413_mode2_case0_sub_t k_case0_subs[10] = {
   {3U, "mode2-case0-sub0 small R90",             {203U, 300U},                         2U},
   {3U, "mode2-case0-sub1 large R90",             {203U, 501U},                         2U},
-  {3U, "mode2-case0-sub2 large R180",            {203U, 502U},                         2U},
+  {3U, "mode2-case0-sub2 large R180",            {205U, 502U},                         2U},
   /* Match the low-speed diagonal shortest-run profile used by mode2 case6.
    * The previous case8 acceleration made the calibration paths sensitive to
    * approach slip before the 500mm/s turn-speed boundary was reached. */

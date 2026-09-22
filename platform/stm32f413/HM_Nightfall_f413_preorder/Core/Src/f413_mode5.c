@@ -50,7 +50,7 @@ static const f413_mode5_case_t k_cases[9] = {
 static const f413_mode5_case0_sub_t k_case0_subs[10] = {
   {3U, "mode5-case0-sub0 small R90",      {205U, 300U, 0U, 0U},       2U},
   {3U, "mode5-case0-sub1 large R90",      {204U, 501U, 0U, 0U},       2U},
-  {3U, "mode5-case0-sub2 large R180",     {204U, 502U, 0U, 0U},       2U},
+  {3U, "mode5-case0-sub2 large R180",     {206U, 502U, 0U, 0U},       2U},
   {8U, "mode5-case0-sub3 R135 in",        {204U, 901U, 1001U, 0U},    3U},
   {8U, "mode5-case0-sub4 R135 out",       {204U, 1001U, 904U, 1001U}, 4U},
   {8U, "mode5-case0-sub5 L45 in",         {204U, 1001U, 702U, 1001U}, 4U},
@@ -64,7 +64,7 @@ static const f413_mode5_case0_sub_t k_case0_subs[10] = {
 static const f413_mode5_case0_sub_t k_suction_case0_subs[10] = {
   {1U, "mode5-case0-sub0 small R90",  {203U, 300U, 203U},                3U},
   {2U, "mode5-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
-  {2U, "mode5-case0-sub2 large R180", {204U, 502U, 203U},                3U},
+  {2U, "mode5-case0-sub2 large R180", {206U, 502U, 203U},                3U},
   {8U, "mode5-case0-sub3 R45 in",     {204U, 701U, 1003U},               3U},
   {8U, "mode5-case0-sub4 L45 out",    {204U, 701U, 1003U, 704U, 203U},   5U},
   {8U, "mode5-case0-sub5 L-V90",      {204U, 701U, 1003U, 802U, 1003U},  5U},
