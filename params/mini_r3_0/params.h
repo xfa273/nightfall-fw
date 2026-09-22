@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-suction-ff-t0.18"
+#define PARAMS_TUNE_VERSION "mini-r3-suction-yaw-t0.19"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -103,7 +103,7 @@
 #define KD_VELOCITY 0.0F
 
 /* Suction gains are independent of the accepted FAN_OFF tune.
- * Keep the user's current velocity/omega P gains for the t0.18 FF trial. */
+ * Preserve the user's velocity/omega P gains through the suction FF trials. */
 #ifndef KP_VELOCITY_FAN_ON
 #define KP_VELOCITY_FAN_ON  0.35F
 #endif
@@ -182,7 +182,8 @@
 #endif
 
 #ifndef KP_ANGLE_FAN_ON
-#define KP_ANGLE_FAN_ON 10.0F
+/* t0.19: reduce the measured startup/turn heading error (10:17 R90 trace). */
+#define KP_ANGLE_FAN_ON 15.0F
 #endif
 #ifndef KI_ANGLE_FAN_ON
 #define KI_ANGLE_FAN_ON 0.1F
@@ -221,10 +222,14 @@
 #define KD_OMEGA_FAN_ON  0.0F
 #endif
 #ifndef FF_OMEGA_PWM_FAN_ON
-#define FF_OMEGA_PWM_FAN_ON 0.0F
+/* PWM per-mille per deg/s or deg/s^2. These are initial suction values.
+ * Acceleration FF supplements the existing 4 ms / 120 deg/s capped lead;
+ * it is deliberately smaller than the fitted full inertia coefficient.
+ * See docs/MINI_R3_SUCTION_GAIN_REVIEW.md. */
+#define FF_OMEGA_PWM_FAN_ON 0.040F
 #endif
 #ifndef FF_OMEGA_ACCEL_PWM_FAN_ON
-#define FF_OMEGA_ACCEL_PWM_FAN_ON 0.0F
+#define FF_OMEGA_ACCEL_PWM_FAN_ON 0.0008F
 #endif
 
 #ifndef KP_OMEGA_FAN_OFF
