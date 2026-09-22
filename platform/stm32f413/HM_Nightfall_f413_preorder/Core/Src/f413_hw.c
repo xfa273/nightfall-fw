@@ -2,6 +2,7 @@
 #include "f413_motor_pwm.h"
 
 #include "main.h"
+#include "params.h"
 
 #define F413_HW_ENCODER_WRAP_COUNT (60000L)
 #define F413_HW_ENCODER_WRAP_HALF (F413_HW_ENCODER_WRAP_COUNT / 2L)
@@ -85,6 +86,11 @@ static void f413_hw_emit_video_sync_pattern(uint32_t payload_on_ms)
 {
   uint8_t slot;
   uint32_t payload_off_ms = F413_HW_VIDEO_SYNC_PAYLOAD_SLOT_MS - payload_on_ms;
+
+  if (ENABLE_AUTO_VIDEO_CAPTURE == 0U)
+  {
+    return;
+  }
 
   /*
    * The long OFF preamble separates a run token from OP-UI LED indications.

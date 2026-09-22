@@ -2,6 +2,8 @@
 #define F413_RUNTIME_ALIASES_H
 #include "f413_machine.h"
 /* Compatibility facade: algorithm code reads the immutable boot-selected values. */
+#undef ENABLE_AUTO_VIDEO_CAPTURE
+#define ENABLE_AUTO_VIDEO_CAPTURE (f413_machine_params()->scalar.v_ENABLE_AUTO_VIDEO_CAPTURE)
 #undef D_TIRE
 #define D_TIRE (f413_machine_params()->scalar.v_D_TIRE)
 #undef DIST_HALF_SEC

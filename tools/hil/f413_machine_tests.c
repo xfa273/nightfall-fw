@@ -408,6 +408,9 @@ static void resolver_tests(void)
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
   scalar.v_D_TIRE = 24.0;
   f413_hardware_config_t hw = f413_boards[1].hardware;
+  scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 2U;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 1U;
   units[2].hardware_override = &hw;
   hw.imu_forward_offset_mm = NAN;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
@@ -433,9 +436,11 @@ int main(int argc, char **argv)
     id = identity(3);
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_ID_INVALID);
     assert(!f413_machine_has(F413_CAP_DRIVE | F413_CAP_FAN));
+    assert(ENABLE_AUTO_VIDEO_CAPTURE == 0U);
   } else {
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_OK);
     assert(f413_machine_has(F413_CAP_DRIVE));
+    assert(ENABLE_AUTO_VIDEO_CAPTURE == (rev == 2U ? 1U : 0U));
     assert(DIST_HALF_SEC == 45.0 && D_TIRE == 14.13);
     assert(KP_VELOCITY_FAN_OFF == (rev == 3U ? 0.24f : 0.8f));
     assert(KI_VELOCITY_FAN_OFF == (rev == 3U ? 0.001f : 0.012f));

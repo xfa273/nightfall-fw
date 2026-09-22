@@ -3809,12 +3809,15 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
   trace_printf("\r\n");
 
-  /* Keep the driver in standby for the complete optical START token. */
-  f413_ctrl_stop();
-  trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
-  trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
-  f413_hw_emit_video_sync_start_pattern();
-  HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    /* Keep the driver in standby for the complete optical START token. */
+    f413_ctrl_stop();
+    trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
+    trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
+    f413_hw_emit_video_sync_start_pattern();
+    HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+  }
 
   f413_ctrl_start();
   f413_ctrl_reset_distance();
@@ -4285,8 +4288,11 @@ void f413_search_step_run_config_once(uint8_t op_case,
   }
 
   f413_ctrl_stop();
-  trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
-  f413_hw_emit_video_sync_stop_pattern();
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
+    f413_hw_emit_video_sync_stop_pattern();
+  }
   if (event_log_started)
   {
     f413_search_step_set_mode_flags(0U);

@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- F413自動撮影ON/OFF（2026-09-22 JST、mini_r3 t0.23）: 各params.hにENABLE_AUTO_VIDEO_CAPTURE（0/1）を追加しboot選択scalarへ接続。mini_r3は手動調整用OFF、mini_r2は既存ON。OFFは全run hook/探索のSTART/STOP LED信号・撮影guard300ms・光学START専用ctrl_stopを省略、UART光学testもdisabled。通常LED/traceとIMU校正・fan ramp/到達後300ms・走行制御/停止は維持。ON/OFFのGPIO/実path session・吸引/非吸引順序・機体runtime選択、route14210 checks、両MCU buildをhost検証。実機書込/駆動なし、floor HIL未実施。詳細 docs/MINI_R3_SUCTION_MODE_LADDER.md。
+
 - F413 case0大回り180°助走延長（2026-09-22 JST）: 後部壁当て開始で停止前に壁へ接触とのユーザ報告。mode2〜7のcase0全180°経路11項目（吸引/非吸引、mini_r2共通）の先行直進だけ90mm延長。吸引3〜7/sub2はS4→S6、設計停止位置は開始中心から前100mm/右90mm（旧前10mm）。他のターン経路・速度/ゲイン・後続直線/停止処理は維持。全5吸引モード50sub/12220接続preflight、production15session・fan/cleanup、legacy50sub選択、mode2 dispatch、両MCU buildをhost検証。実機操作なし。詳細 docs/MINI_R3_SUCTION_MODE_LADDER.md。
 
 - F413複数走行ログ保持（2026-09-22 JST）: auto traceと探索イベントの開始時formatを撤去し、有効v6リングへ追記。空白ヘッダだけ初期化、破損/未知schemaは消去せず失敗。640KiB/104B=6301件（1msで全走行合計約6.3秒）、満杯時は最古レコード更新、途中から残る走行をpartial表示。mode9 case5・`>`・`V`は全保持分、PCでseq=0ごとに走行別CSV。CSVのFW SHA/dirty/追加メタはdump_timeと明記し、過去走行へ現在のlast_test目標を適用しない。schema/FRAM配置・制御/モータ中flush抑止は維持。実NVM/auto/CSV/binのASan/UBSan、疑似UART、旧v3..6 decoder、compact/単位/NVM保護、両MCU build PASS。実機書込/駆動なし。詳細 tools/logging/README.md。

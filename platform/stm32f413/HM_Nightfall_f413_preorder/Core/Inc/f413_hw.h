@@ -19,6 +19,7 @@ void f413_hw_show_led_mask(uint8_t mask);
 void f413_hw_show_led_blink(uint8_t mask, uint32_t now_ms, uint32_t toggle_ms);
 void f413_hw_delay_with_led_blink(uint8_t mask, uint32_t duration_ms, uint32_t toggle_ms);
 void f413_hw_show_mode_leds(uint8_t mode);
+/* No LED writes or delays when ENABLE_AUTO_VIDEO_CAPTURE is off. */
 void f413_hw_emit_video_sync_start_pattern(void);
 void f413_hw_emit_video_sync_stop_pattern(void);
 void f413_hw_buzzer_beep_ms(uint16_t period, uint16_t ms);

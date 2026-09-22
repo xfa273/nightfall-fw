@@ -6,6 +6,11 @@ typedef struct TIM_HandleTypeDef TIM_HandleTypeDef;
 #include <stdint.h>
 uint32_t HAL_GetTick(void);
 void HAL_Delay(uint32_t ms);
+#include "params.h"
+/* Exercise both boot-selected settings without duplicating the session. */
+static uint32_t test_auto_video_capture;
+#undef ENABLE_AUTO_VIDEO_CAPTURE
+#define ENABLE_AUTO_VIDEO_CAPTURE test_auto_video_capture
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c"
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_run_features.c"
 
@@ -14,6 +19,8 @@ typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
 static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
 static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
 static unsigned completed_sessions;
+static unsigned video_starts, video_stops, control_stops;
+static uint32_t trace_start_tick;
 static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
@@ -60,8 +67,10 @@ bool f413_hw_fan_set_duty(uint16_t duty)
   return true;
 }
 void f413_hw_fan_stop(void) { assert(!running); fan_stops++; fan = false; }
-void f413_hw_emit_video_sync_start_pattern(void) { assert(!running && !fan); }
-void f413_hw_emit_video_sync_stop_pattern(void) { assert(!running && !fan); }
+void f413_hw_emit_video_sync_start_pattern(void)
+{ assert(ENABLE_AUTO_VIDEO_CAPTURE && !running && !fan); video_starts++; tick += 9750U; }
+void f413_hw_emit_video_sync_stop_pattern(void)
+{ assert(ENABLE_AUTO_VIDEO_CAPTURE && !running && !fan); video_stops++; tick += 9750U; }
 void f413_ctrl_start(void)
 {
   assert(!fan && !running); /* Includes the blocking IMU calibration. */
@@ -69,7 +78,7 @@ void f413_ctrl_start(void)
   tick += 1200; control_tick = tick; starts++; running = true;
   position = velocity = target = angle = omega = 0;
 }
-void f413_ctrl_stop(void) { running = false; }
+void f413_ctrl_stop(void) { running = false; control_stops++; }
 void f413_ctrl_set_velocity(float v)
 {
   velocity = v;
@@ -108,7 +117,7 @@ float f413_ctrl_get_real_omega(void) { return omega; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile_done; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
-void f413_trace_log_auto_start(void) { tracing = true; }
+void f413_trace_log_auto_start(void) { tracing = true; trace_start_tick = tick; }
 void f413_trace_log_auto_step(void) {}
 void f413_trace_log_set_mode_flags(uint16_t f) { flags = f; }
 void f413_trace_log_auto_stop_after_tail(uint32_t ms)
@@ -159,6 +168,7 @@ static void reset(void)
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
   completed_sessions = 0;
+  video_starts = video_stops = control_stops = trace_start_tick = test_auto_video_capture = 0;
   selected_mode = 3; selected_case = 1; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
@@ -182,6 +192,37 @@ static void stopped(unsigned expected_fan_starts)
 }
 int main(void)
 {
+  /* OFF restores trace-only hooks; ON stops control before START and retains
+   * the complete optical tokens and camera guard. Logging always runs. */
+  for (unsigned enabled = 0; enabled <= 1; ++enabled)
+  {
+    reset(); test_auto_video_capture = enabled; running = true;
+    f413_path_run_trace_on_run_start();
+    assert(tracing && video_starts == enabled && control_stops == enabled);
+    assert(running == !enabled && trace_start_tick == enabled * 10050U);
+    f413_ctrl_stop();
+    f413_path_run_trace_on_run_stop();
+    assert(!tracing && trace_stops == 1 && video_stops == enabled);
+    assert(tick == enabled * 19800U);
+  }
+  /* Both suction and fan-off sessions must differ only by camera timing.
+   * Existing ramp/hold/cleanup assertions remain active for both settings. */
+  for (unsigned use_fan = 0; use_fan <= 1; ++use_fan)
+  {
+    uint32_t manual_first_drive = 0, manual_finish = 0;
+    for (unsigned enabled = 0; enabled <= 1; ++enabled)
+    {
+      reset(); suction = use_fan != 0; test_auto_video_capture = enabled;
+      run();
+      assert(!running && !fan && !tracing && trace_stops == 1 && starts == 1);
+      assert(fan_starts == use_fan && completed_sessions == 1);
+      assert(video_starts == enabled && video_stops == enabled);
+      if (!enabled) { manual_first_drive = first_drive_tick; manual_finish = tick; }
+      assert(first_drive_tick == manual_first_drive + enabled * 10050U);
+      assert(tick == manual_finish + enabled * 19800U);
+    }
+  }
+  puts("auto video: OFF trace-only hooks, ON standby/tokens/guard, suction and fan-off sessions PASS");
   /* No common angular ceiling; an explicit mode limit preserves tuned shapes. */
   f413_path_run_turn_t turn;
   ShortestRunModeParams_t mode = shortestRunModeParams6;

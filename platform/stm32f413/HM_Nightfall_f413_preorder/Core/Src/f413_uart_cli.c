@@ -18,6 +18,7 @@
 #include "f413_trace_sample.h"
 #include "f413_wall_runtime.h"
 #include "trace.h"
+#include "params.h"
 
 static f413_uart_cli_config_t g_uart_cli_config;
 
@@ -364,13 +365,27 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       break;
 
     case ';':
-      trace_printf("[VIDEO-SYNC] optical TEST START fixed-slot SHORT token\r\n");
-      f413_hw_emit_video_sync_start_pattern();
+      if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+      {
+        trace_printf("[VIDEO-SYNC] optical TEST START fixed-slot SHORT token\r\n");
+        f413_hw_emit_video_sync_start_pattern();
+      }
+      else
+      {
+        trace_printf("[VIDEO-SYNC] disabled: ENABLE_AUTO_VIDEO_CAPTURE=0\r\n");
+      }
       break;
 
     case ',':
-      trace_printf("[VIDEO-SYNC] optical TEST STOP fixed-slot LONG token\r\n");
-      f413_hw_emit_video_sync_stop_pattern();
+      if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+      {
+        trace_printf("[VIDEO-SYNC] optical TEST STOP fixed-slot LONG token\r\n");
+        f413_hw_emit_video_sync_stop_pattern();
+      }
+      else
+      {
+        trace_printf("[VIDEO-SYNC] disabled: ENABLE_AUTO_VIDEO_CAPTURE=0\r\n");
+      }
       break;
 
     case 'g':

@@ -276,12 +276,15 @@ static void nightfall_trace_log_auto_tick_sample(void)
 
 static void nightfall_trace_log_on_run_start(void)
 {
-  /* Keep the driver in standby for the complete optical START token. */
-  f413_ctrl_stop();
-  trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
-  trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
-  f413_hw_emit_video_sync_start_pattern();
-  HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    /* Keep the driver in standby for the complete optical START token. */
+    f413_ctrl_stop();
+    trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
+    trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
+    f413_hw_emit_video_sync_start_pattern();
+    HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+  }
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
   f413_trace_log_auto_start();
 }
@@ -291,8 +294,11 @@ static void nightfall_trace_log_on_run_stop(void)
   trace_printf("[TRACE-LOG] run-hook: stop tail=%u ms\r\n",
                (unsigned int)F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
   f413_trace_log_auto_stop_after_tail(F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
-  trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
-  f413_hw_emit_video_sync_stop_pattern();
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
+    f413_hw_emit_video_sync_stop_pattern();
+  }
 }
 
 static void nightfall_op_led_show_mode(uint8_t mode)

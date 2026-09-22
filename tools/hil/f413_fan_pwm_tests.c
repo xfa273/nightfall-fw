@@ -37,24 +37,61 @@ GPIO_PinState HAL_GPIO_ReadPin(unsigned port,unsigned pin);
 void HAL_GPIO_WritePin(unsigned port,unsigned pin,GPIO_PinState s);
 HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef* h,unsigned c);
 HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* h,unsigned c);
+#include "params.h"
+static uint32_t test_auto_video_capture;
+#undef ENABLE_AUTO_VIDEO_CAPTURE
+#define ENABLE_AUTO_VIDEO_CAPTURE test_auto_video_capture
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_hw.c"
 TIM_HandleTypeDef htim2,htim10,htim11;
 static bool capable=true, pressed, fail, active;
 static unsigned pwm_starts, pwm_stops;
+static uint32_t tick, delays[16];
+static unsigned delay_count, gpio_writes;
 bool f413_machine_has(uint32_t c) { (void)c; return capable; }
 const f413_hardware_config_t* f413_machine_hardware(void)
 { static const f413_hardware_config_t config={0}; return &config; }
-uint32_t HAL_GetTick(void) { return 0; }
-void HAL_Delay(uint32_t ms) { (void)ms; }
+uint32_t HAL_GetTick(void) { return tick; }
+void HAL_Delay(uint32_t ms)
+{ assert(delay_count < 16); delays[delay_count++] = ms; tick += ms; }
 GPIO_PinState HAL_GPIO_ReadPin(unsigned p,unsigned n)
 { (void)p; (void)n; return pressed ? GPIO_PIN_RESET : GPIO_PIN_SET; }
-void HAL_GPIO_WritePin(unsigned p,unsigned n,GPIO_PinState s) { (void)p; (void)n; (void)s; }
+void HAL_GPIO_WritePin(unsigned p,unsigned n,GPIO_PinState s)
+{ (void)p; (void)n; (void)s; gpio_writes++; }
 HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef* h,unsigned c)
 { (void)c; assert(h == &htim10); pwm_starts++; active=true; return fail ? HAL_ERROR : HAL_OK; }
 HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* h,unsigned c)
 { (void)c; assert(h == &htim10); pwm_stops++; active=false; return HAL_OK; }
 int main(void)
 {
+ /* OFF must not alter the current UI LEDs or wait, including explicit UART
+  * token tests. ON preserves the decoder's complete START/STOP waveform. */
+ for (unsigned enabled = 0; enabled <= 1; ++enabled)
+ {
+   test_auto_video_capture = enabled;
+   for (unsigned stop = 0; stop <= 1; ++stop)
+   {
+     tick = delay_count = gpio_writes = 0;
+     if (stop) f413_hw_emit_video_sync_stop_pattern();
+     else f413_hw_emit_video_sync_start_pattern();
+     assert(tick == enabled * 9750U);
+     assert(gpio_writes == enabled * 45U && delay_count == enabled * 16U);
+     if (enabled)
+     {
+       assert(delays[0] == 2500 && delays[1] == 75 && delays[2] == 50);
+       assert(delays[3] == 825 && delays[4] == 300 && delays[15] == 500);
+       for (unsigned slot = 0; slot < 5; ++slot)
+       {
+         assert(delays[5 + 2 * slot] == (stop ? 800U : 350U));
+         assert(delays[6 + 2 * slot] == (stop ? 300U : 750U));
+       }
+     }
+   }
+ }
+ test_auto_video_capture = 0;
+ gpio_writes = 0;
+ f413_hw_show_mode_leds(3);
+ assert(gpio_writes == 3); /* Ordinary UI LEDs are independent of capture. */
+ puts("auto video GPIO: OFF no writes/delays, ON fixed-slot START/STOP, normal UI LEDs PASS");
  htim10.arr=999;
  assert(f413_hw_fan_start(500)); assert(active && f413_hw_fan_is_running() && htim10.compare[0]==500);
  f413_hw_fan_stop(); assert(!active && !f413_hw_fan_is_running() && htim10.compare[0]==0);
