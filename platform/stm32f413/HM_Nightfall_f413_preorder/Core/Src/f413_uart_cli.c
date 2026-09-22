@@ -51,7 +51,7 @@ void f413_uart_cli_print_help(void)
   trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
   trace_printf("[BENCH]   {=MOTOR lifted/secured 7..9V bounded sweep; |=read-only calibration/status dump\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin), case8=side base save, case9=sensor offset save\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump all retained logs(bin), case8=side base save, case9=sensor offset save\r\n");
   trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
 }
 

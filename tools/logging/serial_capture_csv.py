@@ -160,13 +160,14 @@ def _save_binary_frame(save_dir: Path, frame_bytes: bytes) -> None:
     raw_path = _new_binary_raw_file(save_dir)
     raw_path.write_bytes(frame_bytes)
     frame, header, rows, offset = trace_bin_dump.extract_frame(frame_bytes)
-    csv_path = raw_path.with_suffix(".csv")
-    trace_bin_dump.write_csv(csv_path, frame, header, rows)
+    csv_paths = trace_bin_dump.write_run_csvs(raw_path.with_suffix(".csv"), frame, header, rows)
     print(
-        f"\n[INFO] Binary trace frame: raw={raw_path} csv={csv_path} "
-        f"records={len(rows)} offset={offset}",
+        f"\n[INFO] Binary trace frame: raw={raw_path} "
+        f"records={len(rows)} runs={len(csv_paths)} offset={offset}",
         file=sys.stderr,
     )
+    for csv_path in csv_paths:
+        print(f"[INFO] Run CSV: {csv_path}", file=sys.stderr)
 
 
 def _format_mm_columns(line: str) -> str:
@@ -431,6 +432,7 @@ def main() -> int:
                     or line.startswith("#op_")
                     or line.startswith("#tune_")
                     or line.startswith("#wall_trace_")
+                    or line.startswith("#trace_run_")
                 ):
                     if line not in pending_fw_meta:
                         pending_fw_meta.append(line)
@@ -452,7 +454,6 @@ def main() -> int:
                         seq is not None
                         and prev_seq is not None
                         and seq == 0
-                        and prev_seq != 0
                     )
                     if (
                         prev_ts is not None

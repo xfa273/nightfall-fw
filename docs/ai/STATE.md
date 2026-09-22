@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- F413複数走行ログ保持（2026-09-22 JST）: auto traceと探索イベントの開始時formatを撤去し、有効v6リングへ追記。空白ヘッダだけ初期化、破損/未知schemaは消去せず失敗。640KiB/104B=6301件（1msで全走行合計約6.3秒）、満杯時は最古レコード更新、途中から残る走行をpartial表示。mode9 case5・`>`・`V`は全保持分、PCでseq=0ごとに走行別CSV。CSVのFW SHA/dirty/追加メタはdump_timeと明記し、過去走行へ現在のlast_test目標を適用しない。schema/FRAM配置・制御/モータ中flush抑止は維持。実NVM/auto/CSV/binのASan/UBSan、疑似UART、旧v3..6 decoder、compact/単位/NVM保護、両MCU build PASS。実機書込/駆動なし。詳細 tools/logging/README.md。
+
 - 実行者: Codex
 - 実行方式: Codex が本作業ツリーで直接実行
 - 主作業: STM32F413共通ファームの `mini_r2_0` / `mini_r3_0` 対応、実機HIL確認、ログ/ツール整備（F405既存機は維持）

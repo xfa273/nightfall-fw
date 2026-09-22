@@ -157,6 +157,42 @@ nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record) {
     return nvm_trace_log_append_cached(&header, record, 1U);
 }
 
+nvm_status_t nvm_trace_log_open(nvm_trace_log_header_t* out) {
+    nvm_area_info_t area;
+    nvm_status_t st;
+    const uint8_t* bytes;
+    uint32_t i;
+
+    if (out == NULL) {
+        return NVM_STATUS_INVALID_ARG;
+    }
+    st = nvm_trace_log_get_area(&area);
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+    st = nvm_read(NVM_AREA_TRACE_LOG, 0U, out, sizeof(*out));
+    if (st != NVM_STATUS_OK) {
+        return st;
+    }
+    st = nvm_trace_log_validate_header(out, &area, NULL);
+    if (st != NVM_STATUS_NOT_FOUND) {
+        return st;
+    }
+
+    bytes = (const uint8_t*)out;
+    if ((bytes[0] != 0x00U) && (bytes[0] != 0xFFU)) {
+        return st;
+    }
+    for (i = 1U; i < sizeof(*out); ++i) {
+        if (bytes[i] != bytes[0]) {
+            return st;
+        }
+    }
+
+    st = nvm_trace_log_format();
+    return (st == NVM_STATUS_OK) ? nvm_trace_log_get_header(out) : st;
+}
+
 nvm_status_t nvm_trace_log_commit_header(const nvm_trace_log_header_t* header) {
     nvm_area_info_t area;
     nvm_trace_log_header_t next;
@@ -213,7 +249,10 @@ nvm_status_t nvm_trace_log_append_cached(nvm_trace_log_header_t* header,
 
     next = *header;
     next.write_index = (write_pos + 1U) % next.record_capacity;
-    next.total_records += 1U;
+    /* Lifetime count spans runs/reboots; never wrap a full ring to empty. */
+    if (next.total_records < UINT32_MAX) {
+        next.total_records += 1U;
+    }
     nvm_trace_log_finalize_header(&next);
 
     if (commit_header != 0U) {

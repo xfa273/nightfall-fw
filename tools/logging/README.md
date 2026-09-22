@@ -109,6 +109,52 @@ python3 tools/logging/serial_terminal.py --port /dev/cu.usbmodem112202
 - 例:
   - `python3 tools/logging/analyze_search_event_log.py tools/logging/logs/trace_bin_YYYYMMDD_HHMMSS.csv`
 
+## F413の複数走行ログ保持
+
+走行開始時に前回ログを初期化せず、FRAMのリングへ追記します。
+自動サンプル（最短・調整走行など）と探索イベントログが対象です。
+走行を終了して保存されたログは再起動後も残ります。既存のv6ログもそのまま追記でき、
+FRAMの領域配置・記録形式・保存単位は変えません。
+
+- ログ領域は640 KiB、104 bytes/recordで**6301レコード**。1 ms周期では**全走行合計約6.3秒**です。
+  例えば3.5秒の走行を2回保存すると、最初の走行の先頭約0.7秒は残りません。
+  探索イベントは1 ms周期ではないため、保持時間はイベント数によります。
+- 空きがある間は前回分を保持し、満杯になると従来のリング方式で**最古のレコードから上書き**します。
+  最古の走行が途中から残った場合は `trace_run_partial_start=1` を付け、Webビューアでも表示します。
+- `mode9 case5` / UART `>` は保持中の**全走行を一つのbinary frame**で古い順に出力します。
+  UART `V` は同じ範囲を走行ごとのヘッダ付きCSVで出力します。書き出しでログは消去されません。
+  `v` / `<` の末尾256レコード、`R` の末尾8レコードという診断用抜粋は維持します。
+- 更新後の `serial_capture_csv.py` はbinaryを一つの `.raw` と、走行別の
+  `trace_bin_YYYYMMDD_HHMMSS_run001.csv` / `_run002.csv` …へ保存します。
+  1走行なら従来のファイル名です。`V` でも走行別CSVになります。
+  `seq=0` を走行の区切りとし、再起動による時刻リセットにも対応します。
+  連番はそのダンプ内の古い順で、再ダンプした同じ走行の重複排除は行いません。
+- 起動中のキャプチャとビューアは更新後に再起動してください。取得済みrawも
+  `python3 tools/logging/trace_bin_dump.py path/to/trace.raw` で走行別に再変換できます。
+  `--csv-out result.csv` は複数走行の場合 `result_run001.csv` などの出力先になります。
+  standalone受信の既定待機は、満杯時の約655 kB出力を考慮して30秒です。
+
+`op_mode/case/sub/test_id` は各走行レコードから取得します。
+走行時のFW SHA・dirty状態・ゲイン値は既存v6形式には保存されません。
+`V` の `fw_git_sha` / `fw_git_dirty` や追加調整情報は `fw_metadata_scope=dump_time` を付け、
+書き出し時点の値と明示します。WebでもFW SHAに `(dump)` を表示します。
+binaryからのCSVには取得時FWを推測して補いません（`fw_capture_metadata=not_stored`）。
+ターン解析は現在の `last_test_id` を過去走行の目標角として使わず、記録済みtest IDまたは
+`--target-angle` を使います。
+
+空白ヘッダ（全0x00または全0xFF）のみ新規初期化します。
+未知の旧スキーマや破損ヘッダ、読み込みエラーでは既存領域を消さず、ログ開始エラーを表示します。
+旧スキーマの場合は対応FWで先に書き出してから、明示的なメンテナンス手順で初期化してください。
+既存のRAMステージング上限4092サンプル・モータ動作中のFRAM書き込み抑止・8件ごとのヘッダ確定は維持します。
+電源断前の未保存RAMデータや未確定ヘッダの復旧は対象外です。
+
+ホスト上の実シリアライザ・ロガー・dumpと疑似UARTによる試験（実機に接続しません）:
+
+```bash
+tools/logging/test_f413_trace_retention.sh
+sh tools/hil/run_f413_nvm_guard_tests.sh
+```
+
 ## FRAM trace CSV表示（調整時の標準運用）
 
 調整作業ではWeb版ビューアを使います。Web UI起動後は、左サイドバーのCSVメニューでログを選ぶだけで、FRAM traceログ用の固定グラフが表示されます。

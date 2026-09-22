@@ -230,14 +230,8 @@ void f413_trace_log_auto_start(void)
     return;
   }
 
-  st = nvm_trace_log_format();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] auto: FAIL(format NVM=%d)\r\n", (int)st);
-    goto release_start_gate;
-  }
-
-  st = nvm_trace_log_get_header(&g_trace_log_auto_nvm_header);
+  /* Keep the FRAM ring across runs. Only the per-run RAM sequence resets. */
+  st = nvm_trace_log_open(&g_trace_log_auto_nvm_header);
   if (st != NVM_STATUS_OK)
   {
     trace_printf("[TRACE-LOG] auto: FAIL(header NVM=%d)\r\n", (int)st);
@@ -273,9 +267,11 @@ void f413_trace_log_auto_start(void)
   {
     __enable_irq();
   }
-  trace_printf("[TRACE-LOG] auto: START period=%lu ms cap=%lu rec staging=%u fast/%u slow@%ums\r\n",
+  trace_printf("[TRACE-LOG] auto: START period=%lu ms cap=%lu rec retained=%lu staging=%u fast/%u slow@%ums\r\n",
                (unsigned long)g_trace_log_auto_period_ms,
                (unsigned long)g_trace_log_auto_nvm_header.record_capacity,
+               (unsigned long)((g_trace_log_auto_nvm_header.total_records < g_trace_log_auto_nvm_header.record_capacity) ?
+                   g_trace_log_auto_nvm_header.total_records : g_trace_log_auto_nvm_header.record_capacity),
                (unsigned int)F413_TRACE_COMPACT_USABLE_RECORDS,
                (unsigned int)F413_TRACE_COMPACT_SLOW_RECORDS,
                (unsigned int)(F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS *

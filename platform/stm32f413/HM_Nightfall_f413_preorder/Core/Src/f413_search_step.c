@@ -553,13 +553,7 @@ static bool f413_search_event_start(uint8_t op_case,
   int32_t phase_pack = 0;
   uint8_t i;
 
-  st = nvm_trace_log_format();
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[SEARCH-EVENT] format: FAIL NVM=%d\r\n", (int)st);
-    return false;
-  }
-  st = nvm_trace_log_get_header(&g_search_event_log_header);
+  st = nvm_trace_log_open(&g_search_event_log_header);
   if (st != NVM_STATUS_OK)
   {
     trace_printf("[SEARCH-EVENT] header: FAIL NVM=%d\r\n", (int)st);

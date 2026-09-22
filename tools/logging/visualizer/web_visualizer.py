@@ -555,9 +555,15 @@ def main() -> int:
             len(df_named),
             duration_s,
             meta.get("log_format", "nightfall_trace"),
-            meta.get("fw_git_sha", "-"),
+            (meta.get("fw_git_sha", "-") + " (dump)"
+             if meta.get("fw_metadata_scope") == "dump_time" else meta.get("fw_git_sha", "-")),
             _trace_op_label(meta, df_named),
         )
+
+        if meta.get("trace_run_partial_start") == "1":
+            st.warning("この走行ログは途中から始まっています（容量上限または抜粋出力）。")
+        if meta.get("fw_metadata_scope") == "dump_time":
+            st.caption("FW・調整値メタデータは書き出し時点の値です。走行時点の値はFRAMに保存されていません。")
 
         st.plotly_chart(fig, use_container_width=True)
 

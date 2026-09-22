@@ -64,6 +64,9 @@ typedef struct __attribute__((packed)) {
 } nvm_trace_log_record_t;
 
 nvm_status_t nvm_trace_log_format(void);
+/* Reopen existing logs; initialize only a uniformly 0x00/0xFF blank header.
+ * Unknown schemas/corrupt headers are preserved and returned as errors. */
+nvm_status_t nvm_trace_log_open(nvm_trace_log_header_t* out);
 nvm_status_t nvm_trace_log_get_header(nvm_trace_log_header_t* out);
 nvm_status_t nvm_trace_log_append(const nvm_trace_log_record_t* record);
 nvm_status_t nvm_trace_log_append_cached(nvm_trace_log_header_t* header,

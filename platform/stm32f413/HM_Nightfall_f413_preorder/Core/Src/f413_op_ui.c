@@ -342,7 +342,7 @@ const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
       case 2U: return "encoder check";
       case 3U: return "sensor AD check";
       case 4U: return "fan noise check";
-      case 5U: return "dump latest full log bin";
+      case 5U: return "dump all retained logs bin";
       case 6U: return "wall threshold check";
       case 7U: return "NVM check";
       case 8U: return "side wall baseline save";
