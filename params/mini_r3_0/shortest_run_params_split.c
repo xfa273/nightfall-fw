@@ -1,7 +1,7 @@
 #include "shortest_run_params.h"
 #include "solver_params.h"
 
-/* mini r3: mode4 and mode6 are fan-50% tuning profiles. */
+/* mini r3: mode4 uses fan 50%; mode6 preserves the user's current 100% tune. */
 
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
@@ -553,7 +553,7 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .angle_turn135out = 135.0f,
     .dist_turn135out_in = 13.7f,
     .dist_turn135out_out = 22.8f,
-    .fan_power = 500,
+    .fan_power = 1000,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）

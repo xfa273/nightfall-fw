@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-run-params-t0.17"
+#define PARAMS_TUNE_VERSION "mini-r3-suction-ff-t0.18"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -102,10 +102,10 @@
 #define KI_VELOCITY 0.30F
 #define KD_VELOCITY 0.0F
 
-/* Suction tuning starts with the current FAN_OFF values. Keep independent
- * numeric FAN_ON entries so subsequent suction tuning leaves fan-off intact. */
+/* Suction gains are independent of the accepted FAN_OFF tune.
+ * Keep the user's current velocity/omega P gains for the t0.18 FF trial. */
 #ifndef KP_VELOCITY_FAN_ON
-#define KP_VELOCITY_FAN_ON  0.24F
+#define KP_VELOCITY_FAN_ON  0.35F
 #endif
 #ifndef KI_VELOCITY_FAN_ON
 #define KI_VELOCITY_FAN_ON  0.001F
@@ -114,13 +114,18 @@
 #define KD_VELOCITY_FAN_ON  0.0F
 #endif
 #ifndef FF_TRANSLATION_STATIC_PWM_FAN_ON
-#define FF_TRANSLATION_STATIC_PWM_FAN_ON 35.0F
+/* Initial fit to 2026-09-22 09:52 mode6 trace, current fan=100%.
+ * PWM is per-mille; velocity/acceleration references are mm/s and mm/s^2.
+ * u_FF[%] = 6.5*sign(v) + 11.0*v[m/s] + 1.0*a[m/s^2].
+ * Shared by all suction modes; lower fan duty/low-speed behavior unverified.
+ * See docs/MINI_R3_SUCTION_FF_TUNING.md for fit and next-run checks. */
+#define FF_TRANSLATION_STATIC_PWM_FAN_ON 65.0F
 #endif
 #ifndef FF_TRANSLATION_VELOCITY_PWM_FAN_ON
-#define FF_TRANSLATION_VELOCITY_PWM_FAN_ON 0.035F
+#define FF_TRANSLATION_VELOCITY_PWM_FAN_ON 0.110F
 #endif
 #ifndef FF_TRANSLATION_ACCEL_PWM_FAN_ON
-#define FF_TRANSLATION_ACCEL_PWM_FAN_ON 0.0040F
+#define FF_TRANSLATION_ACCEL_PWM_FAN_ON 0.0100F
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
@@ -207,7 +212,7 @@
 #endif
 
 #ifndef KP_OMEGA_FAN_ON
-#define KP_OMEGA_FAN_ON  0.45F
+#define KP_OMEGA_FAN_ON  0.8F
 #endif
 #ifndef KI_OMEGA_FAN_ON
 #define KI_OMEGA_FAN_ON  0.006F
