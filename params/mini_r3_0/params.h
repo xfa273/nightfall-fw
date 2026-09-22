@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-suction-mode7-t0.21"
+#define PARAMS_TUNE_VERSION "mini-r3-suction-modes-t0.22"
 
 /*============================================================
     各種定数（パラメータ）設定

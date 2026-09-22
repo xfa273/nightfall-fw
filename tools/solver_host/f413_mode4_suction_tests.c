@@ -30,7 +30,7 @@ void f413_mode_shortest_run_case0_path(const char* label, uint8_t mode, uint8_t 
   {
     float v;
     if (f413_path_run_turn_velocity_from_code(codes[i], &shortestRunModeParams4, &v))
-      assert(v == (codes[i] < 500 ? 800 : codes[i] < 700 ? 1000 : 1200));
+      assert(v == (codes[i] < 500 ? 1000 : 1400));
   }
   calls++;
 }

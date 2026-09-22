@@ -1,5 +1,7 @@
 # mini_r3 mode6 吸引ゲイン調整（2026-09-21）
 
+追記（t0.22）: 現在の速度・吸引率・case0割当ては[吸引モード構成](MINI_R3_SUCTION_MODE_LADDER.md)を参照。以下は変更前の記録。
+
 追記（t0.21）: [mode7追加とcase0速度修正](MINI_R3_MODE7_SUCTION_TUNING.md)。mode6/sub0の前後直進も小回り設定1.2 m/s以下に統一。
 
 追記（t0.20）: [発進時の積分残留対策・case0停止待ち修正](MINI_R3_SUCTION_STARTUP_FIX.md)。

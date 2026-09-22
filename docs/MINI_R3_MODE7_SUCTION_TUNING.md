@@ -1,5 +1,7 @@
 # mini_r3 mode7 吸引ターン調整（t0.21）
 
+追記（t0.22）: 現在の速度・吸引率・case0割当ては[吸引モード構成](MINI_R3_SUCTION_MODE_LADDER.md)を参照。以下は変更前の記録。
+
 2026-09-22 JST。`mini-r3-suction-mode7-t0.21`。
 小回り1.4 m/s、大回り90°/180° 2.0 m/s。斜めはmode6と同じ1.5 m/s。
 mode6で現在使用しているfan100%とFAN_ONゲインを継承する。

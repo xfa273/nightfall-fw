@@ -1,5 +1,7 @@
 # mini_r3 mode4 suction tuning seed (2026-09-21)
 
+追記（t0.22）: 現在の速度・吸引率・case0割当ては[吸引モード構成](MINI_R3_SUCTION_MODE_LADDER.md)を参照。以下は変更前の記録。
+
 Update (t0.17): shared speed caps are removed; the simulator's 2200 deg/s
 limit is now the mode's explicit `turn_omega_max`. Case0 braking distance
 follows configured acceleration. See [current behavior](F413_RUN_PARAMETER_LIMITS.md).

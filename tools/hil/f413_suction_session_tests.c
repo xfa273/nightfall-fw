@@ -18,7 +18,7 @@ static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
 static uint16_t flags;
-static uint8_t selected_mode;
+static uint8_t selected_mode, selected_case;
 static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
 static bool suction, disturbed, duty_fail;
 static bool stop_profile_done;
@@ -159,7 +159,7 @@ static void reset(void)
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
   completed_sessions = 0;
-  selected_mode = 4; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
+  selected_mode = 3; selected_case = 1; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
   stop_profile_done = false; stop_profile_finish_tick = 0;
@@ -173,7 +173,7 @@ static void run(void)
 {
   requested_duty = f413_path_run_mode_params(selected_mode)->fan_power;
   expected_ramp_ms = f413_path_run_suction_ramp_ms(requested_duty);
-  f413_path_run_session_once(suction ? selected_mode : 2,1,0,"host suction");
+  f413_path_run_session_once(suction ? selected_mode : 2,selected_case,0,"host suction");
 }
 static void stopped(unsigned expected_fan_starts)
 {
@@ -198,7 +198,7 @@ int main(void)
   assert(!f413_path_run_turn_from_code(300, &mode, &turn));
   /* The user specifies a rate, not a fixed duration for every target. */
   const struct { uint16_t duty; uint32_t ms; } ramps[] = {
-    {250, 300}, {500, 600}, {750, 900}, {1000, 1200}
+    {250, 300}, {500, 600}, {700, 840}, {750, 900}, {1000, 1200}
   };
   for (unsigned i = 0; i < sizeof(ramps) / sizeof(ramps[0]); ++i)
   {
@@ -211,17 +211,24 @@ int main(void)
     assert(fan_duty == requested_duty && full_duty_tick - fan_tick == ramps[i].ms);
     f413_ctrl_stop(); f413_hw_fan_stop();
   }
-  reset(); run(); stopped(1); assert(starts == 1 && position > 400);
-  reset(); selected_mode=6; run(); stopped(1); assert(starts == 1 && position > 400);
-  reset(); selected_mode=7; run(); stopped(1); assert(starts == 1 && position > 400 && peak_command == 2000);
-  /* Exercise the real session, not only the planner: the small-turn case0
-   * must never command the faster case straight speed before or after it. */
-  for (unsigned m=6; m<=7; ++m)
+  const float small[] = {800,1000,1200,1200,1400};
+  const float large[] = {1000,1400,1700,2000,2200};
+  const unsigned duties[] = {500,700,1000,1000,1000};
+  for (unsigned m=3; m<=7; ++m)
   {
-    reset(); selected_mode=m; path[0]=203; path[1]=300; path[2]=203;
-    run(); stopped(1);
-    assert(peak_command == (m == 6 ? 1200 : 1400));
-    assert(completed_sessions == 1 && profiles >= 6);
+    reset(); selected_mode=m; run(); stopped(1);
+    assert(starts == 1 && position > 400 && peak_command == small[m-3]);
+    assert(requested_duty == duties[m-3]);
+    /* Exercise all current cardinal trials through the production session. */
+    for (unsigned t=0; t<3; ++t)
+    {
+      reset(); selected_mode=m; selected_case=t == 0 ? 1 : 2;
+      path[0]=t == 0 ? 203 : 204; path[1]=t == 0 ? 300 : t == 1 ? 501 : 502; path[2]=203;
+      run(); stopped(1);
+      assert(peak_command == (t == 0 ? small[m-3] : large[m-3]));
+      assert(completed_sessions == 1 && profiles >= 6);
+      assert(requested_duty == duties[m-3]);
+    }
   }
   reset(); wait_extra_ms=3; run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); tick=UINT32_MAX-1610U; run(); stopped(1); assert(position > 400);
@@ -263,5 +270,5 @@ int main(void)
   f413_run_features_set(&maze_features);
   position=99.5f; velocity=0;
   assert(f413_path_run_wait_ctrl_target(100,false,&guard,0,false,false) == F413_RUN_SESSION_ABORT_TIMEOUT);
-  puts("suction session: hold before fan, 25/50/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
+  puts("suction session: hold before fan, 25/50/70/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
 }

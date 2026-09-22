@@ -63,8 +63,8 @@ static const f413_mode7_case0_sub_t k_case0_subs[10] = {
 /* Valid cardinal/diagonal approaches and explicit braking tails for suction tuning. */
 static const f413_mode7_case0_sub_t k_suction_case0_subs[10] = {
   {1U, "mode7-case0-sub0 small R90",  {203U, 300U, 203U},                3U},
-  {1U, "mode7-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
-  {1U, "mode7-case0-sub2 large R180", {204U, 502U, 203U},                3U},
+  {2U, "mode7-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
+  {2U, "mode7-case0-sub2 large R180", {204U, 502U, 203U},                3U},
   {8U, "mode7-case0-sub3 R45 in",     {204U, 701U, 1003U},               3U},
   {8U, "mode7-case0-sub4 L45 out",    {204U, 701U, 1003U, 704U, 203U},   5U},
   {8U, "mode7-case0-sub5 L-V90",      {204U, 701U, 1003U, 802U, 1003U},  5U},

@@ -160,7 +160,7 @@ static void front_entry_reference_tests(void)
   assert(datum_delta == 38.0f);
   assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
   const float search_targets[] = {82.0f, 80.0f};
-  const float mode_targets[] = {82.8f, 86.0f, 89.4f, 86.0f, 89.1f, 88.6f};
+  const float mode_targets[] = {82.8f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
   for (unsigned i = 0; i < 2; ++i) {
     assert(r2->search[i].dist_offset_in == r3->search[i].dist_offset_in);
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
@@ -170,26 +170,25 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - old_target - datum_delta) < 0.001f);
     assert(fabsf(new_target - search_targets[i]) < 0.001f);
   }
+  const float small_v[] = {300,800,1000,1200,1200,1400};
+  const float large_v[] = {500,1000,1400,1700,2000,2200};
+  const float diagonal_v[] = {500,1000,1400,1500,1500,1500};
+  const int fan[] = {0,500,700,1000,1000,1000};
   for (unsigned i = 0; i < 6; ++i) {
     assert(r2->modes[i]->turn_omega_max == 0);
-    assert(r3->modes[i]->turn_omega_max == (i == 5U ? 3000.0f : i == 2U || i == 4U ? 2200.0f : 0.0f));
-    if (i != 2U && i != 4U && i != 5U) {
+    assert(r3->modes[i]->turn_omega_max == (i == 0 ? 0 : 3000));
+    if (i == 0) {
       assert(memcmp(r2->modes[i], r3->modes[i], sizeof(*r2->modes[i])) == 0);
-    } else if (i == 2U) {
-      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power > 0 && r3->modes[i]->fan_power <= 1000);
-      assert(r2->modes[i]->velocity_turn90 == r3->modes[i]->velocity_turn90);
-      assert(r2->modes[i]->velocity_l_turn_90 == r3->modes[i]->velocity_l_turn_90);
-      assert(r2->modes[i]->velocity_turn45in == r3->modes[i]->velocity_turn45in);
     } else {
-      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power > 0 && r3->modes[i]->fan_power <= 1000);
-      assert(r3->modes[i]->velocity_turn90 == (i == 5U ? 1400 : 1200));
-      assert(r3->modes[i]->velocity_l_turn_90 == (i == 5U ? 2000 : 1500));
-      assert(r3->modes[i]->velocity_l_turn_180 == (i == 5U ? 2000 : 1500));
-      assert(r3->modes[i]->velocity_turn45in == 1500);
-      assert(r3->modes[i]->velocity_turn45out == 1500);
-      assert(r3->modes[i]->velocity_turnV90 == 1500);
-      assert(r3->modes[i]->velocity_turn135in == 1500);
-      assert(r3->modes[i]->velocity_turn135out == 1500);
+      assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == fan[i]);
+      assert(r3->modes[i]->velocity_turn90 == small_v[i]);
+      assert(r3->modes[i]->velocity_l_turn_90 == large_v[i]);
+      assert(r3->modes[i]->velocity_l_turn_180 == large_v[i]);
+      assert(r3->modes[i]->velocity_turn45in == diagonal_v[i]);
+      assert(r3->modes[i]->velocity_turn45out == diagonal_v[i]);
+      assert(r3->modes[i]->velocity_turnV90 == diagonal_v[i]);
+      assert(r3->modes[i]->velocity_turn135in == diagonal_v[i]);
+      assert(r3->modes[i]->velocity_turn135out == diagonal_v[i]);
     }
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
         (float)r2->scalar->v_DIST_HALF_SEC - r2->modes[i]->dist_offset_in;
