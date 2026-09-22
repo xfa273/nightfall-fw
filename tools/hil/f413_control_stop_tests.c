@@ -49,6 +49,51 @@ static void tick_at_position(float mm)
 
 int main(void)
 {
+  /* Reproduce the 10:34/10:36 suction launch: stationary yaw I drives left
+   * although positive yaw already needs a right correction. Release only
+   * stationary suction holding, preserving pose and translation feedback. */
+  for (unsigned on = 0; on < 2; ++on)
+  for (int sign = -1; sign <= 1; sign += 2)
+  for (int direction = -1; direction <= 1; direction += 2)
+  {
+    setup(); fan_active = on;
+    f413_ctrl_set_angle_target(0);
+    s_real_angle = sign * 0.7f;
+    s_velocity_integral = 1234.0f;
+    s_omega_integral = -sign * 5000.0f;
+    s_previous_omega_ref = sign * 14.0f;
+    s_previous_omega_ref_valid = true;
+    f413_ctrl_clear_angle_target(); /* Same ordering as the path runner. */
+    f413_ctrl_set_velocity_profile(0, direction * 100.0f, 10);
+    assert(test_primask == 0U && s_running);
+    assert(s_velocity_integral == 1234.0f);
+    assert(s_real_angle == sign * 0.7f && s_target_angle == 0);
+    assert(s_distance_feedback_enabled);
+    if (on)
+    {
+      assert(s_omega_integral == 0 && !s_previous_omega_ref_valid);
+      tick_at_position(0);
+      assert(s_omega_ref_accel == 0); /* No reset-induced FF kick. */
+      assert(sign * (f413_ctrl_get_motor_out_r() - f413_ctrl_get_motor_out_l()) < 0);
+    }
+    else
+    {
+      assert(s_omega_integral == -sign * 5000.0f && s_previous_omega_ref_valid);
+    }
+  }
+  /* Do not disturb integration at a moving segment or an active turn. */
+  for (unsigned rotating = 0; rotating < 2; ++rotating)
+  {
+    setup(); fan_active = true;
+    if (rotating) f413_ctrl_start_omega_profile(300, .1f, .1f);
+    else f413_ctrl_set_velocity_profile(0, 100, 10);
+    if (!rotating) s_velocity_interrupt = 100;
+    s_omega_integral = 5000;
+    s_previous_omega_ref_valid = true;
+    f413_ctrl_set_velocity_profile(rotating ? 0 : 100, 200, 20);
+    assert(s_omega_integral == 5000 && s_previous_omega_ref_valid);
+  }
+
   /* Suction startup uses start()'s zero-distance hold, not set_velocity(0).
    * Exercise the production 1 kHz controller against either direction of
    * startup yaw and fore/aft displacement before releasing it into a run.

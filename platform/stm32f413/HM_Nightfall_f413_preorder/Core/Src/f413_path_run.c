@@ -1151,6 +1151,16 @@ static f413_run_session_abort_reason_t f413_path_run_wait_ctrl_target(
     }
     else
     {
+      /* A zero-speed test tail may settle just short of the exact endpoint.
+       * Once its profile completes, let the bounded position/speed settle
+       * check below the path loop decide completion instead of waiting for
+       * an encoder crossing with an almost-zero correction command.
+       */
+      if (f413_run_features_test_mode_run() &&
+          f413_ctrl_stop_profile_complete())
+      {
+        break;
+      }
       float current = fabsf(f413_ctrl_get_distance());
       if (current >= fabsf(target))
       {

@@ -20,6 +20,8 @@ static uint16_t flags;
 static uint8_t selected_mode;
 static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
 static bool suction, disturbed, duty_fail;
+static bool stop_profile_done;
+static uint32_t stop_profile_finish_tick;
 static float position, velocity, target, angle, omega;
 static f413_run_session_abort_reason_t injected_abort;
 static phase_t abort_phase;
@@ -67,6 +69,7 @@ void f413_ctrl_set_velocity(float v) { velocity = v; if (v == 0) cleanup = true;
 void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 {
   (void)start;
+  stop_profile_done = false;
   if (profiles++ == 0)
   {
     first_drive_tick = tick;
@@ -91,6 +94,7 @@ float f413_ctrl_get_distance(void) { return position; }
 float f413_ctrl_get_angle(void) { return angle; }
 float f413_ctrl_get_real_omega(void) { return omega; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
+bool f413_ctrl_stop_profile_complete(void) { return stop_profile_done; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
 void f413_trace_log_auto_start(void) { tracing = true; }
 void f413_trace_log_auto_step(void) {}
@@ -121,6 +125,8 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
     angle = 2.655f; omega = -1.0f; position = .666f; velocity = -3.0f;
   }
   if (phase == DRIVE && !stuck) position = target;
+  if (phase == DRIVE && stop_profile_finish_tick && tick >= stop_profile_finish_tick)
+    stop_profile_done = true;
   return F413_RUN_SESSION_ABORT_NONE;
 }
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t r) { return (uint16_t)r; }
@@ -143,6 +149,7 @@ static void reset(void)
   selected_mode = 4; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
+  stop_profile_done = false; stop_profile_finish_tick = 0;
   position = velocity = target = angle = omega = 0;
   injected_abort = F413_RUN_SESSION_ABORT_NONE; abort_phase = DRIVE;
   memset(path,0,sizeof(path)); path[0]=209;
@@ -212,5 +219,26 @@ int main(void)
   reset(); suction=false; run();
   assert(starts == 1 && fan_starts == 0 && fan_stops == 0 && profiles > 0);
   assert(first_drive_tick == control_tick && !running && !tracing);
+
+  /* A stopped case0 trial need not creep across its exact endpoint before
+   * reaching the existing 0.75 mm / 20 mm/s / 250 ms completion check. */
+  f413_run_session_guard_t guard = {0};
+  reset(); profiles=1; running=true; stuck=true;
+  position=99.5f; velocity=0; stop_profile_finish_tick=20;
+  f413_path_run_distance_cursor_reset(&g_f413_path_run_distance_cursor,100);
+  assert(f413_path_run_wait_ctrl_target(100,false,&guard,0,false,false) == F413_RUN_SESSION_ABORT_NONE);
+  assert(tick == 20 && stop_profile_done && position == 99.5f);
+  assert(f413_path_run_settle_test_stop(&guard,0) == F413_RUN_SESSION_ABORT_NONE);
+  assert(tick == 20);
+  position=99.0f; /* Beyond position tolerance still times out; no bypass. */
+  assert(f413_path_run_settle_test_stop(&guard,0) == F413_RUN_SESSION_ABORT_TIMEOUT);
+  assert(tick == 20 + F413_PATH_RUN_TEST_STOP_SETTLE_MAX_MS);
+  position=100; velocity=30; /* Nor can completion ignore motion. */
+  assert(f413_path_run_settle_test_stop(&guard,0) == F413_RUN_SESSION_ABORT_TIMEOUT);
+  /* Normal maze runs retain their original endpoint crossing behavior. */
+  const f413_run_features_t maze_features={false,false,false,true,false};
+  f413_run_features_set(&maze_features);
+  position=99.5f; velocity=0;
+  assert(f413_path_run_wait_ctrl_target(100,false,&guard,0,false,false) == F413_RUN_SESSION_ABORT_TIMEOUT);
   puts("suction session: hold before fan, 25/50/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
 }

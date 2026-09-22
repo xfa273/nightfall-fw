@@ -1,5 +1,7 @@
 # mini_r3 mode6 吸引ゲイン調整（2026-09-21）
 
+追記（t0.20）: [発進時の積分残留対策・case0停止待ち修正](MINI_R3_SUCTION_STARTUP_FIX.md)。
+
 追記（t0.19）: 並進FFの実測改善後、角度Pと旋回FFを追加調整。
 [全ゲイン再確認](MINI_R3_SUCTION_GAIN_REVIEW.md)を参照。
 

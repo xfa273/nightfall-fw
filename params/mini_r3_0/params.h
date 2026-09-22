@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-suction-yaw-t0.19"
+#define PARAMS_TUNE_VERSION "mini-r3-suction-start-t0.20"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -102,10 +102,10 @@
 #define KI_VELOCITY 0.30F
 #define KD_VELOCITY 0.0F
 
-/* Suction gains are independent of the accepted FAN_OFF tune.
- * Preserve the user's velocity/omega P gains through the suction FF trials. */
+/* Suction gains are independent of the accepted FAN_OFF tune. */
 #ifndef KP_VELOCITY_FAN_ON
-#define KP_VELOCITY_FAN_ON  0.35F
+/* 10:36 R180: additional load drops speed during the turn without saturation. */
+#define KP_VELOCITY_FAN_ON  0.45F
 #endif
 #ifndef KI_VELOCITY_FAN_ON
 #define KI_VELOCITY_FAN_ON  0.001F
@@ -186,7 +186,9 @@
 #define KP_ANGLE_FAN_ON 15.0F
 #endif
 #ifndef KI_ANGLE_FAN_ON
-#define KI_ANGLE_FAN_ON 0.1F
+/* The inner omega PI already rejects steady torque. Outer angle integration
+ * accumulated the wrong-way rate command during suction holding (10:34/10:36). */
+#define KI_ANGLE_FAN_ON 0.0F
 #endif
 #ifndef KD_ANGLE_FAN_ON
 #define KD_ANGLE_FAN_ON 0.0F

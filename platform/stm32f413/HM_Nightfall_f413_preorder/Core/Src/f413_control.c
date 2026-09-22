@@ -980,6 +980,24 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
     /* Publish the endpoint and profile atomically to the 1 kHz interrupt. */
     const uint32_t primask = __get_PRIMASK();
     __disable_irq();
+    if (f413_ctrl_use_fan_on_gains() && s_distance_feedback_enabled &&
+        s_velocity_interrupt == 0.0f && s_velocity_profile_target == 0.0f &&
+        start_velocity_mm_s == 0.0f && target_velocity_mm_s != 0.0f &&
+        !s_omega_profile_active && s_omega_interrupt == 0.0f)
+    {
+        /* Release powered stationary holding into rolling motion. The yaw I
+         * needed to overcome stationary friction/fan spinup must not launch
+         * the robot in the opposite direction to its heading correction.
+         * Preserve both measured and requested pose, and translation state.
+         * The cleared angle outer loop also changes the omega reference;
+         * invalidate derivative history so that change is not an FF impulse.
+         */
+        s_omega_integral = 0.0f;
+        s_previous_omega_error = s_real_omega -
+            (s_omega_interrupt + s_target_omega + s_heading_omega_correction);
+        s_omega_error_error = 0.0f;
+        f413_ctrl_reset_omega_ff_state();
+    }
     f413_ctrl_sync_distance_feedback_to_real();
     s_distance_feedback_enabled = 1U;
     s_velocity_interrupt = start_velocity_mm_s;
