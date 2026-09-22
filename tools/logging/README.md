@@ -27,6 +27,11 @@
 
 ## `serial_capture_csv.py` のコマンド送信
 
+- スクリプト更新後は、受信中のdumpが完了してからCtrl+Cで終了し、
+  `python3 tools/logging/serial_capture_csv.py` を再実行してください。
+  起動中プロセスの処理はファイル更新だけでは切り替わりません。
+  更新版は起動時に `CSV output : one file per run` と表示し、実行中のソース更新も警告します。
+  自動再起動や起動時コマンドの再送信はしません。
 - キャプチャ中に同じポートへUARTコマンドを送信できます（別シリアルモニタ不要）。
 - 起動時に自動送信する場合: `python3 tools/logging/serial_capture_csv.py --send q,y,V`
 - 起動後に手入力する場合: 実行中ターミナルで `q,y,V` と入力して Enter
@@ -133,6 +138,11 @@ FRAMの領域配置・記録形式・保存単位は変えません。
   `python3 tools/logging/trace_bin_dump.py path/to/trace.raw` で走行別に再変換できます。
   `--csv-out result.csv` は複数走行の場合 `result_run001.csv` などの出力先になります。
   standalone受信の既定待機は、満杯時の約655 kB出力を考慮して30秒です。
+
+旧版キャプチャで保存した結合CSVを再変換した場合は、分割CSVの内容を確認後、
+元の結合CSVを `logs/combined_originals/` などへ移して保管してください。
+ビューアは従来どおり各 `_runNNN.csv` を選択して使います。
+`Refresh log list` で一覧を更新すればよく、今回の分割に表示側の変更は不要です。
 
 `op_mode/case/sub/test_id` は各走行レコードから取得します。
 走行時のFW SHA・dirty状態・ゲイン値は既存v6形式には保存されません。

@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- 複数走行CSV表示復旧（2026-09-22 JST）: 17:36取得の6301件が旧キャプチャ（前日23:03起動）で結合保存され、mode4/sub1末尾17.374s→sub2先頭15.700sへ時間逆行。現行の取得時分割実装は正常。rawを再変換してrun001=2895件/sub1/先頭欠落、run002=3406件/sub2を復旧、全行一致・従来ビューアの相対時間0始点/単調増加と描画を確認。元CSVはlogs/combined_originalsへ保管、raw不変。キャプチャの走行別出力起動表示・ソース更新時の再起動警告と疑似UART binary連続受信回帰を追加。17host試験PASS、表示/FW変更なし。ターミナル操作はCUA安全制限で拒否され旧プロセス再起動は未実施、ユーザへCtrl+C→python3 tools/logging/serial_capture_csv.pyの再実行を案内。
+
 - F413自動撮影ON/OFF（2026-09-22 JST、mini_r3 t0.23）: 各params.hにENABLE_AUTO_VIDEO_CAPTURE（0/1）を追加しboot選択scalarへ接続。mini_r3は手動調整用OFF、mini_r2は既存ON。OFFは全run hook/探索のSTART/STOP LED信号・撮影guard300ms・光学START専用ctrl_stopを省略、UART光学testもdisabled。通常LED/traceとIMU校正・fan ramp/到達後300ms・走行制御/停止は維持。ON/OFFのGPIO/実path session・吸引/非吸引順序・機体runtime選択、route14210 checks、両MCU buildをhost検証。実機書込/駆動なし、floor HIL未実施。詳細 docs/MINI_R3_SUCTION_MODE_LADDER.md。
 
 - F413 case0大回り180°助走延長（2026-09-22 JST）: 後部壁当て開始で停止前に壁へ接触とのユーザ報告。mode2〜7のcase0全180°経路11項目（吸引/非吸引、mini_r2共通）の先行直進だけ90mm延長。吸引3〜7/sub2はS4→S6、設計停止位置は開始中心から前100mm/右90mm（旧前10mm）。他のターン経路・速度/ゲイン・後続直線/停止処理は維持。全5吸引モード50sub/12220接続preflight、production15session・fan/cleanup、legacy50sub選択、mode2 dispatch、両MCU buildをhost検証。実機操作なし。詳細 docs/MINI_R3_SUCTION_MODE_LADDER.md。

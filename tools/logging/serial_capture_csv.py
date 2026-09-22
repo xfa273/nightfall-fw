@@ -24,6 +24,18 @@ DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
 IOSSIOSPEED = 0x80045402
 
 
+def _capture_source_signature() -> tuple:
+    """Notice stale long-running captures without restarting or resending UART commands."""
+    signature = []
+    for path in (Path(__file__), Path(trace_bin_dump.__file__)):
+        try:
+            stat = path.stat()
+            signature.append((stat.st_mtime_ns, stat.st_size))
+        except OSError:
+            signature.append(None)
+    return tuple(signature)
+
+
 def _repo_root_from_this_file() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -224,6 +236,7 @@ def _send_command_chars(fd: int, commands: list[str], delay_ms: float) -> None:
 
 
 def main() -> int:
+    source_signature = _capture_source_signature()
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("save_dir", nargs="?", default=None)
     ap.add_argument("port", nargs="?", default="auto")
@@ -271,6 +284,7 @@ def main() -> int:
     print(f"Port       : {port}")
     print(f"Baud       : {args.baud}")
     print(f"Save Dir   : {save_dir}")
+    print("CSV output : one file per run (multi-run binary: *_run001.csv, *_run002.csv, ...)")
     if sys.stdin.isatty():
         print("Type UART commands and press Enter (example: q,y,V)")
     print("Press Ctrl+C to stop.")
@@ -304,7 +318,18 @@ def main() -> int:
         if auto_commands:
             _send_command_chars(fd, auto_commands, args.send_interval_ms)
 
+        next_source_check = time.monotonic()
+        source_warning_printed = False
         while True:
+            if not source_warning_printed and time.monotonic() >= next_source_check:
+                next_source_check = time.monotonic() + 5.0
+                if _capture_source_signature() != source_signature:
+                    print(
+                        "[WARN] Capture source updated on disk. This process still uses the old code. "
+                        "After the current dump finishes, press Ctrl+C and restart capture to apply the update.",
+                        file=sys.stderr,
+                    )
+                    source_warning_printed = True
             read_list = [fd]
             if stdin_fd is not None:
                 read_list.append(stdin_fd)

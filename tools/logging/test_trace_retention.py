@@ -44,6 +44,59 @@ def frame_bytes(layout, sequence):
 
 
 class RetentionDecoderTest(unittest.TestCase):
+    def test_binary_capture_stream_saves_individual_runs(self):
+        # Test the long-running capture entry point, including fragmented magic,
+        # consecutive dumps and reboot timestamps, not just the decoder helper.
+        frames = [frame_bytes(decoder.RECORD_STRUCT_V6, sequence) for sequence in (
+            [(418, 14354), (419, 14355), (0, 14000), (1, 14001)],
+            [(0, 20000), (1, 20001)],
+        )]
+        master, slave = pty.openpty()
+        process = None
+        try:
+            with tempfile.TemporaryDirectory() as directory, tempfile.TemporaryFile() as errors:
+                process = subprocess.Popen(
+                    [sys.executable, str(Path(capture.__file__)), directory,
+                     os.ttyname(slave), '115200', '--send', 'V', '--send-interval-ms', '0'],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=errors)
+                ready, _, _ = select.select([master], [], [], 5)
+                self.assertTrue(ready, 'fake UART was not opened')
+                self.assertEqual(os.read(master, 128), b'V')
+                for frame in frames:
+                    os.write(master, b'[TRACE-LOG] binary dump\r\n')
+                    for start in range(0, len(frame), 7):
+                        os.write(master, frame[start:start + 7])
+                    os.write(master, b'\r\n[TRACE-LOG] done\r\n')
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    paths = list(Path(directory).glob('*.csv'))
+                    if len(paths) == 3 and all(len(read_csv(p)[1]) == 2 for p in paths):
+                        break
+                    time.sleep(0.02)
+                else:
+                    errors.seek(0)
+                    self.fail(errors.read().decode())
+                raw_paths = sorted(Path(directory).glob('*.raw'))
+                self.assertEqual([p.read_bytes() for p in raw_paths], frames)
+                split = sorted(Path(directory).glob('*_run*.csv'))
+                self.assertEqual(len(split), 2)
+                self.assertFalse(raw_paths[0].with_suffix('.csv').exists())
+                self.assertTrue(raw_paths[1].with_suffix('.csv').exists())
+                self.assertEqual([read_csv(p)[0]['trace_run_partial_start'] for p in split], ['1', '0'])
+                self.assertEqual([read_csv(p)[0]['trace_run_count'] for p in split], ['2', '2'])
+                for path in paths:
+                    _meta, rows = read_csv(path)
+                    self.assertLess(int(rows[0]['timestamp_ms']), int(rows[1]['timestamp_ms']))
+                    self.assertEqual(int(rows[1]['seq']), int(rows[0]['seq']) + 1)
+                # Saving does not request another dump or transmit a run command.
+                self.assertFalse(select.select([master], [], [], 0.05)[0])
+        finally:
+            if process is not None:
+                process.terminate()
+                process.wait(timeout=5)
+            os.close(master)
+            os.close(slave)
+
     def test_turn_target_uses_retained_run_instead_of_latest_test(self):
         meta = {'#fw_metadata_scope': 'dump_time', '#last_test_id': '4'}
         self.assertIsNone(_infer_target(meta))
