@@ -4,7 +4,23 @@
 #include <string.h>
 #define NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST (1U)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c"
+#if TEST_MODE == 7
+#include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_mode7.c"
+#define MODE_PARAMS shortestRunModeParams7
+#define CASE_PARAMS shortestRunCaseParamsMode7
+#define RUN_SUB f413_mode7_run_case0_sub
+#define SMALL_SPEED 1400
+#define LARGE_SPEED 2000
+#define LINEAR_ACCEL 45000
+#else
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_mode6.c"
+#define MODE_PARAMS shortestRunModeParams6
+#define CASE_PARAMS shortestRunCaseParamsMode6
+#define RUN_SUB f413_mode6_run_case0_sub
+#define SMALL_SPEED 1200
+#define LARGE_SPEED 1500
+#define LINEAR_ACCEL 25000
+#endif
 
 static unsigned calls, selected_sub, connections;
 static const uint16_t turns[] = {300,400,501,601,502,602,701,702,703,704,801,802,901,902,903,904};
@@ -14,11 +30,13 @@ static void check_path(const uint16_t* codes, unsigned count, unsigned c, bool w
 {
   uint16_t terminated[20] = {0};
   memcpy(terminated, codes, count * sizeof(*codes));
-  const ShortestRunCaseParams_t* cp = &shortestRunCaseParamsMode6[c-1];
-  const float initial = sqrtf(2 * cp->acceleration_straight * DIST_FIRST_SEC);
+  const ShortestRunCaseParams_t selected = f413_path_run_session_case_params(
+      terminated, 20, &MODE_PARAMS, &CASE_PARAMS[c-1], test);
+  const ShortestRunCaseParams_t* cp = &selected;
+  const float initial = f413_path_run_boundary_speed(&MODE_PARAMS, cp, DIST_FIRST_SEC);
   f413_path_run_prepared_path_t prepared;
   f413_path_run_preflight_result_t r = f413_path_run_preflight_prepare(
-      terminated, 20, &shortestRunModeParams6, cp, initial, walls, test, &prepared);
+      terminated, 20, &MODE_PARAMS, cp, initial, walls, test, &prepared);
   if (r.status != F413_PATH_RUN_PREFLIGHT_OK)
   {
     fprintf(stderr,"sub%u case%u walls%u test%u preflight=%u index=%zu code=%u path:",
@@ -27,18 +45,38 @@ static void check_path(const uint16_t* codes, unsigned count, unsigned c, bool w
     fputc('\n',stderr);
   }
   assert(r.status == F413_PATH_RUN_PREFLIGHT_OK && prepared.count > 0);
+  if (test)
+  {
+    const float expected = selected_sub == 0 ? SMALL_SPEED :
+        selected_sub >= 3 && selected_sub <= 7 ? 1500 : LARGE_SPEED;
+    assert(cp->velocity_straight == expected);
+    float peak = initial;
+    for (size_t a=0; a<prepared.count; ++a)
+    {
+      const f413_path_run_prepared_linear_t* action = &prepared.actions[a];
+      assert(action->entry_velocity_mm_s <= expected);
+      assert(action->exit_velocity_mm_s <= expected);
+      for (unsigned phase=0; phase<action->phase_count; ++phase)
+      {
+        float v = action->phase_exit_velocity_mm_s[phase];
+        assert(v <= expected);
+        if (v > peak) peak = v;
+      }
+    }
+    assert(peak == expected); /* Enough run-up, no overspeed before/after turns. */
+  }
   for (unsigned i=0; i<count; ++i)
   {
     float v;
-    if (f413_path_run_turn_velocity_from_code(codes[i], &shortestRunModeParams6, &v))
-      assert(v == (codes[i] < 500 ? 1200 : 1500));
+    if (f413_path_run_turn_velocity_from_code(codes[i], &MODE_PARAMS, &v))
+      assert(v == (codes[i] < 500 ? SMALL_SPEED : codes[i] < 700 ? LARGE_SPEED : 1500));
   }
 }
 void f413_mode_shortest_run_case0_path(const char* label, uint8_t mode, uint8_t c,
                                      const uint16_t* codes, uint16_t count)
 {
   (void)label;
-  assert(mode == 6 && c >= 1 && c <= 9);
+  assert(mode == TEST_MODE && c >= 1 && c <= 9);
   check_path(codes,count,c,false,true);
   calls++;
 }
@@ -52,14 +90,14 @@ static bool leaves_diagonal(uint16_t code)
 }
 int main(void)
 {
-  assert(shortestRunModeParams6.fan_power > 0 && shortestRunModeParams6.fan_power <= 1000);
-  for (selected_sub=0; selected_sub<10; ++selected_sub) f413_mode6_run_case0_sub(selected_sub);
-  assert(calls == 10); f413_mode6_run_case0_sub(10); assert(calls == 10);
+  assert(MODE_PARAMS.fan_power > 0 && MODE_PARAMS.fan_power <= 1000);
+  for (selected_sub=0; selected_sub<10; ++selected_sub) RUN_SUB(selected_sub);
+  assert(calls == 10); RUN_SUB(10); assert(calls == 10);
   for (unsigned c=1; c<=9; ++c)
   {
-    const ShortestRunCaseParams_t* cp = &shortestRunCaseParamsMode6[c-1];
-    assert(cp->velocity_straight == 1500 && cp->velocity_d_straight == 1500);
-    assert(cp->acceleration_straight == 25000 && cp->acceleration_straight_dash == 25000);
+    const ShortestRunCaseParams_t* cp = &CASE_PARAMS[c-1];
+    assert(cp->velocity_straight == LARGE_SPEED && cp->velocity_d_straight == 1500);
+    assert(cp->acceleration_straight == LINEAR_ACCEL && cp->acceleration_straight_dash == LINEAR_ACCEL);
     assert(cp->acceleration_d_straight == 25000 && cp->acceleration_d_straight_dash == 25000);
     for (unsigned wall=0; wall<2; ++wall)
       for (unsigned a=0; a<sizeof(turns)/sizeof(turns[0]); ++a)
@@ -83,6 +121,6 @@ int main(void)
         }
       }
   }
-  printf("mode6 suction: all 10 case0 paths, 1200/1500 speeds, %u minimal start/connector/stop paths across 9 cases PASS\n",connections);
+  printf("mode%u suction: all 10 case0 paths and peak speeds, %u minimal start/connector/stop paths across 9 cases PASS\n",TEST_MODE,connections);
   return 0;
 }

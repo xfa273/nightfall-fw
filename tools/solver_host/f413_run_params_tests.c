@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
+#include <string.h>
 #define NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST (1U)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c"
 
@@ -19,6 +20,27 @@ static void check_mode(const ShortestRunModeParams_t* m, const ShortestRunCasePa
   }
   for (unsigned c=0; c<9; ++c)
   {
+    const uint16_t small_test[] = {209,300,209,0};
+    const uint16_t mixed_test[] = {209,300,201,501,209,0};
+    const uint16_t straight_test[] = {209,0};
+    const uint16_t* paths[] = {small_test,mixed_test,straight_test};
+    const size_t capacities[] = {4,6,2};
+    for (unsigned p=0; p<3; ++p)
+    {
+      ShortestRunCaseParams_t selected = f413_path_run_session_case_params(
+          paths[p],capacities[p],m,&cases[c],false);
+      assert(memcmp(&selected,&cases[c],sizeof(selected)) == 0);
+      selected = f413_path_run_session_case_params(
+          paths[p],capacities[p],m,&cases[c],true);
+      const float turn_speed = p == 0 ? m->velocity_turn90 :
+          p == 1 ? fmaxf(m->velocity_turn90,m->velocity_l_turn_90) : INFINITY;
+      assert(selected.velocity_straight == fminf(cases[c].velocity_straight,turn_speed));
+      assert(selected.velocity_d_straight == fminf(cases[c].velocity_d_straight,turn_speed));
+      /* Only the two maxima change, never gains, accel, or source parameters. */
+      selected.velocity_straight = cases[c].velocity_straight;
+      selected.velocity_d_straight = cases[c].velocity_d_straight;
+      assert(memcmp(&selected,&cases[c],sizeof(selected)) == 0);
+    }
     NfLinearLimits limits;
     assert(f413_path_run_straight_limits(m,&cases[c],&limits));
     assert(limits.vmax_mm_s == cases[c].velocity_straight);

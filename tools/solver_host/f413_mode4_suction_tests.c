@@ -15,8 +15,10 @@ void f413_mode_shortest_run_case0_path(const char* label, uint8_t mode, uint8_t 
   assert(mode == 4 && c >= 1 && c <= 9);
   uint16_t terminated[16] = {0};
   memcpy(terminated, codes, count * sizeof(*codes));
-  const ShortestRunCaseParams_t* cp = &shortestRunCaseParamsMode4[c-1];
-  const float initial = sqrtf(2 * cp->acceleration_straight * DIST_FIRST_SEC);
+  const ShortestRunCaseParams_t selected = f413_path_run_session_case_params(
+      terminated, 16, &shortestRunModeParams4, &shortestRunCaseParamsMode4[c-1], true);
+  const ShortestRunCaseParams_t* cp = &selected;
+  const float initial = f413_path_run_boundary_speed(&shortestRunModeParams4, cp, DIST_FIRST_SEC);
   f413_path_run_prepared_path_t prepared;
   f413_path_run_preflight_result_t r = f413_path_run_preflight_prepare(
       terminated, 16, &shortestRunModeParams4, cp, initial, false, true, &prepared);

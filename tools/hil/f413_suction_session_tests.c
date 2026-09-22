@@ -13,6 +13,7 @@ uint16_t path[ROUTE_MAX_LEN];
 typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
 static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
 static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
+static unsigned completed_sessions;
 static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
@@ -22,12 +23,16 @@ static bool running, fan, tracing, pressed, fan_fail, stuck, holding, cleanup;
 static bool suction, disturbed, duty_fail;
 static bool stop_profile_done;
 static uint32_t stop_profile_finish_tick;
-static float position, velocity, target, angle, omega;
+static float position, velocity, target, angle, omega, peak_command;
 static f413_run_session_abort_reason_t injected_abort;
 static phase_t abort_phase;
 uint32_t HAL_GetTick(void) { return tick; }
 void HAL_Delay(uint32_t ms) { tick += ms; }
-int trace_printf(const char* fmt, ...) { (void)fmt; return 0; }
+int trace_printf(const char* fmt, ...)
+{
+  if (strstr(fmt,"[RUN-TEST] path end (") != NULL) completed_sessions++;
+  return 0;
+}
 bool f413_hw_stop_switch_pressed(void) { return pressed; }
 bool f413_hw_fan_start(uint16_t duty)
 {
@@ -65,7 +70,12 @@ void f413_ctrl_start(void)
   position = velocity = target = angle = omega = 0;
 }
 void f413_ctrl_stop(void) { running = false; }
-void f413_ctrl_set_velocity(float v) { velocity = v; if (v == 0) cleanup = true; }
+void f413_ctrl_set_velocity(float v)
+{
+  velocity = v;
+  if (v > peak_command) peak_command = v;
+  if (v == 0) cleanup = true;
+}
 void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 {
   (void)start;
@@ -83,6 +93,8 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
     }
   }
   target = position + distance; velocity = end;
+  if (start > peak_command) peak_command = start;
+  if (end > peak_command) peak_command = end;
 }
 void f413_ctrl_set_omega(float v) { (void)v; }
 void f413_ctrl_start_omega_profile(float p, float a, float c) { (void)p; (void)a; (void)c; }
@@ -146,11 +158,12 @@ static void reset(void)
 {
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
+  completed_sessions = 0;
   selected_mode = 4; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
   stop_profile_done = false; stop_profile_finish_tick = 0;
-  position = velocity = target = angle = omega = 0;
+  position = velocity = target = angle = omega = peak_command = 0;
   injected_abort = F413_RUN_SESSION_ABORT_NONE; abort_phase = DRIVE;
   memset(path,0,sizeof(path)); path[0]=209;
   const f413_run_features_t features={false,false,false,true,true};
@@ -200,6 +213,16 @@ int main(void)
   }
   reset(); run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); selected_mode=6; run(); stopped(1); assert(starts == 1 && position > 400);
+  reset(); selected_mode=7; run(); stopped(1); assert(starts == 1 && position > 400 && peak_command == 2000);
+  /* Exercise the real session, not only the planner: the small-turn case0
+   * must never command the faster case straight speed before or after it. */
+  for (unsigned m=6; m<=7; ++m)
+  {
+    reset(); selected_mode=m; path[0]=203; path[1]=300; path[2]=203;
+    run(); stopped(1);
+    assert(peak_command == (m == 6 ? 1200 : 1400));
+    assert(completed_sessions == 1 && profiles >= 6);
+  }
   reset(); wait_extra_ms=3; run(); stopped(1); assert(starts == 1 && position > 400);
   reset(); tick=UINT32_MAX-1610U; run(); stopped(1); assert(position > 400);
   reset(); fan_fail=true; run(); stopped(1); assert(starts == 1 && profiles == 0);

@@ -278,6 +278,46 @@ static bool f413_path_run_turn_velocity_from_code(
   return isfinite(*out_velocity_mm_s) && (*out_velocity_mm_s > 0.0f);
 }
 
+/* Isolated turn tests approach and leave at the configured turn speed. A
+ * mixed-turn test needs the fastest turn in its sequence. Ordinary shortest
+ * paths and straight-only tests retain the case's full straight speeds.
+ * Derive this once, before both preflight and execution; never mutate params.
+ */
+static inline ShortestRunCaseParams_t f413_path_run_session_case_params(
+    const uint16_t* codes,
+    size_t capacity,
+    const ShortestRunModeParams_t* mode_params,
+    const ShortestRunCaseParams_t* case_params,
+    bool test_mode_run)
+{
+  ShortestRunCaseParams_t selected = *case_params;
+  float turn_speed = 0.0f;
+  if (test_mode_run && (codes != NULL))
+  {
+    for (size_t i = 0U; (i < capacity) && (codes[i] != 0U); i++)
+    {
+      float velocity;
+      if (f413_path_run_turn_velocity_from_code(codes[i], mode_params, &velocity) &&
+          (velocity > turn_speed))
+      {
+        turn_speed = velocity;
+      }
+    }
+  }
+  if (turn_speed > 0.0f)
+  {
+    if (selected.velocity_straight > turn_speed)
+    {
+      selected.velocity_straight = turn_speed;
+    }
+    if (selected.velocity_d_straight > turn_speed)
+    {
+      selected.velocity_d_straight = turn_speed;
+    }
+  }
+  return selected;
+}
+
 static bool f413_path_run_straight_limits(
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params,
@@ -1966,7 +2006,10 @@ void f413_path_run_session_once(uint8_t mode,
   f413_run_session_abort_reason_t abort_reason = F413_RUN_SESSION_ABORT_NONE;
   f413_run_session_guard_t guard = {0};
   const ShortestRunModeParams_t* mode_params = f413_path_run_mode_params(mode);
-  const ShortestRunCaseParams_t* case_params = f413_path_run_case_params(mode, case_index);
+  const ShortestRunCaseParams_t selected_case_params = f413_path_run_session_case_params(
+      path, NIGHTFALL_F413_PATH_MAX_CODES, mode_params,
+      f413_path_run_case_params(mode, case_index), f413_run_features_test_mode_run());
+  const ShortestRunCaseParams_t* case_params = &selected_case_params;
   const float straight_velocity = case_params->velocity_straight;
   const float diagonal_velocity = case_params->velocity_d_straight;
   const float first_speed = f413_path_run_boundary_speed(

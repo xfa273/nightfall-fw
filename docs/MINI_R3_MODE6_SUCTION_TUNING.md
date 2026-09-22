@@ -1,5 +1,7 @@
 # mini_r3 mode6 吸引ゲイン調整（2026-09-21）
 
+追記（t0.21）: [mode7追加とcase0速度修正](MINI_R3_MODE7_SUCTION_TUNING.md)。mode6/sub0の前後直進も小回り設定1.2 m/s以下に統一。
+
 追記（t0.20）: [発進時の積分残留対策・case0停止待ち修正](MINI_R3_SUCTION_STARTUP_FIX.md)。
 
 追記（t0.19）: 並進FFの実測改善後、角度Pと旋回FFを追加調整。
