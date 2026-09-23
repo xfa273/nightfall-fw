@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- mini_r3ゴール座標反映漏れ調査（2026-09-23 JST、未修正）: ユーザのparams/mini_r3_0/params.hはGOAL=(0,8)だが、共通F413 TUはf413_preorder/params.hの(1,0)を使用。GOAL_X/Y・GOAL1..9がruntime profile/aliasへ未接続で、探索2配列・最短route_preview・共有solverのpreprocessが(1,0)、現ローカルbuildの探索/最短オブジェクトも同じ。13:19ダンプrun004は(0,8)でstep11/forward、(0,9)でright。run008は(0,8)で到達扱いせずno_current_step。走行を含む直近run007(mode2case3)はdistance295mmからtarget角度-90°を指令。run009は672件全停止で右折なし。ゲイン起因ではなく経路側の機体別ゴール選択漏れ。次は探索/最短/solver共通のruntime goal設定・境界検証・r2/r3別値host試験が必要。今回は診断のみ、FW/params/実機操作なし。rawにはFW SHAが保存されず実機binary一致は未確認。ユーザ編集のD_TIRE14.4/GOAL0,8ほかを保持。
+
 - 複数走行CSV表示復旧（2026-09-22 JST）: 17:36取得の6301件が旧キャプチャ（前日23:03起動）で結合保存され、mode4/sub1末尾17.374s→sub2先頭15.700sへ時間逆行。現行の取得時分割実装は正常。rawを再変換してrun001=2895件/sub1/先頭欠落、run002=3406件/sub2を復旧、全行一致・従来ビューアの相対時間0始点/単調増加と描画を確認。元CSVはlogs/combined_originalsへ保管、raw不変。キャプチャの走行別出力起動表示・ソース更新時の再起動警告と疑似UART binary連続受信回帰を追加。17host試験PASS、表示/FW変更なし。ターミナル操作はCUA安全制限で拒否され旧プロセス再起動は未実施、ユーザへCtrl+C→python3 tools/logging/serial_capture_csv.pyの再実行を案内。
 
 - F413自動撮影ON/OFF（2026-09-22 JST、mini_r3 t0.23）: 各params.hにENABLE_AUTO_VIDEO_CAPTURE（0/1）を追加しboot選択scalarへ接続。mini_r3は手動調整用OFF、mini_r2は既存ON。OFFは全run hook/探索のSTART/STOP LED信号・撮影guard300ms・光学START専用ctrl_stopを省略、UART光学testもdisabled。通常LED/traceとIMU校正・fan ramp/到達後300ms・走行制御/停止は維持。ON/OFFのGPIO/実path session・吸引/非吸引順序・機体runtime選択、route14210 checks、両MCU buildをhost検証。実機書込/駆動なし、floor HIL未実施。詳細 docs/MINI_R3_SUCTION_MODE_LADDER.md。
