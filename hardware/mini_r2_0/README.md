@@ -28,6 +28,7 @@ STM32F413 系 mini 新機体 (`mini_r2_0`) のハードウェア情報です。
 - `cad/kicad/HM_Nightfall-mini-2e_Encoder-PCB-R/`: 右エンコーダ基板
 - `cad/kicad/STLink-Adapter/`: ST-LINK から機体コネクタへの変換基板
 - `cad/kicad/UART-Adapter/`: UART から機体コネクタへの変換基板
+- `cad/kicad/WeAct-Adapter-5V/`: WeAct MiniDebugger用、手動5 V遮断スイッチ付き変換基板
 
 各サブ基板は本体基板と独立した小基板のため、KiCad でも 1 基板 1 プロジェクトとして管理します。
 - Eagle 9.6.2 で生成した参照アーカイブは `cad/export/reference/eagle_archive_20260606/` に保存しています。

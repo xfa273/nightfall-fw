@@ -1,12 +1,21 @@
 # tools/tuning
 
 F413 angular limits now come from shortest-mode `turn_omega_max` (deg/s,
-0 means unlimited). mini_r3 mode4/6 retain 2200 to match their simulated
-geometry; other modes and search have no default limit. `turn_tune.py`
+0 means unlimited). mini_r3 modes3–7 currently use 3000; mode2,
+mini_r2 modes and search have no default limit. `turn_tune.py`
 accepts `--omega-max` for explicit simulation overrides. For historical
 replay only, `--f413-path-h` can read the old shared limit from an old header.
 
 Host-side tuning helpers live here.
+
+## Measured-data turn simulator
+
+[`turn_simulator.py`](turn_simulator.py) adds video-based response identification,
+parameter-condition holdout validation, bounded tuning, and a local browser UI.
+See [TURN_SIMULATOR.md](TURN_SIMULATOR.md) for startup, the historical-data adapter,
+measured accuracy, and supported scope. Start with
+`python3 tools/tuning/turn_simulator.py serve`; use `fit` and `--model` for measured
+predictions. This is host-only and never applies parameters to firmware/hardware.
 
 ## `turn_tune.py`
 
