@@ -83,13 +83,13 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     },
     // case3 (index 2)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3000.0f,
+        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 3000.0f,
         .velocity_straight = 3000.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case4 (index 3)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3000.0f,
+        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 3000.0f,
         .velocity_straight = 4000.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
