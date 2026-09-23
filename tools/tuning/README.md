@@ -1,8 +1,8 @@
 # tools/tuning
 
 F413 angular limits now come from shortest-mode `turn_omega_max` (deg/s,
-0 means unlimited). mini_r3 mode4/6 retain 2200 to match their simulated
-geometry; other modes and search have no default limit. `turn_tune.py`
+0 means unlimited). mini_r3 modes3–7 currently use 3000; mode2,
+mini_r2 modes and search have no default limit. `turn_tune.py`
 accepts `--omega-max` for explicit simulation overrides. For historical
 replay only, `--f413-path-h` can read the old shared limit from an old header.
 

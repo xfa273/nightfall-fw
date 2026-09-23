@@ -119,14 +119,12 @@ class FirmwareSourceParityTests(unittest.TestCase):
 static float test_rounding;
 static float test_cap;
 #define TURN_OMEGA_PROFILE_ROUNDING_SCALE test_rounding
-#define NIGHTFALL_F413_PATH_OMEGA_CAP test_cap
 typedef struct { float omega_peak_deg_s, t_acc_s, t_cruise_s, t_total_s; } f413_path_run_smooth_turn_t;
 typedef f413_path_run_smooth_turn_t f413_search_step_smooth_turn_t;
 static volatile float s_omega_profile_peak, s_omega_profile_t_acc;
 static volatile float s_omega_profile_t_cruise, s_omega_profile_t_total;
 """
         functions = "\n".join((
-            extract_function(SRC / "f413_path_run.c", "static float f413_path_run_cap_positive("),
             extract_function(SRC / "f413_path_run.c", "static f413_path_run_smooth_turn_t f413_path_run_build_smooth_turn("),
             extract_function(SRC / "f413_search_step.c", "static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn("),
             extract_function(SRC / "f413_control.c", "static float f413_ctrl_sample_omega_profile("),
@@ -164,9 +162,12 @@ int main(int argc, char **argv) {
                  (-180.0, 200000.0, 2200.0, 1.2), (135.0, 10000.0, 0.0, 2.0),
                  (90.0, 10000.0, 2200.0, 0.01)]
         for angle, alpha, cap, rounding in cases:
-            profile = turn_tune.build_profile(replace(example_turn(angle), alpha_deg_s2=alpha), turn_tune.Constants(rounding, cap))
             for fraction in (0.0, 0.1, 0.49, 0.65, 0.95, 1.0, 1.1):
                 for search in (0, 1):
+                    # Search has no omega cap; shortest uses its mode parameter.
+                    profile = turn_tune.build_profile(
+                        replace(example_turn(angle), alpha_deg_s2=alpha),
+                        turn_tune.Constants(rounding, 0.0 if search else cap))
                     with self.subTest(angle=angle, alpha=alpha, rounding=rounding, fraction=fraction, search=search):
                         args = [angle, alpha, cap, rounding, fraction, 1, search]
                         values = np.fromstring(subprocess.check_output([str(self.binary), *map(str, args)], text=True), sep=" ")
