@@ -19,7 +19,7 @@
 /*------------------------------------------------------------
     走行系
 ------------------------------------------------------------*/
-#define D_TIRE            14.13
+#define D_TIRE            14.3
 #define DIST_HALF_SEC     45.0
 #define DIST_D_HALF_SEC   67.279
 #define ROBOT_REAR_OVERHANG 35.0
