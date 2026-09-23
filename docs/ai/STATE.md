@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- main統合（2026-09-23 JST）: 旧main b55bf0aからコミット済み本流a461d4fまで290 commits（PRなしの261 + PR22〜41の29）を履歴保持で統合する基準を確定。F405 mini/classicとF413 build、制御/経路/NVM/ログ/調整/映像host検証PASS。追加調整7項目はbackup/20260923-step1-additional-tuningへ保全済み、未コミット差分は今回の統合対象外。実機HIL未実施、個体安定版の更新なし。独立PR1/16〜21とCAD/調整の採否は後続。詳細 [main統合記録](MAIN_CONSOLIDATION_20260923.md)。
+
 - F413探索の処理中移動距離を補正（2026-09-23 JST、mini_r2 t0.3 / mini_r3 t0.25）: mini_r1にはconf_routeでg_search_coast_mmを記録して次の直進/ターン入口/停止から引く既存対策がある。F413探索では現在位置+区間距離を毎回設定し、最新run003の公称730mmに対し目標756.387mmへ累積、ユーザ確認で壁接触→最終停止TIMEOUT。予定終点を区間間で引継ぎ、残距離だけprofileへ渡す方式を追加。壁切れイベント書込み中も補正、壁合わせ/旋回/後退resetは基準更新。次区間通過済みは停止。両profileの実探索関数を遅延0/3/8/20ms・7/15/60区画、左右ターン、壁補正、停止/再発進/中断でASan/UBSan検証。ゲイン/停止許容/F405/最短/NVM形式は維持。実機操作なし、同条件の730mm目標と壁非接触停止を要確認。詳細 docs/F413_SEARCH_DISTANCE_ACCOUNTING.md。
 
 - F413機体別params参照を修正（2026-09-23 JST、mini_r3 t0.24）: 共通TUのparams.hをboot選択専用facadeへ切替。全160scalar/探索2組/最短mode2..7各9case/LUTを機体profileで取得。GOAL/START全座標とMAZE_SIZEをschemaへ追加し、探索2配列/最短goal配列のstatic固定を撤去。sensor_distanceのF413用gain1固定も修正、DIR_*重複固定値はregistry参照へ。機体別異値fixtureでr3(0,8)直進最短/探索BFS/r2別goal/非zero start/GOAL9/センサgainをASan/UBSan検証。座標負値・範囲外・全goal未設定・共通binaryの16x16不一致は起動拒否。build時schema coverageと実52TU macro監査PASS。既存制御/吸引/機体/route試験、F413/F405 build PASS。実機操作・書込・NVM schema変更なし。ユーザのD_TIRE14.4/GOAL0,8や走行調整値を保持。詳細 docs/F413_MACHINE_CONFIG.md。
