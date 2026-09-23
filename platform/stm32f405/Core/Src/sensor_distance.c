@@ -5,7 +5,8 @@
 #include <string.h>
 #include <math.h>
 
-#if defined(STM32F413xx)
+#if defined(STM32F413xx) && !defined(NIGHTFALL_F413_RUNTIME_CONFIG)
+/* Standalone host fixtures without a machine registry. */
 #ifndef SENSOR_DIST_GAIN
 #define SENSOR_DIST_GAIN (1.0f)
 #endif

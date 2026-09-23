@@ -6,6 +6,32 @@ static f413_machine_status_t s_status;
 static f413_machine_selection_t s_selection;
 static f413_runtime_params_t s_params;
 
+static bool coordinate_valid(int32_t x, int32_t y, int32_t size)
+{
+  return x >= 0 && y >= 0 && x < size && y < size;
+}
+
+static bool maze_params_valid(const f413_scalar_params_t *s)
+{
+  if (s->v_MAZE_SIZE != F413_COMPILED_MAZE_SIZE ||
+      !coordinate_valid(s->v_START_X, s->v_START_Y, s->v_MAZE_SIZE) ||
+      !coordinate_valid(s->v_GOAL_X, s->v_GOAL_Y, s->v_MAZE_SIZE)) return false;
+  const int32_t goals[9][2] = {
+    {s->v_GOAL1_X, s->v_GOAL1_Y}, {s->v_GOAL2_X, s->v_GOAL2_Y},
+    {s->v_GOAL3_X, s->v_GOAL3_Y}, {s->v_GOAL4_X, s->v_GOAL4_Y},
+    {s->v_GOAL5_X, s->v_GOAL5_Y}, {s->v_GOAL6_X, s->v_GOAL6_Y},
+    {s->v_GOAL7_X, s->v_GOAL7_Y}, {s->v_GOAL8_X, s->v_GOAL8_Y},
+    {s->v_GOAL9_X, s->v_GOAL9_Y},
+  };
+  bool any_goal = false;
+  for (size_t i = 0; i < 9; ++i) {
+    if (!coordinate_valid(goals[i][0], goals[i][1], s->v_MAZE_SIZE)) return false;
+    /* Shared solver convention: (0,0) is an unused goal slot. */
+    any_goal |= goals[i][0] != 0 || goals[i][1] != 0;
+  }
+  return any_goal;
+}
+
 f413_machine_status_t f413_machine_resolve(
     nvm_status_t status, const nvm_identity_block_t *id,
     const uint32_t uid[3], const f413_board_config_t *boards, size_t board_count,
@@ -69,7 +95,7 @@ f413_machine_status_t f413_machine_resolve(
 #include "f413_param_fields.def"
 #undef X
   const f413_scalar_params_t *s = p->scalar;
-  if (s->v_ENABLE_AUTO_VIDEO_CAPTURE > 1U ||
+  if (!maze_params_valid(s) || s->v_ENABLE_AUTO_VIDEO_CAPTURE > 1U ||
       s->v_D_TIRE <= 0.0 || s->v_DIST_HALF_SEC <= 0.0 || s->v_DIST_D_HALF_SEC <= 0.0 ||
       s->v_DIST_FIRST_SEC < 0.0 || s->v_VELOCITY_ACCEL_COMP_WINDOW_MS < 1U ||
       s->v_VELOCITY_ACCEL_COMP_WINDOW_MS > 64U ||

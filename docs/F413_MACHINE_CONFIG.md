@@ -25,9 +25,9 @@
 
 | 個体 | family / board_id / unit | 走行profile | 左前進IN2 | Fan |
 | --- | --- | --- | --- | --- |
-| mini_r2_0_unit001 | mini / `0x00020000` / 1 | `0x00020001` / `f413pre-t0.1` | Low（元の配線） | なし |
-| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-2s-fanoff-t0.11`（共通値、故障機の駆動は禁止） | High（左配線を反転済み） | あり |
-| mini_r3_0_unit002 | mini / `0x00030000` / 2 | `0x00030001` / `mini-r3-2s-fanoff-t0.11`（ゲイン/LUT維持、近接後退復帰・実機反映待ち） | High（unit001同様の左配線を確認） | あり |
+| mini_r2_0_unit001 | mini / `0x00020000` / 1 | `0x00020001` / `f413pre-run-params-t0.2` | Low（元の配線） | なし |
+| mini_r3_0_unit001 | mini / `0x00030000` / 1 | `0x00030001` / `mini-r3-runtime-params-t0.24`（共通値、故障機の駆動は禁止） | High（左配線を反転済み） | あり |
+| mini_r3_0_unit002 | mini / `0x00030000` / 2 | `0x00030001` / `mini-r3-runtime-params-t0.24`（実機反映待ち） | High（unit001同様の左配線を確認） | あり |
 
 登録済み各機とも現時点は右前進IN2 High、encoder符号 L=+1/R=-1、TIM2 PSC=0/ARR=1000。
 r3の左配線反転は**機種標準ではなく各個体の上書き**。
@@ -76,8 +76,8 @@ unit002の非吸引負荷時ゲインはユーザ調整済み。有効タイヤ�
 （`distance=MISS` / `params=0` が正常）。FRAMの内容は消さず、壁オフセットも保持する。
 測定元と再生成手順は `params/mini_r3_0/calibration/README.md`、実機確認は
 `MINI_R3_COMMISSIONING.md` を参照。これだけで床上の前壁合わせ制御を検証済みとはしない。
-fan搭載判定と非駆動時のgateは接続済みだが、F413の通常走行中fan制御・fan-onゲイン選択は
-従来どおり未接続（fan testのみ、走行値のfan設定は0）。この移行では有効化しない。
+2026-09-23時点ではr3の通常走行fan制御・FAN_ONゲイン選択も接続済み。
+モード別の現在値と調整範囲は `MINI_R3_SUCTION_MODE_LADDER.md` を参照。
 
 r3のIMUはKiCad上でr2比180度回転しているため、前進加速度は-Y（r2は+Y）、
 yaw gyroは両機+Z。旋回中心より後方2.5mmの補正をr3だけに適用する。
@@ -115,8 +115,29 @@ board GPIO・motor/fan timer・制御IRQ・OP UIは初期化しない。復旧�
 
 `f413_param_fields.def` がruntime scalarの型一覧、`f413_runtime_aliases.h` が既存コード向けの読取facade。
 新しいscalarを加える際は両方と全profileの定義・host試験を更新する。
-maze配列サイズ・goal/start座標・診断刺激の時間・MCU共通の安全上限は現時点では共通ビルド設定のまま。
+2026-09-23、共通アプリの `params.h` を `board/f413/runtime/params.h` に変更した。
+共通コードには特定機体の数値ヘッダをincludeせず、`profile.c` だけが隣の機体ヘッダを読む。
+全160 scalar（寸法、PID/FF、フィルタ、壁閾値、GOAL_X/Y・GOAL1..9・START_X/Y、撮影設定等）、
+探索2組、最短mode2..7各9case、機体LUTが選択対象となる。
+共有 `sensor_distance.c` のF413用SENSOR_DIST_GAIN=1固定も撤去した。
+DIR_*の重複した旧固定値は削除し、互換名も選択済み機種/個体hardwareを参照する。
+個体の配線上書き、FRAM校正、既存ゲインとfan立上げ手順は維持する。
+F405専用の旧制御でだけ使う項目もprofileとして保持するが、この修正でF413に旧機能を追加はしない。
+
+GOAL/STARTは探索の到達判定・歩数マップ・帰路、共有solver、保存迷路からの最短経路で
+同じ機体値を使う。全座標の負値/範囲外と全ゴール未設定を起動時に拒否する。
+(0,0)は従来どおり未使用ゴールslotで、GOAL1の既定値がGOAL_X/Yに追従する。
+診断専用の内蔵迷路previewは明示された中央2x2ゴールを維持する。
+
+**MAZE_SIZEは共通binaryの配列/保存形式・compact plannerの16x16契約**。
+profileにも値を取り込み、16以外は設定エラーで起動停止する。
+単体host solverが32x32を扱えることは共通F413 binaryの対応を意味しない。
+診断刺激の時間とMCU共通の上限は機体profileの項目ではない。
 区画寸法（mini half-cell=45mm、classic=90mm）と走行距離はruntime profile値を使う。
+
+ビルド時の `check_f413_param_coverage.py` は全機体ヘッダとschema/aliasの差分を検出する。
+`--compile-commands` を付けると実際の52 application TUを前処理し、機体macroが固定値へ
+戻っていないかも検査する。新規機体追加時も同じチェックを通す。
 
 ## classic F413を追加するとき
 
@@ -137,7 +158,7 @@ classicをmini扱いするfallbackは存在しない。まだclassic実機のピ
 現在のKERI mode2 case6..9用テーブルはr2専用である。
 `route_precomputed_compatible` はr2のみtrue、r3はfalse。
 別profileでUART `K`、保存迷路からのKERI経路生成を要求すると拒否し、r2用テーブルを流用しない。
-mode2 case6には従来の固定検証path割当が残るため、このgateを「全mode2を禁止」と解釈しないこと。
+mode2 case6の固定検証pathは撤去済み。case6..9は保存迷路と対応profileのテーブルが必要。
 新機種へのKERI対応はprofile別のgeometry/timeテーブル生成・選択と実測確認が必要。
 r2値を変更した場合も `tools/route_precompute/generate.py` / `--check` を必ず実行する。
 
@@ -171,6 +192,8 @@ python3 tools/flashing/f413_identity.py provision-empty \
 
 ```sh
 sh tools/hil/run_f413_machine_tests.sh
+python3 tools/hil/run_f413_runtime_goal_tests.py
+python3 tools/hil/check_f413_param_coverage.py --compile-commands build/Debug/compile_commands.json
 sh tools/hil/run_f413_motor_pwm_tests.sh
 python3 -m unittest discover -s tools/flashing -p test_f413_identity.py
 python3 tools/route_precompute/generate.py --check

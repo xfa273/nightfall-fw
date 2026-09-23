@@ -407,6 +407,36 @@ static void resolver_tests(void)
   scalar.v_D_TIRE = NAN;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
   scalar.v_D_TIRE = 24.0;
+  int32_t *coordinates[] = {&scalar.v_START_X, &scalar.v_START_Y,
+      &scalar.v_GOAL_X, &scalar.v_GOAL_Y,
+      &scalar.v_GOAL1_X, &scalar.v_GOAL1_Y,
+      &scalar.v_GOAL2_X, &scalar.v_GOAL2_Y,
+      &scalar.v_GOAL3_X, &scalar.v_GOAL3_Y,
+      &scalar.v_GOAL4_X, &scalar.v_GOAL4_Y,
+      &scalar.v_GOAL5_X, &scalar.v_GOAL5_Y,
+      &scalar.v_GOAL6_X, &scalar.v_GOAL6_Y,
+      &scalar.v_GOAL7_X, &scalar.v_GOAL7_Y,
+      &scalar.v_GOAL8_X, &scalar.v_GOAL8_Y,
+      &scalar.v_GOAL9_X, &scalar.v_GOAL9_Y,
+  };
+  for (size_t i = 0; i < sizeof(coordinates) / sizeof(coordinates[0]); ++i) {
+    const int32_t original = *coordinates[i];
+    *coordinates[i] = -1;
+    assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+    *coordinates[i] = scalar.v_MAZE_SIZE;
+    assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+    *coordinates[i] = original;
+  }
+  scalar.v_MAZE_SIZE = 32;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_MAZE_SIZE = F413_COMPILED_MAZE_SIZE;
+  int32_t saved_goals[18];
+  for (size_t i = 0; i < 18; ++i) {
+    saved_goals[i] = *coordinates[i + 4];
+    *coordinates[i + 4] = 0;
+  }
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  for (size_t i = 0; i < 18; ++i) *coordinates[i + 4] = saved_goals[i];
   f413_hardware_config_t hw = f413_boards[1].hardware;
   scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 2U;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
@@ -441,7 +471,7 @@ int main(int argc, char **argv)
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_OK);
     assert(f413_machine_has(F413_CAP_DRIVE));
     assert(ENABLE_AUTO_VIDEO_CAPTURE == (rev == 2U ? 1U : 0U));
-    assert(DIST_HALF_SEC == 45.0 && D_TIRE == 14.13);
+    assert(DIST_HALF_SEC == 45.0);
     assert(KP_VELOCITY_FAN_OFF == (rev == 3U ? 0.24f : 0.8f));
     assert(KI_VELOCITY_FAN_OFF == (rev == 3U ? 0.001f : 0.012f));
     assert(FF_TRANSLATION_STATIC_PWM_FAN_OFF == (rev == 3U ? 35.0f : 45.0f));
@@ -480,6 +510,17 @@ int main(int argc, char **argv)
     assert(f413_machine_has(F413_CAP_FAN) == (rev == 3U));
     assert(f413_machine_route_precomputed_compatible() == (rev == 2U));
     const f413_param_profile_t *p = rev == 2U ? &f413_profile_mini_r2 : &f413_profile_mini_r3;
+    /* Every public parameter must resolve to the selected profile, including
+       derived values and goals. The build audit detects missing field entries. */
+#define X(type, name) assert(name == p->scalar->v_##name);
+#include "f413_param_fields.def"
+#undef X
+    assert(strcmp(PARAMS_TUNE_VERSION, p->name) == 0);
+    assert(DIR_ENC_L == f413_machine_hardware()->encoder_sign_l);
+    assert(DIR_ENC_R == f413_machine_hardware()->encoder_sign_r);
+    assert(DIR_FWD_L == f413_machine_hardware()->left_forward_in2_high);
+    assert(DIR_FWD_R == f413_machine_hardware()->right_forward_in2_high);
+    assert(DIR_BACK_L != DIR_FWD_L && DIR_BACK_R != DIR_FWD_R);
     assert(memcmp(&f413_machine_params()->scalar, p->scalar, sizeof(*p->scalar)) == 0);
     assert(memcmp(f413_machine_params()->search, p->search, sizeof(f413_machine_params()->search)) == 0);
     for (unsigned m = 0; m < 6; ++m) {

@@ -792,7 +792,7 @@ static void f413_search_step_angle_reset_streak_update(void)
 
 static bool f413_search_step_is_goal_cell(uint8_t x, uint8_t y)
 {
-  static const uint8_t goals[9][2] = {
+  const uint8_t goals[9][2] = {
       {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
       {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
       {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},
@@ -1047,7 +1047,7 @@ static void f413_search_step_map_init_empty(void)
   }
 
   map[START_Y][START_X] |= 0x44U;
-  if (START_X > 0U)
+  if (START_X > 0)
   {
     map[START_Y][START_X - 1U] |= 0x44U;
   }
@@ -1154,7 +1154,7 @@ static int f413_search_step_make_smap(uint8_t x, uint8_t y, uint8_t target)
   uint16_t tail = 0U;
   uint8_t ix;
   uint8_t iy;
-  static const uint8_t goals[9][2] = {
+  const uint8_t goals[9][2] = {
       {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
       {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
       {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},

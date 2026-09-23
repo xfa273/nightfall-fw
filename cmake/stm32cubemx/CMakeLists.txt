@@ -170,7 +170,7 @@ add_library(stm32cubemx_stm32f413 INTERFACE)
 target_include_directories(stm32cubemx_stm32f413 INTERFACE
     ${CMAKE_SOURCE_DIR}/board/f413
     ${CMAKE_SOURCE_DIR}/nvm
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder
+    ${CMAKE_SOURCE_DIR}/board/f413/runtime
     ${CMAKE_SOURCE_DIR}/platform/trace
     ${NIGHTFALL_STM32F413_ROOT}/Core/Inc
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Inc

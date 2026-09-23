@@ -256,13 +256,8 @@
 #define FAIL_TURN_ANGLE_MARGIN_DEG 90
 #define FAIL_TURN_ANGLE_COUNT 2
 
-/*動作方向関連 — F413 preorder は mini_r1_0 と同一（実機で要確認）*/
-#define DIR_FWD_L  GPIO_PIN_RESET
-#define DIR_BACK_L GPIO_PIN_SET
-#define DIR_FWD_R  GPIO_PIN_SET
-#define DIR_BACK_R GPIO_PIN_RESET
-#define DIR_ENC_R  -1
-#define DIR_ENC_L  -1
+/* モータ極性・encoder符号は board/f413/f413_registry.c の機体/個体設定。
+ * params.h に旧DIR_*固定値を重複して持たない。 */
 
 /*------------------------------------------------------------
     センサ系
@@ -372,6 +367,8 @@
 #ifndef GOAL_Y
 #define GOAL_Y   0
 #endif
+/* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
+ * 単体host solverの32x32検証とは別の制約。 */
 #ifndef MAZE_SIZE
 #define MAZE_SIZE 16
 #endif

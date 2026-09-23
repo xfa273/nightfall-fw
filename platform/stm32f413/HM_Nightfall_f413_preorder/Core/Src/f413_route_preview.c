@@ -1336,7 +1336,7 @@ static bool f413_rp_load_maze(f413_rp_maze_t* maze,
 static bool f413_rp_load_run_maze(f413_rp_maze_t* maze,
                                    f413_rp_maze_source_t* out_source)
 {
-  static const uint8_t goals[9][2] = {
+  const uint8_t goals[9][2] = {
       {GOAL1_X, GOAL1_Y}, {GOAL2_X, GOAL2_Y}, {GOAL3_X, GOAL3_Y},
       {GOAL4_X, GOAL4_Y}, {GOAL5_X, GOAL5_Y}, {GOAL6_X, GOAL6_Y},
       {GOAL7_X, GOAL7_Y}, {GOAL8_X, GOAL8_Y}, {GOAL9_X, GOAL9_Y},

@@ -62,7 +62,18 @@ zero duty, and saturation over all 16-bit inputs.
 
 `sh tools/hil/run_f413_machine_tests.sh` checks runtime selection, independent
 unit profiles, mini/classic namespace separation, invalid-ID fail-closed behavior,
-and immutable boot settings. See `docs/F413_MACHINE_CONFIG.md` for operation.
+and immutable boot settings, all 160 scalar aliases, coordinate bounds, and the
+16x16 common-binary maze contract. See `docs/F413_MACHINE_CONFIG.md` for operation.
+
+`python3 tools/hil/run_f413_runtime_goal_tests.py` compiles both real profiles in a
+temporary directory with different starts/goals and non-unit sensor gains. It
+runs the production search goal/BFS, shortest-route goal loader, shared shortest
+solver, parameter tables and sensor converter under ASan/UBSan. The r3 (0,8)
+fixture must produce a straight-only path. It never edits the tuning files.
+
+`python3 tools/hil/check_f413_param_coverage.py` rejects missing scalar/alias
+connections and runs automatically with the F413 build. To also audit actual
+application preprocessing, pass `--compile-commands build/Debug/compile_commands.json`.
 
 It also checks the r3 -Y IMU mounting, the rearward-offset acceleration correction,
 and each board's battery divider without changing r2 geometry or polarity.

@@ -4,6 +4,54 @@
 /* Compatibility facade: algorithm code reads the immutable boot-selected values. */
 #undef ENABLE_AUTO_VIDEO_CAPTURE
 #define ENABLE_AUTO_VIDEO_CAPTURE (f413_machine_params()->scalar.v_ENABLE_AUTO_VIDEO_CAPTURE)
+/* The array/storage geometry is a common-binary contract, validated against
+ * each selected profile before peripherals/control are enabled. */
+#undef MAZE_SIZE
+#define MAZE_SIZE F413_COMPILED_MAZE_SIZE
+#undef START_X
+#define START_X (f413_machine_params()->scalar.v_START_X)
+#undef START_Y
+#define START_Y (f413_machine_params()->scalar.v_START_Y)
+#undef GOAL_X
+#define GOAL_X (f413_machine_params()->scalar.v_GOAL_X)
+#undef GOAL_Y
+#define GOAL_Y (f413_machine_params()->scalar.v_GOAL_Y)
+#undef GOAL1_X
+#define GOAL1_X (f413_machine_params()->scalar.v_GOAL1_X)
+#undef GOAL1_Y
+#define GOAL1_Y (f413_machine_params()->scalar.v_GOAL1_Y)
+#undef GOAL2_X
+#define GOAL2_X (f413_machine_params()->scalar.v_GOAL2_X)
+#undef GOAL2_Y
+#define GOAL2_Y (f413_machine_params()->scalar.v_GOAL2_Y)
+#undef GOAL3_X
+#define GOAL3_X (f413_machine_params()->scalar.v_GOAL3_X)
+#undef GOAL3_Y
+#define GOAL3_Y (f413_machine_params()->scalar.v_GOAL3_Y)
+#undef GOAL4_X
+#define GOAL4_X (f413_machine_params()->scalar.v_GOAL4_X)
+#undef GOAL4_Y
+#define GOAL4_Y (f413_machine_params()->scalar.v_GOAL4_Y)
+#undef GOAL5_X
+#define GOAL5_X (f413_machine_params()->scalar.v_GOAL5_X)
+#undef GOAL5_Y
+#define GOAL5_Y (f413_machine_params()->scalar.v_GOAL5_Y)
+#undef GOAL6_X
+#define GOAL6_X (f413_machine_params()->scalar.v_GOAL6_X)
+#undef GOAL6_Y
+#define GOAL6_Y (f413_machine_params()->scalar.v_GOAL6_Y)
+#undef GOAL7_X
+#define GOAL7_X (f413_machine_params()->scalar.v_GOAL7_X)
+#undef GOAL7_Y
+#define GOAL7_Y (f413_machine_params()->scalar.v_GOAL7_Y)
+#undef GOAL8_X
+#define GOAL8_X (f413_machine_params()->scalar.v_GOAL8_X)
+#undef GOAL8_Y
+#define GOAL8_Y (f413_machine_params()->scalar.v_GOAL8_Y)
+#undef GOAL9_X
+#define GOAL9_X (f413_machine_params()->scalar.v_GOAL9_X)
+#undef GOAL9_Y
+#define GOAL9_Y (f413_machine_params()->scalar.v_GOAL9_Y)
 #undef D_TIRE
 #define D_TIRE (f413_machine_params()->scalar.v_D_TIRE)
 #undef DIST_HALF_SEC
@@ -276,6 +324,13 @@
 #define SENSOR_WARP_ANCHOR1_MM (f413_machine_params()->scalar.v_SENSOR_WARP_ANCHOR1_MM)
 #undef SENSOR_WARP_ANCHOR2_MM
 #define SENSOR_WARP_ANCHOR2_MM (f413_machine_params()->scalar.v_SENSOR_WARP_ANCHOR2_MM)
+/* Hardware polarity belongs to the model/unit registry, not tune defaults. */
+#define DIR_FWD_L (f413_machine_hardware()->left_forward_in2_high ? 1U : 0U)
+#define DIR_BACK_L (f413_machine_hardware()->left_forward_in2_high ? 0U : 1U)
+#define DIR_FWD_R (f413_machine_hardware()->right_forward_in2_high ? 1U : 0U)
+#define DIR_BACK_R (f413_machine_hardware()->right_forward_in2_high ? 0U : 1U)
+#define DIR_ENC_L (f413_machine_hardware()->encoder_sign_l)
+#define DIR_ENC_R (f413_machine_hardware()->encoder_sign_r)
 #undef PARAMS_TUNE_VERSION
 #define PARAMS_TUNE_VERSION (f413_machine_profile_name())
 #define searchRunParams (f413_machine_params()->search)

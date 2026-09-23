@@ -8,6 +8,10 @@
 #include "search_run_params.h"
 #include "shortest_run_params.h"
 
+/* Current compact route planner/storage ABI supports a 16x16 maze.
+ * Every profile declares MAZE_SIZE; a mismatch is rejected, never ignored. */
+#define F413_COMPILED_MAZE_SIZE (16U)
+
 #define F413_LAYOUT_MINI_R2 (1U) /* Current CubeMX pin/peripheral contract. */
 #define F413_CAP_DRIVE (1U << 0)
 #define F413_CAP_FAN (1U << 1)
