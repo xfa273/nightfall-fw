@@ -45,6 +45,12 @@ python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
 python3 tools/flashing/flash_stlink --list
 ```
 
+macOSでST-LINK V3 MINIEのUSBコマンドendpointがstallし、
+CubeProgrammerが `DEV_USB_COMM_ERR` を返す場合は、書き込み前の認識確認で
+対象ST-LINKだけをUSBリセットして最大3回再試行します。機体のFlash/NVMには
+触れませんが、ST-LINKのVCPは一時的に再列挙されます。複数台接続時に自動復旧
+するには `--sn` で対象を指定してください。
+
 ### ビルド済みF413ファームを書き込む
 
 ```bash

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import argparse
+import ctypes
 import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -14,6 +16,32 @@ CUBE_CLI_CANDIDATES = [
     "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOS/bin/STM32_Programmer_CLI",
     "/Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI",
 ]
+STLINK_USB_VID = 0x0483
+STLINK_V3_MINIE_PID = 0x3754
+STLINK_USB_ERROR_MARKERS = (
+    "DEV_USB_COMM_ERR",
+    "device not responding",
+    "pipe is stalled",
+)
+
+
+class LibusbDeviceDescriptor(ctypes.Structure):
+    _fields_ = [
+        ("bLength", ctypes.c_uint8),
+        ("bDescriptorType", ctypes.c_uint8),
+        ("bcdUSB", ctypes.c_uint16),
+        ("bDeviceClass", ctypes.c_uint8),
+        ("bDeviceSubClass", ctypes.c_uint8),
+        ("bDeviceProtocol", ctypes.c_uint8),
+        ("bMaxPacketSize0", ctypes.c_uint8),
+        ("idVendor", ctypes.c_uint16),
+        ("idProduct", ctypes.c_uint16),
+        ("bcdDevice", ctypes.c_uint16),
+        ("iManufacturer", ctypes.c_uint8),
+        ("iProduct", ctypes.c_uint8),
+        ("iSerialNumber", ctypes.c_uint8),
+        ("bNumConfigurations", ctypes.c_uint8),
+    ]
 
 
 def repo_root_from_this_file() -> Path:
@@ -50,8 +78,188 @@ def default_image(repo_root: Path) -> Path:
 
 
 def run(cmd: list, cwd: Optional[Path] = None) -> None:
-    print("$ " + " ".join(cmd))
+    print("$ " + " ".join(cmd), flush=True)
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+
+
+def run_capture(cmd: list, cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
+    print("$ " + " ".join(cmd), flush=True)
+    completed = subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=False,
+    )
+    if completed.stdout:
+        sys.stdout.write(completed.stdout)
+        sys.stdout.flush()
+    return completed
+
+
+def contains_stlink_usb_error(output: str) -> bool:
+    return any(marker in output for marker in STLINK_USB_ERROR_MARKERS)
+
+
+def find_libusb(cli: str) -> Path:
+    explicit = os.environ.get("LIBUSB_1_0_DYLIB")
+    candidates = []
+    if explicit:
+        candidates.append(Path(explicit).expanduser())
+
+    cli_path = Path(cli).resolve()
+    if sys.platform == "darwin":
+        candidates.extend(
+            [
+                cli_path.parent.parent / "Drivers/FirmwareUpgrade/native/mac_x64_arm64/libusb-1.0.0.dylib",
+                Path("/opt/homebrew/opt/libusb/lib/libusb-1.0.dylib"),
+                Path("/usr/local/opt/libusb/lib/libusb-1.0.dylib"),
+            ]
+        )
+
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise RuntimeError(
+        "ST-LINK USB復旧用libusbが見つかりません。"
+        "CubeProgrammerを再インストールするか LIBUSB_1_0_DYLIB を指定してください"
+    )
+
+
+def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
+    if sys.platform != "darwin":
+        raise RuntimeError("ST-LINK USB自動復旧は現在macOSのみ対応しています")
+
+    libusb_path = find_libusb(cli)
+    lib = ctypes.CDLL(str(libusb_path))
+    lib.libusb_init.argtypes = [ctypes.POINTER(ctypes.c_void_p)]
+    lib.libusb_init.restype = ctypes.c_int
+    lib.libusb_get_device_list.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p)),
+    ]
+    lib.libusb_get_device_list.restype = ctypes.c_ssize_t
+    lib.libusb_free_device_list.argtypes = [ctypes.POINTER(ctypes.c_void_p), ctypes.c_int]
+    lib.libusb_get_device_descriptor.argtypes = [
+        ctypes.c_void_p,
+        ctypes.POINTER(LibusbDeviceDescriptor),
+    ]
+    lib.libusb_get_device_descriptor.restype = ctypes.c_int
+    lib.libusb_open.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    lib.libusb_open.restype = ctypes.c_int
+    lib.libusb_get_string_descriptor_ascii.argtypes = [
+        ctypes.c_void_p,
+        ctypes.c_uint8,
+        ctypes.POINTER(ctypes.c_ubyte),
+        ctypes.c_int,
+    ]
+    lib.libusb_get_string_descriptor_ascii.restype = ctypes.c_int
+    lib.libusb_reset_device.argtypes = [ctypes.c_void_p]
+    lib.libusb_reset_device.restype = ctypes.c_int
+    lib.libusb_close.argtypes = [ctypes.c_void_p]
+    lib.libusb_exit.argtypes = [ctypes.c_void_p]
+
+    context = ctypes.c_void_p()
+    rc = lib.libusb_init(ctypes.byref(context))
+    if rc != 0:
+        raise RuntimeError(f"libusb初期化に失敗しました: rc={rc}")
+
+    device_list = ctypes.POINTER(ctypes.c_void_p)()
+    handles = []
+    try:
+        count = lib.libusb_get_device_list(context, ctypes.byref(device_list))
+        if count < 0:
+            raise RuntimeError(f"USBデバイス一覧の取得に失敗しました: rc={count}")
+
+        matches = []
+        for index in range(count):
+            device = device_list[index]
+            descriptor = LibusbDeviceDescriptor()
+            if lib.libusb_get_device_descriptor(device, ctypes.byref(descriptor)) != 0:
+                continue
+            if descriptor.idVendor != STLINK_USB_VID or descriptor.idProduct != STLINK_V3_MINIE_PID:
+                continue
+
+            handle = ctypes.c_void_p()
+            open_rc = lib.libusb_open(device, ctypes.byref(handle))
+            if open_rc != 0:
+                continue
+            handles.append(handle)
+
+            serial = ""
+            if descriptor.iSerialNumber:
+                serial_buffer = (ctypes.c_ubyte * 256)()
+                serial_length = lib.libusb_get_string_descriptor_ascii(
+                    handle,
+                    descriptor.iSerialNumber,
+                    serial_buffer,
+                    len(serial_buffer),
+                )
+                if serial_length > 0:
+                    serial = bytes(serial_buffer[:serial_length]).decode("ascii", errors="replace")
+            matches.append((serial, handle))
+
+        if requested_sn:
+            targets = [(serial, handle) for serial, handle in matches if serial == requested_sn]
+            if not targets:
+                unreadable_targets = [(serial, handle) for serial, handle in matches if not serial]
+                if len(matches) == 1 and len(unreadable_targets) == 1:
+                    # A deeply stalled V3 can fail its serial-string request too.
+                    # With exactly one VID/PID match, resetting that physical probe
+                    # is still unambiguous; the retry output validates its SN.
+                    targets = unreadable_targets
+                else:
+                    found = ", ".join(serial or "<serial unreadable>" for serial, _ in matches) or "none"
+                    raise RuntimeError(f"指定ST-LINK SN={requested_sn}が見つかりません (found: {found})")
+        else:
+            targets = matches
+
+        if len(targets) != 1:
+            if not targets:
+                raise RuntimeError("USB復旧対象のST-LINK V3 MINIEが見つかりません")
+            raise RuntimeError("複数のST-LINK V3 MINIEがあります。--sn でUSB復旧対象を指定してください")
+
+        serial, handle = targets[0]
+        reset_rc = lib.libusb_reset_device(handle)
+        # On macOS a successful re-enumeration can invalidate the old handle.
+        if reset_rc not in (0, -4):
+            raise RuntimeError(f"ST-LINK USBリセットに失敗しました: rc={reset_rc}")
+        return serial or requested_sn or "<serial unreadable>"
+    finally:
+        for handle in handles:
+            lib.libusb_close(handle)
+        if device_list:
+            lib.libusb_free_device_list(device_list, 1)
+        lib.libusb_exit(context)
+
+
+def ensure_stlink_ready(cli: str, requested_sn: Optional[str], cwd: Path) -> None:
+    list_cmd = [cli, "-l", "stlink-only"]
+    completed = run_capture(list_cmd, cwd=cwd)
+    if not contains_stlink_usb_error(completed.stdout or ""):
+        if completed.returncode != 0:
+            raise subprocess.CalledProcessError(completed.returncode, list_cmd)
+        return
+
+    print("WARNING: ST-LINK USB通信エラーを検出したため、USBデバイスを再列挙します", flush=True)
+    reset_sn = reset_stlink_v3_minie_usb(cli, requested_sn)
+    print(f"ST-LINK USB reset: SN={reset_sn}", flush=True)
+
+    last = completed
+    for retry in range(1, 4):
+        time.sleep(1.0)
+        print(f"ST-LINK probe retry {retry}/3", flush=True)
+        last = run_capture(list_cmd, cwd=cwd)
+        if not contains_stlink_usb_error(last.stdout or ""):
+            if last.returncode != 0:
+                raise subprocess.CalledProcessError(last.returncode, list_cmd)
+            return
+
+    raise RuntimeError(
+        "ST-LINK USB通信を自動復旧できませんでした。"
+        "ST-LINKのUSBを抜き差しし、機体電源とSWD配線を確認してください"
+    )
 
 
 def build_connect_args(args: argparse.Namespace) -> list:
@@ -89,10 +297,11 @@ def main() -> int:
 def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
 
     if args.list:
-        run([cli, "-l", "stlink-only"])
+        ensure_stlink_ready(cli, args.sn, repo_root)
         return 0
 
     if args.reset_only:
+        ensure_stlink_ready(cli, args.sn, repo_root)
         run([cli, *build_connect_args(args), "-rst"], cwd=repo_root)
         print("SUCCESS")
         return 0
@@ -105,6 +314,8 @@ def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
         image = repo_root / image
     if not image.is_file():
         raise RuntimeError(f"書き込み対象が見つかりません: {image}")
+
+    ensure_stlink_ready(cli, args.sn, repo_root)
 
     cmd = [cli, *build_connect_args(args), "-w", str(image)]
     if image.suffix.lower() == ".bin":
