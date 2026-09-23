@@ -43,4 +43,26 @@ DRC残存違反や製造条件は設計資料どおり残る。encoderの特殊�
 
 削除対象の6201のPCBエディターは、保存確認なしで正常終了した。終了時のignored表示設定1個と解除されたlock2個も保全記録に含め、CADソースは不変。acd0をcwdに持つ古いCUA runtimeプロセスは終了させない。
 
-このPRのmain統合後に、通常checkoutを残し、子のruntime-scaffoldから順に12個を `git worktree remove` で撤去する。branch/stash/保全データは削除しない。通常checkoutのmini_r3調整等のdirty差分は保持する。撤去結果はWORKLOGとローカル監査の `steps3-4/COMPLETION.md` に記録する。
+[統合PR #43](https://github.com/xfa273/nightfall-fw/pull/43)をmergeしてmainを `da51e1ed4536cee255c0f99068f462810f77bfd0` へ更新し、#16/#20/#21が全てMERGEDになった後、子のruntime-scaffoldから順に12個を `git worktree remove --force` で撤去済み。直前に全対象の全ファイル一覧・source/snapshotのSHA・権限・HEAD/statusを再照合してから削除した。通常checkoutだけが残り、branch/tag・stash2件・保全データは保持。通常checkoutのHEAD/branch/statusと185個の変更ファイルのSHA/権限も保全時と一致した。
+
+
+### 撤去済み一覧
+
+| 保存ID | 元の場所 | HEAD |
+|---|---|---|
+| `runtime-scaffold` | `/Users/xfa273/.codex/worktrees/0fb1/nightfall-fw/build/exploration_mcu/latest-check` | `6e8db0d8782b` |
+| `0fb1` | `/Users/xfa273/.codex/worktrees/0fb1/nightfall-fw` | `5b26890f2fa6` |
+| `165d` | `/Users/xfa273/.codex/worktrees/165d/nightfall-fw` | `4fb45ed1e1bb` |
+| `1a6f` | `/Users/xfa273/.codex/worktrees/1a6f/nightfall-fw` | `b55bf0a44143` |
+| `51c2` | `/Users/xfa273/.codex/worktrees/51c2/nightfall-fw` | `b55bf0a44143` |
+| `6201` | `/Users/xfa273/.codex/worktrees/6201/nightfall-fw` | `9a2fdf9425a2` |
+| `6743` | `/Users/xfa273/.codex/worktrees/6743/nightfall-fw` | `ab377c8b937d` |
+| `9fe5` | `/Users/xfa273/.codex/worktrees/9fe5/nightfall-fw` | `7f84f59eb9c5` |
+| `ab88` | `/Users/xfa273/.codex/worktrees/ab88/nightfall-fw` | `75ab08833b1c` |
+| `acd0` | `/Users/xfa273/.codex/worktrees/acd0/nightfall-fw` | `58f60e53d528` |
+| `c338` | `/Users/xfa273/.codex/worktrees/c338/nightfall-fw` | `0a1787f26e6c` |
+| `mini-goal77` | `/Users/xfa273/workspace/micromouse/nightfall-fw-20260214-mini-goal77` | `0d4d22052f69` |
+
+残存worktreeは `/Users/xfa273/workspace/micromouse/nightfall-fw` の1個。`fix/f413/search-distance-accounting` / `a461d4f` のdirty状態を維持している。main参照は別途同期し、未コミット調整の自動採用やbranch切替は行わない。再開時には `restore.py --worktree <保存ID> --destination <存在しないパス>` で変更を再現でき、`--all-files`でignoredデータも復元する。保留PR #1/#17/#18/#19のhead/baseは不変。古いCUA runtimeがacd0をcwdとして持っていたが、関連プロセスの強制終了は行っていない。
+
+撤去の詳細証跡はローカル監査 `nightfall-fw-audit-20260923/steps3-4/` の `removal-preflight.json`、`removed-worktrees.json`、`removal-result.json`、`COMPLETION.md` に保存。ローカル容量削減や保全データの削除は対象外。
