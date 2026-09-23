@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- 独立PR整理（2026-09-23 JST）: ファーム本体に差分のないPR16/20（CAD）・21（host simulator）を統合。PR1/17/18/19はmini_r3調整完了後まで保留、Draft/branchを保持。host61 tests・CAD/製造データ整合性を確認、実機操作なし。通常checkout以外の12 worktreesは再保全・復元確認後に撤去する。詳細 [独立PR統合と保留](INDEPENDENT_PR_INTEGRATION_20260923.md)。
+
 - main統合（2026-09-23 JST）: 旧main b55bf0aからコミット済み本流a461d4fまで290 commits（PRなしの261 + PR22〜41の29）を履歴保持で統合する基準を確定。F405 mini/classicとF413 build、制御/経路/NVM/ログ/調整/映像host検証PASS。追加調整7項目はbackup/20260923-step1-additional-tuningへ保全済み、未コミット差分は今回の統合対象外。実機HIL未実施、個体安定版の更新なし。独立PR1/16〜21とCAD/調整の採否は後続。詳細 [main統合記録](MAIN_CONSOLIDATION_20260923.md)。
 
 - F413探索の処理中移動距離を補正（2026-09-23 JST、mini_r2 t0.3 / mini_r3 t0.25）: mini_r1にはconf_routeでg_search_coast_mmを記録して次の直進/ターン入口/停止から引く既存対策がある。F413探索では現在位置+区間距離を毎回設定し、最新run003の公称730mmに対し目標756.387mmへ累積、ユーザ確認で壁接触→最終停止TIMEOUT。予定終点を区間間で引継ぎ、残距離だけprofileへ渡す方式を追加。壁切れイベント書込み中も補正、壁合わせ/旋回/後退resetは基準更新。次区間通過済みは停止。両profileの実探索関数を遅延0/3/8/20ms・7/15/60区画、左右ターン、壁補正、停止/再発進/中断でASan/UBSan検証。ゲイン/停止許容/F405/最短/NVM形式は維持。実機操作なし、同条件の730mm目標と壁非接触停止を要確認。詳細 docs/F413_SEARCH_DISTANCE_ACCOUNTING.md。
