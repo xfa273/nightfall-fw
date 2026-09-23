@@ -1,0 +1,7 @@
+(version 1)
+
+# Mechanical-only 1.6 mm FR-4 board. The circular DXF features are NPTH drills.
+
+(rule "Minimum routed slot width"
+  (constraint hole_size (min 0.50mm))
+  (condition "A.Type == 'Pad'"))

@@ -1,0 +1,62 @@
+(footprint "TP06SQ"
+	(version 20240108)
+	(generator pcbnew)
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "TEST PAD")
+	(property "Reference" "EC_R2"
+		(at -0.3 -0.4001 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1.176528 1.176528)
+				(thickness 0.093472)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Value" "PTR1TP06SQ"
+		(at -0.254 0.381 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 0.023531 0.023531)
+				(thickness 0.001869)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(duplicate_pad_numbers_are_jumpers no)
+	(pad "TP" smd rect
+		(at 0 0)
+		(size 0.5996 0.5996)
+		(layers "F.Cu" "F.Mask")
+		(net "GND")
+		(solder_mask_margin 0.1016)
+		(solder_paste_margin 0)
+		(thermal_bridge_angle 0)
+	)
+	(embedded_fonts no)
+)

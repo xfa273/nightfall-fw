@@ -1,0 +1,268 @@
+(footprint "LED3MM"
+	(version 20240108)
+	(generator pcbnew)
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "LED\n\n3 mm, round")
+	(property "Reference" "IR_LED_R0"
+		(at 1.904964 -0.381065 145)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1.1557 1.1557)
+				(thickness 0.1143)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Value" ""
+		(at 1.904978 1.650935 145)
+		(unlocked yes)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 1.1557 1.1557)
+				(thickness 0.1143)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 305)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 305)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_arc
+		(start 0 2.032)
+		(mid -1.019925 1.757524)
+		(end -1.7643 1.0082)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start -0.000001 1.524)
+		(mid -0.669593 1.369017)
+		(end -1.203 0.9356)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start -1.7929 -0.9562)
+		(mid -1.045438 -1.742399)
+		(end 0 -2.032)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start 1.5512 1.3126)
+		(mid 0.854954 1.843405)
+		(end 0 2.032)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start 1.203 0.9356)
+		(mid 0.669593 1.369018)
+		(end -0.000001 1.524)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start -1.2192 -0.9144)
+		(mid -0.681553 -1.363107)
+		(end 0.000001 -1.524)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start 0.000001 -1.524)
+		(mid 0.697339 -1.355081)
+		(end 1.2401 -0.885801)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start 0 -2.032)
+		(mid 0.861864 -1.840173)
+		(end 1.561 -1.3009)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 1.5748 1.27)
+		(end 1.5748 -1.27)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -1.7306 1.065)
+		(mid -1.955211 0.553417)
+		(end -2.032 0)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -1.1391 1.0125)
+		(mid -1.42454 0.5416)
+		(end -1.524 -0.000001)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -2.032 0)
+		(mid -1.970339 -0.496774)
+		(end -1.7891 -0.963399)
+		(stroke
+			(width 0.254)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -1.524 -0.000001)
+		(mid -1.432982 -0.518784)
+		(end -1.1708 -0.975599)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -1.016 0.000001)
+		(mid -0.718421 -0.71842)
+		(end -0.000001 -1.016)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start -0.635 0)
+		(mid -0.449013 -0.449013)
+		(end 0 -0.635)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 0.635 0)
+		(mid 0.449013 0.449013)
+		(end 0 0.635)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 1.016 -0.000001)
+		(mid 0.718421 0.71842)
+		(end 0.000001 1.016)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 1.524 0.000001)
+		(mid 1.432982 0.518784)
+		(end 1.1708 0.975599)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 1.1571 -0.9918)
+		(mid 1.429332 -0.528743)
+		(end 1.524 0.000001)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(pad "A" thru_hole roundrect
+		(at -1.27 0 305)
+		(size 1.3208 1.3208)
+		(drill 0.8128)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(roundrect_rratio 0.25)
+		(chamfer_ratio 0.2928932188)
+		(chamfer top_left top_right bottom_left bottom_right)
+		(net "N$30")
+		(solder_mask_margin 0.1016)
+		(thermal_bridge_angle 0)
+	)
+	(pad "K" thru_hole roundrect
+		(at 1.27 0 305)
+		(size 1.3208 1.3208)
+		(drill 0.8128)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(roundrect_rratio 0.25)
+		(chamfer_ratio 0.2928932188)
+		(chamfer top_left top_right bottom_left bottom_right)
+		(net "N$29")
+		(solder_mask_margin 0.1016)
+		(thermal_bridge_angle 0)
+	)
+	(embedded_fonts no)
+)

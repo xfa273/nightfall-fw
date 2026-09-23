@@ -1,0 +1,357 @@
+(footprint "SOT50P160X90-3N"
+	(version 20240108)
+	(generator pcbnew)
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(property "Reference" "UBUZ0"
+		(at -3.456619 -2.541632 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1.896567 1.896567)
+				(thickness 0.187573)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Value" "2N7002TQ-7-F"
+		(at -3.45655 4.447759 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 1.896522 1.896522)
+				(thickness 0.187568)
+			)
+			(justify left bottom)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start 0 0.8382)
+		(end 0.4318 0.8382)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 0.3048 -0.8382)
+		(end 0 -0.8382)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 0.4318 -0.8382)
+		(end 0.3048 -0.8382)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 0.4318 -0.4826)
+		(end 0.4318 -0.8382)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start 0.4318 0.8382)
+		(end 0.4318 0.4826)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_arc
+		(start 0.3048 -0.8382)
+		(mid 0.218027 -0.645572)
+		(end 0.025399 -0.558799)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(layer "F.SilkS")
+	)
+	(fp_line
+		(start -0.8636 -0.6604)
+		(end -0.8636 -0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.8636 -0.3556)
+		(end -0.4318 -0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.8636 0.3556)
+		(end -0.8636 0.6604)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.8636 0.6604)
+		(end -0.4318 0.6604)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 -0.8382)
+		(end -0.4318 -0.6604)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 -0.6604)
+		(end -0.8636 -0.6604)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 -0.6604)
+		(end -0.4318 -0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 -0.3556)
+		(end -0.4318 0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 0.3556)
+		(end -0.8636 0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 0.6604)
+		(end -0.4318 0.3556)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 0.8382)
+		(end -0.4318 0.6604)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.4318 0.8382)
+		(end 0.4318 0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start -0.3048 -0.8382)
+		(end -0.4318 -0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.3048 -0.8382)
+		(end -0.3048 -0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.4318 -0.8382)
+		(end 0.3048 -0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.4318 -0.1524)
+		(end 0.4318 -0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.4318 0.1524)
+		(end 0.4318 -0.1524)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.4318 0.1524)
+		(end 0.8636 0.1524)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.4318 0.8382)
+		(end 0.4318 0.1524)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.8636 -0.1524)
+		(end 0.4318 -0.1524)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_line
+		(start 0.8636 0.1524)
+		(end 0.8636 -0.1524)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_arc
+		(start 0.3048 -0.8382)
+		(mid 0 -0.5334)
+		(end -0.3048 -0.8382)
+		(stroke
+			(width 0.1)
+			(type solid)
+		)
+		(layer "F.Fab")
+	)
+	(fp_text user "*"
+		(at -1.6277 -0.712118 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1.195342 1.195342)
+				(thickness 0.076298)
+			)
+			(justify left bottom)
+		)
+	)
+	(fp_text user "*"
+		(at -1.62619 -0.711456 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 1.194231 1.194231)
+				(thickness 0.076228)
+			)
+			(justify left bottom)
+		)
+	)
+	(pad "1" smd rect
+		(at -0.8128 -0.508)
+		(size 1.016 0.3556)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(net "BUZZER_PWM")
+		(solder_mask_margin 0.1016)
+		(solder_paste_margin 0)
+		(thermal_bridge_angle 0)
+	)
+	(pad "2" smd rect
+		(at -0.8128 0.508)
+		(size 1.016 0.3556)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(net "GND")
+		(solder_mask_margin 0.1016)
+		(solder_paste_margin 0)
+		(thermal_bridge_angle 0)
+	)
+	(pad "3" smd rect
+		(at 0.8128 0)
+		(size 1.016 0.3048)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(net "N$23")
+		(solder_mask_margin 0.1016)
+		(solder_paste_margin 0)
+		(thermal_bridge_angle 0)
+	)
+	(embedded_fonts no)
+)
