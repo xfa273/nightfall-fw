@@ -7,6 +7,7 @@
 #include "f413_control_tune_run.h"
 #include "f413_hw.h"
 #include "f413_nvm_diag.h"
+#include "f413_trace_compact.h"
 #include "f413_trace_flags.h"
 #include "f413_trace_log.h"
 #include "f413_wall_runtime.h"
@@ -32,6 +33,14 @@ static volatile int32_t g_reserved_i32_2 = 0;
 static volatile int32_t g_reserved_i32_3 = 0;
 static volatile uint16_t g_reserved_u16_0 = 0U;
 static volatile uint16_t g_reserved_u16_1 = 0U;
+static volatile uint32_t g_front_match_generation = 0U;
+static volatile uint8_t g_front_match_active = 0U;
+static volatile uint8_t g_front_match_phase = 0U;
+static volatile int32_t g_front_match_fr_mm_x1000 = 0;
+static volatile int32_t g_front_match_fl_mm_x1000 = 0;
+static volatile int32_t g_front_match_position_error_mm_x1000 = 0;
+static volatile int32_t g_front_match_yaw_error_mm_x1000 = 0;
+static volatile uint16_t g_front_match_state_elapsed_ms = 0U;
 static uint8_t g_last_test_id = 0U;
 static f413_run_session_abort_reason_t g_last_test_abort_reason = F413_RUN_SESSION_ABORT_NONE;
 static float g_last_test_distance_mm = 0.0f;
@@ -121,6 +130,45 @@ static void f413_trace_sample_fill_context(nvm_trace_log_record_t* out)
   out->test_id = g_context_test_id;
 }
 
+static void f413_trace_sample_fill_front_match(nvm_trace_log_record_t* out)
+{
+  uint32_t generation_before;
+  uint32_t generation_after;
+  uint8_t active;
+  uint8_t phase;
+  int32_t fr_mm_x1000;
+  int32_t fl_mm_x1000;
+  int32_t position_error_mm_x1000;
+  int32_t yaw_error_mm_x1000;
+  uint16_t state_elapsed_ms;
+
+  generation_before = g_front_match_generation;
+  if ((generation_before & 1U) != 0U)
+  {
+    return;
+  }
+  active = g_front_match_active;
+  phase = g_front_match_phase;
+  fr_mm_x1000 = g_front_match_fr_mm_x1000;
+  fl_mm_x1000 = g_front_match_fl_mm_x1000;
+  position_error_mm_x1000 = g_front_match_position_error_mm_x1000;
+  yaw_error_mm_x1000 = g_front_match_yaw_error_mm_x1000;
+  state_elapsed_ms = g_front_match_state_elapsed_ms;
+  generation_after = g_front_match_generation;
+  if (!active || (generation_before != generation_after) ||
+      ((generation_after & 1U) != 0U))
+  {
+    return;
+  }
+
+  out->reserved_i32_0 = fr_mm_x1000;
+  out->reserved_i32_1 = fl_mm_x1000;
+  out->reserved_i32_2 = position_error_mm_x1000;
+  out->reserved_i32_3 = yaw_error_mm_x1000;
+  out->reserved_u16_0 = (uint16_t)(F413_TRACE_SAMPLE_FRONT_MATCH_MARKER | phase);
+  out->reserved_u16_1 = state_elapsed_ms;
+}
+
 void f413_trace_sample_config(const f413_trace_sample_config_t* config)
 {
   if (config != NULL)
@@ -168,6 +216,28 @@ void f413_trace_sample_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub
   }
 }
 
+void f413_trace_sample_set_front_match(bool active,
+                                       uint8_t phase,
+                                       float fr_mm,
+                                       float fl_mm,
+                                       float position_error_mm,
+                                       float yaw_error_mm,
+                                       uint16_t state_elapsed_ms)
+{
+  g_front_match_generation += 1U;
+  g_front_match_active = 0U;
+  g_front_match_phase = phase;
+  g_front_match_fr_mm_x1000 = f413_trace_sample_scale_float(fr_mm, 1000.0f);
+  g_front_match_fl_mm_x1000 = f413_trace_sample_scale_float(fl_mm, 1000.0f);
+  g_front_match_position_error_mm_x1000 =
+      f413_trace_sample_scale_float(position_error_mm, 1000.0f);
+  g_front_match_yaw_error_mm_x1000 =
+      f413_trace_sample_scale_float(yaw_error_mm, 1000.0f);
+  g_front_match_state_elapsed_ms = state_elapsed_ms;
+  g_front_match_active = active ? 1U : 0U;
+  g_front_match_generation += 1U;
+}
+
 void f413_trace_sample_update_observe_cache(void)
 {
   nvm_trace_log_record_t rec;
@@ -208,11 +278,35 @@ void f413_trace_sample_update_observe_cache(void)
 
 void f413_trace_sample_emit_extra_csv_meta(void)
 {
+  trace_printf("#machine_config_status=%s\r\n#param_profile_id=%lu\r\n#params_tune_version=%s\r\n",
+      f413_machine_status_name(f413_machine_status()),
+      (unsigned long)f413_machine_profile_id(), f413_machine_profile_name());
+  trace_printf("#motor_forward_in2_high=%u,%u\r\n#encoder_sign=%d,%d\r\n",
+      f413_machine_hardware()->left_forward_in2_high,
+      f413_machine_hardware()->right_forward_in2_high,
+      f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r);
+  trace_printf("#imu_forward_accel_reg=0x%02X\r\n#imu_forward_accel_sign=%d\r\n#imu_forward_offset_mm=%.3f\r\n#battery_divider_ratio=%.6f\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg,
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm,
+      (double)f413_machine_hardware()->battery_divider_ratio);
+  trace_printf("#accel_forward_reference=yaw_centre_bias_removed_no_gravity_comp\r\n");
+  trace_printf("#front_distance_reference=%s\r\n#front_alignment_target_mm=%.2f\r\n",
+      f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
+      (double)F_ALIGN_TARGET_MM);
+  trace_printf("#front_distance_reference_meta_source=dump_time_profile\r\n");
+  trace_printf("#side_distance_reference=%s\r\n#side_distance_reference_meta_source=dump_time_profile\r\n",
+      f413_machine_side_distance_body_centre() ? "body_centre" : "legacy_profile");
   trace_printf("#accel_velocity_mm_s=encoder_avg_plus_accel_half_window\r\n");
   trace_printf("#velocity_accel_comp_window_ms=%u\r\n",
                (unsigned int)f413_ctrl_get_velocity_accel_comp_window_ms());
   trace_printf("#velocity_accel_comp_control=%u\r\n",
                f413_ctrl_velocity_accel_comp_control_enabled() ? 1U : 0U);
+  trace_printf("#velocity_accel_comp_turn_control=%u\r\n",
+               f413_ctrl_velocity_accel_comp_turn_control_enabled() ? 1U : 0U);
+  trace_printf("#velocity_turn_control_source=%s\r\n",
+               f413_ctrl_velocity_accel_comp_turn_control_enabled() ?
+                   "accel_comp" : "encoder_lpf");
   trace_printf("#omega_ff_lead_time_s=%.6f\r\n", (double)FF_OMEGA_LEAD_TIME_S);
   trace_printf("#omega_ff_lead_max_dps=%.3f\r\n", (double)FF_OMEGA_LEAD_MAX_DPS);
   trace_printf("#omega_ff_pwm_fan_on=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_ON);
@@ -233,11 +327,28 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (double)FF_TRANSLATION_ACCEL_PWM_FAN_OFF);
   trace_printf("#search_step_context=op_mode1_case1_to_8:op_sub=(y<<4)|x,test_id=0x80|(next_rel<<2)|dir\r\n");
   trace_printf("#search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas\r\n");
+  trace_printf("#search_event_front_match=motion_arg0/1 packed marker=0xA status,elapsed_5ms,position_error_0.05mm,yaw_error_0.05mm\r\n");
+  trace_printf("#front_match_trace=mode1_case0_sub4 marker=0x%04X active_period_ms=%lu idle_period_ms=%lu\r\n",
+               (unsigned int)F413_TRACE_SAMPLE_FRONT_MATCH_MARKER,
+               (unsigned long)MATCH_POS_TRACE_PERIOD_MS,
+               (unsigned long)MATCH_POS_TRACE_IDLE_PERIOD_MS);
+  trace_printf("#front_match_reserved_i32=fr_mm_x1000,fl_mm_x1000,position_error_mm_x1000,yaw_error_mm_x1000\r\n");
+  trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
+  trace_printf("#auto_ram_staging=fast_period_ms=1,slow_period_ms=%u,omega_quantum_mdps=%ld,fast_capacity=%u,seq_reconstructed=1,persistent_schema_unchanged=1\r\n",
+               (unsigned int)F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS,
+               (long)F413_TRACE_COMPACT_OMEGA_QUANTUM_MDPS,
+               (unsigned int)F413_TRACE_COMPACT_USABLE_RECORDS);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
-  trace_printf("#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l\r\n");
+  trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");
   trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
   trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
+  trace_printf("#wall_end_deriv=window=%u,total=%u,divisor=%d,fall_threshold=%u,confirm=%u\r\n",
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES,
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES,
+               F413_WALL_RUNTIME_END_DERIV_DIVISOR,
+               (unsigned int)WALL_END_DERIV_FALL_THR,
+               (unsigned int)F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES);
 #else
   trace_printf("#wall_trace_observe=disabled\r\n");
 #endif
@@ -319,6 +430,7 @@ void f413_trace_sample_fill(nvm_trace_log_record_t* out, uint32_t seq)
   }
   f413_trace_sample_fill_flags(out);
   f413_trace_sample_fill_context(out);
+  f413_trace_sample_fill_front_match(out);
 }
 
 void f413_trace_sample_fill_control(nvm_trace_log_record_t* out,
@@ -355,6 +467,7 @@ void f413_trace_sample_fill_control(nvm_trace_log_record_t* out,
   }
   f413_trace_sample_fill_flags(out);
   f413_trace_sample_fill_context(out);
+  f413_trace_sample_fill_front_match(out);
 }
 
 void f413_trace_sample_record_result(uint8_t test_id,

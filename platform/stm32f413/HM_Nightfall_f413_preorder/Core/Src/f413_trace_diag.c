@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "build_info.h"
+#include "f413_diag.h"
 #include "f413_trace_log.h"
 #include "nvm.h"
 #include "trace.h"
@@ -50,31 +51,6 @@ void f413_trace_diag_config(const f413_trace_diag_config_t* config)
   s_config = *config;
 }
 
-static void f413_trace_diag_get_context(uint8_t* mode, uint8_t* op_case, uint8_t* sub, uint8_t* test_id)
-{
-  if (mode != NULL)
-  {
-    *mode = 0xFFU;
-  }
-  if (op_case != NULL)
-  {
-    *op_case = 0xFFU;
-  }
-  if (sub != NULL)
-  {
-    *sub = 0xFFU;
-  }
-  if (test_id != NULL)
-  {
-    *test_id = 0xFFU;
-  }
-
-  if (s_config.get_context != NULL)
-  {
-    s_config.get_context(mode, op_case, sub, test_id);
-  }
-}
-
 static const char* f413_trace_diag_op_mode_name(uint8_t mode)
 {
   return (s_config.op_mode_name != NULL) ? s_config.op_mode_name(mode) : f413_trace_diag_unknown_name(mode);
@@ -116,6 +92,8 @@ void f413_trace_diag_print_header(const nvm_trace_log_header_t* header)
 
 void f413_trace_diag_run_format_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_status_t st;
 
@@ -141,6 +119,8 @@ void f413_trace_diag_run_format_once(void)
 
 void f413_trace_diag_run_append_sample_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_trace_log_record_t rec;
   nvm_status_t st;
@@ -252,61 +232,19 @@ void f413_trace_diag_run_dump_latest_once(void)
   }
 }
 
-static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
+static void f413_trace_diag_print_csv_run_header(const nvm_trace_log_record_t* rec,
+                                                 uint32_t run_index)
 {
-  nvm_trace_log_header_t header;
-  nvm_status_t st;
-  uint32_t available;
-  uint32_t dump_count;
-  uint32_t i;
-  uint8_t meta_mode;
-  uint8_t meta_case;
-  uint8_t meta_sub;
-  uint8_t meta_test_id;
+  const uint8_t meta_mode = rec->op_mode;
+  const uint8_t meta_case = rec->op_case;
+  const uint8_t meta_sub = rec->op_sub;
+  const uint8_t meta_test_id = rec->test_id;
 
-  st = nvm_trace_log_get_header(&header);
-  if (st != NVM_STATUS_OK)
-  {
-    trace_printf("[TRACE-LOG] csv: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
-    return;
-  }
-
-  available = header.total_records;
-  if (available > header.record_capacity)
-  {
-    available = header.record_capacity;
-  }
-  if (available == 0U)
-  {
-    trace_printf("[TRACE-LOG] csv: no records\r\n");
-    return;
-  }
-
-  dump_count = available;
-  if ((max_records > 0U) && (dump_count > max_records))
-  {
-    dump_count = max_records;
-  }
-
-  f413_trace_diag_get_context(&meta_mode, &meta_case, &meta_sub, &meta_test_id);
-  for (i = 0U; i < dump_count; i++)
-  {
-    nvm_trace_log_record_t meta_rec;
-    st = nvm_trace_log_read_latest(i, &meta_rec);
-    if ((st == NVM_STATUS_OK) && (meta_rec.op_mode != 0xFFU))
-    {
-      meta_mode = meta_rec.op_mode;
-      meta_case = meta_rec.op_case;
-      meta_sub = meta_rec.op_sub;
-      meta_test_id = meta_rec.test_id;
-      break;
-    }
-  }
-
-  trace_printf("[TRACE-LOG] csv latest %lu/%lu (oldest->newest)\r\n",
-               (unsigned long)dump_count,
-               (unsigned long)available);
   trace_printf("#log_format=nightfall_trace_csv_v6\r\n");
+  trace_printf("#fw_metadata_scope=dump_time\r\n");
+  trace_printf("#fw_capture_metadata=not_stored\r\n");
+  trace_printf("#trace_run_index=%lu\r\n", (unsigned long)run_index);
+  trace_printf("#trace_run_partial_start=%u\r\n", rec->seq != 0U ? 1U : 0U);
   trace_printf("#fw_target=%s\r\n", FW_TARGET);
   trace_printf("#fw_version=%s\r\n", FW_VERSION);
   trace_printf("#fw_build_type=%s\r\n", FW_BUILD_TYPE);
@@ -339,6 +277,44 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
   trace_printf("encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,");
   trace_printf("wall_read_fr,wall_read_r,wall_read_fl,wall_read_l,");
   trace_printf("flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1\r\n");
+}
+
+static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
+{
+  nvm_trace_log_header_t header;
+  nvm_status_t st;
+  uint32_t available;
+  uint32_t dump_count;
+  uint32_t i;
+  uint32_t run_index = 0U;
+
+  st = nvm_trace_log_get_header(&header);
+  if (st != NVM_STATUS_OK)
+  {
+    trace_printf("[TRACE-LOG] csv: FAIL(read header NVM=%d, run q first)\r\n", (int)st);
+    return;
+  }
+
+  available = header.total_records;
+  if (available > header.record_capacity)
+  {
+    available = header.record_capacity;
+  }
+  if (available == 0U)
+  {
+    trace_printf("[TRACE-LOG] csv: no records\r\n");
+    return;
+  }
+
+  dump_count = available;
+  if ((max_records > 0U) && (dump_count > max_records))
+  {
+    dump_count = max_records;
+  }
+
+  trace_printf("[TRACE-LOG] csv retained %lu/%lu (oldest->newest)\r\n",
+               (unsigned long)dump_count,
+               (unsigned long)available);
 
   for (i = dump_count; i > 0U; i--)
   {
@@ -351,6 +327,12 @@ static void f413_trace_diag_run_dump_csv_impl(uint32_t max_records)
                    (unsigned long)(i - 1U),
                    (int)st);
       return;
+    }
+
+    /* seq restarts at zero for every auto capture / search session. */
+    if ((i == dump_count) || (rec.seq == 0U))
+    {
+      f413_trace_diag_print_csv_run_header(&rec, ++run_index);
     }
 
     trace_printf("%lu,%lu,%u,%u,%u,%u,%.3f,%ld,%ld,%ld,%ld,",
@@ -484,7 +466,7 @@ static void f413_trace_diag_run_dump_bin_impl(uint32_t max_records)
   frame.available_count = available;
   frame.payload_checksum = checksum;
 
-  trace_printf("[TRACE-LOG] bin latest %lu/%lu bytes=%lu\r\n",
+  trace_printf("[TRACE-LOG] bin retained %lu/%lu bytes=%lu\r\n",
                (unsigned long)dump_count,
                (unsigned long)available,
                (unsigned long)(sizeof(frame) + sizeof(header) + (dump_count * sizeof(nvm_trace_log_record_t))));
@@ -572,6 +554,8 @@ static uint8_t f413_trace_diag_record_equals(const nvm_trace_log_record_t* lhs,
 
 void f413_trace_diag_run_selftest_once(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   nvm_trace_log_header_t header;
   nvm_status_t st;
   uint32_t i;

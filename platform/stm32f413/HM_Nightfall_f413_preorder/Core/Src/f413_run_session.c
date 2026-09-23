@@ -589,6 +589,9 @@ uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reas
       return F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG;
     case F413_RUN_SESSION_ABORT_IMU_FAULT:
       return F413_RUN_SESSION_TRACE_ABORT_IMU_FAULT_FLAG;
+    case F413_RUN_SESSION_ABORT_TIMEOUT:
+      /* A motion timeout is a progress/encoder-class fault in the compact trace flags. */
+      return F413_RUN_SESSION_TRACE_ABORT_ENCODER_FAULT_FLAG;
     case F413_RUN_SESSION_ABORT_NONE:
     default:
       return 0U;
@@ -607,6 +610,8 @@ const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_
       return "encoder jump fault";
     case F413_RUN_SESSION_ABORT_IMU_FAULT:
       return "imu fault";
+    case F413_RUN_SESSION_ABORT_TIMEOUT:
+      return "motion timeout";
     case F413_RUN_SESSION_ABORT_NONE:
     default:
       return "none";

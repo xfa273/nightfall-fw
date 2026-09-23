@@ -135,6 +135,22 @@ typedef struct __attribute__((packed)) {
 - `test_id`: UART/テスト識別子
 - `reserved_u16_0..1`: `#wall_trace_observe=1` の場合は壁観測flags/壁切れ距離圧縮値、それ以外は将来拡張用16bit予備
 
+### 探索イベントレコード
+
+探索イベントログでは `reserved_u16_0=0x5345` をマーカーとし、`test_id` にイベント種別を格納する。
+`0xE0..0xE5` はsession/phase/decision/motion/end/failure、`0xE6` は壁切れ検出を表す。
+
+壁切れイベント (`0xE6`) の追加フィールドは以下のとおり。
+
+- `reserved_i32_1`: 監視区間開始から右壁切れ検出位置までの距離 (mm * 1000)。未検出は`-1`。
+- `reserved_i32_2`: 監視区間開始から左壁切れ検出位置までの距離 (mm * 1000)。未検出は`-1`。
+- `reserved_i32_3[15:0]`: 監視開始から検出までの時間 (ms)。
+- `reserved_i32_3[31:16]`: 監視区間の設定長 (mm * 10)。
+- `timestamp_ms`、`distance_mm`、`adc_fr/r/fl/l`: 検出イベントを記録した時点の時刻、累積走行距離、壁センサdelta。
+
+通常のdecision/motionログを3000動作分保持できる容量を優先するため、壁切れ詳細イベントは1走行240件まで記録する。
+超過件数は走行終了時の`[SEARCH-EVENT] ... wall_end=... dropped=...`に表示する。
+
 ### flags
 
 - bit0 (`0x0001`): スイッチ押下状態（押下時1）
@@ -168,16 +184,21 @@ typedef struct __attribute__((packed)) {
 #fw_git_dirty=...
 #fw_log_schema=0x00060000
 #search_event_wall_read=wall_read_fr,wall_read_r,wall_read_fl,wall_read_l are latest wall-snapshot deltas used for search map update; adc_fr/r/fl/l remain event-time snapshot deltas
-#wall_trace_observe=1
-#wall_trace_reserved_i32=delta_fr,delta_r,delta_fl,delta_l
+#wall_trace_observe=2
+#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l
 #wall_trace_reserved_u16_0=flags
 #wall_trace_reserved_u16_1=dist_q4_lr
+#wall_end_deriv=window=18,total=36,divisor=9,fall_threshold=200,confirm=2
 #mm_columns=timestamp_ms,seq,op_mode,op_case,op_sub,test_id,target_distance_mm,distance_mm,angle_mdeg,target_velocity_mm_s,real_velocity_mm_s,accel_velocity_mm_s,target_omega_mdps,real_omega_mdps,gyro_z_raw_mdps,target_angle_mdeg,accel_forward_mm_s2,encoder_l,encoder_r,motor_out_l,motor_out_r,adc_fr,adc_r,adc_fl,adc_l,adc_vbat,wall_read_fr,wall_read_r,wall_read_fl,wall_read_l,flags,reserved_i32_0,reserved_i32_1,reserved_i32_2,reserved_i32_3,reserved_u16_0,reserved_u16_1
 ```
 
 CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 
-`#wall_trace_observe=1` の場合、`reserved_u16_0` は以下のbitを持つ。
+`#wall_trace_observe=2` の場合、`adc_fr/r/fl/l` に同時刻の壁センサ差分値を保持し、
+`reserved_i32_0..3` には順に右窓微分、左窓微分、右検出時窓微分、左検出時窓微分を格納する。
+窓微分はF405と同じく、新旧各18サンプルの移動和の差を9で除した値である。
+
+`reserved_u16_0` は以下のbitを持つ。
 
 - bit0 (`0x0001`): front wall
 - bit1 (`0x0002`): right wall
@@ -189,7 +210,10 @@ CSV行は `#mm_columns` と同じ順序で、oldest→newest に出力する。
 - bit7 (`0x0080`): left wall-end detected
 - bit8 (`0x0100`): wall-end detection gate enabled
 - bit9 (`0x0200`): wall control active
+- bit10 (`0x0400`): F405互換窓微分とtrace observe v2フィールド配置
 - bit15 (`0x8000`): wall trace observe enabled
+
+bit8は通常の壁制御直進では立たず、F405の`WALL_END`と同様に壁切れ補正用の検出区間だけで立つ。
 
 `reserved_u16_1` は下位8bitに右壁切れ検出距離、上位8bitに左壁切れ検出距離を `distance_mm / 4` で格納する。
 

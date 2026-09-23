@@ -1,6 +1,8 @@
 #ifndef F413_NVM_DIAG_H_
 #define F413_NVM_DIAG_H_
 
+void f413_nvm_diag_run_calibration_dump_once(void);
+
 #include <stdbool.h>
 #include <stdint.h>
 

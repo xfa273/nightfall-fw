@@ -1,5 +1,9 @@
 # NVM機体識別ブロック 運用手順
 
+F413の新規機体登録は [F413_MACHINE_CONFIG.md](F413_MACHINE_CONFIG.md) の
+`f413_identity.py inspect / provision-empty` を優先する。MCU UID照合、空領域限定、
+全sector backup/readback付きで、消去せず初期登録する。以下は既存の低水準手順。
+
 この手順は、`tools/flashing/make_identity_block.py` と `tools/flashing/flash_uart` を使って、
 機体識別ブロックを予約領域へ書き込むための実運用手順です。
 

@@ -12,6 +12,7 @@ EVENT_NAMES = {
     0xE3: "motion_end",
     0xE4: "session_end",
     0xE5: "route_fail",
+    0xE6: "wall_end",
 }
 TARGET_NAMES = {
     0: "goal",
@@ -37,6 +38,7 @@ MOTION_NAMES = {
     4: "back_turn_180",
     5: "smooth_turn_l90",
     6: "final_stop",
+    7: "reverse_section",
 }
 PHASE_STATUS_NAMES = {
     1: "start",
@@ -48,6 +50,23 @@ ROUTE_FAIL_REASON_NAMES = {
     1: "max_actions",
     2: "no_current_step",
     3: "no_next_rel",
+    4: "map_save_guard",
+}
+ABORT_REASON_NAMES = {
+    0: "none",
+    1: "switch",
+    2: "wall_fault",
+    3: "encoder_fault",
+    4: "imu_fault",
+    5: "timeout",
+}
+FRONT_MATCH_STATUS_NAMES = {
+    0: "not_run",
+    1: "complete",
+    2: "relaxed",
+    3: "timeout",
+    4: "wall_lost",
+    5: "aborted",
 }
 
 
@@ -129,6 +148,28 @@ def _wall_read_text(row: dict[str, str]) -> str:
     return f" read_adc=FR/R/FL/L:{values[0]}/{values[1]}/{values[2]}/{values[3]}"
 
 
+def _adc_text(row: dict[str, str]) -> str:
+    return (
+        f" adc=FR/R/FL/L:{_i(row, 'adc_fr')}/{_i(row, 'adc_r')}/"
+        f"{_i(row, 'adc_fl')}/{_i(row, 'adc_l')}"
+    )
+
+
+def _front_match_text(row: dict[str, str]) -> str:
+    matches: list[str] = []
+    for index in (1, 2):
+        if not _i(row, f"event_front_match_{index}_present"):
+            continue
+        status = _i(row, f"event_front_match_{index}_status")
+        matches.append(
+            f"fm{index}={FRONT_MATCH_STATUS_NAMES.get(status, status)} "
+            f"dt={_i(row, f'event_front_match_{index}_duration_ms')}ms "
+            f"pos={_i(row, f'event_front_match_{index}_position_error_x1000') / 1000.0:.2f}mm "
+            f"yaw={_i(row, f'event_front_match_{index}_yaw_error_x1000') / 1000.0:.2f}mm"
+        )
+    return " ".join(matches)
+
+
 def _event_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return [
         row
@@ -152,14 +193,26 @@ def _detail(row: dict[str, str]) -> str:
         )
     if event_type == 0xE3:
         motion = MOTION_NAMES.get(_i(row, "event_motion_kind"), str(_i(row, "event_motion_kind")))
+        status = _i(row, "event_motion_status")
+        status_text = ABORT_REASON_NAMES.get(status, str(status))
+        front_match = _front_match_text(row)
+        args: list[str] = []
+        if not _i(row, "event_front_match_1_present"):
+            args.append(f"arg0={_i(row, 'event_arg0_x1000') / 1000.0:.3f}")
+        if not _i(row, "event_front_match_2_present"):
+            args.append(f"arg1={_i(row, 'event_arg1_x1000') / 1000.0:.3f}")
+        args_text = " ".join(args)
         return (
-            f"{motion} status={_i(row, 'event_motion_status')} "
-            f"dt={_i(row, 'event_motion_duration_ms')}ms arg0={_i(row, 'event_arg0_x1000') / 1000.0:.3f} "
-            f"arg1={_i(row, 'event_arg1_x1000') / 1000.0:.3f}{_wall_read_text(row)}"
+            f"{motion} status={status_text}({status}) "
+            f"dt={_i(row, 'event_motion_duration_ms')}ms {args_text} {front_match}"
+            f"{_wall_read_text(row)}"
         )
     if event_type == 0xE4:
+        abort_reason = _i(row, "reserved_i32_1")
+        abort_text = ABORT_REASON_NAMES.get(abort_reason, str(abort_reason))
         return (
-            f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')}"
+            f"completed={_i(row, 'event_completed')} route_failed={_i(row, 'event_route_failed')} "
+            f"abort={abort_text}({abort_reason})"
             f"{_wall_read_text(row)}"
         )
     if event_type == 0xE5:
@@ -167,6 +220,19 @@ def _detail(row: dict[str, str]) -> str:
         return (
             f"reason={reason} smap={_i(row, 'event_smap_step')} wall=0x{_i(row, 'event_wall_info'):04X} "
             f"cell=0x{_i(row, 'event_map_cell'):04X}{_wall_read_text(row)}"
+        )
+    if event_type == 0xE6:
+        right_x1000 = _i(row, "event_arg0_x1000", -1)
+        left_x1000 = _i(row, "event_arg1_x1000", -1)
+        sides = "".join(("R" if right_x1000 >= 0 else "", "L" if left_x1000 >= 0 else ""))
+        packed = _i(row, "reserved_i32_3") & 0xFFFFFFFF
+        segment_length_mm = ((packed >> 16) & 0xFFFF) / 10.0
+        right_text = f"{right_x1000 / 1000.0:.3f}" if right_x1000 >= 0 else "-"
+        left_text = f"{left_x1000 / 1000.0:.3f}" if left_x1000 >= 0 else "-"
+        return (
+            f"side={sides or '-'} segment_pos_mm=R:{right_text}/L:{left_text} "
+            f"dt={_i(row, 'event_motion_duration_ms')}ms segment={segment_length_mm:.1f}mm"
+            f"{_adc_text(row)}"
         )
     return f"param={_i(row, 'event_param_index')}"
 

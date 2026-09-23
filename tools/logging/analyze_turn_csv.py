@@ -120,6 +120,12 @@ def _settle_time_ms(records: list[TurnRecord], angles: list[float], target: floa
 
 
 def _infer_target(meta: dict[str, str]) -> Optional[float]:
+    # Per-run test ID comes from retained records; last_test_* is live RAM at dump time.
+    recorded_target = {str(ord("3")): -90.0, str(ord("4")): 90.0}.get(meta.get("#op_test_id", ""))
+    if recorded_target is not None:
+        return recorded_target
+    if meta.get("#fw_metadata_scope") == "dump_time":
+        return None
     test_id = meta.get("#last_test_id", "").strip()
     if test_id == "3":
         return -90.0
@@ -153,6 +159,8 @@ def _print_summary(path: Path, meta: dict[str, str], records: list[TurnRecord], 
     peak_negative = min(angles) if angles else 0.0
 
     print(f"[TURN-ANALYZE] file={path}")
+    if meta.get("#fw_metadata_scope") == "dump_time":
+        print("[TURN-ANALYZE] FW/last_test metadata describes dump time, not the retained run")
     for key in ("#fw_target", "#fw_machine_unit", "#last_test_id", "#last_test_status", "#last_test_angle_deg"):
         if key in meta:
             print(f"[TURN-ANALYZE] {key[1:]}={meta[key]}")

@@ -6,550 +6,232 @@
  */
 
 #include "global.h"
+#include "legacy_path_codec.h"
 
-void simplifyPath(void) {
-    static uint16_t simplifiedPath[ROUTE_MAX_LEN]; // 結果を格納するための配列
-    int currentIndex = 0; // simplifiedPathにおける現在のインデックス
-    int currentAction = path[0]; // 現在処理している動作
-    int count = 1;               // 現在の動作のカウント
-    int i = 1;
+#include <string.h>
 
-    while (path[i] != 0) {
-        if (path[i] == currentAction && currentAction == STRAIGHT) {
-            // 現在の動作が直進で続いている場合、カウントを増やす
-            count++;
-        } else {
-            // 直進以外の場合、または動作が変わった場合
-            if (currentAction == STRAIGHT) {
-                // 直進の場合、カウントを加えて結果配列に追加
-                simplifiedPath[currentIndex++] = currentAction + count * 2;
-            } else {
-                // 直進以外の場合はそのまま結果配列に追加
-                simplifiedPath[currentIndex++] = currentAction;
-            }
+static bool path_find_terminator(size_t *length)
+{
+    size_t index = 0U;
 
-            // 新しい動作の処理を開始
-            currentAction = path[i];
-            count = 1;
-        }
-        i++;
+    while (index < ROUTE_MAX_LEN && path[index] != 0U) {
+        index++;
     }
-
-    // 最後の動作を結果配列に追加
-    if (currentAction == STRAIGHT) {
-        simplifiedPath[currentIndex++] = currentAction + count * 2;
-    } else {
-        simplifiedPath[currentIndex++] = currentAction;
+    if (index == ROUTE_MAX_LEN) {
+        return false;
     }
-
-    // simplifiedPathをpathにコピー
-    for (int j = 0; j < currentIndex; j++) {
-        path[j] = simplifiedPath[j];
-    }
-
-    // pathの残りをクリア
-    for (int j = currentIndex; j < ROUTE_MAX_LEN; j++) {
-        path[j] = 0;
-    }
-
-    path[0] -= 1;
+    *length = index;
+    return true;
 }
 
-void convertLTurn() {
+static bool path_is_straight(uint16_t code)
+{
+    return code > STRAIGHT && code < TURN_R;
+}
+
+static bool path_emit_simplified(uint16_t *output,
+                                 size_t *output_length,
+                                 uint16_t action,
+                                 size_t count,
+                                 bool first_run)
+{
+    if (action != STRAIGHT) {
+        if (*output_length >= ROUTE_MAX_LEN - 1U) {
+            return false;
+        }
+        output[(*output_length)++] = action;
+        return true;
+    }
+
+    {
+        size_t half_steps = 2U * count;
+        if (first_run) {
+            /* first_sectionA already owns the first half section */
+            half_steps--;
+        }
+        while (half_steps != 0U) {
+            const size_t chunk = (half_steps > 99U) ? 99U : half_steps;
+            if (*output_length >= ROUTE_MAX_LEN - 1U) {
+                return false;
+            }
+            output[(*output_length)++] =
+                (uint16_t)(STRAIGHT + chunk);
+            half_steps -= chunk;
+        }
+    }
+    return true;
+}
+
+void simplifyPath(void)
+{
+    static uint16_t simplifiedPath[ROUTE_MAX_LEN];
+    size_t path_length;
+    size_t current_index = 0U;
+    size_t count = 1U;
+    size_t i;
+    uint16_t current_action;
+    bool first_run = true;
+
+    if (!path_find_terminator(&path_length) || path_length == 0U) {
+        return;
+    }
+
+    current_action = path[0];
+    for (i = 1U; i < path_length; i++) {
+        if (path[i] == current_action && current_action == STRAIGHT) {
+            count++;
+        } else {
+            if (!path_emit_simplified(simplifiedPath, &current_index,
+                                      current_action, count, first_run)) {
+                return;
+            }
+            first_run = false;
+            current_action = path[i];
+            count = 1U;
+        }
+    }
+    if (!path_emit_simplified(simplifiedPath, &current_index,
+                              current_action, count, first_run)) {
+        return;
+    }
+
+    memcpy(path, simplifiedPath, current_index * sizeof(path[0]));
+    memset(&path[current_index], 0,
+           (ROUTE_MAX_LEN - current_index) * sizeof(path[0]));
+
+}
+
+void convertLTurn(void)
+{
     static uint16_t convertedPath[ROUTE_MAX_LEN];
-    int i = 0;
-    int j = 0;
+    size_t path_length;
+    size_t i = 0U;
+    size_t j = 0U;
+    size_t output_length = 0U;
 
-    while (path[i] != 0) {
+    if (!path_find_terminator(&path_length)) {
+        return;
+    }
 
-        if (path[i] == 300 && path[i + 1] == 300) {
-            // 右旋回が2連続
-
-            if (path[i - 1] > 200 && path[i - 1] < 300 && path[i + 2] > 200 &&
-                path[i + 2] < 300) {
-                // 前後が直進
-                // 大回り判定
-
-                convertedPath[j - 1] -= 1;
-                convertedPath[j] = 502;
-                path[i + 2] -= 1;
-
+    while (i < path_length) {
+        if (path[i] == 300U && i + 1U < path_length &&
+            path[i + 1U] == 300U) {
+            if (i > 0U && j > 0U && i + 2U < path_length &&
+                path_is_straight(path[i - 1U]) &&
+                path_is_straight(path[i + 2U])) {
+                convertedPath[j - 1U]--;
+                convertedPath[j] = 502U;
+                path[i + 2U]--;
                 i++;
             } else {
-                // 通常右旋回
                 convertedPath[j] = path[i];
             }
-        } else if (path[i] == 400 && path[i + 1] == 400) {
-            // 左旋回が2連続
-
-            if (path[i - 1] > 200 && path[i - 1] < 300 && path[i + 2] > 200 &&
-                path[i + 2] < 300) {
-                // 前後が直進
-                // 大回り判定
-
-                convertedPath[j - 1] -= 1;
-                convertedPath[j] = 602;
-                path[i + 2] -= 1;
-
+        } else if (path[i] == 400U && i + 1U < path_length &&
+                   path[i + 1U] == 400U) {
+            if (i > 0U && j > 0U && i + 2U < path_length &&
+                path_is_straight(path[i - 1U]) &&
+                path_is_straight(path[i + 2U])) {
+                convertedPath[j - 1U]--;
+                convertedPath[j] = 602U;
+                path[i + 2U]--;
                 i++;
             } else {
-                // 通常左旋回
                 convertedPath[j] = path[i];
             }
-        } else if (path[i] == 300) {
-            // 右旋回
-
-            if (path[i - 1] > 200 && path[i - 1] < 300 && path[i + 1] > 200 &&
-                path[i + 1] < 300) {
-                // 前後が直進
-                // 大回り判定
-
-                convertedPath[j - 1] -= 1;
-                convertedPath[j] = 501;
-                path[i + 1] -= 1;
+        } else if (path[i] == 300U) {
+            if (i > 0U && j > 0U && i + 1U < path_length &&
+                path_is_straight(path[i - 1U]) &&
+                path_is_straight(path[i + 1U])) {
+                convertedPath[j - 1U]--;
+                convertedPath[j] = 501U;
+                path[i + 1U]--;
             } else {
-                // 通常右旋回
                 convertedPath[j] = path[i];
             }
-        } else if (path[i] == 400) {
-            // 左旋回
-
-            if (path[i - 1] > 200 && path[i - 1] < 300 && path[i + 1] > 200 &&
-                path[i + 1] < 300) {
-                // 前後が直進
-                // 大回り判定
-
-                convertedPath[j - 1] -= 1;
-                convertedPath[j] = 601;
-                path[i + 1] -= 1;
+        } else if (path[i] == 400U) {
+            if (i > 0U && j > 0U && i + 1U < path_length &&
+                path_is_straight(path[i - 1U]) &&
+                path_is_straight(path[i + 1U])) {
+                convertedPath[j - 1U]--;
+                convertedPath[j] = 601U;
+                path[i + 1U]--;
             } else {
-                // 通常左旋回
                 convertedPath[j] = path[i];
             }
         } else {
-            // 直進
             convertedPath[j] = path[i];
         }
-
         i++;
         j++;
     }
 
-    // convertedPathをpathにコピー
-    for (int k = 0; k < j; k++) {
-        path[k] = convertedPath[k];
-    }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    int count = 0;
-    int m, n;
-
-    // 値が200の要素を削除し、後ろの要素を前に詰める
-    for (m = 0; m < ROUTE_MAX_LEN - count; m++) {
-        if (path[m] == 200) {
-            for (n = m; n < (ROUTE_MAX_LEN - 1) - count; n++) {
-                path[n] = path[n + 1];
-            }
-            count++; // 削除した要素の数をインクリメント
-            m--; // 詰めた後の現在の位置にある新しい要素もチェックするためにデクリメント
+    /* A large turn may consume an entire S1 connector, encoded temporarily as 200. */
+    for (i = 0U; i < j; i++) {
+        if (convertedPath[i] != STRAIGHT) {
+            path[output_length++] = convertedPath[i];
         }
     }
+    memset(&path[output_length], 0,
+           (ROUTE_MAX_LEN - output_length) * sizeof(path[0]));
 }
 
-void normalizeStartLargeTurnException(void) {
-    // スタート直後に大回りターンが来ると、first_sectionA直後に
-    // 大回りターン速度まで加速する必要があり厳しいため、
-    // 先頭大回りのみ小回り+半区画直進へ置換する。
-    uint16_t small_turn = 0;
-    if (path[0] == 501) {
-        small_turn = 300;
-    } else if (path[0] == 601) {
-        // 制約上ほぼ到達しないが、安全側で対応
-        small_turn = 400;
+void normalizeStartLargeTurnException(void)
+{
+    uint16_t small_turn = 0U;
+    size_t end;
+    bool has_straight_after_turn;
+    size_t required_space;
+
+    if (path[0] == 501U) {
+        small_turn = 300U;
+    } else if (path[0] == 601U) {
+        small_turn = 400U;
     } else {
         return;
     }
 
-    int end = 0;
-    while (end < ROUTE_MAX_LEN && path[end] != 0) {
-        end++;
+    if (!path_find_terminator(&end)) {
+        return;
     }
-
-    bool has_straight_after_turn = (path[1] > 200 && path[1] < 300);
-
-    // 先頭S1を追加するために最低1要素の空きが必要
-    // 小回り直後に直進が無い場合はさらに1要素必要
-    int required_space = has_straight_after_turn ? 1 : 2;
+    has_straight_after_turn = path_is_straight(path[1]);
+    required_space = has_straight_after_turn ? 1U : 2U;
     if (end >= ROUTE_MAX_LEN - required_space) {
         return;
     }
 
-    // 小回り後の扱いは従来仕様:
-    // 直後が直進なら +S1（= +1）、直進でなければ S1 を挿入
     if (has_straight_after_turn) {
-        path[1] += 1;
+        path[1]++;
     }
-
-    // [L_TURN, ...] -> [S1, L_TURN, ...]
-    for (int i = end; i >= 0; i--) {
-        path[i + 1] = path[i];
+    for (size_t i = end + 1U; i > 0U; i--) {
+        path[i] = path[i - 1U];
     }
-
-    // [S1, L_TURN, ...] -> [S1, small_turn, ...]
-    path[0] = 201;
+    path[0] = 201U;
     path[1] = small_turn;
 
-    // 小回り直後に直進が無い場合のみ、S1 を挿入
     if (!has_straight_after_turn) {
         end++;
-        for (int i = end; i >= 2; i--) {
-            path[i + 1] = path[i];
+        for (size_t i = end + 1U; i > 2U; i--) {
+            path[i] = path[i - 1U];
         }
-        path[2] = 201;
+        path[2] = 201U;
     }
 }
 
-void convertDiagonal(void) {
+void convertDiagonal(void)
+{
     static uint16_t convertedPath[ROUTE_MAX_LEN];
-    int i = 0;
-    int j = 0;
+    const NfLegacyPathResult result = nf_legacy_path_normalize_diagonal(
+        path, ROUTE_MAX_LEN, convertedPath, ROUTE_MAX_LEN);
 
-    /* 小回りの開始の処理 */
-    while (path[i] != 0) {
-
-        if (path[i] >= 300 && path[i] < 400 && path[i - 1] < 300) {
-            // 右小回りの開始
-
-            if (path[i + 1] >= 300 && path[i + 1] < 400) {
-                // 右小回りx2
-
-                if (path[i - 1] - 200 > 1) {
-                    convertedPath[j - 1] -= 1; // 直前の直進を半区画縮める
-                    convertedPath[j] = 901; // 右斜め135°に変換
-                } else {
-                    // 直前がS1の場合は削除せず保持し、続きに135°入りを挿入
-                    convertedPath[j] = 901; // 右斜め135°に変換（直前の直進は保持）
-                }
-
-                i++; // 次の小回りとまとめたので次パスをスキップ
-            } else {
-                // 右小回りx1
-
-                if (path[i - 1] - 200 > 1) {
-                    convertedPath[j - 1] -= 1; // 直前の直進を半区画縮める
-                    convertedPath[j] = 701;     // 右斜め45°に変換
-                } else {
-                    // 直前がS1の場合は削除せず保持し、その後に45°入りを挿入
-                    convertedPath[j] = 701;     // 右斜め45°に変換（S1は保持）
-                }
-
-                // j--
-            }
-        } else if (path[i] >= 400 && path[i] < 500 && path[i - 1] < 300) {
-            // 左小回りの開始
-
-            if (path[i + 1] >= 400 && path[i + 1] < 500) {
-                // 左小回りx2
-
-                if (path[i - 1] - 200 > 1) {
-                    convertedPath[j - 1] -= 1; // 直前の直進を半区画縮める
-                    convertedPath[j] = 902; // 左斜め135°に変換
-                } else {
-                    // 直前がS1の場合は削除せず保持し、続きに135°入りを挿入
-                    convertedPath[j] = 902; // 左斜め135°に変換（直前の直進は保持）
-                }
-                i++; // 次の小回りとまとめたので次パスをスキップ
-            } else {
-                // 左小回りx1
-
-                if (path[i - 1] - 200 > 1) {
-                    convertedPath[j - 1] -= 1; // 直前の直進を半区画縮める
-                    convertedPath[j] = 702; // 左斜め45°に変換
-                } else {
-                    // 直前がS1の場合は削除せず保持し、その後に45°入りを挿入
-                    convertedPath[j] = 702; // 左斜め45°に変換（直前の直進は保持）
-                }
-                // j--
-            }
-        } else {
-            convertedPath[j] = path[i];
-        }
-
-        i++;
-        j++;
+    if (result.status != NF_LEGACY_PATH_OK) {
+        return;
     }
-
-    // convertedPathをpathにコピー
-    for (int k = 0; k < j; k++) {
-        path[k] = convertedPath[k];
+    memcpy(path, convertedPath,
+           (result.length + 1U) * sizeof(path[0]));
+    if (result.length + 1U < ROUTE_MAX_LEN) {
+        memset(&path[result.length + 1U], 0,
+               (ROUTE_MAX_LEN - result.length - 1U) * sizeof(path[0]));
     }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
-
-    // カウンタをリセット
-    i = 0;
-    j = 0;
-
-    /* 小回りの終了の処理 */
-    while (path[i] != 0) {
-
-        if (path[i] >= 300 && path[i] < 400 &&
-            (path[i + 1] < 300 || path[i + 1] > 500)) {
-            // 右小回りの終了
-
-            if (path[i - 1] >= 300 && path[i - 1] < 400) {
-                // 右小回りx2
-
-                convertedPath[j - 1] = 903; // 右斜め135°に変換
-                // 前の小回りとまとめたので1つ前のパスを上書き
-                j--;
-
-                if (path[i + 1] - 200 > 1) {
-                    convertedPath[j + 1] =
-                        path[i + 1] - 1; // 直後の直進を半区画縮める
-                    j++;
-
-                } else {
-                    // 直後がS1の場合は削除せず保持
-                    convertedPath[j + 1] = 201; // S1 を保持
-                    j++;
-                }
-                i++;
-
-            } else {
-                // 右小回りx1
-
-                convertedPath[j] = 703; // 右斜め45°に変換
-
-                if (path[i + 1] - 200 > 1) {
-                    convertedPath[j + 1] =
-                        path[i + 1] - 1; // 直後の直進を半区画縮める
-                    j++;
-
-                } else {
-                    // 直後がS1の場合
-                    // パターンが [703,201,701/702] のときは S1 を挟まず即座に斜め入りを出力して連結
-                    if (path[i + 2] == 701 || path[i + 2] == 702) {
-                        convertedPath[j + 1] = path[i + 2]; // 703 の直後に 701/702 を出力
-                        j += 2;   // 703 と 701/702 の2要素を書いた
-                        i += 3;   // 入力側から 703, S1, 701/702 を消費
-                        continue; // 次の入力要素から処理を再開
-                    } else {
-                        // それ以外はS1を保持
-                        convertedPath[j + 1] = 201; // S1 を保持
-                        j++;
-                    }
-                }
-                i++;
-            }
-        } else if (path[i] >= 400 && path[i] < 500 &&
-                   (path[i + 1] < 300 || path[i + 1] > 500)) {
-            // 左小回りの終了
-
-            if (path[i - 1] >= 400 && path[i - 1] < 500) {
-                // 左小回りx2
-
-                convertedPath[j - 1] = 904; // 左斜め135°に変換
-                // 前の小回りとまとめたので1つ前のパスを上書き
-                j--;
-
-                if (path[i + 1] - 200 > 1) {
-                    convertedPath[j + 1] =
-                        path[i + 1] - 1; // 直後の直進を半区画縮める
-                    j++;
-
-                } else {
-                    // 直後がS1の場合は削除せず保持
-                    convertedPath[j + 1] = 201; // S1 を保持
-                    j++;
-                }
-                i++;
-            } else {
-                // 左小回りx1
-
-                convertedPath[j] = 704; // 左斜め45°に変換
-
-                if (path[i + 1] - 200 > 1) {
-                    convertedPath[j + 1] =
-                        path[i + 1] - 1; // 直後の直進を半区画縮める
-                    j++;
-
-                } else {
-                    // 直後がS1の場合
-                    // パターンが [704,201,701/702] のときは S1 を挟まず即座に斜め入りを出力して連結
-                    if (path[i + 2] == 701 || path[i + 2] == 702) {
-                        convertedPath[j + 1] = path[i + 2]; // 704 の直後に 701/702 を出力
-                        j += 2;   // 704 と 701/702 の2要素を書いた
-                        i += 3;   // 入力側から 704, S1, 701/702 を消費
-                        continue; // 次の入力要素から処理を再開
-                    } else {
-                        // それ以外はS1を保持
-                        convertedPath[j + 1] = 201; // S1 を保持
-                        j++;
-                    }
-                }
-                i++;
-            }
-        } else {
-            // 非該当（直進など）はそのままコピー
-            convertedPath[j] = path[i];
-        }
-
-        i++;
-        j++;
-    }
-
-    // convertedPathをpathにコピー
-    for (int k = 0; k < j; k++) {
-        path[k] = convertedPath[k];
-    }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
-
-    // カウンタをリセット
-    i = 0;
-    j = 0;
-
-    /* V90の処理 */
-    while (path[i] != 0) {
-
-        if (path[i] >= 300 && path[i] < 400 && path[i + 1] >= 300 &&
-            path[i + 1] < 400) {
-            // 右小回りの連続
-
-            convertedPath[j] = 801; // 右V90に変換
-            i++; // 次の小回りとまとめたので次パスをスキップ
-
-        } else if (path[i] >= 400 && path[i] < 500 && path[i + 1] >= 400 &&
-                   path[i + 1] < 500) {
-            // 左小回りの連続
-
-            convertedPath[j] = 802; // 左V90に変換
-            i++; // 次の小回りとまとめたので次パスをスキップ
-
-        } else {
-            convertedPath[j] = path[i];
-        }
-
-        i++;
-        j++;
-    }
-
-    // convertedPathをpathにコピー
-    for (int k = 0; k < j; k++) {
-        path[k] = convertedPath[k];
-    }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
-
-    // カウンタをリセット
-    i = 0;
-    j = 0;
-
-    /* 斜め直進の処理 */
-    while (path[i] != 0) {
-
-        if (path[i] >= 300 && path[i] < 500) {
-            // 小回り
-
-            convertedPath[j] = 1001; // 斜め直進に変換
-
-        } else {
-            convertedPath[j] = path[i];
-        }
-
-        i++;
-        j++;
-    }
-
-    // convertedPathをpathにコピー
-    for (int k = 0; k < j; k++) {
-        path[k] = convertedPath[k];
-    }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
-
-    // カウンタをリセット
-    i = 0;
-    j = 0;
-
-    int result_index = 0; // convertedPathのインデックス
-    int sum = 0;          // 連続した1000以上の要素の積算値
-    int in_sequence = 0;  // 1000以上の連続のフラグ
-
-    /* 斜め直進を繋いでまとめる処理 */
-    while (path[i] != 0) {
-        if (path[i] >= 1000) {
-            // 1000以上の連続が始まった場合
-            if (!in_sequence) {
-                in_sequence = 1;
-                sum = 0; // 積算値をリセット
-            }
-            sum += path[i] - 1000; // 1000を引いた値を積算
-        } else {
-            // 1000未満の要素に達した場合
-            if (in_sequence) {
-                // 連続が終わったときに積算値をconvertedPathに格納
-                convertedPath[result_index++] = sum + 1000;
-                j++;
-                in_sequence = 0;
-            }
-            convertedPath[result_index++] = path[i];
-            j++;
-        }
-        i++;
-    }
-
-    // convertedPathをpathにコピー
-    for (int k = 0; k < ROUTE_MAX_LEN; k++) {
-        path[k] = convertedPath[k];
-    }
-
-    // pathの残りをクリア
-    for (int l = j; l < ROUTE_MAX_LEN; l++) {
-        path[l] = 0;
-    }
-
-    for (int i = 0; i < ROUTE_MAX_LEN && path[i] != 0; i++) {
-        printf("%d ", path[i]);
-    }
-    printf("\n");
 }
 
-// makePath()は削除済み - 経路導出はsolver_build_path()を使用
+/* makePath() was removed; route derivation uses solver_build_path(). */

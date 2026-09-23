@@ -10,6 +10,17 @@
 #define F413_DIAG_TEST_TRACE_BYTES (32U)
 #define F413_DIAG_TEST_TRACE_OFFSET (0x100U)
 
+bool f413_diag_require_nvm_writes(void)
+{
+#if NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS
+  trace_printf("[NVM-GUARD] WARNING destructive diagnostic maintenance build\r\n");
+  return true;
+#else
+  trace_printf("[NVM-GUARD] REFUSED diagnostic writes disabled; calibration/map/trace preserved\r\n");
+  return false;
+#endif
+}
+
 static void f413_diag_fill_expected_sensor_params(nvm_sensor_params_t* out)
 {
   if (out == NULL)
@@ -60,6 +71,8 @@ static void f413_diag_fill_expected_trace_bytes(uint8_t* out, uint32_t count)
 
 bool f413_diag_run_distance_nvm_test(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return false; }
+
   static const float x_fl[3] = {230.0f, 420.0f, 680.0f};
   static const float y_fl[3] = {180.0f, 360.0f, 540.0f};
   static const float x_fr[3] = {235.0f, 425.0f, 685.0f};
@@ -74,18 +87,31 @@ bool f413_diag_run_distance_nvm_test(void)
     return false;
   }
 
-  if (!nvm_params_distance_load_and_apply())
+  uint8_t readback[16U + 18U * sizeof(float)];
+  if (nvm_read(NVM_AREA_DISTANCE_PARAMS, 0U, readback, sizeof(readback)) != NVM_STATUS_OK ||
+      memcmp(readback + 16U, x_fl, sizeof(x_fl)) != 0 ||
+      memcmp(readback + 28U, y_fl, sizeof(y_fl)) != 0 ||
+      memcmp(readback + 40U, x_fr, sizeof(x_fr)) != 0 ||
+      memcmp(readback + 52U, y_fr, sizeof(y_fr)) != 0 ||
+      memcmp(readback + 64U, x_fsum, sizeof(x_fsum)) != 0 ||
+      memcmp(readback + 76U, y_fsum, sizeof(y_fsum)) != 0)
   {
-    trace_printf("[NVM-TEST][Distance] load_and_apply: FAIL\r\n");
+    trace_printf("[NVM-TEST][Distance] readback: FAIL\r\n");
     return false;
   }
-
-  trace_printf("[NVM-TEST][Distance] save/load_and_apply: PASS\r\n");
+  if (nvm_params_distance_load_and_apply())
+  {
+    trace_printf("[NVM-TEST][Distance] FAIL(test fixture accepted as calibration)\r\n");
+    return false;
+  }
+  trace_printf("[NVM-TEST][Distance] save/readback: PASS; diagnostic fixture not applied\r\n");
   return true;
 }
 
 bool f413_diag_run_sensor_nvm_test(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return false; }
+
   nvm_sensor_params_t save_blob;
   nvm_sensor_params_t load_blob;
   HAL_StatusTypeDef st;
@@ -125,6 +151,8 @@ bool f413_diag_run_sensor_nvm_test(void)
 
 bool f413_diag_run_maze_nvm_test(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return false; }
+
   uint16_t save_cells[F413_DIAG_TEST_MAZE_CELLS];
   uint16_t load_cells[F413_DIAG_TEST_MAZE_CELLS];
   HAL_StatusTypeDef st;
@@ -235,6 +263,8 @@ bool f413_diag_verify_maze_nvm_load_only(void)
 
 bool f413_diag_run_trace_log_nvm_test(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return false; }
+
   uint8_t expected[F413_DIAG_TEST_TRACE_BYTES];
   uint8_t loaded[F413_DIAG_TEST_TRACE_BYTES];
   nvm_status_t st;
@@ -303,6 +333,8 @@ bool f413_diag_verify_trace_log_nvm_load_only(void)
 
 void f413_diag_run_all_nvm_tests(void)
 {
+  if (!f413_diag_require_nvm_writes()) { return; }
+
   bool distance_ok = f413_diag_run_distance_nvm_test();
   bool sensor_ok = f413_diag_run_sensor_nvm_test();
   bool maze_ok = f413_diag_run_maze_nvm_test();

@@ -80,7 +80,13 @@ set(NIGHTFALL_TRACE_F413_USE_UART "1" CACHE STRING "Use USART1 trace output on S
 set_property(CACHE NIGHTFALL_TRACE_F413_USE_UART PROPERTY STRINGS "0" "1")
 set(NIGHTFALL_F413_UART_BAUD_RATE "921600" CACHE STRING "USART1 baud rate for STM32F413 UART command and trace output")
 set_property(CACHE NIGHTFALL_F413_UART_BAUD_RATE PROPERTY STRINGS "115200" "460800" "921600" "1000000")
+option(NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS "DANGER: enable F413 diagnostic writes that overwrite real calibration/map/trace data" OFF)
+if(NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS)
+    message(WARNING "F413 destructive NVM diagnostics ENABLED: maintenance build only; back up all NVM first")
+endif()
 set(NIGHTFALL_STM32F413_APPLICATION_SRC
+    ${CMAKE_SOURCE_DIR}/common/route/legacy_path_codec.c
+    ${CMAKE_SOURCE_DIR}/common/route/motion_time.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_identity.c
     ${CMAKE_SOURCE_DIR}/nvm/nvm_params.c
@@ -91,12 +97,15 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/solver_params.c
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/path.c
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Src/maze_grid.c
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder/shortest_run_params_split.c
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder/search_run_params_split.c
+    ${CMAKE_SOURCE_DIR}/params/f413_preorder/profile.c
+    ${CMAKE_SOURCE_DIR}/params/mini_r3_0/profile.c
+    ${CMAKE_SOURCE_DIR}/board/f413/f413_machine.c
+    ${CMAKE_SOURCE_DIR}/board/f413/f413_registry.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_solver_bridge.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_control_tune_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_diag.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_front_match.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_hw_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_imu_diag.c
@@ -110,15 +119,19 @@ set(NIGHTFALL_STM32F413_APPLICATION_SRC
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_mode_shortest.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_nvm_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_op_ui.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_route_preview.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_route_motion_table.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_path_run.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_features.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_run_session.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_search_step.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_test_run.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_compact.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_diag.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_log.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_trace_sample.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_uart_cli.c
+    ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_distance.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_runtime.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/f413_wall_sensor.c
     ${NIGHTFALL_STM32F413_ROOT}/Core/Src/main.c
@@ -155,8 +168,9 @@ set(NIGHTFALL_STM32F413_DRIVERS_SRC
 
 add_library(stm32cubemx_stm32f413 INTERFACE)
 target_include_directories(stm32cubemx_stm32f413 INTERFACE
+    ${CMAKE_SOURCE_DIR}/board/f413
     ${CMAKE_SOURCE_DIR}/nvm
-    ${CMAKE_SOURCE_DIR}/params/f413_preorder
+    ${CMAKE_SOURCE_DIR}/board/f413/runtime
     ${CMAKE_SOURCE_DIR}/platform/trace
     ${NIGHTFALL_STM32F413_ROOT}/Core/Inc
     ${CMAKE_SOURCE_DIR}/platform/stm32f405/Core/Inc
@@ -171,6 +185,7 @@ target_compile_definitions(stm32cubemx_stm32f413 INTERFACE
     NIGHTFALL_TRACE_F413_USE_UART=${NIGHTFALL_TRACE_F413_USE_UART}
     NIGHTFALL_F413_UART_BAUD_RATE=${NIGHTFALL_F413_UART_BAUD_RATE}
     NIGHTFALL_F413_REAL_RUN_PATH_ENABLED=1
+    NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS=$<BOOL:${NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS}>
     $<$<CONFIG:Debug>:DEBUG>
 )
 
@@ -192,6 +207,7 @@ function(nightfall_apply_stm32f405 target)
 endfunction()
 
 function(nightfall_apply_stm32f413 target)
+    target_compile_definitions(${target} PRIVATE NIGHTFALL_F413_RUNTIME_CONFIG=1)
     target_sources(${target} PRIVATE ${NIGHTFALL_STM32F413_APPLICATION_SRC})
     target_link_libraries(${target} PRIVATE stm32cubemx_stm32f413 stm32_drivers_stm32f413)
     target_link_options(${target} PRIVATE

@@ -49,6 +49,7 @@
 #include "f413_trace_diag.h"
 #include "f413_trace_sample.h"
 #include "f413_uart_cli.h"
+#include "f413_wall_distance.h"
 #include "f413_wall_runtime.h"
 #include "f413_wall_sensor.h"
 #include "params.h"
@@ -65,6 +66,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES       (512U)
+#define NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS   (1U)
+#define NIGHTFALL_WALL_DISTANCE_AVG_TIMEOUT_MS    (2000U)
+#define NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS      (10U)
+#define NIGHTFALL_WALL_END_BEEP_PERIOD            (1800U)
+#define NIGHTFALL_WALL_END_BEEP_MS                (20U)
 
 /* USER CODE END PD */
 
@@ -143,7 +151,7 @@ static void MX_USART1_UART_Init(void);
 #define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
-#define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM (90.0f)
+#define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM ((float)(DIST_HALF_SEC * 2.0))
 #define NIGHTFALL_F413_SEARCH_STEP_TURN_DEG (90.0f)
 #define NIGHTFALL_F413_TUNE_TIMEOUT_MS (1500U)
 #define NIGHTFALL_F413_SENSOR_CAL_SETTLE_MS (1500U)
@@ -268,6 +276,15 @@ static void nightfall_trace_log_auto_tick_sample(void)
 
 static void nightfall_trace_log_on_run_start(void)
 {
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    /* Keep the driver in standby for the complete optical START token. */
+    f413_ctrl_stop();
+    trace_printf("[RUN-START] control stopped, motor standby during optical START\r\n");
+    trace_printf("[VIDEO-SYNC] optical START fixed-slot SHORT token\r\n");
+    f413_hw_emit_video_sync_start_pattern();
+    HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
+  }
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
   f413_trace_log_auto_start();
 }
@@ -277,6 +294,11 @@ static void nightfall_trace_log_on_run_stop(void)
   trace_printf("[TRACE-LOG] run-hook: stop tail=%u ms\r\n",
                (unsigned int)F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
   f413_trace_log_auto_stop_after_tail(F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT);
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    trace_printf("[VIDEO-SYNC] optical STOP fixed-slot LONG token\r\n");
+    f413_hw_emit_video_sync_stop_pattern();
+  }
 }
 
 static void nightfall_op_led_show_mode(uint8_t mode)
@@ -383,6 +405,143 @@ static void nightfall_run_wall_sensor_test_once(void)
                (unsigned int)WALL_BASE_R,
                (unsigned int)WALL_BASE_L);
   trace_printf("[HW-TEST][Wall] PASS(measure done)\r\n");
+}
+
+static void nightfall_run_wall_distance_test(bool verbose)
+{
+  f413_wall_sensor_average_t avg;
+  f413_wall_distance_snapshot_t dist;
+  bool average_ok;
+  bool convert_ok = false;
+
+  if (verbose)
+  {
+    trace_printf("\r\n[Wall sensor LUT] Measuring %u samples. Please wait...\r\n",
+                 (unsigned int)NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES);
+  }
+  average_ok = f413_wall_sensor_read_average(&avg,
+                                             NIGHTFALL_WALL_DISTANCE_AVG_SAMPLES,
+                                             NIGHTFALL_WALL_DISTANCE_AVG_INTERVAL_MS,
+                                             NIGHTFALL_WALL_DISTANCE_AVG_TIMEOUT_MS);
+  if (average_ok)
+  {
+    convert_ok = f413_wall_distance_convert_snapshot(&avg.mean, &dist);
+  }
+
+  (void)f413_wall_sensor_pause_async();
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  if (!average_ok)
+  {
+    trace_printf("[HW-TEST][WallDist] FAIL(average samples=%u elapsed=%lu ms)\r\n",
+                 (unsigned int)avg.sample_count,
+                 (unsigned long)avg.elapsed_ms);
+    HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+    (void)f413_wall_sensor_resume_async();
+    return;
+  }
+  if (!convert_ok)
+  {
+    trace_printf("[HW-TEST][WallDist] FAIL(convert average)\r\n");
+    HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+    (void)f413_wall_sensor_resume_async();
+    return;
+  }
+
+  if (!verbose)
+  {
+    trace_printf("FR: %ld  FL: %ld  R: %ld  L: %ld\r\n",
+                 (long)dist.adc.fr_delta,
+                 (long)dist.adc.fl_delta,
+                 (long)dist.adc.r_delta,
+                 (long)dist.adc.l_delta);
+    HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+    (void)f413_wall_sensor_resume_async();
+    return;
+  }
+
+  trace_printf("\r\n========== WALL SENSOR LUT SAMPLE ==========\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("Average: %u samples, %lu ms\r\n",
+               (unsigned int)avg.sample_count,
+               (unsigned long)avg.elapsed_ms);
+  trace_printf("Front distance reference: %s; alignment target=%.2f mm\r\n",
+               f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
+               (double)F_ALIGN_TARGET_MM);
+  trace_printf("Side distance reference: %s; side control=ADC delta\r\n",
+               f413_machine_side_distance_body_centre() ? "body_centre" : "legacy_profile");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nCOPY INTO CALIBRATION CSV\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  columns : distance_mm,fr_delta,fl_delta,r_delta,l_delta\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  row     : DIST_MM,%ld,%ld,%ld,%ld\r\n",
+               (long)dist.adc.fr_delta,
+               (long)dist.adc.fl_delta,
+               (long)dist.adc.r_delta,
+               (long)dist.adc.l_delta);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  Replace DIST_MM with the fixture distance.\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nChannel     Mean    StdDev       Min       Max\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("FR      %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.fr_delta,
+               (double)avg.fr_delta_stddev,
+               (long)avg.fr_delta_min,
+               (long)avg.fr_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("FL      %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.fl_delta,
+               (double)avg.fl_delta_stddev,
+               (long)avg.fl_delta_min,
+               (long)avg.fl_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("R       %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.r_delta,
+               (double)avg.r_delta_stddev,
+               (long)avg.r_delta_min,
+               (long)avg.r_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("L       %8ld  %8.2f  %8ld  %8ld\r\n",
+               (long)dist.adc.l_delta,
+               (double)avg.l_delta_stddev,
+               (long)avg.l_delta_min,
+               (long)avg.l_delta_max);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("\r\nDistance preview [mm]\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  LUT/control FR=%.2f  FL=%.2f  FRONT_SUM=%.2f\r\n",
+               (double)dist.fr_mm_unwarped,
+               (double)dist.fl_mm_unwarped,
+               (double)dist.front_sum_mm_unwarped);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  NVM-warped FR=%.2f  FL=%.2f  FRONT_SUM=%.2f  R=%.2f  L=%.2f\r\n",
+               (double)dist.fr_mm,
+               (double)dist.fl_mm,
+               (double)dist.front_sum_mm,
+               (double)dist.r_mm,
+               (double)dist.l_mm);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("  params=%u  valid=0x%02X  extrap=0x%02X  saturated=0x%02X  low=0x%02X\r\n",
+               (unsigned int)dist.distance_params_loaded,
+               (unsigned int)dist.valid_mask,
+               (unsigned int)dist.extrapolated_mask,
+               (unsigned int)dist.saturated_mask,
+               (unsigned int)dist.below_signal_mask);
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  trace_printf("============================================\r\n\r\n");
+  HAL_Delay(NIGHTFALL_WALL_DISTANCE_TRACE_GAP_MS);
+  (void)f413_wall_sensor_resume_async();
+}
+
+static void nightfall_run_wall_distance_test_once(void)
+{
+  nightfall_run_wall_distance_test(false);
+}
+
+static void nightfall_run_wall_distance_debug_test_once(void)
+{
+  nightfall_run_wall_distance_test(true);
 }
 
 static void nightfall_run_wall_sensor_monitor_once(void)
@@ -864,6 +1023,12 @@ static void nightfall_wall_control_apply_straight(void)
   (void)f413_wall_runtime_poll_wall_end(true);
 }
 
+static void nightfall_search_wall_end_notify(void)
+{
+  f413_hw_buzzer_beep_async(NIGHTFALL_WALL_END_BEEP_PERIOD,
+                            NIGHTFALL_WALL_END_BEEP_MS);
+}
+
 static bool nightfall_run_session_wall_sensor_ok(void)
 {
   nightfall_wall_sensor_snapshot_t wall;
@@ -947,6 +1112,10 @@ int main(void)
   {
     g_boot_identity_status = NVM_STATUS_HW_ERROR;
   }
+  {
+    const uint32_t uid[3] = {HAL_GetUIDw0(), HAL_GetUIDw1(), HAL_GetUIDw2()};
+    (void)f413_machine_boot(g_boot_identity_status, &g_boot_identity, uid);
+  }
 
   /* USER CODE END Init */
 
@@ -954,6 +1123,19 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+
+  if (f413_machine_status() != F413_MACHINE_OK)
+  {
+    /* The diagnostic UART pin pair is reserved across F413 boards. Do not
+       initialize board GPIO, motor/fan timers, SPI devices, ADC or run UI. */
+    MX_USART1_UART_Init();
+    trace_init();
+    trace_printf("[SAFE] machine=%s identity_status=%d GIT=%s DIRTY=%d uid=%08lX-%08lX-%08lX\r\n",
+        f413_machine_status_name(f413_machine_status()), (int)g_boot_identity_status,
+        FW_GIT_SHA, FW_GIT_DIRTY, (unsigned long)HAL_GetUIDw0(),
+        (unsigned long)HAL_GetUIDw1(), (unsigned long)HAL_GetUIDw2());
+    while (1) { HAL_Delay(1000U); }
+  }
 
   /* USER CODE END SysInit */
 
@@ -974,7 +1156,11 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   trace_init();
+  __HAL_TIM_SET_PRESCALER(&htim2, f413_machine_hardware()->motor_pwm_prescaler);
+  __HAL_TIM_SET_COUNTER(&htim2, 0U);
+  (void)HAL_TIM_GenerateEvent(&htim2, TIM_EVENTSOURCE_UPDATE);
   f413_run_features_reset();
+  f413_wall_distance_init();
   {
     const f413_trace_sample_config_t trace_sample_config = {
       HAL_GetTick,
@@ -1068,8 +1254,11 @@ int main(void)
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
       nightfall_trace_log_set_mode_flags,
+      f413_trace_log_set_period_ms,
+      f413_trace_sample_set_front_match,
       nightfall_trace_log_auto_step,
       nightfall_wall_control_apply_straight,
+      nightfall_search_wall_end_notify,
       NIGHTFALL_F413_PATH_TIMEOUT_MS,
       NIGHTFALL_F413_PATH_COAST_MS,
       NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S,
@@ -1112,6 +1301,8 @@ int main(void)
   {
     const f413_uart_cli_config_t uart_cli_config = {
       nightfall_run_wall_sensor_test_once,
+      nightfall_run_wall_distance_test_once,
+      nightfall_run_wall_distance_debug_test_once,
       nightfall_op_run_tune_sub_after_delay,
       nightfall_trace_log_on_run_start,
       nightfall_trace_log_on_run_stop,
@@ -1126,7 +1317,26 @@ int main(void)
   trace_printf("\r\n[NIGHTFALL] STM32F413 bring-up\r\n");
   trace_printf("FW=%s TARGET=%s BUILD=%s\r\n", FW_VERSION, FW_TARGET, FW_BUILD_TYPE);
   trace_printf("GIT=%s DIRTY=%d\r\n", FW_GIT_SHA, FW_GIT_DIRTY);
+  trace_printf("[MACHINE] status=%s profile=0x%08lX tune=%s L_fwd_in2=%u R_fwd_in2=%u enc=%d,%d pwm_psc=%u half_cell_mm=%ld fan=%u\r\n",
+      f413_machine_status_name(f413_machine_status()),
+      (unsigned long)f413_machine_profile_id(), f413_machine_profile_name(),
+      f413_machine_hardware()->left_forward_in2_high,
+      f413_machine_hardware()->right_forward_in2_high,
+      f413_machine_hardware()->encoder_sign_l, f413_machine_hardware()->encoder_sign_r,
+      f413_machine_hardware()->motor_pwm_prescaler, (long)DIST_HALF_SEC,
+      f413_machine_has(F413_CAP_FAN));
+  trace_printf("[MACHINE] imu_forward_reg=0x%02X sign=%d offset_mm=%.2f battery_divider=%.6f\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg,
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm,
+      (double)f413_machine_hardware()->battery_divider_ratio);
   nightfall_boot_buzzer_pattern();
+
+  trace_printf("[MACHINE] front_distance_reference=%s align_target_mm=%.2f too_close_mm=%.2f\r\n",
+      f413_machine_front_distance_body_centre() ? "body_centre" : "legacy_profile",
+      (double)F_ALIGN_TARGET_MM, (double)F_ALIGN_TOO_CLOSE_MM);
+  trace_printf("[MACHINE] side_distance_reference=%s side_control=adc_delta\r\n",
+      f413_machine_side_distance_body_centre() ? "body_centre" : "legacy_profile");
 
   if (g_boot_identity_status == NVM_STATUS_OK)
   {
@@ -1147,11 +1357,6 @@ int main(void)
                  (unsigned int)g_boot_identity.hw_rev_major,
                  (unsigned int)g_boot_identity.hw_rev_minor,
                  (unsigned long)g_boot_identity.unit_serial);
-  }
-  else if ((g_boot_identity_status == NVM_STATUS_NOT_FOUND) ||
-           (g_boot_identity_status == NVM_STATUS_UNSUPPORTED))
-  {
-    trace_printf("ID status=%d (continue boot)\r\n", (int)g_boot_identity_status);
   }
   else
   {
@@ -1957,6 +2162,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM5)
   {
     f413_ctrl_tick();
+    f413_hw_buzzer_tick_1ms();
     nightfall_trace_log_auto_tick_sample();
   }
   else if (htim->Instance == TIM6)

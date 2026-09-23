@@ -8,6 +8,21 @@ Builds and host-only tools are always allowed. Live hardware actions are allowed
 
 If a command can move motors, spin the fan, erase/write persistent NVM, overwrite identity/calibration/map data, or run search/shortest motion, stop and make sure the current user request explicitly calls for that class of operation.
 
+### Destructive diagnostic build guard (2026-09-06)
+
+Normal F413 builds now reject `a/d/s/m/t/q/Q/r/k` before diagnostic writes or
+trace-abort side effects. These old bring-up commands overwrite real sensor,
+distance, maze or trace data; they are **not** normal calibration commands.
+`NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS=OFF` is the default CMake setting.
+Only a separately authorized maintenance build with full affected-NVM backups
+may opt in. No UART unlock exists. OP calibration and normal run logging are
+unchanged and retain their existing authorization requirements.
+
+**Older or opted-in firmware is still destructive.** Do not send these letters
+to test protection until a successful protected build/flash and its boot
+`[NVM-GUARD] LOCKED` marker are verified. Even then record the guard HIL and
+compare before/after calibration blobs. See `tools/hil/run_f413_nvm_guard_tests.sh`.
+
 ## Green: Host-Only
 
 Allowed freely:
@@ -36,13 +51,30 @@ python3 tools/logging/serial_terminal.py --list
 UART commands that are normally non-motor:
 
 - `p`: switch raw check
+- `|`: read-only NVM status and raw calibration blob prefixes (256 bytes per area)
 - `w`: wall sensor snapshot
+- `n`: wall sensor distance-conversion snapshot
+- `:`: detailed wall sensor distance-conversion snapshot
 - `W`: wall-end monitor
 - `i`: IMU WHO_AM_I
 - `I`: manual IMU angle observation
 - `c`: IMU acceleration observation
 - `[`: search state / FRAM map consistency display
 - `@`: FRAM search map dump
+- `K`: KERI #1--#5 plus execution-gated small90 shortest-route preview
+  (`F413 mode2/case8`,
+  diagnostic 16x16 centre 2x2 goal independent of the compiled exploration
+  goal).  It prefers a successfully loaded FRAM maze and, only if that read
+  fails, uses a pinned 16MM2014CX fixture from program Flash.  UART identifies
+  the source; the command only derives/prints a route and never seeds or saves
+  the fixture to FRAM.
+- `+`: KERI #1--#5 plus execution-gated small90 saved-run route preview for
+  F413 mode2 cases 6--9.
+  It requires the saved FRAM maze, uses the compiled `GOAL1..9` set and each
+  case's PC-generated motion-time table, and prints the executable legacy path
+  for every case.  The small90 fallback is admitted only when a nominal
+  run-up/stoppable terminal is unavailable.  It never starts the path runner,
+  motors, fan, trace capture, or an NVM write.
 - `v`: bounded trace CSV dump
 - `V`: full trace CSV dump; use only when the capture waits for the firmware dump-completion marker
 - OP UI `mode9 case7`: non-destructive NVM status
@@ -100,7 +132,13 @@ Require explicit confirmation that the machine is lifted and secured, or that th
 Motor/fan/motion commands include:
 
 - `o` / `0`: motor driver pulse
+- `~`: continuous left/right forward motor break-in at 50% duty; reset is the
+  only software stop path
 - `6`, `7`, `8`, `9`: single-side motor and encoder checks
+- `{`: lifted/secured-only 7..9V bench sweep; 6/12/18% single-side and
+  12% dual-side forward/reverse, each 300ms drive + 300ms disabled coast;
+  aborts on stop switch, missing/stale ADC, supply outside nominal 7..9V, or
+  wrong/stalled encoder. Never use on 3S. This is not a floor gain-tuning test.
 - `y`: motor trace session
 - `1`, `2`, `3`, `4`, `5`: closed-loop motion tests
 - `F`: armed button-run test

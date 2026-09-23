@@ -28,15 +28,18 @@ extern "C" {
 /* 初期化（TIM5割り込み開始） — main初期化後に1回呼ぶ */
 void f413_ctrl_init(void);
 
-/* 制御開始/停止 */
+/* 制御開始/停止。startはPWMを開始してMOTOR_STBYを上げるため、走行前信号の完了後に呼ぶ。 */
 void f413_ctrl_start(void);
 void f413_ctrl_stop(void);
 
 /* 目標値設定（走行中に随時呼ぶ） */
 void f413_ctrl_set_velocity(float velocity_mm_s);
+/* Clear pushing effort before wall recovery; preserve odometry and IMU state. */
+void f413_ctrl_clear_velocity_feedback(void);
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
                                     float target_velocity_mm_s,
                                     float distance_mm);
+bool f413_ctrl_stop_profile_complete(void);
 void f413_ctrl_set_omega(float omega_deg_s);
 void f413_ctrl_start_omega_profile(float signed_omega_peak_deg_s,
                                    float accel_time_s,
@@ -77,6 +80,7 @@ float f413_ctrl_get_accel_forward(void);
 float f413_ctrl_get_gyro_z_raw(void);
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void);
 bool f413_ctrl_velocity_accel_comp_control_enabled(void);
+bool f413_ctrl_velocity_accel_comp_turn_control_enabled(void);
 int16_t f413_ctrl_get_motor_out_l(void);
 int16_t f413_ctrl_get_motor_out_r(void);
 int16_t f413_ctrl_get_log_encoder_delta_l(void);

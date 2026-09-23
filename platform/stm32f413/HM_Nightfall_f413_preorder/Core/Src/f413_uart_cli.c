@@ -2,16 +2,23 @@
 
 #include <stddef.h>
 
+#include "f413_control.h"
+#include "f413_diag.h"
+#include "f413_hw.h"
 #include "f413_hw_diag.h"
 #include "f413_imu_diag.h"
 #include "f413_nvm_diag.h"
 #include "f413_op_ui.h"
+#include "f413_path_run.h"
+#include "f413_route_preview.h"
 #include "f413_search_step.h"
 #include "f413_test_run.h"
 #include "f413_trace_diag.h"
+#include "f413_trace_log.h"
 #include "f413_trace_sample.h"
 #include "f413_wall_runtime.h"
 #include "trace.h"
+#include "params.h"
 
 static f413_uart_cli_config_t g_uart_cli_config;
 
@@ -28,16 +35,24 @@ void f413_uart_cli_config(const f413_uart_cli_config_t* config)
 
 void f413_uart_cli_print_help(void)
 {
+#if NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS
+  trace_printf("[NVM-GUARD] WARNING destructive diagnostic writes ENABLED (maintenance only)\r\n");
+#else
+  trace_printf("[NVM-GUARD] LOCKED a/d/s/m/t/q/Q/r/k disabled; normal OP calibration and run logging unchanged\r\n");
+#endif
   trace_printf("[NVM-TEST] commands: h=help, a=save+load all, A=load-only all\r\n");
   trace_printf("[NVM-TEST] d/s/m/t=save+load, D/S/M/T=load-only verify\r\n");
   trace_printf("[TRACE-LOG] q=format, r=append sample, R=dump latest, v/V=dump csv(256/all), </>=dump bin(256/all), k=selftest, u=run-start hook, U=run-stop hook\r\n");
+  trace_printf("[ROUTE]    K=read-only/non-motor strict KERI #1..#5 route preview (FRAM maze, diagnostic center-2x2 goal, F413 mode2/case8)\r\n");
+  trace_printf("[ROUTE]    +=read-only/non-motor saved-FRAM route preview (compiled goals, F413 mode2/cases6..9)\r\n");
   trace_printf("[RUN-TEST]  x=idle-run-session(1000ms), y=motor-run-session(short), z=search-entry(solver/fallback), j=shortest-entry(solver/fallback)\r\n");
-  trace_printf("[HW-TEST]  w=wall, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, e=encoder, l=led30s, g=smoke+trace\r\n");
+  trace_printf("[HW-TEST]  w=wall, n=wall-distance, :=wall-distance-debug, W=wall-end, O=search-map, G=search-preview, B=search-reset, N=search-step, [/]/@=state/clear/dump, p=switch, i=imu, I=imu-angle, c=imu-accel, b=buzzer, o/0=motor, ~=L/R-break-in-forward-50pct(reset-stop), e=encoder, l=led30s, ;=video-start3, ,=video-stop4, g=smoke+trace\r\n");
   trace_printf("[TEST]     1=S3straight, 2=S6straight, 3=R90turn, 4=L90turn, 5=S3+R90+S3, F=arm for button; OP mode9/case0/sub0-9=control tune\r\n");
   trace_printf("[TEST]     OP mode2-7/case0/sub0-9=path-code tests\r\n");
   trace_printf("[TUNE]     !/\"/#/$/%%/^/&/*/(/)=OP mode9 case0 sub0..9 shortcut, then V=dump CSV\r\n");
   trace_printf("[HW-ENC]  6=L-motor-fwd, 7=R-motor-fwd, 8=L-motor-rev, 9=R-motor-rev (open-loop+enc)\r\n");
-  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump latest full log(bin), case8=side base save, case9=sensor offset save\r\n");
+  trace_printf("[BENCH]   {=MOTOR lifted/secured 7..9V bounded sweep; |=read-only calibration/status dump\r\n");
+  trace_printf("[OP-UI]   F405-compatible select: PUSH increments 0..9 at each level, FR wall only=enter, mode9 case0=tune, case5=dump all retained logs(bin), case8=side base save, case9=sensor offset save\r\n");
   trace_printf("[OP-UART] P=PUSH increment, E=FR enter; reset via ST-LINK software reset\r\n");
 }
 
@@ -116,6 +131,20 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       }
       break;
 
+    case 'n':
+      if (g_uart_cli_config.run_wall_distance_test != NULL)
+      {
+        g_uart_cli_config.run_wall_distance_test();
+      }
+      break;
+
+    case ':':
+      if (g_uart_cli_config.run_wall_distance_debug_test != NULL)
+      {
+        g_uart_cli_config.run_wall_distance_debug_test();
+      }
+      break;
+
     case 'W':
       f413_wall_runtime_run_end_monitor_once();
       break;
@@ -150,8 +179,22 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       f413_hw_diag_run_motor_driver_test_once();
       break;
 
+    case '~':
+      f413_hw_diag_start_motor_break_in_continuous();
+      break;
+
     case 'e':
       f413_hw_diag_run_encoder_test_once();
+      break;
+
+    case '{':
+      f413_hw_diag_run_lifted_sweep_once();
+      break;
+
+    case '|':
+      if (!f413_ctrl_is_running() && !f413_trace_log_auto_is_enabled() && !f413_test_run_is_armed())
+        f413_nvm_diag_run_calibration_dump_once();
+      else trace_printf("[CAL-DUMP] REFUSED busy\r\n");
       break;
 
     case 'E':
@@ -257,8 +300,49 @@ void f413_uart_cli_handle_command(uint8_t cmd)
       break;
 
     case 'k':
-    case 'K':
       f413_trace_diag_run_selftest_once();
+      break;
+
+    case 'K':
+      if (f413_ctrl_is_running() || f413_trace_log_auto_is_enabled() ||
+          f413_test_run_is_armed())
+      {
+        trace_printf("[KERI-PREVIEW] REFUSED control/trace/test-arm active\r\n");
+      }
+      else
+      {
+        f413_route_preview_run_once();
+      }
+      break;
+
+    case '+':
+      if (f413_ctrl_is_running() || f413_trace_log_auto_is_enabled() ||
+          f413_test_run_is_armed())
+      {
+        trace_printf("[KERI-RUN-SWEEP] REFUSED control/trace/test-arm active\r\n");
+      }
+      else
+      {
+        trace_printf("[KERI-RUN-SWEEP] START mode=2 cases=6..9 "
+                     "source=FRAM goals=compiled motors=off nvm=read-only\r\n");
+        for (uint8_t case_index = 6U; case_index <= 9U; case_index++)
+        {
+          trace_printf("[KERI-RUN-SWEEP] CASE %u begin\r\n",
+                       (unsigned int)case_index);
+          if (f413_route_build_mode2_path(case_index))
+          {
+            trace_printf("[KERI-RUN-SWEEP] CASE %u path follows\r\n",
+                         (unsigned int)case_index);
+            f413_path_run_print_preview();
+          }
+          else
+          {
+            trace_printf("[KERI-RUN-SWEEP] CASE %u failed\r\n",
+                         (unsigned int)case_index);
+          }
+        }
+        trace_printf("[KERI-RUN-SWEEP] END motors=off nvm=read-only\r\n");
+      }
       break;
 
     case 'u':
@@ -278,6 +362,30 @@ void f413_uart_cli_handle_command(uint8_t cmd)
     case 'l':
     case 'L':
       f413_hw_diag_run_led_test_once();
+      break;
+
+    case ';':
+      if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+      {
+        trace_printf("[VIDEO-SYNC] optical TEST START fixed-slot SHORT token\r\n");
+        f413_hw_emit_video_sync_start_pattern();
+      }
+      else
+      {
+        trace_printf("[VIDEO-SYNC] disabled: ENABLE_AUTO_VIDEO_CAPTURE=0\r\n");
+      }
+      break;
+
+    case ',':
+      if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+      {
+        trace_printf("[VIDEO-SYNC] optical TEST STOP fixed-slot LONG token\r\n");
+        f413_hw_emit_video_sync_stop_pattern();
+      }
+      else
+      {
+        trace_printf("[VIDEO-SYNC] disabled: ENABLE_AUTO_VIDEO_CAPTURE=0\r\n");
+      }
       break;
 
     case 'g':

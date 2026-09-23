@@ -1,6 +1,7 @@
 #include "f413_imu_diag.h"
 
 #include "f413_control.h"
+#include "f413_machine.h"
 #include "main.h"
 #include "params.h"
 #include "trace.h"
@@ -8,6 +9,7 @@
 #define F413_IMU_DIAG_WHO_AM_I_REG (0x0FU)
 #define F413_IMU_DIAG_WHO_AM_I_EXPECTED (0x6BU)
 #define F413_IMU_DIAG_CTRL1_XL (0x10U)
+#define F413_IMU_DIAG_CTRL1_XL_833HZ_16G (0x74U)
 #define F413_IMU_DIAG_CTRL2_G (0x11U)
 #define F413_IMU_DIAG_CTRL3_C (0x12U)
 #define F413_IMU_DIAG_OUTZ_G_L (0x26U)
@@ -15,7 +17,7 @@
 #define F413_IMU_DIAG_OUTY_XL_L (0x2AU)
 #define F413_IMU_DIAG_OUTZ_XL_L (0x2CU)
 #define F413_IMU_DIAG_GYRO_SENSITIVITY (0.14f)
-#define F413_IMU_DIAG_ACCEL_SENS_MG (0.488f)
+#define F413_IMU_DIAG_ACCEL_SENS_MG (0.488f) /* FS=±16g */
 #define F413_IMU_DIAG_GRAVITY_MM_S2 (9.80665f)
 #define F413_IMU_DIAG_MANUAL_OFFSET_SAMPLES (500U)
 #define F413_IMU_DIAG_MANUAL_TEST_MS (8000U)
@@ -24,10 +26,30 @@
 
 extern SPI_HandleTypeDef hspi2;
 
+static uint32_t f413_imu_diag_lock_spi2(void)
+{
+  const uint32_t tim5_irq_enabled = NVIC_GetEnableIRQ(TIM5_IRQn);
+
+  /* TIM5 owns SPI2 while sampling the IMU. Keep diagnostic transfers atomic
+     so the 1 kHz control interrupt cannot enter between CS and HAL SPI setup. */
+  HAL_NVIC_DisableIRQ(TIM5_IRQn);
+  return tim5_irq_enabled;
+}
+
+static void f413_imu_diag_unlock_spi2(uint32_t tim5_irq_enabled)
+{
+  if (tim5_irq_enabled != 0U)
+  {
+    HAL_NVIC_EnableIRQ(TIM5_IRQn);
+  }
+}
+
 bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
 {
   uint8_t tx[2];
   uint8_t rx[2] = {0U, 0U};
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   if (out == NULL)
   {
@@ -37,15 +59,18 @@ bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
   tx[0] = (uint8_t)(reg | 0x80U);
   tx[1] = 0x00U;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2U, 20U) != HAL_OK)
+  status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 2U, 20U);
+  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
+
+  if (status != HAL_OK)
   {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     return false;
   }
-  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
 
   *out = rx[1];
   return true;
@@ -54,27 +79,29 @@ bool f413_imu_diag_read_reg(uint8_t reg, uint8_t* out)
 static bool f413_imu_diag_write_reg(uint8_t reg, uint8_t val)
 {
   uint8_t tx[2];
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   tx[0] = (uint8_t)(reg & 0x7FU);
   tx[1] = val;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_Transmit(&hspi2, tx, 2U, 20U) != HAL_OK)
-  {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
-    return false;
-  }
+  status = HAL_SPI_Transmit(&hspi2, tx, 2U, 20U);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
 
-  return true;
+  return status == HAL_OK;
 }
 
 static bool f413_imu_diag_read_i16_le(uint8_t reg_l, int16_t* out)
 {
   uint8_t tx[3];
   uint8_t rx[3] = {0U, 0U, 0U};
+  uint32_t tim5_irq_enabled;
+  HAL_StatusTypeDef status;
 
   if (out == NULL)
   {
@@ -85,15 +112,18 @@ static bool f413_imu_diag_read_i16_le(uint8_t reg_l, int16_t* out)
   tx[1] = 0x00U;
   tx[2] = 0x00U;
 
+  tim5_irq_enabled = f413_imu_diag_lock_spi2();
   HAL_GPIO_WritePin(FRAM_CS_GPIO_Port, FRAM_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_RESET);
-  if (HAL_SPI_TransmitReceive(&hspi2, tx, rx, 3U, 20U) != HAL_OK)
+  status = HAL_SPI_TransmitReceive(&hspi2, tx, rx, 3U, 20U);
+  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
+  f413_imu_diag_unlock_spi2(tim5_irq_enabled);
+
+  if (status != HAL_OK)
   {
-    HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
     return false;
   }
-  HAL_GPIO_WritePin(IMU_CS_GPIO_Port, IMU_CS_Pin, GPIO_PIN_SET);
 
   *out = (int16_t)((uint16_t)rx[2] << 8U | (uint16_t)rx[1]);
   return true;
@@ -126,7 +156,8 @@ static bool f413_imu_diag_config_for_gyro(void)
   }
   HAL_Delay(10U);
 
-  if (!f413_imu_diag_write_reg(F413_IMU_DIAG_CTRL1_XL, 0x7CU))
+  if (!f413_imu_diag_write_reg(F413_IMU_DIAG_CTRL1_XL,
+                               F413_IMU_DIAG_CTRL1_XL_833HZ_16G))
   {
     trace_printf("[HW-TEST][IMU-ANGLE] FAIL(write CTRL1_XL)\r\n");
     return false;
@@ -234,7 +265,10 @@ void f413_imu_diag_run_accel_test_once(void)
 
   trace_printf("[HW-TEST][IMU-ACCEL] offset ax=%.1f ay=%.1f az=%.1f mm/s2\r\n",
                (double)off_x, (double)off_y, (double)off_z);
-  trace_printf("[HW-TEST][IMU-ACCEL] start: move forward/backward; control forward axis is Y sign +\r\n");
+  trace_printf("[HW-TEST][IMU-ACCEL] start: sensor XYZ below; control forward=%c sign=%d offset=%.2fmm\r\n",
+      f413_machine_hardware()->imu_forward_accel_reg == 0x28U ? 'X' : 'Y',
+      f413_machine_hardware()->imu_forward_accel_sign,
+      (double)f413_machine_hardware()->imu_forward_offset_mm);
 
   start_ms = HAL_GetTick();
   last_ms = start_ms;
@@ -359,6 +393,7 @@ void f413_imu_diag_run_manual_turn_test_once(void)
 void f413_imu_diag_run_whoami_test_once(void)
 {
   uint8_t who = 0U;
+  uint8_t xl = 0U, gyro = 0U, ctrl3 = 0U;
   if (!f413_imu_diag_read_reg(F413_IMU_DIAG_WHO_AM_I_REG, &who))
   {
     trace_printf("[HW-TEST][IMU] FAIL(spi)\r\n");
@@ -369,4 +404,12 @@ void f413_imu_diag_run_whoami_test_once(void)
                (unsigned int)who,
                (unsigned int)F413_IMU_DIAG_WHO_AM_I_EXPECTED,
                (who == F413_IMU_DIAG_WHO_AM_I_EXPECTED) ? "PASS" : "FAIL");
+  if (f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL1_XL, &xl) &&
+      f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL2_G, &gyro) &&
+      f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL3_C, &ctrl3))
+  {
+    trace_printf("[HW-TEST][IMU] CTRL1_XL=0x%02X CTRL2_G=0x%02X CTRL3_C=0x%02X expected=74,71,44 => %s\r\n",
+        xl, gyro, ctrl3, (xl == 0x74U && gyro == 0x71U && ctrl3 == 0x44U) ? "PASS" : "FAIL");
+  }
+  else trace_printf("[HW-TEST][IMU] FAIL(config read)\r\n");
 }

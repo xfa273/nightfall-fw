@@ -9,8 +9,8 @@ This is the practical entry point for Codex working on `nightfall-fw`.
 The repository is in a transition state:
 
 - F405 stable machines: `mini_r1_0`, `classic_r1_0`
-- F413 active machine: `mini_r2_0`, still using code/profile names such as `f413_preorder`
-- Desired architecture: one binary per MCU family, runtime machine identity from NVM
+- F413 active machines: `mini_r2_0_unit001` and `mini_r3_0_unit001`
+- F413 uses one binary with runtime model/unit selection from NVM; see `docs/F413_MACHINE_CONFIG.md`
 - Current F413 state: buildable, hardware bring-up done, FRAM logging present, closed-loop/test entries present, tuning and real maze validation still active
 
 ## Start Here Each Session
@@ -66,7 +66,7 @@ These are known and should be cleaned up opportunistically:
 - Some older docs still say `Cascade`; current primary agent is Codex.
 - Some older docs mention trace schema v1/v2/v3/v4/v5; current `nvm_trace_log.h` defines schema `0x00060000` and CSV `nightfall_trace_csv_v6`.
 - Some names still use `f413_preorder`; official machine naming is `mini_r2_0`.
-- `board/` mostly contains future placeholders. Most board/hardware behavior still lives under `platform/`.
+- `board/f413/` owns model/unit settings and runtime parameter selection. Platform pin initialization is still the shared mini r2/r3 layout; future differing layouts must be explicitly implemented.
 - F405 is not yet a true single MCU-family runtime-selected binary; `nightfall_stm32f405` is currently an aggregate target for `nightfall_mini_r1_0` and `nightfall_classic_r1_0`.
 
 ## What To Preserve

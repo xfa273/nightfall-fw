@@ -47,7 +47,82 @@ The safe helper uses lowercase `v` for bounded trace dumps. Use uppercase `V`
 only when an explicit task needs a full FRAM trace dump and the capture window
 is sized to wait for the firmware dump-completion marker.
 
+## Search distance accounting
+
+```sh
+sh tools/hil/run_f413_search_distance_tests.sh
+```
+
+Host-only ASan/UBSan regression using the production search primitives with both
+F413 machine profiles. An ideal 1 ms follower injects sensing, logging and
+decision delays; consecutive cell endpoints and the final stop must retain the
+nominal total distance. It also checks acceleration, both smooth turns, wall-end
+and front-wall corrections, wall alignment, spot turns, reverse/restart, aborts
+and odometry resets. This validates command geometry, not real motor tracking.
+See `docs/F413_SEARCH_DISTANCE_ACCOUNTING.md` for the log evidence and floor check.
+
 ## Motor checks
+
+Host-only PWM mapping regression (does not access hardware):
+
+```sh
+sh tools/hil/run_f413_motor_pwm_tests.sh
+```
+
+F413 now selects wiring from NVM model/unit identity. mini r2 unit001 uses its
+original wiring; mini r3 unit001 has the left leads swapped. The old compiler
+polarity override is rejected. This regression tests both electrical mappings,
+zero duty, and saturation over all 16-bit inputs.
+
+`sh tools/hil/run_f413_machine_tests.sh` checks runtime selection, independent
+unit profiles, mini/classic namespace separation, invalid-ID fail-closed behavior,
+and immutable boot settings, all 160 scalar aliases, coordinate bounds, and the
+16x16 common-binary maze contract. See `docs/F413_MACHINE_CONFIG.md` for operation.
+
+`python3 tools/hil/run_f413_runtime_goal_tests.py` compiles both real profiles in a
+temporary directory with different starts/goals and non-unit sensor gains. It
+runs the production search goal/BFS, shortest-route goal loader, shared shortest
+solver, parameter tables and sensor converter under ASan/UBSan. The r3 (0,8)
+fixture must produce a straight-only path. It never edits the tuning files.
+
+`python3 tools/hil/check_f413_param_coverage.py` rejects missing scalar/alias
+connections and runs automatically with the F413 build. To also audit actual
+application preprocessing, pass `--compile-commands build/Debug/compile_commands.json`.
+
+It also checks the r3 -Y IMU mounting, the rearward-offset acceleration correction,
+and each board's battery divider without changing r2 geometry or polarity.
+
+Read-only calibration-loader regression with ASan/UBSan (no hardware access):
+
+```sh
+sh tools/hil/run_f413_nvm_params_tests.sh
+```
+
+This verifies rejection of the exact historical dummy distance-calibration blob,
+preservation of real calibration and stored bytes, and CRC/schema failure paths.
+On hardware, `|` dumps both calibration prefixes without writing them; `{` is a
+separate lifted-only 7..9V bounded motor sweep, not part of the safe helper.
+See `docs/MINI_R3_COMMISSIONING.md` for limits and r3 commissioning results.
+
+Destructive-diagnostic guard regression (ASan/UBSan, host memory only):
+
+```sh
+sh tools/hil/run_f413_nvm_guard_tests.sh
+```
+
+Normal F413 builds refuse `a/d/s/m/t/q/Q/r/k` at the diagnostic entry points,
+including non-UART callers. They cannot replace calibration/maze data with test
+fixtures or format/append synthetic trace records. Read-only dumps, intentional
+OP calibration, normal maze saves and run logging are unchanged. The test checks
+all protected entry points and every mock NVM byte, and verifies ordinary sensor
+calibration still saves/loads with the guard locked.
+
+The CMake option `NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS` defaults to `OFF`.
+Only an explicitly authorized **separate maintenance build**, after backing up
+all affected NVM, may enable it. There is no one-character UART unlock. Never
+leave that build on a calibrated robot; rebuild/reflash with the option `OFF`
+and verify the `[NVM-GUARD] LOCKED` boot message. Host tests exercise the opt-in
+path in memory; they do not enable it in the firmware build cache.
 
 This safe helper intentionally does not automate motor commands. When the
 machine is lifted and secured, use the UART commands from `docs/ai/HIL_SAFETY.md`

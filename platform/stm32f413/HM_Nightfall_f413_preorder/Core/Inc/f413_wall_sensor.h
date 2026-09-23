@@ -9,6 +9,7 @@
 
 typedef struct
 {
+  uint32_t sample_sequence;
   uint16_t fr_off;
   uint16_t r_off;
   uint16_t fl_off;
@@ -29,10 +30,35 @@ typedef struct
   bool saturated;
 } f413_wall_sensor_snapshot_t;
 
+typedef struct
+{
+  f413_wall_sensor_snapshot_t mean;
+  uint16_t sample_count;
+  uint32_t elapsed_ms;
+  float fr_delta_stddev;
+  float r_delta_stddev;
+  float fl_delta_stddev;
+  float l_delta_stddev;
+  int32_t fr_delta_min;
+  int32_t r_delta_min;
+  int32_t fl_delta_min;
+  int32_t l_delta_min;
+  int32_t fr_delta_max;
+  int32_t r_delta_max;
+  int32_t fl_delta_max;
+  int32_t l_delta_max;
+} f413_wall_sensor_average_t;
+
 bool f413_wall_sensor_start_async(void);
+bool f413_wall_sensor_pause_async(void);
+bool f413_wall_sensor_resume_async(void);
 void f413_wall_sensor_tim6_tick(void);
 void f413_wall_sensor_adc_complete(ADC_HandleTypeDef* hadc);
 bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t* out);
+bool f413_wall_sensor_read_average(f413_wall_sensor_average_t* out,
+                                   uint16_t sample_count,
+                                   uint32_t sample_interval_ms,
+                                   uint32_t timeout_ms);
 bool f413_wall_sensor_read_adc_raw(uint16_t* fr, uint16_t* r, uint16_t* fl, uint16_t* l, uint16_t* vbat);
 void f413_wall_sensor_get_control_base(uint16_t* base_l, uint16_t* base_r, uint16_t* base_f);
 HAL_StatusTypeDef f413_wall_sensor_calibrate_offsets_and_save(uint16_t sample_count,

@@ -1,61 +1,63 @@
 #include "shortest_run_params.h"
 #include "solver_params.h"
 
+/* F413 mini has no suction fan. Turn values remain per-mode tuning data. */
+
 // ========================= Mode 2 =========================
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 8920.0f,
+    .alpha_turn90 = 10200.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 10.0f,
-    .dist_offset_out = 14.2f,
-    .val_offset_in = 630.0f,
+    .dist_offset_in = 7.2f,
+    .dist_offset_out = 11.1f,
+    .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
     // Large 90deg
     .velocity_l_turn_90 = 500.0f,
-    .alpha_l_turn_90    = 4700.0f,  // 4250
-    .angle_l_turn_90    = 89.0f,
-    .dist_l_turn_in_90  = 5.0f,
-    .dist_l_turn_out_90 = 15.0f,
+    .alpha_l_turn_90    = 6900.0f,
+    .angle_l_turn_90    = 90.0f,
+    .dist_l_turn_in_90  = 13.0f,
+    .dist_l_turn_out_90 = 20.5f,
     // Large 180deg
     .velocity_l_turn_180= 500.0f,
-    .alpha_l_turn_180   = 4697.0f,  // 4640
-    .angle_l_turn_180   = 179.0f,
-    .dist_l_turn_in_180 = 12.0f,
-    .dist_l_turn_out_180= 19.0f,
+    .alpha_l_turn_180   = 4150.0f,
+    .angle_l_turn_180   = 180.0f,
+    .dist_l_turn_in_180 = 6.5f,
+    .dist_l_turn_out_180= 20.0f,
     // 45deg In
     .velocity_turn45in   = 500.0f,
-    .alpha_turn45in      = 6360.0f,
+    .alpha_turn45in      = 11200.0f,
     .angle_turn45in      = 44.6f,
-    .dist_turn45in_in    = 0.0f,
-    .dist_turn45in_out   = 28.0f,
+    .dist_turn45in_in    = 5.5f,
+    .dist_turn45in_out   = 29.6f,
     // 45deg Out
     .velocity_turn45out= 500.0f,
-    .alpha_turn45out   = 7700.0f,
+    .alpha_turn45out   = 9500.0f,
     .angle_turn45out   = 44.4f,
-    .dist_turn45out_in = 15.0f,
-    .dist_turn45out_out= 0.0f,
+    .dist_turn45out_in = 24.0f,
+    .dist_turn45out_out= 6.0f,
     // V90deg
     .velocity_turnV90  = 500.0f,
-    .alpha_turnV90     = 12200.0f,  // 10492
+    .alpha_turnV90     = 17500.0f,
     .angle_turnV90     = 88.3f,
-    .dist_turnV90_in   = 2.0f,
-    .dist_turnV90_out  = 28.0f,
+    .dist_turnV90_in   = 17.0f,
+    .dist_turnV90_out  = 17.0f,
     // 135deg In
     .velocity_turn135in = 500.0f,
-    .alpha_turn135in    = 6888.0f,  // 6938
+    .alpha_turn135in    = 8300.0f,
     .angle_turn135in    = 133.9f,
-    .dist_turn135in_in  = 9.0f,
-    .dist_turn135in_out = 17.0f,
+    .dist_turn135in_in  = 17.0f,
+    .dist_turn135in_out = 22.0f,
     // 135deg Out
     .velocity_turn135out = 500.0f,
-    .alpha_turn135out    = 6950.0f,
+    .alpha_turn135out    = 8500.0f,
     .angle_turn135out    = 133.3f,
-    .dist_turn135out_in  = 0.0f,
-    .dist_turn135out_out = 12.0f,
+    .dist_turn135out_in  = 12.5f,
+    .dist_turn135out_out = 22.0f,
     // Fan
-    .fan_power          = 1000,
+    .fan_power          = 0,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
@@ -99,29 +101,29 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     },
     // case6 (index 5)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 2000.0f,
+        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 1000.0f,
         .velocity_straight = 1000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 2000.0f,
-        .velocity_d_straight = 1000.0f
+        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 1000.0f,
+        .velocity_d_straight = 800.0f
     },
     // case7 (index 6)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3500.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
+        .acceleration_straight = 3000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 1250.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 3000.0f,
-        .velocity_d_straight = 3000.0f
+        .acceleration_d_straight = 3000.0f, .acceleration_d_straight_dash = 3000.0f,
+        .velocity_d_straight = 900.0f
     },
     // case8 (index 7): diagonal use
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 2000.0f,
-        .velocity_straight = 1000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
+        .acceleration_straight = 4000.0f, .acceleration_straight_dash = 4000.0f,
+        .velocity_straight = 1500.0f, .kp_wall = 0.025f, .kp_diagonal = 0.2f,
         .solver_profile = SOLVER_PROFILE_STANDARD,
-        .acceleration_d_straight = 1000.0f, .acceleration_d_straight_dash = 2000.0f,
+        .acceleration_d_straight = 4000.0f, .acceleration_d_straight_dash = 4000.0f,
         .velocity_d_straight = 1000.0f
     },
-    // case9 (index 8): diagonal use (same as case8 initial)
+    // case9 (index 8): legacy high-speed comparison profile
     {
         .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3500.0f,
         .velocity_straight = 4000.0f, .kp_wall = 0.025f, .kp_diagonal = 0.05f,
@@ -186,7 +188,7 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .dist_turn135out_in = 0.0f,
     .dist_turn135out_out = 26.0f,
     // Fan
-    .fan_power = 1000,
+    .fan_power = 0,
     // Makepath
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
@@ -315,7 +317,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .angle_turn135out = 135.0f,
     .dist_turn135out_in = 2.0f,
     .dist_turn135out_out = 10.0f,
-    .fan_power = 1000,
+    .fan_power = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -414,7 +416,7 @@ const ShortestRunModeParams_t shortestRunModeParams5 = {
     .angle_l_turn_180 = 180.0f,
     .dist_l_turn_in_180 = 0.0f,
     .dist_l_turn_out_180 = 4.0f,
-    .fan_power = 1000,
+    .fan_power = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -513,7 +515,7 @@ const ShortestRunModeParams_t shortestRunModeParams6 = {
     .angle_l_turn_180 = 174.3f,
     .dist_l_turn_in_180 = 5.0f,
     .dist_l_turn_out_180= 50.0f,
-    .fan_power          = 1000,
+    .fan_power          = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
@@ -609,7 +611,7 @@ const ShortestRunModeParams_t shortestRunModeParams7 = {
     .angle_l_turn_180   = 176.8f,
     .dist_l_turn_in_180 = 0.0f,
     .dist_l_turn_out_180= 169.0f,
-    .fan_power          = 200,
+    .fan_power          = 0,
     .makepath_type_case3 = 0,
     .makepath_type_case47= 1,
     // 壁切れ検出しきい値（ヒステリシス付き）

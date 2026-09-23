@@ -3,6 +3,18 @@
 
 #include <stdbool.h>
 
+/* Bring-up fixtures overwrite real calibration/map/trace data. No UART unlock:
+ * enabling them requires a separate, explicitly opted-in maintenance build. */
+#ifndef NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS
+#define NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS 0
+#endif
+#if (NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS != 0) && \
+    (NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS != 1)
+#error "NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS must be 0 or 1"
+#endif
+
+bool f413_diag_require_nvm_writes(void);
+
 bool f413_diag_run_distance_nvm_test(void);
 bool f413_diag_run_sensor_nvm_test(void);
 bool f413_diag_run_maze_nvm_test(void);

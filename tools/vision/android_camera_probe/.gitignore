@@ -1,0 +1,8 @@
+.gradle/
+build/
+app/build/
+local.properties
+reports/
+camera_capabilities.json
+*_camera_capabilities.json
+.camera-capabilities.*

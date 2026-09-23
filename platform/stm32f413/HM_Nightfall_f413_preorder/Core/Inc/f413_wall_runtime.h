@@ -7,7 +7,20 @@
 #include "f413_wall_sensor.h"
 #include "nvm_trace_log.h"
 
-#define F413_WALL_RUNTIME_TRACE_VERSION (1U)
+#define F413_WALL_RUNTIME_TRACE_VERSION              (2U)
+#define F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES   (18U)
+#define F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES   (36U)
+#define F413_WALL_RUNTIME_END_DERIV_DIVISOR          (9)
+#define F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES  (2U)
+
+#if F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES != \
+    (2U * F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES)
+#error "wall-end derivative buffer must contain two equal windows"
+#endif
+
+#if F413_WALL_RUNTIME_END_DERIV_DIVISOR <= 0
+#error "wall-end derivative divisor must be positive"
+#endif
 
 typedef bool (*f413_wall_runtime_snapshot_fn)(f413_wall_sensor_snapshot_t* out);
 typedef void (*f413_wall_runtime_delay_fn)(uint32_t ms);
@@ -24,10 +37,16 @@ typedef struct {
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config);
 void f413_wall_runtime_end_clear(void);
+void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
+                                               uint16_t right_low,
+                                               uint16_t left_high,
+                                               uint16_t left_low);
+void f413_wall_runtime_reset_wall_end_thresholds(void);
 void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal);
 void f413_wall_runtime_control_clear(void);
 float f413_wall_runtime_latest_error(void);
 void f413_wall_runtime_control_apply(bool straight_gate);
+void f413_wall_runtime_poll_straight(bool wall_control_gate);
 bool f413_wall_runtime_poll_wall_end(bool straight_gate);
 void f413_wall_runtime_poll_diagonal(bool diagonal_gate);
 bool f413_wall_runtime_wall_end_detected(float* right_dist_mm, float* left_dist_mm);

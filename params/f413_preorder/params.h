@@ -8,18 +8,23 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "f413pre-t0.1"
+#define PARAMS_TUNE_VERSION "f413pre-search-distance-t0.3"
 
 /*============================================================
     各種定数（パラメータ）設定
 ============================================================*/
+/* 自動撮影: 0=OFF（手動調整）、1=ON（開始/終了LED信号と撮影用待機）。 */
+#define ENABLE_AUTO_VIDEO_CAPTURE 1U
+
 /*------------------------------------------------------------
     走行系
 ------------------------------------------------------------*/
-#define D_TIRE            14.37
+#define D_TIRE            14.13
 #define DIST_HALF_SEC     45.0
 #define DIST_D_HALF_SEC   67.279
-#define DIST_FIRST_SEC    5
+#define ROBOT_REAR_OVERHANG 35.0
+/* Rear-wall contact to the first 45 mm centre line. */
+#define DIST_FIRST_SEC    (DIST_HALF_SEC - ROBOT_REAR_OVERHANG)
 #define DIST_SET_POSITION 5
 
 /*------------------------------------------------------------
@@ -57,6 +62,19 @@
 
 #ifndef VELOCITY_ACCEL_COMP_ENABLE_CONTROL
 #define VELOCITY_ACCEL_COMP_ENABLE_CONTROL 1U
+#endif
+
+/*
+ * The forward accelerometer estimate is useful on straight acceleration, but
+ * the present IMU mounting couples a material part of lateral acceleration
+ * into that axis during a slalom.  Keep the estimator available for logging,
+ * while using the short-delay wheel-encoder LPF for the velocity loop for the
+ * duration of an omega profile.  The 30 ms estimator window is retained for
+ * the logged accelerometer-assisted estimate, but is too delayed for the
+ * translation PI during a short V90 profile.
+ */
+#ifndef VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE
+#define VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE 0U
 #endif
 
 #ifndef SEARCH_STEP_MM
@@ -238,13 +256,8 @@
 #define FAIL_TURN_ANGLE_MARGIN_DEG 90
 #define FAIL_TURN_ANGLE_COUNT 2
 
-/*動作方向関連 — F413 preorder は mini_r1_0 と同一（実機で要確認）*/
-#define DIR_FWD_L  GPIO_PIN_RESET
-#define DIR_BACK_L GPIO_PIN_SET
-#define DIR_FWD_R  GPIO_PIN_SET
-#define DIR_BACK_R GPIO_PIN_RESET
-#define DIR_ENC_R  -1
-#define DIR_ENC_L  -1
+/* モータ極性・encoder符号は board/f413/f413_registry.c の機体/個体設定。
+ * params.h に旧DIR_*固定値を重複して持たない。 */
 
 /*------------------------------------------------------------
     センサ系
@@ -303,20 +316,37 @@
 
 #define WALL_ALIGN_ERR_THR  700
 
-#define F_ALIGN_TARGET_FR    1420
-#define F_ALIGN_TARGET_FL    1400
+#define F_ALIGN_TARGET_MM           7.0F
+#define F_ALIGN_TOO_CLOSE_MM        4.5F
 
-#define F_ALIGN_DETECT_THR   500
+#define MATCH_POS_KP_TRANS_MM       10.0F
+#define MATCH_POS_KP_ROT_MM         20.0F
 
-#define MATCH_POS_KP_TRANS   -0.4F
-#define MATCH_POS_KP_ROT     0.2F
-
-#define MATCH_POS_VEL_MAX     200.0F
+#define MATCH_POS_VEL_MAX      60.0F
 #define MATCH_POS_OMEGA_MAX   300.0F
-#define MATCH_POS_TOL         100
-#define MATCH_POS_TOL_ANGLE   40
-#define MATCH_POS_TIMEOUT_MS  20
-#define MATCH_POS_STABLE_COUNT 100
+#define MATCH_POS_TRANS_TOL_MM        1.5F
+#define MATCH_POS_YAW_TOL_MM          0.8F
+#define MATCH_POS_TRANS_RESTART_MM    2.5F
+#define MATCH_POS_YAW_RESTART_MM      1.2F
+#define MATCH_POS_SETTLE_GAP_MS         3U
+#define MATCH_POS_YAW_SETTLE_MS         25U
+#define MATCH_POS_FINAL_SETTLE_MS       30U
+#define MATCH_POS_POST_COMPLETE_DELAY_MS 50U
+#define MATCH_POS_RELAXED_AFTER_MS     600U
+#define MATCH_POS_RELAXED_SETTLE_MS     10U
+#define MATCH_POS_RELAXED_TRANS_TOL_MM 2.5F
+#define MATCH_POS_RELAXED_YAW_TOL_MM   1.2F
+#define MATCH_POS_REACQUIRE_TRANS_MM   3.0F
+#define MATCH_POS_REACQUIRE_YAW_MM     1.5F
+#define MATCH_POS_REACQUIRE_MS        200U
+#define MATCH_POS_RECOVERY_VALID_MS    20U
+#define MATCH_POS_TOO_CLOSE_RECOVERY_VEL_MM_S 30.0F
+#define MATCH_POS_TOO_CLOSE_RECOVERY_MAX_MM   12.0F
+#define MATCH_POS_TOO_CLOSE_RECOVERY_MAX_MS 1500U
+#define MATCH_POS_MAX_DURATION_MS    1000U
+#define MATCH_POS_SENSOR_LPF_ALPHA   0.5F
+#define MATCH_POS_TRACE_PERIOD_MS      10U
+#define MATCH_POS_TRACE_IDLE_PERIOD_MS 50U
 
 #ifndef SENSOR_WARP_ANCHOR0_MM
 #define SENSOR_WARP_ANCHOR0_MM  0.0f
@@ -331,11 +361,33 @@
 /*------------------------------------------------------------
     探索系
 ------------------------------------------------------------*/
+#ifndef GOAL_X
 #define GOAL_X   1
+#endif
+#ifndef GOAL_Y
 #define GOAL_Y   0
+#endif
+/* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
+ * 単体host solverの32x32検証とは別の制約。 */
+#ifndef MAZE_SIZE
 #define MAZE_SIZE 16
+#endif
+#ifndef START_X
 #define START_X   0
+#endif
+#ifndef START_Y
 #define START_Y   0
+#endif
+
+#if ((MAZE_SIZE != 16) && (MAZE_SIZE != 32))
+#error "F413 MAZE_SIZE must be 16 or 32"
+#endif
+#if ((START_X >= MAZE_SIZE) || (START_Y >= MAZE_SIZE))
+#error "F413 start cell is outside MAZE_SIZE"
+#endif
+#if ((GOAL_X >= MAZE_SIZE) || (GOAL_Y >= MAZE_SIZE))
+#error "F413 goal cell is outside MAZE_SIZE"
+#endif
 
 // 複数ゴール設定（3x3 = 9 セル）
 #ifndef GOAL1_X
@@ -381,6 +433,10 @@
 #ifndef GOAL9_X
 #define GOAL9_X 0
 #define GOAL9_Y 0
+#endif
+
+#if defined(NIGHTFALL_F413_RUNTIME_CONFIG) && !defined(F413_PARAMS_DEFINITION)
+#include "f413_runtime_aliases.h"
 #endif
 
 #endif /* INC_PARAMS_H_ */

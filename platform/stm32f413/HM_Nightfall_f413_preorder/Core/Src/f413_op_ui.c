@@ -310,6 +310,10 @@ const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
     {
       return "turn/diagonal/straight test";
     }
+    if ((mode == 2U) && (op_case == 6U))
+    {
+      return "open-floor diagonal wall correction off";
+    }
     return "shortest case";
   }
   if (mode == 8U)
@@ -338,7 +342,7 @@ const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
       case 2U: return "encoder check";
       case 3U: return "sensor AD check";
       case 4U: return "fan noise check";
-      case 5U: return "dump latest full log bin";
+      case 5U: return "dump all retained logs bin";
       case 6U: return "wall threshold check";
       case 7U: return "NVM check";
       case 8U: return "side wall baseline save";
@@ -376,6 +380,7 @@ const char* f413_op_ui_sub_name(uint8_t mode, uint8_t sub)
       case 1U: return "standard speed turn test";
       case 2U: return "low speed turn test";
       case 3U: return "straight 3-section test";
+      case 4U: return "front wall match follow";
       default: return "not assigned";
     }
   }

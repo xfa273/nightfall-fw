@@ -4,18 +4,20 @@
 
 #include "f413_control.h"
 #include "f413_hw.h"
+#include "f413_motor_pwm.h"
+#include "params.h"
 #include "trace.h"
 
 #define F413_TEST_RUN_VEL_MM_S       (200.0f)
-#define F413_TEST_RUN_HALF_CELL_MM   (45.0f)
+#define F413_TEST_RUN_HALF_CELL_MM   ((float)DIST_HALF_SEC)
 #define F413_TEST_RUN_COAST_MS       (200U)
 #define F413_TEST_RUN_TIMEOUT_MS     (5000U)
 #define F413_TEST_RUN_ARMED_NONE     (0U)
 #define F413_TEST_RUN_MOTOR_DUTY     (120U)
 #define F413_TEST_RUN_MOTOR_MS       (500U)
 #define F413_TEST_RUN_MOTOR_COAST_MS (300U)
-#define F413_TEST_RUN_ENCODER_SIGN_L (1L)
-#define F413_TEST_RUN_ENCODER_SIGN_R (-1L)
+#define F413_TEST_RUN_ENCODER_SIGN_L (f413_machine_hardware()->encoder_sign_l)
+#define F413_TEST_RUN_ENCODER_SIGN_R (f413_machine_hardware()->encoder_sign_r)
 
 static f413_test_run_config_t g_config;
 static volatile uint8_t g_armed_id = F413_TEST_RUN_ARMED_NONE;
@@ -206,6 +208,10 @@ static void f413_test_run_single_motor(uint8_t test_id, const char* test_name)
 {
   bool use_left = (test_id == (uint8_t)'6') || (test_id == (uint8_t)'8');
   bool forward = (test_id == (uint8_t)'6') || (test_id == (uint8_t)'7');
+  const f413_motor_pwm_command_t left = f413_motor_pwm_encode(
+      true, forward, use_left ? F413_TEST_RUN_MOTOR_DUTY : 0U);
+  const f413_motor_pwm_command_t right = f413_motor_pwm_encode(
+      false, forward, use_left ? 0U : F413_TEST_RUN_MOTOR_DUTY);
   int32_t final_enc_l = 0;
   int32_t final_enc_r = 0;
 
@@ -232,13 +238,11 @@ static void f413_test_run_single_motor(uint8_t test_id, const char* test_name)
                (unsigned int)F413_TEST_RUN_MOTOR_DUTY,
                (unsigned long)F413_TEST_RUN_MOTOR_MS);
   trace_printf("[TEST] PWM: CH1(TIM2)=%s, CH3(TIM2)=%s\r\n",
-               use_left ? (forward ? "duty" : "inv-duty") : "0",
-               use_left ? "0" : (forward ? "inv-duty" : "duty"));
+               use_left ? (left.in2_high ? "inv-duty" : "duty") : "0",
+               use_left ? "0" : (right.in2_high ? "inv-duty" : "duty"));
   trace_printf("[TEST] IN2: L=%s, R=%s\r\n",
-               (use_left && forward) ? "RESET" :
-               (use_left && !forward) ? "SET" : "RESET",
-               (!use_left && forward) ? "SET" :
-               (!use_left && !forward) ? "RESET" : "RESET");
+               left.in2_high ? "SET" : "RESET",
+               right.in2_high ? "SET" : "RESET");
 
   if (g_config.motor_set != NULL)
   {
@@ -320,11 +324,11 @@ void f413_test_run_run_now(uint8_t test_id)
     return;
   }
 
-  f413_ctrl_start();
   if (g_config.trace_on_run_start != NULL)
   {
     g_config.trace_on_run_start();
   }
+  f413_ctrl_start();
 
   switch (test_id)
   {

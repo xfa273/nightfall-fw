@@ -74,6 +74,7 @@ typedef struct {
     uint16_t wall_end_thr_l_low;      ///< 左壁切れ検出Lowしきい値（壁なしと判定）
     // 加速度切り替え速度（低速/高速域で加速度を切り替え）
     float accel_switch_velocity;      ///< 加速度切り替え速度 (mm/s)
+    float turn_omega_max;             ///< F413角速度プロファイル上限 (deg/s)、0: 上限なし
 } ShortestRunModeParams_t;
 
 /**

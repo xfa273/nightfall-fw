@@ -177,6 +177,10 @@ SEARCH_EVENT_DECISION = 0xE2
 SEARCH_EVENT_MOTION_END = 0xE3
 SEARCH_EVENT_SESSION_END = 0xE4
 SEARCH_EVENT_ROUTE_FAIL = 0xE5
+SEARCH_EVENT_WALL_END = 0xE6
+SEARCH_EVENT_FRONT_MATCH_PACK_MARKER = 0xA0000000
+SEARCH_EVENT_FRONT_MATCH_PACK_MASK = 0xF0000000
+SEARCH_EVENT_FRONT_MATCH_TIME_UNIT_MS = 5
 SEARCH_EVENT_COLUMNS = [
     "event_marker",
     "event_type",
@@ -201,6 +205,16 @@ SEARCH_EVENT_COLUMNS = [
     "event_completed",
     "event_route_failed",
     "event_route_reason",
+    "event_front_match_1_present",
+    "event_front_match_1_status",
+    "event_front_match_1_duration_ms",
+    "event_front_match_1_position_error_x1000",
+    "event_front_match_1_yaw_error_x1000",
+    "event_front_match_2_present",
+    "event_front_match_2_status",
+    "event_front_match_2_duration_ms",
+    "event_front_match_2_position_error_x1000",
+    "event_front_match_2_yaw_error_x1000",
 ]
 RECORD_LAYOUTS = {
     RECORD_STRUCT_V3.size: (RECORD_STRUCT_V3, RECORD_COLUMNS_V3),
@@ -499,6 +513,26 @@ def _int_field(row: dict[str, str], key: str, default: int = 0) -> int:
         return default
 
 
+def _decode_front_match(value: int) -> tuple[int, int, int, int, int]:
+    packed = value & 0xFFFFFFFF
+    if (packed & SEARCH_EVENT_FRONT_MATCH_PACK_MASK) != SEARCH_EVENT_FRONT_MATCH_PACK_MARKER:
+        return 0, 0, 0, 0, 0
+
+    position_error_x20 = (packed >> 8) & 0xFF
+    yaw_error_x20 = packed & 0xFF
+    if position_error_x20 & 0x80:
+        position_error_x20 -= 0x100
+    if yaw_error_x20 & 0x80:
+        yaw_error_x20 -= 0x100
+    return (
+        1,
+        (packed >> 25) & 0x07,
+        ((packed >> 16) & 0x1FF) * SEARCH_EVENT_FRONT_MATCH_TIME_UNIT_MS,
+        position_error_x20 * 50,
+        yaw_error_x20 * 50,
+    )
+
+
 def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
     data = dict(zip(columns, row))
     marker = _int_field(data, "reserved_u16_0")
@@ -530,6 +564,8 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
     completed = 0
     route_failed = 0
     route_reason = 0
+    front_match_1 = (0, 0, 0, 0, 0)
+    front_match_2 = (0, 0, 0, 0, 0)
 
     r1 = _int_field(data, "reserved_i32_1")
     r2 = _int_field(data, "reserved_i32_2")
@@ -555,6 +591,16 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         motion_kind = (motion_pack >> 24) & 0xFF
         motion_status = (motion_pack >> 16) & 0xFF
         motion_duration_ms = motion_pack & 0xFFFF
+        arg0_x1000 = r1
+        arg1_x1000 = r2
+        front_match_1 = _decode_front_match(r1)
+        front_match_2 = _decode_front_match(r2)
+        if front_match_1[0]:
+            arg0_x1000 = 0
+        if front_match_2[0]:
+            arg1_x1000 = 0
+    elif event_type == SEARCH_EVENT_WALL_END:
+        motion_duration_ms = r3 & 0xFFFF
         arg0_x1000 = r1
         arg1_x1000 = r2
     elif event_type == SEARCH_EVENT_SESSION_END:
@@ -585,6 +631,8 @@ def _decode_search_event(row: list[str], columns: list[str]) -> list[str]:
         str(completed),
         str(route_failed),
         str(route_reason),
+        *(str(value) for value in front_match_1),
+        *(str(value) for value in front_match_2),
     ]
 
 
@@ -636,17 +684,53 @@ def extract_frame(raw: bytes) -> tuple[dict[str, int], dict[str, int], list[list
         pos = idx + 1
 
 
-def write_csv(path: Path, frame: dict[str, int], header: dict[str, int], rows: list[list[str]]) -> None:
+def write_csv(path: Path, frame: dict[str, int], header: dict[str, int], rows: list[list[str]],
+              *, run_index: int = 1, run_count: int = 1) -> None:
+    columns = record_columns_for_size(frame["record_size"])
     with path.open("w", encoding="ascii", newline="") as f:
         f.write("#log_format=nightfall_trace_bin_v1_decoded\n")
         f.write(f"#fw_log_schema=0x{frame['schema']:08X}\n")
         f.write(f"#bin_record_count={frame['record_count']}\n")
         f.write(f"#bin_available_count={frame['available_count']}\n")
         f.write(f"#bin_header_total_records={header['total_records']}\n")
-        f.write("#mm_columns=" + ",".join(record_columns_for_size(frame["record_size"]) + SEARCH_EVENT_COLUMNS) + "\n")
+        f.write("#fw_capture_metadata=not_stored\n")
+        f.write(f"#trace_run_index={run_index}\n")
+        f.write(f"#trace_run_count={run_count}\n")
+        f.write(f"#trace_run_record_count={len(rows)}\n")
+        if rows:
+            f.write(f"#trace_run_partial_start={int(int(rows[0][columns.index('seq')]) != 0)}\n")
+            context = next((dict(zip(columns, row)) for row in rows
+                            if 'op_mode' in columns and row[columns.index('op_mode')] != '255'), {})
+            for key in ('op_mode', 'op_case', 'op_sub', 'test_id'):
+                if key in context:
+                    f.write(f"#{'op_test_id' if key == 'test_id' else key}={context[key]}\n")
+        f.write("#mm_columns=" + ",".join(columns + SEARCH_EVENT_COLUMNS) + "\n")
         writer = csv.writer(f)
         for row in rows:
             writer.writerow(row)
+
+
+def write_run_csvs(path: Path, frame: dict[str, int], header: dict[str, int],
+                   rows: list[list[str]]) -> list[Path]:
+    """Split retained runs by their seq=0 boundary, including across reboots.
+
+    A full ring / limited dump can start mid-run; keep and label that fragment.
+    Timestamp wrap or gaps within a run must not introduce extra run boundaries.
+    """
+    seq_index = record_columns_for_size(frame["record_size"]).index("seq")
+    runs: list[list[list[str]]] = []
+    for row in rows:
+        if not runs or int(row[seq_index]) == 0:
+            runs.append([])
+        runs[-1].append(row)
+    if not runs:
+        runs = [[]]
+    paths = []
+    for index, run in enumerate(runs, 1):
+        run_path = path if len(runs) == 1 else path.with_name(f"{path.stem}_run{index:03d}{path.suffix}")
+        write_csv(run_path, frame, header, run, run_index=index, run_count=len(runs))
+        paths.append(run_path)
+    return paths
 
 
 def main() -> int:
@@ -655,9 +739,9 @@ def main() -> int:
     ap.add_argument("--port", default="auto")
     ap.add_argument("--baud", type=int, default=DEFAULT_BAUD)
     ap.add_argument("--send", default=">", help="UART command to request dump when capturing")
-    ap.add_argument("--timeout", type=float, default=8.0)
+    ap.add_argument("--timeout", type=float, default=30.0)
     ap.add_argument("--raw-out", default=None)
-    ap.add_argument("--csv-out", default=None)
+    ap.add_argument("--csv-out", default=None, help="CSV path; multiple runs add _run001, _run002, ...")
     args = ap.parse_args()
 
     if args.input:
@@ -676,8 +760,10 @@ def main() -> int:
 
     frame, header, rows, offset = extract_frame(raw)
     csv_path = Path(args.csv_out) if args.csv_out else raw_path.with_suffix(".csv")
-    write_csv(csv_path, frame, header, rows)
-    print(f"frame_offset={offset} records={len(rows)} csv={csv_path}")
+    csv_paths = write_run_csvs(csv_path, frame, header, rows)
+    print(f"frame_offset={offset} records={len(rows)} runs={len(csv_paths)}")
+    for path in csv_paths:
+        print(f"csv: {path}")
     return 0
 
 

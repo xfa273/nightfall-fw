@@ -27,6 +27,7 @@ set(FW_VERSION "1.0.0")
 add_subdirectory(cmake/stm32cubemx)
 
 set(NIGHTFALL_STM32F405_USER_SOURCES
+    common/route/legacy_path_codec.c
     nvm/nvm.c
     nvm/nvm_identity.c
     nvm/nvm_params.c
@@ -137,6 +138,7 @@ function(nightfall_add_firmware target variant variant_define mcu_family)
     nightfall_apply_mcu(${target} ${mcu_family})
 
     target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_SOURCE_DIR}/common/route
         ${CMAKE_SOURCE_DIR}/nvm
         ${CMAKE_SOURCE_DIR}/params/${variant}
         ${CMAKE_SOURCE_DIR}/platform/trace
@@ -186,6 +188,7 @@ function(nightfall_add_platform_target target mcu_family)
     nightfall_apply_mcu(${target} ${mcu_family})
 
     target_include_directories(${target} BEFORE PRIVATE
+        ${CMAKE_SOURCE_DIR}/common/route
         ${CMAKE_SOURCE_DIR}/nvm
         ${CMAKE_SOURCE_DIR}/platform/trace
         ${build_info_dir}
@@ -197,6 +200,14 @@ endfunction()
 nightfall_add_firmware(nightfall_mini_r1_0 mini_r1_0 ROBOT_MINI_R1_0 stm32f405)
 nightfall_add_firmware(nightfall_classic_r1_0 classic_r1_0 ROBOT_CLASSIC_R1_0 stm32f405)
 nightfall_add_platform_target(nightfall_stm32f413 stm32f413)
+
+# Fail on new machine parameters that were not added to the common runtime API.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_custom_target(check_f413_param_coverage
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/hil/check_f413_param_coverage.py
+    VERBATIM
+)
+add_dependencies(nightfall_stm32f413 check_f413_param_coverage)
 
 add_custom_target(nightfall_stm32f405
     DEPENDS nightfall_mini_r1_0 nightfall_classic_r1_0

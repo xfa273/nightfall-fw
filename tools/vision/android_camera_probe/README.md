@@ -1,0 +1,551 @@
+# Nightfall Android Camera2 capability probe
+
+This small, dependency-free debug APK enumerates the actual Camera2
+high-speed size/FPS matrix exposed by a phone. It also records manual-sensor,
+stabilization, timestamp, request/result-key, and high-speed encoder-profile
+capabilities. Schema `nightfall_android_camera_probe_v2` includes the probe
+generation time and app version. A failure for one camera is recorded in that
+camera's entry instead of discarding successful entries for the other cameras.
+The current probe release is version `0.2.0`, version code `2`.
+
+The `app` module is the static capability probe. The separate experimental
+`recorder` module attempts a real Camera2 constrained-high-speed recording and
+writes CaptureResult and encoded-sample JSONL sidecars. A real capture must
+still verify applied exposure, sensor timestamps, frame duration, encoder PTS,
+decoded content, and dropped frames. Rolling-shutter skew is recorded only
+when the device exposes it.
+
+## Build
+
+The repository build host uses Android API 36, Android build-tools 36.0.0,
+AGP 9.2, Gradle 9.4.1, and JDK 17:
+
+```sh
+tools/vision/android_camera_probe/build_debug.sh
+```
+
+`build_debug.sh` first honors `JAVA_HOME`, then looks for a JDK using
+`/usr/libexec/java_home`, common Homebrew/Linux/Android Studio locations, and
+the `java` executable on `PATH`. It first honors `ANDROID_HOME`, then
+`ANDROID_SDK_ROOT`, followed by common macOS and Linux SDK locations. The
+Android build-tools version and Gradle distribution checksum are pinned.
+
+## Install and collect
+
+Enable USB debugging and find each phone's serial:
+
+```sh
+adb devices -l
+```
+
+Install the probe on one phone:
+
+```sh
+SERIAL=REPLACE_WITH_ADB_SERIAL
+adb -s "$SERIAL" install -r \
+  tools/vision/android_camera_probe/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Start a fresh probe and collect it with a phone-specific filename:
+
+```sh
+tools/vision/android_camera_probe/collect_report.sh "$SERIAL"
+```
+
+The collector force-starts the probe with a unique nonce and waits up to 120
+seconds for the matching report. Unlock the phone and grant the camera
+permission if prompted. The app deletes any prior report before requesting
+permission or starting a probe, then publishes the new JSON with an atomic
+rename. Manual `am start` or a press of `Refresh camera report` is not needed.
+The collector rejects an installed app other than version `0.2.0`, version
+code `2`. Override the wait using `PROBE_TIMEOUT_SECONDS` when necessary.
+
+The default output directory is `/tmp/nightfall-camera-probe`. An optional
+second argument selects the session artifact directory:
+
+```sh
+tools/vision/android_camera_probe/collect_report.sh \
+  "$SERIAL" /path/to/session-artifacts
+```
+
+The filename includes the model, adb serial, and UTC collection time, so Pixel
+8 and Xiaomi 13 Ultra reports cannot overwrite one another. The collector
+checks JSON syntax, schema, launch nonce, app version, required metadata, and
+that the JSON model and build fingerprint match the connected adb device.
+
+Run the install/collect sequence separately with each serial when both phones
+are connected. Keep collected reports with session artifacts, not in Git.
+
+## Experimental Camera2 HFR recording
+
+Build both APKs with `build_debug.sh`, then request a five-second 1080p/120
+capture:
+
+```sh
+tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+The collector installs version `0.5.8` of
+`com.nightfall.hfrrecorder`, starts a nonce-tagged recording, and pulls:
+
+- `hfr_capture.mp4`
+- `capture_results.jsonl`
+- `encoder_samples.jsonl`
+- `hfr_report.json`
+- `ffprobe_stream.json`
+
+Recorder 0.5.6 added calibration metadata without changing or removing the
+existing report and sidecar fields. Every `capture_results.jsonl` row now
+stores nullable Camera2 results for focal length, the five-element intrinsic
+calibration and lens-distortion arrays, scaler crop region, zoom ratio, and
+the active physical camera ID. `hfr_report.json` also contains
+`camera_static_geometry`, including the configured logical camera ID,
+physical-camera IDs, sensor orientation, active and pre-correction active
+arrays, pixel-array and physical-sensor sizes, available focal lengths, and
+the static intrinsic/distortion arrays. Rectangles use
+`left`/`top`/`right`/`bottom` plus derived `width`/`height`; unavailable
+Camera2 values are JSON `null`. These values preserve the coordinate-system
+inputs needed by future camera calibration and PnP, but do not themselves
+constitute a completed calibration.
+
+Recorder 0.5.7 is the minimum version for absolute label-plane and swept-
+clearance qualification. It requests AF off at a fixed 1.05-diopter focus,
+records requested and per-frame focus/AF/lens-state metadata, identifies the
+app version, and writes same-run SHA-256/size integrity records for the raw
+video and `capture_results.jsonl`. The host capture fingerprint additionally
+binds the QA report, trajectory CSV, and board calibration and rejects a run if
+its integrity chain is incomplete, any lens row is not stationary/fixed, or
+its camera-setup fingerprint differs from the stationary calibration. Recorder
+0.5.6 is retained as the metadata-introduction history, but 0.5.6 and earlier
+captures are diagnostic-only under this contract.
+
+The recorder enables a simultaneous `TextureView` preview by default and
+disables EIS and OIS for measurement use. Focus is fixed at 1.05 diopters with
+AF off; automatic exposure is the default. A manual trial can be requested only
+after an automatic trial succeeds:
+
+```sh
+HFR_EXPOSURE_US=1000 HFR_ISO=400 \
+  tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+The explicit equivalent of the default preview-enabled Pixel test is:
+
+```sh
+HFR_FPS=240 HFR_BITRATE=72000000 HFR_ENABLE_PREVIEW=1 \
+  tools/vision/android_camera_probe/record_test.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+The report records whether the preview surface was enabled. A successful
+recording-only session does not prove that preview plus recording works; test
+the exact surface combination on each device. Set `HFR_ENABLE_PREVIEW=0` only
+for a recording-surface-only diagnostic.
+
+## F413 optical-trigger capture
+
+The recorder can arm a preview-only high-speed session and wait for the F413
+mouse to emit a framed visible-LED token. START and STOP use the same frame:
+2.5 seconds with all three status LEDs OFF, a logical 950 ms all-LED SYNC
+pulse, a 300 ms gap, and five 1.1-second payload slots. SYNC is emitted as
+75 ms ON, 50 ms OFF, then 825 ms ON. The 50 ms notch is shorter than the
+decoder's confirmed-low interval, so it remains one SYNC while providing a
+second rising edge if the first is missed. Every START slot begins with
+350 ms ON; every STOP slot begins with 800 ms ON. The rest of each slot is OFF.
+The payload is followed by 500 ms with all LEDs OFF. The common SYNC pulse
+establishes the slot timing, and the long preamble keeps an all-LED OP-UI mode
+indication from being mistaken for the beginning of a token.
+
+Version 0.5.5 classifies all five payload slots before reporting a typed token.
+At least three consistent short votes identify START and at least three
+consistent long votes identify STOP. Missing or uncertain slots are erasures;
+any mixture of short and long votes is invalid. Because both token types have
+the same number of fixed slots and are decoded only when complete, no STOP
+prefix can be accepted as START. A STOP received while waiting for START, or a
+START received while recording, is explicitly ignored without changing the
+capture state.
+
+The Pixel compares consecutive preview frames, discards the first 0.8 seconds
+while auto exposure settles, and calibrates local preview noise for 1.2
+seconds. SYNC location learning begins only from components that actually
+rose, so the persistent blue trajectory label is not substituted for a
+signalling LED. It prefers three status LEDs but may acquire two spatially
+separated one-preview-pixel LEDs when the third is hidden. SYNC and payload
+then reuse the learned locations and measure OFF-to-ON blue contrast instead
+of requiring a fixed absolute blue level. The complete frame and vote rules
+still reject a single LED and static scene objects. A 175 ms confirmed-low
+interval rejects brief flicker around the SYNC edge. White illumination
+changes, hands moving through the frame, and ordinary single-LED UI activity
+are therefore not accepted as a complete token.
+
+Arm and collect one run with:
+
+```sh
+tools/vision/android_camera_probe/capture_optical_run.sh \
+  "$SERIAL" /path/to/session-artifacts
+```
+
+The wrapper selects 1080p/240, 72 Mbps, 1.000 ms, ISO 800, and a 60-second
+maximum recording by default. It waits up to 30 minutes for a complete
+START/STOP pair. The start token is decoded while the preview-only request is
+running; MediaRecorder is enabled only after the complete START payload is
+classified, so the F413 500 ms final-OFF interval and 300 ms run guard provide
+the pre-motion lead-in. The stop token leaves a default 900 ms video tail.
+`hfr_report.json` records both optical detection times and the delay from start
+detection to MediaRecorder start. Body-motion detection continues only as
+report telemetry and does not gate STOP. The report records the decoded token
+type, short/long/erasure vote counts, LED-triangle center, optional motion
+changed-pixel count, blue-chroma score, hot-pixel count, effective threshold,
+and matched LED count.
+
+Version 0.5.0 can also be operated entirely from the Pixel. Open **Nightfall
+HFR Recorder** from the launcher and tap **連続撮影スタンバイ (240 fps)**.
+This uses the verified optical profile (1080p/240, 72 Mbps, 1.000 ms, ISO 800,
+60-second per-run limit, and a 900 ms STOP tail). After each complete
+START/STOP sequence, the run is retained in its own internal directory
+and the app automatically returns to optical standby after two seconds. Tap
+**連続待機を終了** to stop the loop; if a run is currently recording, its
+partial final video is saved before the loop ends. The app refuses to start a
+new retained run below 1 GiB of free internal storage. Mac-launched sessions
+keep their one-shot behavior and use the configuration supplied by
+`record_test.sh` or `capture_optical_run.sh`.
+
+If STOP is missed while a run is recording, tap **この撮影だけ終了**. The
+current MP4 is finalized and retained, then the same continuous session
+automatically returns to optical standby after two seconds. This operation
+does not end continuous standby; **連続待機を終了** remains the explicit batch
+stop.
+
+For a fixed-rig calibration or another capture that must not depend on mouse
+LED signals, tap **手動録画開始 (240 fps)**. This starts recording immediately
+at 1920x1080/240 fps with the same 72 Mbps, 1.000 ms, ISO 800 profile and fixed
+1.05-diopter/AF-off focus; it does not enter optical `armed` state. After the UI
+shows recording, keep the rig and scene still for at least one second so the
+camera pipeline settles before starting the first three-second known-pose
+window. Tap **手動録画を終了** to finalize that one video. The app then returns
+to idle, releases the capture lease, and does not re-arm. The same 60-second
+maximum prevents an accidentally abandoned manual recording from growing
+without bound. Qualification still checks every captured focus/lens-state row;
+if any row is non-stationary or differs from the requested fixed setup, discard
+that capture and repeat it.
+
+Version 0.5.7 adds this immediate manual one-shot mode to the Pixel UI and the
+authenticated Mac controls. It also adds `capture_mode` to control status so
+clients can keep manual one-shot and continuous optical standby mutually
+exclusive without changing the existing control fields.
+
+Version 0.5.8 hardens continuous optical START/STOP acquisition for the
+overhead rig. SYNC learning now starts only from newly risen LEDs after the
+required rise-free preamble, accepts two spatially separated one-pixel LEDs
+when the third is hidden, and sustains their learned locations by OFF-to-ON
+contrast instead of a fixed absolute-blue threshold. Complete five-slot
+framing and three homogeneous votes are still required, so a single LED or a
+static blue label cannot trigger recording. Calibration-time mouse pulses are excluded
+from the adaptive noise threshold.
+
+Version 0.5.1 hardens the optical decoder for the overhead installation. It
+does not advance the STOP sequence while waiting for the first real mouse
+motion, combines frame-difference and absolute-blue detection, and pairs with
+the longer F413 all-LED-OFF pre-roll described above.
+
+Version 0.5.3 introduced the framed fixed-slot protocol described above,
+preserved quiet-interval re-arming and two-of-three learned LED matching, and
+treated an uncertain slot as an erasure. Motion is still reported when
+observed but is no longer required for saving a run.
+
+Version 0.5.4 prevents a noisy two-second preview calibration from blinding
+all later tokens in a continuous session. The adaptive frame-difference score
+is capped at five times the configured lower bound, while the complete framed
+token may recover from the absolute blue level and three-LED geometry even
+when the adaptive score was raised. Completing an invalid token resets the
+decoder, so the next fully framed START remains eligible without restarting
+standby.
+
+Version 0.5.5 keeps the static blue trajectory label out of SYNC learning by
+preferring rising components, accepts a one-pixel LED only after its location
+has been learned, and adds a current-recording-only stop operation on Pixel and
+the authenticated Mac controls. Saving that one recording preserves and
+automatically re-arms continuous standby.
+
+Collect all Pixel-started runs without deleting them from the phone:
+
+```sh
+tools/vision/android_camera_probe/collect_manual_runs.sh \
+  "$SERIAL" sessions/hfr-tests/pixel8/manual-runs
+```
+
+The collector is idempotent: a run whose matching report already exists in
+the output directory is skipped. Completed runs receive an ffprobe report;
+failed attempts retain their diagnostic report but have no MP4. Ending an
+armed standby before START does not create a saved run.
+
+## Daily USB-preferred or ADB-free Wi-Fi collection
+
+Recorder version 0.5.0 keeps ADB installation and collection available for
+development, but routine operation no longer needs ADB. While the activity is
+open it provides an authenticated HTTP service on TCP port 46052 and responds
+to Nightfall discovery broadcasts on UDP port 46051. The video is always
+completed in Pixel internal storage before it is offered to the network.
+Artifact downloads are deliberately rejected while a recording or optical
+standby is active, avoiding storage, CPU, and thermal contention with the
+240fps camera path. Completing one run does not end continuous standby or
+start a transfer: the recorder keeps the camera lease across its two-second
+re-arm interval. End continuous standby explicitly on the Pixel before
+collecting the completed batch.
+
+Connect the Pixel and Mac to the same trusted Wi-Fi network, open **Nightfall
+HFR Recorder**, and read the six-digit code in the top status bar. Pair the Mac
+once with:
+
+```sh
+tools/vision/android_camera_probe/collect_wifi_runs.py \
+  --pair 123456
+```
+
+The pairing code is valid for ten minutes and is limited to eight attempts.
+Pairing returns a random 256-bit access token, which the Mac stores with mode
+0600 in `~/.config/nightfall-hfr/wifi_devices.json`. The token is never printed.
+Version 0.5.0 also lets that paired Mac inspect and control continuous optical
+standby. Start the app once on the Pixel after a reboot, then routine capture
+control can be done without touching the mounted phone or using ADB:
+
+```sh
+# Inspect camera state and retained-run counts.
+tools/vision/android_camera_probe/hfr_control.py status
+
+# Open the 1080p/240 camera and wait for a complete framed START token.
+tools/vision/android_camera_probe/hfr_control.py start
+
+# Start 1080p/240 recording immediately, without waiting for an LED token.
+tools/vision/android_camera_probe/hfr_control.py manual-start
+
+# Finalize that one manual video and return to idle without re-arming.
+tools/vision/android_camera_probe/hfr_control.py manual-stop
+
+# If STOP was missed, save only the active video and keep continuous standby.
+tools/vision/android_camera_probe/hfr_control.py finish-run
+
+# Keep repeating runs until this explicit command; save an active final run.
+tools/vision/android_camera_probe/hfr_control.py stop
+```
+
+The `start` and `stop` operations are idempotent. `manual-start` is idempotent
+while the same one-shot is starting or recording, and `manual-stop` is
+idempotent after it has returned to idle. Manual and continuous modes are
+mutually exclusive. For a calibration one-shot, wait at least one second after
+`manual-start` reports recording before beginning the first timed pose hold;
+the CLI and dashboard use the same fixed 1.05-diopter focus as the Pixel UI.
+The authenticated control API is deliberately available
+only while **Nightfall HFR Recorder** is open; after a Pixel reboot the app
+must be opened once locally (or with ADB during development). The current
+activity keeps the screen awake while it is open.
+
+### Mac live dashboard
+
+For routine turn tuning, keep a live status and control window open on the Mac:
+
+```sh
+tools/vision/android_camera_probe/hfr_dashboard.py
+```
+
+The command opens `http://127.0.0.1:8765/` in the default browser and refreshes
+Pixel state automatically. On macOS the executable
+`open_hfr_dashboard.command` can also be opened from Finder, avoiding a typed
+command. The dashboard shows a large state banner for armed, recording,
+re-arming, stopped, disconnected, and error states; the current continuous
+session count; retained and not-yet-transferred counts; and whether the newest
+run has a complete MP4/report/result artifact set. After a run it changes to
+**保存確認済み・次の走行OK** only when the Pixel has returned to optical
+standby and the newest retained run is complete. A recording that remains
+active for more than 15 seconds is highlighted as a possible missed STOP token
+or merged run.
+
+The same page provides continuous-standby start/stop, a **この撮影だけ終了**
+button that preserves continuous standby, and explicit **手動録画を開始** /
+**手動録画を終了** buttons for an immediate one-shot without optical signals.
+After **この撮影だけ終了**, the armed banner explicitly says
+**録画停止中・次の走行OK**: the just-finished MP4 is closed, no video is being
+recorded, and the optical detector remains ready for the next START token. The
+dashboard also reconciles this state directly from the Pixel, so a missed
+session-counter refresh cannot leave the controls disabled after re-arming.
+Transfer and stop-and-transfer remain disabled while a manual one-shot owns
+the camera/storage lease. The Pixel access token stays in the Mac process and
+is not sent to the browser; mutating dashboard requests use a per-launch
+token, and the server listens on loopback only by default. Useful options
+include:
+
+```sh
+# Keep the dashboard on another local port without opening a new browser tab.
+tools/vision/android_camera_probe/hfr_dashboard.py --port 8877 --no-open
+
+# Warn sooner for a test whose normal video is shorter than ten seconds.
+tools/vision/android_camera_probe/hfr_dashboard.py \
+  --recording-warning-seconds 10
+```
+
+After stopping a batch, transfer it with the unified controller:
+
+```sh
+tools/vision/android_camera_probe/hfr_control.py collect
+```
+
+Or explicitly request both operations in one command:
+
+```sh
+tools/vision/android_camera_probe/hfr_control.py stop-and-collect
+```
+
+Capture remains higher priority than file transfer: `collect` refuses to run
+while standby is active, and completing an individual run never starts an
+automatic transfer or ends the repeated standby loop. The unified controller
+and dashboard default to `--transfer auto`: when one authorized Pixel is
+connected over USB debugging, they forward the same authenticated/resumable
+HTTP protocol through ADB and report `transport=usb`; otherwise they fall back
+to Wi-Fi. This preserves nonce checks, atomic publication, resume, `ffprobe`,
+and Pixel acknowledgement on both paths. A USB 3.x link avoids sending large
+MP4 files through the LAN. Use `--transfer usb --adb-serial SERIAL` to require
+a particular cable-connected Pixel, or `--transfer wifi` to force LAN transfer.
+
+The older standalone Wi-Fi-only collector remains available; later
+collections need only:
+
+```sh
+tools/vision/android_camera_probe/collect_wifi_runs.py
+```
+
+The collector discovers the paired Pixel, skips any nonce already present in
+the output directory (including runs previously collected through ADB),
+resumes interrupted files with HTTP byte ranges, validates the report nonce
+and artifact sizes, runs `ffprobe` on complete videos, atomically publishes the
+session directory, and only then acknowledges the run to the Pixel. If router
+broadcast filtering prevents discovery, use the address shown in the Pixel
+status bar:
+
+```sh
+tools/vision/android_camera_probe/collect_wifi_runs.py \
+  --host 192.168.1.23:46052
+```
+
+To launch the collector before stopping a batch and let it wait for the camera
+to become idle:
+
+```sh
+tools/vision/android_camera_probe/collect_wifi_runs.py \
+  --wait-idle-seconds 1800
+```
+
+Successfully verified runs are marked **転送済み** on the Pixel but are not
+deleted automatically. **転送済みを削除** opens a confirmation dialog and
+deletes only acknowledged run directories; untransferred runs are never
+selected. Uninstalling the app still removes all app-private recordings, so
+collect important runs before uninstalling.
+
+The current transport is bearer-authenticated HTTP intended for a trusted lab
+or home LAN; it is not an Internet-facing service. The recorder targets SDK 36,
+for which Android 17 grants local-network access through the existing
+`INTERNET` permission. If the target SDK is raised to 37, add and request the
+Android 17 `ACCESS_LOCAL_NETWORK` runtime permission before retaining this
+feature.
+
+The 2026-08-01 stationary Pixel 8 integration trial completed without the
+external lamp: start detection to recording was 28.1 ms, stop detection to
+recording stop was 908.9 ms with the configured 900 ms tail, and the 6.23 s
+session had 0 capture failures. Sensor timestamps measured 239.99998 fps; the
+H.264 MP4 contained 1,453 frames at 239.9808 fps. Both the start and stop final
+LED pulses, plus an LED-off tail, were visually present in the saved video.
+Ambient-light success proves the trigger path, not markerless trajectory
+quality; illuminate the maze for moving runs and repeat this test after the
+final camera/light installation is fixed.
+
+No UART connection to the mouse is used during a floor run. While developing
+with a wired and stationary mouse, UART `;` emits the short-pulse START frame
+and UART `,` emits the long-pulse STOP frame, both without starting the motors.
+A stationary test can validate both typed tokens; body motion is diagnostic
+only and is not needed to decode STOP. A STOP frame sent while the Pixel is
+armed must leave it armed, and a START frame sent while recording must leave it
+recording.
+The mouse and its three visible status LEDs must be inside the Pixel frame.
+After arming, wait until the screen reports `WAIT_PREAMBLE` before starting the
+mouse so the preview-noise calibration is complete.
+
+The thresholds can be overridden for a measured installation:
+
+```sh
+HFR_OPTICAL_TRIGGER_SCORE=500 \
+HFR_OPTICAL_TRIGGER_HOT_PIXELS=2 \
+HFR_OPTICAL_STOP_TAIL_MS=900 \
+  tools/vision/android_camera_probe/capture_optical_run.sh "$SERIAL" /path/out
+```
+
+The configured score is a lower bound; the app raises it automatically when
+preview noise measured during arming is higher, up to five times the
+configured value. Absolute-blue token recovery remains tied to the configured
+lower bound rather than the adaptive noise estimate. Always repeat the
+non-motor UART-token test after changing height, exposure, ISO, or
+illumination.
+
+### Pixel 8 verified HFR path
+
+On the tested Pixel 8 (`shiba`; initially Android 16/API 36 and currently
+Android 17/API 37), rear camera ID 0 exposes
+fixed 120 and 240 fps at both 1280x720 and 1920x1080, a hardware H.264
+1920x1080/240 profile, manual sensor control, REALTIME sensor timestamps, and
+rolling-shutter-skew results.
+
+The preview plus MediaRecorder path completed a five-second
+1920x1080/240 test at 72 Mbps with requested 1.000 ms exposure, ISO 400, and
+EIS/OIS off. CaptureResult reported 1,144 unique sensor timestamps at measured
+240.000 fps, actual exposure 0.999635 ms, ISO 400, and 4.542720 ms rolling
+shutter skew. The MP4 contained 1,141 decoded frames at measured 239.981 fps,
+with no PTS gaps and no identical or near-identical adjacent frames; strict
+timing/content QA passed.
+
+With only the MediaRecorder surface, CaptureResult callbacks represented
+roughly one result per high-speed request batch. Adding the preview surface
+produced per-frame-rate callbacks and is therefore the selected starting point
+for live LED detection and sensor/encoded timestamp mapping.
+
+Do not interpret a static Camera2 HFR matrix as proof that a session works.
+On the tested Xiaomi 13 Ultra (`2304FPN6DG`, MIUI
+`V14.0.5.0.TMAMIXM`, Android 13), camera ID 0 advertises fixed
+1080p/120, 240, and 480 fps. The vendor HAL nevertheless rejected every
+120 fps constrained session during `configureStreams`, including:
+
+- preview plus MediaCodec recording surfaces;
+- a MediaCodec recording surface alone;
+- a MediaRecorder recording surface alone; and
+- a preview surface alone.
+
+The device log reports a zero HAL buffer count and
+`Unsupported set of inputs/outputs provided`. This is a device/firmware
+Camera2 interoperability failure, not evidence that the advertised mode is
+usable. Keep the diagnostic report with session artifacts. The verified Pixel
+8 custom-recorder path is preferred over this Xiaomi public Camera2 path.
+
+## Xiaomi stock-camera fallback
+
+Xiaomi's privileged stock Camera can use the same hardware even when the
+public Camera2 HFR session is rejected. Start a collector and then operate the
+phone:
+
+```sh
+tools/vision/android_camera_probe/collect_stock_slowmo.sh "$SERIAL" \
+  /path/to/session-artifacts
+```
+
+Select **Slow motion**, choose 120 or 240 fps, record for several seconds, and
+stop. The collector detects the new file under `DCIM/Camera`, waits for its
+size to stabilize, pulls it, reads `com.android.capture.fps`, and runs
+`video_timing_qa.py` against that capture rate. It rejects an MP4 without a
+valid high-speed capture tag.
+
+An existing Xiaomi 13 Ultra stock clip named with `HSR_240` was independently
+checked as 1280x720 H.264 with 1,337 frames. Its MP4 declared
+`com.android.capture.fps=240`; measured median PTS cadence was 239.981 fps,
+with no PTS gaps or decoded adjacent duplicates. Thus the stock path preserves
+real-time HFR frames on this firmware rather than silently retiming them to
+30 fps. Each new session must still pass the same check. The stock path does
+not provide per-frame Camera2 CaptureResult exposure or sensor timestamps, so
+use an optical sync event when aligning it to firmware trace.

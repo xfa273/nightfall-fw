@@ -16,6 +16,7 @@ FLAG_ABORT_ENCODER_FAULT = 0x0400
 FLAG_ABORT_IMU_FAULT = 0x0800
 FLAG_ANGLE_TARGET = 0x2000
 FLAG_AUTO = 0x8000
+FLAG_TUNE = 0x4000
 
 
 def _is_number(text: str) -> bool:
@@ -122,24 +123,41 @@ def _fmt(value: float) -> str:
 
 
 def _infer_tune_axis(rows: list[dict[str, str]], meta: dict[str, str]) -> Optional[str]:
-    axis = meta.get("tune_axis")
-    if axis:
-        return axis
+    # Reserved fields also carry wall observations/search events. Their numeric
+    # contents (or stale tune metadata) alone cannot identify a tuning session.
+    axes = set()
     for row in rows:
-        if "reserved_i32_0" not in row or "reserved_i32_1" not in row:
+        if not (_int(row, "flags") & FLAG_TUNE):
             continue
-        if _int(row, "reserved_i32_0") == 0:
-            continue
-        axis_code = _int(row, "reserved_i32_1", -1)
-        if axis_code == 0:
-            return "velocity"
-        if axis_code == 1:
-            return "omega"
-        if axis_code == 2:
-            return "distance"
-        if axis_code == 3:
-            return "angle"
-    return None
+        axes.add(_int(row, "reserved_i32_1", -1))
+    names = {0: "velocity", 1: "omega", 2: "distance", 3: "angle"}
+    return names.get(next(iter(axes))) if len(axes) == 1 else None
+
+
+def _display_column(column: str, tune_axis: Optional[str] = None) -> tuple[str, float]:
+    """Use SI linear units and user-requested degrees for angular quantities."""
+    if column == "time_ms":
+        return "time", 0.001
+    if column.startswith("motor_out_"):
+        # F413 signed motor PWM command is per mille (F413_MOTOR_PWM_MAX=1000).
+        return column.replace("motor_out_", "motor_duty_"), 0.001
+    if column.startswith("event_front_match_") and column.endswith(("_position_error_x1000", "_yaw_error_x1000")):
+        # Both are distances: yaw error is the FR-FL wall-distance difference.
+        return column.removesuffix("_x1000") + "_m", 0.000001
+    if column in {"tune_ref", "tune_error"}:
+        unit, factor = {
+            "velocity": ("m_s", 0.001), "distance": ("m", 0.001),
+            "omega": ("dps", 1.0), "angle": ("deg", 1.0),
+        }.get(tune_axis, ("raw", 1.0))
+        return f"{column}_{unit}", factor
+    for suffix, si_suffix, factor in (
+        ("_mm_s2", "_m_s2", 0.001), ("_mm_s", "_m_s", 0.001),
+        ("_mdps", "_dps", 0.001), ("_mdeg", "_deg", 0.001),
+        ("_mm", "_m", 0.001), ("_ms", "_s", 0.001),
+    ):
+        if column.endswith(suffix):
+            return column[:-len(suffix)] + si_suffix, factor
+    return column, 1.0
 
 
 def _reserved_i32_layout(meta: dict[str, str]) -> list[str]:
@@ -196,6 +214,25 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
         if tune_axis is not None:
             derived_columns.extend(["tune_ref", "tune_error"])
 
+        # Do not invent zero-valued physical channels absent from older schemas.
+        dependencies = {
+            "angle_deg": {"angle_mdeg"}, "target_angle_deg": {"target_angle_mdeg"},
+            "target_omega_dps": {"target_omega_mdps"}, "real_omega_dps": {"real_omega_mdps"},
+            "gyro_z_raw_dps": {"gyro_z_raw_mdps"},
+            "velocity_error_mm_s": {"target_velocity_mm_s", "real_velocity_mm_s"},
+            "accel_velocity_error_mm_s": {"target_velocity_mm_s", "accel_velocity_mm_s"},
+            "omega_error_dps": {"target_omega_mdps", "real_omega_mdps"},
+            "motor_out_avg": {"motor_out_l", "motor_out_r"},
+            "motor_out_diff": {"motor_out_l", "motor_out_r"},
+        }
+        derived_columns = [c for c in derived_columns if c not in dependencies or dependencies[c] <= base_column_set]
+        layout = _reserved_i32_layout(meta)
+        has_target_distance = ("target_distance_mm" in columns or
+                               (len(layout) >= 3 and layout[2] == "target_distance_x1000") or
+                               tune_axis in {"velocity", "distance"})
+        if not has_target_distance:
+            derived_columns = [c for c in derived_columns if c not in {"target_distance_mm", "distance_error_mm"}]
+
     out_columns = base_columns + derived_columns
     out_rows: list[list[str]] = []
     target_distance_integrated = 0.0
@@ -210,7 +247,7 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
         if with_derived:
             flags = _int(row, "flags")
             target_distance = _target_distance_mm(row, meta)
-            tune_ref = _num(row, "reserved_i32_0") / 1000.0
+            tune_ref = _num(row, "reserved_i32_0") / 1000.0 if flags & FLAG_TUNE else 0.0
             if target_distance is None and tune_axis == "velocity":
                 target_distance_integrated += tune_ref * max(0.0, timestamp_ms - prev_timestamp_ms) * 0.001
                 target_distance = target_distance_integrated
@@ -245,7 +282,7 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                 ("flag_angle_target", "1" if flags & FLAG_ANGLE_TARGET else "0"),
                 ("flag_auto", "1" if flags & FLAG_AUTO else "0"),
             ]
-            values.extend(v for c, v in derived_values if c not in base_column_set)
+            values.extend(v for c, v in derived_values if c in derived_columns)
             if tune_axis is not None:
                 if tune_axis == "distance":
                     tune_actual = _num(row, "distance_mm")
@@ -257,12 +294,30 @@ def _build_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str
                     tune_actual = _num(row, "real_omega_mdps") / 1000.0
                 else:
                     tune_actual = 0.0
-                values.extend([_fmt(tune_ref), _fmt(tune_ref - tune_actual)])
+                values.extend([_fmt(tune_ref), _fmt(tune_ref - tune_actual)] if flags & FLAG_TUNE else ["", ""])
 
         out_rows.append(values)
         prev_timestamp_ms = timestamp_ms
 
     return out_columns, out_rows
+
+
+def _build_display_output(columns: list[str], rows: list[dict[str, str]], meta: dict[str, str], with_derived: bool = True) -> tuple[list[str], list[list[str]]]:
+    legacy_columns, legacy_rows = _build_output(columns, rows, meta, with_derived)
+    tune_axis = _infer_tune_axis(rows, meta)
+    out_columns = []
+    conversions = []
+    for index, column in enumerate(legacy_columns):
+        name, factor = _display_column(column, tune_axis)
+        # Raw mdps and derived dps describe the same channel. Keep one curve.
+        if name not in out_columns:
+            out_columns.append(name)
+            conversions.append((index, factor))
+    return out_columns, [
+        [value if factor == 1.0 or not value else _fmt(float(value) * factor)
+         for index, factor in conversions for value in [row[index]]]
+        for row in legacy_rows
+    ]
 
 
 def _default_output_path(input_path: Path) -> Path:
@@ -274,13 +329,15 @@ def main() -> int:
     ap.add_argument("input", help="Nightfall CSV file or a directory containing CSV files")
     ap.add_argument("-o", "--output", default="", help="Output CSV path")
     ap.add_argument("--no-derived", action="store_true", help="Do not add derived columns")
+    ap.add_argument("--legacy-units", action="store_true", help="Keep previous mm/degree/raw columns for existing custom layouts")
     args = ap.parse_args()
 
     try:
         input_path = _select_input(Path(args.input).expanduser())
         output_path = Path(args.output).expanduser() if args.output else _default_output_path(input_path)
         columns, rows, meta = _load_nightfall_csv(input_path)
-        out_columns, out_rows = _build_output(columns, rows, meta, not args.no_derived)
+        converter = _build_output if args.legacy_units else _build_display_output
+        out_columns, out_rows = converter(columns, rows, meta, not args.no_derived)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="ascii", newline="") as f:
             writer = csv.writer(f)

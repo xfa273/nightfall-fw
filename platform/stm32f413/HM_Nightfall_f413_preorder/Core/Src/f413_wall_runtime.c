@@ -21,6 +21,7 @@
 #define F413_WALL_RUNTIME_TRACE_END_L_FLAG      (0x0080U)
 #define F413_WALL_RUNTIME_TRACE_GATE_FLAG       (0x0100U)
 #define F413_WALL_RUNTIME_TRACE_CTRL_FLAG       (0x0200U)
+#define F413_WALL_RUNTIME_TRACE_DERIV_V2_FLAG   (0x0400U)
 #define F413_WALL_RUNTIME_TRACE_ENABLED_FLAG    (0x8000U)
 
 #ifndef NIGHTFALL_F413_DISABLE_WALL_CONTROL
@@ -49,8 +50,16 @@ typedef struct
   float dist_l_mm;
   int32_t deriv_r;
   int32_t deriv_l;
-  int32_t prev_r_delta;
-  int32_t prev_l_delta;
+  int32_t detected_deriv_r;
+  int32_t detected_deriv_l;
+  uint16_t deriv_buf_r[F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES];
+  uint16_t deriv_buf_l[F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES];
+  uint32_t deriv_sum_old_r;
+  uint32_t deriv_sum_new_r;
+  uint32_t deriv_sum_old_l;
+  uint32_t deriv_sum_new_l;
+  uint32_t deriv_last_sample_sequence;
+  uint8_t deriv_index;
   uint8_t deriv_fall_count_r;
   uint8_t deriv_fall_count_l;
   bool initialized;
@@ -62,11 +71,16 @@ static float g_wall_ctrl_angle_deg = 0.0f;
 static float g_wall_ctrl_error_lpf = 0.0f;
 static float g_wall_ctrl_latest_error = 0.0f;
 static bool g_wall_ctrl_active = false;
-static float g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
+static float g_wall_ctrl_kp_deg_per_adc;
 static float g_diagonal_ctrl_omega_deg_s = 0.0f;
 static float g_diagonal_ctrl_kp_deg_per_adc = 0.0f;
 static float g_diagonal_ctrl_thr = F413_WALL_RUNTIME_DIAGONAL_THR;
 static bool g_diagonal_ctrl_active = false;
+static bool g_wall_end_gate_active = false;
+static uint16_t g_wall_end_thr_r_high;
+static uint16_t g_wall_end_thr_r_low;
+static uint16_t g_wall_end_thr_l_high;
+static uint16_t g_wall_end_thr_l_low;
 
 static bool f413_wall_runtime_read_snapshot(f413_wall_sensor_snapshot_t* wall)
 {
@@ -124,8 +138,109 @@ static int32_t f413_wall_runtime_scale_float(float value, float scale)
 
 static bool f413_wall_runtime_gate_on(uint16_t mode_flags)
 {
-  return (g_config.trace_motor_fwd_flag != 0U) &&
-         ((mode_flags & g_config.trace_motor_fwd_flag) != 0U);
+  (void)mode_flags;
+  return g_wall_end_gate_active;
+}
+
+static uint16_t f413_wall_runtime_end_sample_value(int32_t value)
+{
+  if (value <= 0)
+  {
+    return 0U;
+  }
+  if (value >= 65535)
+  {
+    return 65535U;
+  }
+  return (uint16_t)value;
+}
+
+static void f413_wall_runtime_end_deriv_reset(const f413_wall_sensor_snapshot_t* wall)
+{
+  uint16_t r;
+  uint16_t l;
+  uint32_t i;
+
+  if (wall == NULL)
+  {
+    return;
+  }
+
+  r = f413_wall_runtime_end_sample_value(wall->r_delta);
+  l = f413_wall_runtime_end_sample_value(wall->l_delta);
+  for (i = 0U; i < F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES; i++)
+  {
+    g_wall_end.deriv_buf_r[i] = r;
+    g_wall_end.deriv_buf_l[i] = l;
+  }
+  g_wall_end.deriv_sum_old_r =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)r;
+  g_wall_end.deriv_sum_new_r =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)r;
+  g_wall_end.deriv_sum_old_l =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)l;
+  g_wall_end.deriv_sum_new_l =
+      F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES * (uint32_t)l;
+  g_wall_end.deriv_last_sample_sequence = wall->sample_sequence;
+  g_wall_end.deriv_index = 0U;
+  g_wall_end.deriv_r = 0;
+  g_wall_end.deriv_l = 0;
+}
+
+static bool f413_wall_runtime_end_deriv_update(const f413_wall_sensor_snapshot_t* wall)
+{
+  uint8_t index;
+  uint8_t move_index;
+  uint16_t r;
+  uint16_t l;
+  uint16_t drop_r;
+  uint16_t move_r;
+  uint16_t drop_l;
+  uint16_t move_l;
+  int32_t diff_r;
+  int32_t diff_l;
+
+  if ((wall == NULL) ||
+      (wall->sample_sequence == g_wall_end.deriv_last_sample_sequence))
+  {
+    return false;
+  }
+
+  index = g_wall_end.deriv_index;
+  move_index = (uint8_t)(((uint32_t)index +
+                          F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES) %
+                         F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES);
+  r = f413_wall_runtime_end_sample_value(wall->r_delta);
+  l = f413_wall_runtime_end_sample_value(wall->l_delta);
+
+  drop_r = g_wall_end.deriv_buf_r[index];
+  move_r = g_wall_end.deriv_buf_r[move_index];
+  g_wall_end.deriv_sum_old_r =
+      g_wall_end.deriv_sum_old_r - (uint32_t)drop_r + (uint32_t)move_r;
+  g_wall_end.deriv_sum_new_r =
+      g_wall_end.deriv_sum_new_r - (uint32_t)move_r + (uint32_t)r;
+
+  drop_l = g_wall_end.deriv_buf_l[index];
+  move_l = g_wall_end.deriv_buf_l[move_index];
+  g_wall_end.deriv_sum_old_l =
+      g_wall_end.deriv_sum_old_l - (uint32_t)drop_l + (uint32_t)move_l;
+  g_wall_end.deriv_sum_new_l =
+      g_wall_end.deriv_sum_new_l - (uint32_t)move_l + (uint32_t)l;
+
+  g_wall_end.deriv_buf_r[index] = r;
+  g_wall_end.deriv_buf_l[index] = l;
+  g_wall_end.deriv_index =
+      (uint8_t)(((uint32_t)index + 1U) %
+                F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES);
+  g_wall_end.deriv_last_sample_sequence = wall->sample_sequence;
+
+  diff_r = (int32_t)g_wall_end.deriv_sum_new_r -
+           (int32_t)g_wall_end.deriv_sum_old_r;
+  diff_l = (int32_t)g_wall_end.deriv_sum_new_l -
+           (int32_t)g_wall_end.deriv_sum_old_l;
+  g_wall_end.deriv_r = diff_r / F413_WALL_RUNTIME_END_DERIV_DIVISOR;
+  g_wall_end.deriv_l = diff_l / F413_WALL_RUNTIME_END_DERIV_DIVISOR;
+  return true;
 }
 
 static void f413_wall_runtime_end_reset_from_snapshot(const f413_wall_sensor_snapshot_t* wall)
@@ -136,12 +251,11 @@ static void f413_wall_runtime_end_reset_from_snapshot(const f413_wall_sensor_sna
     return;
   }
 
-  g_wall_end.right_wall = wall->r_delta > WALL_END_THR_R_HIGH;
-  g_wall_end.left_wall = wall->l_delta > WALL_END_THR_L_HIGH;
+  g_wall_end.right_wall = wall->r_delta > g_wall_end_thr_r_high;
+  g_wall_end.left_wall = wall->l_delta > g_wall_end_thr_l_high;
   g_wall_end.prev_right_wall = g_wall_end.right_wall;
   g_wall_end.prev_left_wall = g_wall_end.left_wall;
-  g_wall_end.prev_r_delta = wall->r_delta;
-  g_wall_end.prev_l_delta = wall->l_delta;
+  f413_wall_runtime_end_deriv_reset(wall);
   g_wall_end.initialized = true;
 }
 
@@ -149,6 +263,7 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
 {
   bool right_wall;
   bool left_wall;
+  bool deriv_updated;
 
   if (wall == NULL)
   {
@@ -159,68 +274,71 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
     f413_wall_runtime_end_reset_from_snapshot(wall);
   }
 
-  g_wall_end.deriv_r = wall->r_delta - g_wall_end.prev_r_delta;
-  g_wall_end.deriv_l = wall->l_delta - g_wall_end.prev_l_delta;
-  g_wall_end.prev_r_delta = wall->r_delta;
-  g_wall_end.prev_l_delta = wall->l_delta;
+  deriv_updated = f413_wall_runtime_end_deriv_update(wall);
 
   right_wall = g_wall_end.right_wall;
   left_wall = g_wall_end.left_wall;
 
   if (right_wall)
   {
-    if (wall->r_delta < WALL_END_THR_R_LOW)
+    if (wall->r_delta < g_wall_end_thr_r_low)
     {
       right_wall = false;
     }
   }
-  else if (wall->r_delta > WALL_END_THR_R_HIGH)
+  else if (wall->r_delta > g_wall_end_thr_r_high)
   {
     right_wall = true;
   }
 
   if (left_wall)
   {
-    if (wall->l_delta < WALL_END_THR_L_LOW)
+    if (wall->l_delta < g_wall_end_thr_l_low)
     {
       left_wall = false;
     }
   }
-  else if (wall->l_delta > WALL_END_THR_L_HIGH)
+  else if (wall->l_delta > g_wall_end_thr_l_high)
   {
     left_wall = true;
   }
 
-  if (right_wall && (g_wall_end.deriv_r < -(int32_t)WALL_END_DERIV_FALL_THR))
+  if (deriv_updated &&
+      right_wall &&
+      (g_wall_end.deriv_r < -(int32_t)WALL_END_DERIV_FALL_THR))
   {
     if (g_wall_end.deriv_fall_count_r < 255U)
     {
       g_wall_end.deriv_fall_count_r++;
     }
   }
-  else
+  else if (deriv_updated)
   {
     g_wall_end.deriv_fall_count_r = 0U;
   }
 
-  if (left_wall && (g_wall_end.deriv_l < -(int32_t)WALL_END_DERIV_FALL_THR))
+  if (deriv_updated &&
+      left_wall &&
+      (g_wall_end.deriv_l < -(int32_t)WALL_END_DERIV_FALL_THR))
   {
     if (g_wall_end.deriv_fall_count_l < 255U)
     {
       g_wall_end.deriv_fall_count_l++;
     }
   }
-  else
+  else if (deriv_updated)
   {
     g_wall_end.deriv_fall_count_l = 0U;
   }
 
-  if (g_wall_end.deriv_fall_count_r >= 2U)
+  if (g_wall_end.deriv_fall_count_r >=
+      F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES)
   {
     right_wall = false;
     g_wall_end.deriv_fall_count_r = 0U;
   }
-  if (g_wall_end.deriv_fall_count_l >= 2U)
+  if (g_wall_end.deriv_fall_count_l >=
+      F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES)
   {
     left_wall = false;
     g_wall_end.deriv_fall_count_l = 0U;
@@ -230,11 +348,13 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
   {
     g_wall_end.detected_r = true;
     g_wall_end.dist_r_mm = f413_ctrl_get_distance();
+    g_wall_end.detected_deriv_r = g_wall_end.deriv_r;
   }
   if (g_wall_end.prev_left_wall && !left_wall && gate_on && !g_wall_end.detected_l)
   {
     g_wall_end.detected_l = true;
     g_wall_end.dist_l_mm = f413_ctrl_get_distance();
+    g_wall_end.detected_deriv_l = g_wall_end.deriv_l;
   }
 
   g_wall_end.right_wall = right_wall;
@@ -430,15 +550,17 @@ static void f413_wall_runtime_fill_snapshot(nvm_trace_log_record_t* out,
   out->adc_fl = (uint16_t)wall->fl_delta;
   out->adc_l = (uint16_t)wall->l_delta;
   out->adc_vbat = wall->vbat_on;
-  out->reserved_i32_0 = wall->fr_delta;
-  out->reserved_i32_1 = wall->r_delta;
-  out->reserved_i32_2 = wall->fl_delta;
-  out->reserved_i32_3 = wall->l_delta;
+  out->reserved_i32_0 = g_wall_end.deriv_r;
+  out->reserved_i32_1 = g_wall_end.deriv_l;
+  out->reserved_i32_2 = g_wall_end.detected_deriv_r;
+  out->reserved_i32_3 = g_wall_end.detected_deriv_l;
   out->reserved_u16_0 = f413_wall_runtime_trace_flags_from_snapshot(wall, gate_on);
 }
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 {
+  g_wall_ctrl_kp_deg_per_adc = KP_DEFAULT;
+  f413_wall_runtime_set_wall_end_thresholds(0U, 0U, 0U, 0U);
   if (config != NULL)
   {
     g_config = *config;
@@ -448,6 +570,36 @@ void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 void f413_wall_runtime_end_clear(void)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
+  g_wall_end_gate_active = false;
+}
+
+void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
+                                               uint16_t right_low,
+                                               uint16_t left_high,
+                                               uint16_t left_low)
+{
+  g_wall_end_thr_r_high = (right_high > 0U) ? right_high : WALL_END_THR_R_HIGH;
+  g_wall_end_thr_r_low = (right_low > 0U) ? right_low : WALL_END_THR_R_LOW;
+  g_wall_end_thr_l_high = (left_high > 0U) ? left_high : WALL_END_THR_L_HIGH;
+  g_wall_end_thr_l_low = (left_low > 0U) ? left_low : WALL_END_THR_L_LOW;
+
+  if (g_wall_end_thr_r_low > g_wall_end_thr_r_high)
+  {
+    g_wall_end_thr_r_low = g_wall_end_thr_r_high;
+  }
+  if (g_wall_end_thr_l_low > g_wall_end_thr_l_high)
+  {
+    g_wall_end_thr_l_low = g_wall_end_thr_l_high;
+  }
+  f413_wall_runtime_end_clear();
+}
+
+void f413_wall_runtime_reset_wall_end_thresholds(void)
+{
+  f413_wall_runtime_set_wall_end_thresholds(WALL_END_THR_R_HIGH,
+                                            WALL_END_THR_R_LOW,
+                                            WALL_END_THR_L_HIGH,
+                                            WALL_END_THR_L_LOW);
 }
 
 void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal)
@@ -459,6 +611,7 @@ void f413_wall_runtime_set_control_gains(float kp_wall, float kp_diagonal)
 
 void f413_wall_runtime_control_clear(void)
 {
+  g_wall_end_gate_active = false;
   f413_wall_runtime_control_reset();
   f413_wall_runtime_diagonal_reset();
   f413_wall_runtime_apply_heading_correction(false, false);
@@ -479,6 +632,10 @@ void f413_wall_runtime_control_apply(bool straight_gate)
       !f413_run_features_wall_control_enabled() ||
       f413_run_features_test_mode_run())
   {
+    if (!straight_gate)
+    {
+      g_wall_end_gate_active = false;
+    }
     f413_wall_runtime_control_reset();
     f413_wall_runtime_diagonal_reset();
   }
@@ -490,25 +647,38 @@ void f413_wall_runtime_control_apply(bool straight_gate)
 #endif
 }
 
-bool f413_wall_runtime_poll_wall_end(bool straight_gate)
+static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
+                                                     bool wall_end_gate)
 {
   f413_wall_sensor_snapshot_t wall;
 
   if (!f413_wall_runtime_read_snapshot(&wall))
   {
+    g_wall_end_gate_active = false;
     f413_wall_runtime_control_reset();
     f413_wall_runtime_apply_heading_correction(false, false);
     return false;
   }
 
-  f413_wall_runtime_end_update(&wall, straight_gate);
+  g_wall_end_gate_active = wall_end_gate;
+  f413_wall_runtime_end_update(&wall, wall_end_gate);
   f413_wall_runtime_control_update(&wall,
-                                   straight_gate &&
+                                   wall_control_gate &&
                                    f413_run_features_wall_control_enabled() &&
                                    !f413_run_features_test_mode_run());
-  f413_wall_runtime_control_apply(straight_gate);
+  f413_wall_runtime_control_apply(wall_control_gate);
 
-  return straight_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+  return wall_end_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
+}
+
+void f413_wall_runtime_poll_straight(bool wall_control_gate)
+{
+  (void)f413_wall_runtime_poll_straight_internal(wall_control_gate, false);
+}
+
+bool f413_wall_runtime_poll_wall_end(bool straight_gate)
+{
+  return f413_wall_runtime_poll_straight_internal(straight_gate, straight_gate);
 }
 
 void f413_wall_runtime_poll_diagonal(bool diagonal_gate)
@@ -570,7 +740,8 @@ bool f413_wall_runtime_front_wall_reached(float ad_sum_threshold)
 uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snapshot_t* wall,
                                                      bool gate_on)
 {
-  uint16_t flags = F413_WALL_RUNTIME_TRACE_ENABLED_FLAG;
+  uint16_t flags = F413_WALL_RUNTIME_TRACE_ENABLED_FLAG |
+                   F413_WALL_RUNTIME_TRACE_DERIV_V2_FLAG;
 
   if (wall == NULL)
   {

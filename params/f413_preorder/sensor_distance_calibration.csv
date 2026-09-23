@@ -1,0 +1,22 @@
+# F413 mini_r2_0 front-wall calibration.
+# Supply: regulated bench supply. Fixture: trusted 2 + 5*n mm positions.
+# Repeated rows are independent measurements and are averaged by the fitter.
+# The 2.5 mm offset series is excluded because its wall angle is less accurate.
+distance_mm,fr_delta,fl_delta,r_delta,l_delta
+2,2220,2700,,
+7,1657,2026,,
+7,1702,2074,,
+12,1266,1542,,
+12,1284,1565,,
+17,979,1214,,
+17,983,1224,,
+22,774,972,,
+22,763,977,,
+27,623,785,,
+32,511,642,,
+37,418,542,,
+42,351,462,,
+47,297,393,,
+52,255,340,,
+57,220,297,,
+62,178,263,,

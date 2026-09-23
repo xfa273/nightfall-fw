@@ -1,0 +1,108 @@
+{
+  "schema": "nightfall_label_plane_known_pose_manifest_v3",
+  "board_layout": "board_layout_8x8_60mm.json",
+  "board_metric_geometry": null,
+  "tracking_geometry": "../../tuning/data/mini_r2_0_footprint.json",
+  "canonical_size_px": 900,
+  "reference_plane_absolute_height_mm": 0.0,
+  "reference_plane_provenance": {
+    "surface": "flush maze-floor board-metric dot lattice",
+    "height_reference": "maze floor",
+    "measurement": "flush paint/inlay; board metric geometry reference plane",
+    "confirmed_date": "2026-08-12",
+    "remeasure_if": "the floor overlay, dot inlay, or board surface changes"
+  },
+  "replace_before_use": "Copy this template, replace board_metric_geometry with a qualified full-board map, replace every placement capture_session and trajectory path, and set each time window to its actual stationary hold. All five camera_setup_sha256 values must match. Keep 0.0 mm only for a flush maze-floor metric lattice.",
+  "placements": [
+    {
+      "id": "fit-south-west",
+      "role": "fit",
+      "capture_session": {
+        "schema": "nightfall_camera_capture_session_v1",
+        "hfr_report": "path/to/capture/hfr_report.json",
+        "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+        "qa_report": "path/to/analysis/qa_report.json",
+        "raw_video": "path/to/capture/hfr_capture.mp4",
+        "trajectory_csv": "path/to/analysis/trajectory.csv",
+        "source_board_calibration": "path/to/analysis/calibration.json"
+      },
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 1.0,
+      "end_s": 4.0,
+      "true_blue_center_mm": [45.0, 45.0],
+      "true_heading_deg": 0.0
+    },
+    {
+      "id": "fit-south-east",
+      "role": "fit",
+      "capture_session": {
+        "schema": "nightfall_camera_capture_session_v1",
+        "hfr_report": "path/to/capture/hfr_report.json",
+        "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+        "qa_report": "path/to/analysis/qa_report.json",
+        "raw_video": "path/to/capture/hfr_capture.mp4",
+        "trajectory_csv": "path/to/analysis/trajectory.csv",
+        "source_board_calibration": "path/to/analysis/calibration.json"
+      },
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 7.0,
+      "end_s": 10.0,
+      "true_blue_center_mm": [675.0, 45.0],
+      "true_heading_deg": 180.0
+    },
+    {
+      "id": "fit-north-west",
+      "role": "fit",
+      "capture_session": {
+        "schema": "nightfall_camera_capture_session_v1",
+        "hfr_report": "path/to/capture/hfr_report.json",
+        "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+        "qa_report": "path/to/analysis/qa_report.json",
+        "raw_video": "path/to/capture/hfr_capture.mp4",
+        "trajectory_csv": "path/to/analysis/trajectory.csv",
+        "source_board_calibration": "path/to/analysis/calibration.json"
+      },
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 13.0,
+      "end_s": 16.0,
+      "true_blue_center_mm": [45.0, 675.0],
+      "true_heading_deg": 0.0
+    },
+    {
+      "id": "fit-north-east",
+      "role": "fit",
+      "capture_session": {
+        "schema": "nightfall_camera_capture_session_v1",
+        "hfr_report": "path/to/capture/hfr_report.json",
+        "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+        "qa_report": "path/to/analysis/qa_report.json",
+        "raw_video": "path/to/capture/hfr_capture.mp4",
+        "trajectory_csv": "path/to/analysis/trajectory.csv",
+        "source_board_calibration": "path/to/analysis/calibration.json"
+      },
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 19.0,
+      "end_s": 22.0,
+      "true_blue_center_mm": [675.0, 675.0],
+      "true_heading_deg": 180.0
+    },
+    {
+      "id": "held-out-centre",
+      "role": "validation",
+      "capture_session": {
+        "schema": "nightfall_camera_capture_session_v1",
+        "hfr_report": "path/to/capture/hfr_report.json",
+        "capture_results_jsonl": "path/to/capture/capture_results.jsonl",
+        "qa_report": "path/to/analysis/qa_report.json",
+        "raw_video": "path/to/capture/hfr_capture.mp4",
+        "trajectory_csv": "path/to/analysis/trajectory.csv",
+        "source_board_calibration": "path/to/analysis/calibration.json"
+      },
+      "trajectory_csv": "path/to/analysis/trajectory.csv",
+      "start_s": 25.0,
+      "end_s": 28.0,
+      "true_blue_center_mm": [315.0, 405.0],
+      "true_heading_deg": 90.0
+    }
+  ]
+}

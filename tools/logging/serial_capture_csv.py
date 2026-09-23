@@ -24,6 +24,18 @@ DEFAULT_BAUD = int(os.environ.get("NIGHTFALL_UART_BAUD", "921600"))
 IOSSIOSPEED = 0x80045402
 
 
+def _capture_source_signature() -> tuple:
+    """Notice stale long-running captures without restarting or resending UART commands."""
+    signature = []
+    for path in (Path(__file__), Path(trace_bin_dump.__file__)):
+        try:
+            stat = path.stat()
+            signature.append((stat.st_mtime_ns, stat.st_size))
+        except OSError:
+            signature.append(None)
+    return tuple(signature)
+
+
 def _repo_root_from_this_file() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -160,13 +172,14 @@ def _save_binary_frame(save_dir: Path, frame_bytes: bytes) -> None:
     raw_path = _new_binary_raw_file(save_dir)
     raw_path.write_bytes(frame_bytes)
     frame, header, rows, offset = trace_bin_dump.extract_frame(frame_bytes)
-    csv_path = raw_path.with_suffix(".csv")
-    trace_bin_dump.write_csv(csv_path, frame, header, rows)
+    csv_paths = trace_bin_dump.write_run_csvs(raw_path.with_suffix(".csv"), frame, header, rows)
     print(
-        f"\n[INFO] Binary trace frame: raw={raw_path} csv={csv_path} "
-        f"records={len(rows)} offset={offset}",
+        f"\n[INFO] Binary trace frame: raw={raw_path} "
+        f"records={len(rows)} runs={len(csv_paths)} offset={offset}",
         file=sys.stderr,
     )
+    for csv_path in csv_paths:
+        print(f"[INFO] Run CSV: {csv_path}", file=sys.stderr)
 
 
 def _format_mm_columns(line: str) -> str:
@@ -223,6 +236,7 @@ def _send_command_chars(fd: int, commands: list[str], delay_ms: float) -> None:
 
 
 def main() -> int:
+    source_signature = _capture_source_signature()
     ap = argparse.ArgumentParser(add_help=True)
     ap.add_argument("save_dir", nargs="?", default=None)
     ap.add_argument("port", nargs="?", default="auto")
@@ -270,6 +284,7 @@ def main() -> int:
     print(f"Port       : {port}")
     print(f"Baud       : {args.baud}")
     print(f"Save Dir   : {save_dir}")
+    print("CSV output : one file per run (multi-run binary: *_run001.csv, *_run002.csv, ...)")
     if sys.stdin.isatty():
         print("Type UART commands and press Enter (example: q,y,V)")
     print("Press Ctrl+C to stop.")
@@ -303,7 +318,18 @@ def main() -> int:
         if auto_commands:
             _send_command_chars(fd, auto_commands, args.send_interval_ms)
 
+        next_source_check = time.monotonic()
+        source_warning_printed = False
         while True:
+            if not source_warning_printed and time.monotonic() >= next_source_check:
+                next_source_check = time.monotonic() + 5.0
+                if _capture_source_signature() != source_signature:
+                    print(
+                        "[WARN] Capture source updated on disk. This process still uses the old code. "
+                        "After the current dump finishes, press Ctrl+C and restart capture to apply the update.",
+                        file=sys.stderr,
+                    )
+                    source_warning_printed = True
             read_list = [fd]
             if stdin_fd is not None:
                 read_list.append(stdin_fd)
@@ -431,6 +457,7 @@ def main() -> int:
                     or line.startswith("#op_")
                     or line.startswith("#tune_")
                     or line.startswith("#wall_trace_")
+                    or line.startswith("#trace_run_")
                 ):
                     if line not in pending_fw_meta:
                         pending_fw_meta.append(line)
@@ -452,7 +479,6 @@ def main() -> int:
                         seq is not None
                         and prev_seq is not None
                         and seq == 0
-                        and prev_seq != 0
                     )
                     if (
                         prev_ts is not None

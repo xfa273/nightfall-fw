@@ -1,6 +1,8 @@
 #include "f413_mode7.h"
 
 #include "f413_mode_shortest.h"
+#include "params.h"
+#include "shortest_run_params.h"
 
 typedef struct {
   uint8_t case_index;
@@ -11,7 +13,7 @@ typedef struct {
 typedef struct {
   uint8_t case_index;
   const char* label;
-  uint16_t codes[4];
+  uint16_t codes[5];
   uint16_t code_count;
 } f413_mode7_case0_sub_t;
 
@@ -53,9 +55,23 @@ static const f413_mode7_case0_sub_t k_case0_subs[10] = {
   {8U, "mode7-case0-sub4 R135 in",        {204U, 901U, 1001U, 0U},    3U},
   {8U, "mode7-case0-sub5 R135 out",       {204U, 1001U, 904U, 1001U}, 4U},
   {8U, "mode7-case0-sub6 large R90 + S1", {204U, 501U, 201U, 0U},     3U},
-  {8U, "mode7-case0-sub7 large R180 + S1",{204U, 502U, 201U, 0U},     3U},
+  {8U, "mode7-case0-sub7 large R180 + S1",{206U, 502U, 201U, 0U},     3U},
   {1U, "mode7-case0-sub8 straight case1", {203U, 0U, 0U, 0U},         1U},
   {5U, "mode7-case0-sub9 straight case5", {203U, 0U, 0U, 0U},         1U},
+};
+
+/* Valid cardinal/diagonal approaches and explicit braking tails for suction tuning. */
+static const f413_mode7_case0_sub_t k_suction_case0_subs[10] = {
+  {1U, "mode7-case0-sub0 small R90",  {203U, 300U, 203U},                3U},
+  {2U, "mode7-case0-sub1 large R90",  {204U, 501U, 203U},                3U},
+  {2U, "mode7-case0-sub2 large R180", {206U, 502U, 203U},                3U},
+  {8U, "mode7-case0-sub3 R45 in",     {204U, 701U, 1003U},               3U},
+  {8U, "mode7-case0-sub4 L45 out",    {204U, 701U, 1003U, 704U, 203U},   5U},
+  {8U, "mode7-case0-sub5 L-V90",      {204U, 701U, 1003U, 802U, 1003U},  5U},
+  {8U, "mode7-case0-sub6 R135 in",    {204U, 901U, 1003U},               3U},
+  {8U, "mode7-case0-sub7 L135 out",   {204U, 901U, 1003U, 904U, 203U},   5U},
+  {1U, "mode7-case0-sub8 straight case1", {209U},                       1U},
+  {5U, "mode7-case0-sub9 straight case5", {209U},                       1U},
 };
 
 void f413_mode7_run_case(uint8_t op_case)
@@ -69,9 +85,10 @@ void f413_mode7_run_case(uint8_t op_case)
   }
 
   config.mode = 7U;
-  config.op_case = op_case;
+  config.op_case = k_cases[op_case - 1U].case_index;
   config.label = k_cases[op_case - 1U].params_ref;
   config.features = k_cases[op_case - 1U].features;
+  config.diagonal_time_plan = false;
   f413_mode_shortest_run_config(&config);
 }
 
@@ -82,9 +99,11 @@ void f413_mode7_run_case0_sub(uint8_t sub)
     return;
   }
 
-  f413_mode_shortest_run_case0_path(k_case0_subs[sub].label,
+  const f413_mode7_case0_sub_t* tests = (shortestRunModeParams7.fan_power > 0)
+      ? k_suction_case0_subs : k_case0_subs;
+  f413_mode_shortest_run_case0_path(tests[sub].label,
                                     7U,
-                                    k_case0_subs[sub].case_index,
-                                    k_case0_subs[sub].codes,
-                                    k_case0_subs[sub].code_count);
+                                    tests[sub].case_index,
+                                    tests[sub].codes,
+                                    tests[sub].code_count);
 }

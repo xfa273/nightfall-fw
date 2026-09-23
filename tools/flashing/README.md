@@ -19,6 +19,26 @@
 
 CubeProgrammerのCLI (`STM32_Programmer_CLI`) を使い、SWD経由で `build/Debug/nightfall_stm32f413.elf` を書き込みます。
 
+### Apple Silicon Mac
+
+Apple Siliconではarm64対応CLIを使用します。CubeProgrammer 2.21のように
+`bin/STM32_Programmer_CLI`がx86_64専用でも、同じインストールの
+`api/lib/STM32_Programmer_CLI`がarm64対応なら自動選択します。
+`--cli`または`STM32_PROGRAMMER_CLI`で既存のbin CLIを指定した場合も同様です。
+既にarm64対応のbin CLIや独自ラッパーを指定している場合はそのまま使用します。
+
+SDK側CLIは実行位置からデバイスDB・FlashLoaderを探すため、その実行ファイルだけを
+private一時ディレクトリにコピーし、同梱ライブラリ・DB・Loader・Driversをリンクします。
+終了時に一時ディレクトリを削除します。インストール済みアプリの変更、Rosetta、
+追加ダウンロード、署名やセキュリティ設定の変更は不要です。
+arm64版が同梱されていなければ書き込み前にエラーにし、対応版の指定を案内します。
+
+ホスト側の回帰テスト（実機への接続・書き込みなし）:
+
+```bash
+python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
+```
+
 ### ST-LINK認識確認
 
 ```bash

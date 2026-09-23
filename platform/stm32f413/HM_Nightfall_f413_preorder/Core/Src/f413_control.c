@@ -12,7 +12,11 @@
  */
 
 #include "f413_control.h"
+#include "f413_motor_pwm.h"
+#include "f413_measurements.h"
+#include "f413_motion_stop.h"
 #include "main.h"
+#include "f413_hw.h"
 #include "params.h"
 #include <math.h>
 #include <string.h>
@@ -20,34 +24,18 @@
 /* ---------- ハードウェア定数 ---------- */
 #define F413_CTRL_DT              (0.001f)   /* 制御周期 [s] (1kHz) */
 #define F413_CTRL_ENCODER_CENTER  (30000U)   /* エンコーダカウンタ中央値 */
-#define F413_CTRL_CPR_WHEEL       (200.0f)   /* 100pr reflective disk: 50 cycles/rev x4 */
+#define F413_CTRL_CPR_WHEEL       (f413_machine_hardware()->encoder_cpr)
 #define F413_CTRL_D_TIRE          (D_TIRE)   /* タイヤ直径 [mm], F405同様params.hで調整 */
-#define F413_CTRL_TREAD           (34.5f)    /* 左右タイヤ中心間距離 [mm] */
-#define F413_CTRL_PWM_MAX         (1000U)    /* TIM2 ARR */
-#define F413_CTRL_ENCODER_SIGN_L  (1.0f)
-#define F413_CTRL_ENCODER_SIGN_R  (-1.0f)
+#define F413_CTRL_TREAD           (f413_machine_hardware()->tread_mm)
+#define F413_CTRL_PWM_MAX         F413_MOTOR_PWM_MAX
+#define F413_CTRL_ENCODER_SIGN_L  (f413_machine_hardware()->encoder_sign_l)
+#define F413_CTRL_ENCODER_SIGN_R  (f413_machine_hardware()->encoder_sign_r)
 
 /* ---------- 制御ゲイン ---------- */
-#define F413_CTRL_KP_ANGLE        (3.0f)     /* [deg/s / deg] */
-#define F413_CTRL_KI_ANGLE        (0.0f)
-#define F413_CTRL_KD_ANGLE        (0.0f)
 #define F413_CTRL_ANGLE_OMEGA_MAX (4000.0f)
-#ifndef F413_CTRL_TUNE_STRAIGHT_KP_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KP_ANGLE (4.0f)
-#endif
-#ifndef F413_CTRL_TUNE_STRAIGHT_KI_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KI_ANGLE (0.0f)
-#endif
-#ifndef F413_CTRL_TUNE_STRAIGHT_KD_ANGLE
-#define F413_CTRL_TUNE_STRAIGHT_KD_ANGLE (0.0f)
-#endif
 #ifndef F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX
 #define F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX (60.0f)
 #endif
-#define F413_CTRL_OMEGA_I_LIMIT   (6000.0f)
-#define F413_CTRL_ROT_PWM_MIN     (100.0f)
-#define F413_CTRL_ROT_MIN_OMEGA_REF (10.0f)
-#define F413_CTRL_ROT_MIN_VEL_ABS (1.0f)
 #define F413_CTRL_TRANS_FF_MIN_VEL_ABS (1.0f)
 #define F413_CTRL_TRANS_FF_MIN_ACCEL_ABS (1.0f)
 #ifndef CTRL_ENABLE_ANTI_WINDUP
@@ -75,6 +63,7 @@
 #define F413_IMU_WHO_AM_I_REG     (0x0FU)
 #define F413_IMU_WHO_AM_I_VAL     (0x6BU)
 #define F413_IMU_CTRL1_XL         (0x10U)    /* 加速度設定 */
+#define F413_IMU_CTRL1_XL_833HZ_16G (0x74U)
 #define F413_IMU_CTRL2_G          (0x11U)    /* ジャイロ設定 */
 #define F413_IMU_CTRL3_C          (0x12U)    /* 制御レジスタ3 */
 #define F413_IMU_OUTZ_G_L         (0x26U)    /* ジャイロ Z軸 LOW byte */
@@ -82,13 +71,12 @@
 #define F413_IMU_OUTX_XL_L        (0x28U)
 #define F413_IMU_OUTY_XL_L        (0x2AU)
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
-#define F413_IMU_ACCEL_SENS_MG    (0.488f)
+#define F413_IMU_ACCEL_SENS_MG    (0.488f)   /* FS=±16g */
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
-#define F413_IMU_FORWARD_ACCEL_REG  (F413_IMU_OUTY_XL_L)
-#define F413_IMU_FORWARD_ACCEL_SIGN (1.0f)
-#define F413_CTRL_VEL_EST_MAX     (1200.0f)
+#define F413_IMU_FORWARD_ACCEL_REG  (f413_machine_hardware()->imu_forward_accel_reg)
+#define F413_IMU_FORWARD_ACCEL_SIGN (f413_machine_hardware()->imu_forward_accel_sign)
 #define F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS (64U)
 #define F413_CTRL_TUNE_TOTAL_MS   (800U)
 #define F413_CTRL_TUNE_RAMP_MS    (400U)
@@ -96,19 +84,10 @@
 #define F413_CTRL_TUNE_DIST_LIMIT_MM (650.0f)
 #define F413_CTRL_TUNE_ANGLE_LIMIT_DEG (400.0f)
 
-#if (VELOCITY_ACCEL_COMP_WINDOW_MS < 1U)
-#undef VELOCITY_ACCEL_COMP_WINDOW_MS
-#define VELOCITY_ACCEL_COMP_WINDOW_MS 1U
-#endif
-
-#if (VELOCITY_ACCEL_COMP_WINDOW_MS > F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS)
-#undef VELOCITY_ACCEL_COMP_WINDOW_MS
-#define VELOCITY_ACCEL_COMP_WINDOW_MS F413_CTRL_VEL_ACCEL_COMP_WINDOW_MAX_MS
-#endif
+/* Window bounds are checked by the boot profile resolver (1..64 ms). */
 
 /* ---------- エンコーダ変換定数 ---------- */
-static const float s_enc_to_mm =
-    (F413_CTRL_D_TIRE * 3.14159265f) / F413_CTRL_CPR_WHEEL;
+static float s_enc_to_mm;
 
 /* ---------- HAL ハンドル (main.c で定義) ---------- */
 extern TIM_HandleTypeDef htim2;
@@ -124,6 +103,8 @@ static bool s_imu_ok = false;
 static volatile float s_acceleration_interrupt = 0.0f;
 static volatile float s_velocity_interrupt = 0.0f;
 static volatile float s_velocity_profile_target = 0.0f;
+static volatile float s_velocity_profile_direction = 0.0f;
+static volatile float s_velocity_profile_end_distance = 0.0f;
 static volatile uint8_t s_velocity_profile_clamp_enabled = 0U;
 static volatile uint8_t s_distance_feedback_enabled = 1U;
 static volatile float s_omega_interrupt = 0.0f;
@@ -209,7 +190,7 @@ static volatile float s_tune_reference = 0.0f;
 
 static bool f413_ctrl_use_fan_on_gains(void)
 {
-    return false;
+    return f413_hw_fan_is_running();
 }
 
 static void f413_ctrl_cancel_omega_profile(void)
@@ -464,6 +445,8 @@ static void f413_ctrl_reset_profile_state(void)
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = 0.0f;
     s_velocity_profile_target = 0.0f;
+    s_velocity_profile_direction = 0.0f;
+    s_velocity_profile_end_distance = 0.0f;
     s_velocity_profile_clamp_enabled = 0U;
     s_distance_feedback_enabled = 1U;
     s_omega_interrupt = 0.0f;
@@ -841,8 +824,8 @@ static bool imu_init_ism330(void)
     imu_write_byte(F413_IMU_CTRL2_G, 0x71U);
     HAL_Delay(10U);
 
-    /* CTRL1_XL: ODR=833Hz, FS=±16g (0x7C) */
-    imu_write_byte(F413_IMU_CTRL1_XL, 0x7CU);
+    /* CTRL1_XL: ODR=833Hz, FS=±16g */
+    imu_write_byte(F413_IMU_CTRL1_XL, F413_IMU_CTRL1_XL_833HZ_16G);
     HAL_Delay(10U);
 
     return true;
@@ -879,6 +862,8 @@ static void imu_get_motion_offsets(void)
 
 void f413_ctrl_init(void)
 {
+    if (!f413_machine_has(F413_CAP_DRIVE | F413_CAP_IMU)) return;
+    s_enc_to_mm = (F413_CTRL_D_TIRE * 3.14159265f) / F413_CTRL_CPR_WHEEL;
     s_running = false;
     f413_ctrl_reset_profile_state();
     f413_ctrl_reset_pid_state();
@@ -903,6 +888,7 @@ void f413_ctrl_init(void)
 
 void f413_ctrl_start(void)
 {
+    if (!f413_machine_has(F413_CAP_DRIVE | F413_CAP_IMU)) return;
     /* 走行直前に IMU オフセットを再取得（静止状態で校正） */
     if (s_imu_ok)
     {
@@ -955,6 +941,8 @@ void f413_ctrl_stop(void)
 
 void f413_ctrl_set_velocity(float velocity_mm_s)
 {
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
     if (s_distance_feedback_enabled != 0U)
     {
         f413_ctrl_sync_distance_feedback_to_real();
@@ -963,8 +951,20 @@ void f413_ctrl_set_velocity(float velocity_mm_s)
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = velocity_mm_s;
     s_velocity_profile_target = velocity_mm_s;
+    s_velocity_profile_direction = 0.0f;
     s_velocity_profile_clamp_enabled = 0U;
     s_target_velocity = velocity_mm_s;
+    __set_PRIMASK(primask);
+}
+
+void f413_ctrl_clear_velocity_feedback(void)
+{
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    s_velocity_integral = 0.0f;
+    s_previous_velocity_error = s_target_velocity - s_real_velocity;
+    s_velocity_error_error = 0.0f;
+    __set_PRIMASK(primask);
 }
 
 void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
@@ -977,6 +977,27 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
         return;
     }
 
+    /* Publish the endpoint and profile atomically to the 1 kHz interrupt. */
+    const uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    if (f413_ctrl_use_fan_on_gains() && s_distance_feedback_enabled &&
+        s_velocity_interrupt == 0.0f && s_velocity_profile_target == 0.0f &&
+        start_velocity_mm_s == 0.0f && target_velocity_mm_s != 0.0f &&
+        !s_omega_profile_active && s_omega_interrupt == 0.0f)
+    {
+        /* Release powered stationary holding into rolling motion. The yaw I
+         * needed to overcome stationary friction/fan spinup must not launch
+         * the robot in the opposite direction to its heading correction.
+         * Preserve both measured and requested pose, and translation state.
+         * The cleared angle outer loop also changes the omega reference;
+         * invalidate derivative history so that change is not an FF impulse.
+         */
+        s_omega_integral = 0.0f;
+        s_previous_omega_error = s_real_omega -
+            (s_omega_interrupt + s_target_omega + s_heading_omega_correction);
+        s_omega_error_error = 0.0f;
+        f413_ctrl_reset_omega_ff_state();
+    }
     f413_ctrl_sync_distance_feedback_to_real();
     s_distance_feedback_enabled = 1U;
     s_velocity_interrupt = start_velocity_mm_s;
@@ -987,6 +1008,16 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
         ((target_velocity_mm_s * target_velocity_mm_s) -
          (start_velocity_mm_s * start_velocity_mm_s)) /
         (2.0f * distance_mm);
+    s_velocity_profile_direction = s_acceleration_interrupt;
+    s_velocity_profile_end_distance = s_target_distance + distance_mm;
+    __set_PRIMASK(primask);
+}
+
+bool f413_ctrl_stop_profile_complete(void)
+{
+    return s_velocity_profile_clamp_enabled &&
+           s_velocity_profile_target == 0.0f &&
+           s_velocity_interrupt == 0.0f && s_acceleration_interrupt == 0.0f;
 }
 
 void f413_ctrl_set_omega(float omega_deg_s)
@@ -1159,6 +1190,10 @@ float f413_ctrl_get_accel_forward(void)   { return s_accel_forward_filtered; }
 float f413_ctrl_get_gyro_z_raw(void)      { return s_omega_z_raw; }
 uint16_t f413_ctrl_get_velocity_accel_comp_window_ms(void) { return (uint16_t)VELOCITY_ACCEL_COMP_WINDOW_MS; }
 bool f413_ctrl_velocity_accel_comp_control_enabled(void) { return (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U); }
+bool f413_ctrl_velocity_accel_comp_turn_control_enabled(void)
+{
+    return (VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE != 0U);
+}
 int16_t f413_ctrl_get_motor_out_l(void)   { return s_motor_out_l; }
 int16_t f413_ctrl_get_motor_out_r(void)   { return s_motor_out_r; }
 int16_t f413_ctrl_get_log_encoder_delta_l(void) { return s_encoder_delta_l; }
@@ -1180,10 +1215,8 @@ void f413_ctrl_tick(void)
     float out_r;
     uint32_t duty_l;
     uint32_t duty_r;
-    uint32_t compare_l = 0U;
-    uint32_t compare_r = 0U;
-    GPIO_PinState in2_l = GPIO_PIN_RESET;
-    GPIO_PinState in2_r = GPIO_PIN_RESET;
+    f413_motor_pwm_command_t pwm_l;
+    f413_motor_pwm_command_t pwm_r;
     const bool use_fan_on_gains = f413_ctrl_use_fan_on_gains();
     const float kp_d = use_fan_on_gains ? KP_DISTANCE_FAN_ON : KP_DISTANCE_FAN_OFF;
     const float ki_d = use_fan_on_gains ? KI_DISTANCE_FAN_ON : KI_DISTANCE_FAN_OFF;
@@ -1267,6 +1300,8 @@ void f413_ctrl_tick(void)
         omega_raw = s_omega_z_filtered;
 
         float accel_raw = imu_read_accel_forward_mm_s2() - s_accel_forward_offset;
+        accel_raw = f413_imu_centre_forward_accel(accel_raw, omega_raw,
+            f413_machine_hardware()->imu_forward_offset_mm);
         accel_forward_for_comp = accel_raw;
         if (!s_accel_forward_lpf_inited)
         {
@@ -1284,20 +1319,27 @@ void f413_ctrl_tick(void)
     }
 
     s_accel_velocity = f413_ctrl_update_velocity_accel_comp(real_velocity_raw, accel_forward_for_comp);
-    if (s_accel_velocity > F413_CTRL_VEL_EST_MAX)
-    {
-        s_accel_velocity = F413_CTRL_VEL_EST_MAX;
-    }
-    else if (s_accel_velocity < -F413_CTRL_VEL_EST_MAX)
-    {
-        s_accel_velocity = -F413_CTRL_VEL_EST_MAX;
-    }
+    /* Feedback must represent actual motion, including overspeed. Do not
+     * clip the estimate to a bring-up ceiling or the commanded velocity. */
 
-#if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
-    s_real_velocity = s_accel_velocity;
-#else
-    s_real_velocity = s_real_velocity_lpf;
-#endif
+    if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
+    {
+    /*
+     * A turn produces lateral acceleration near v*omega.  Until the IMU-axis
+     * cross-coupling is calibrated, feeding that component into the forward
+     * velocity estimator makes the translation PI alternately back off and
+     * surge.  Use the existing 3 ms encoder LPF instead.  It remains
+     * independent of turn direction without adding the roughly 15 ms group
+     * delay of the accelerometer estimator's 30 ms moving window.
+     */
+      s_real_velocity = (s_omega_profile_active &&
+          VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U) ?
+          s_real_velocity_lpf : s_accel_velocity;
+    }
+    else
+    {
+      s_real_velocity = s_real_velocity_lpf;
+    }
 
     s_real_omega = omega_raw;
     s_real_angle += s_real_omega * F413_CTRL_DT;
@@ -1440,9 +1482,9 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = f413_ctrl_clamp_omega_abs((F413_CTRL_TUNE_STRAIGHT_KP_ANGLE * s_angle_error) +
-                                                                    (F413_CTRL_TUNE_STRAIGHT_KI_ANGLE * s_angle_integral) +
-                                                                    (F413_CTRL_TUNE_STRAIGHT_KD_ANGLE * s_angle_error_error),
+                        s_target_omega = f413_ctrl_clamp_omega_abs((kp_a * s_angle_error) +
+                                                                    (ki_a * s_angle_integral) +
+                                                                    (kd_a * s_angle_error_error),
                                                                     F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX);
                     }
                 }
@@ -1503,21 +1545,29 @@ void f413_ctrl_tick(void)
     {
         f413_ctrl_update_omega_profile();
 
-        s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
-        if (s_velocity_profile_clamp_enabled && (s_acceleration_interrupt != 0.0f))
+        if (s_velocity_profile_clamp_enabled)
         {
-            if ((s_acceleration_interrupt > 0.0f) &&
-                (s_velocity_interrupt > s_velocity_profile_target))
-            {
-                s_velocity_interrupt = s_velocity_profile_target;
-            }
-            else if ((s_acceleration_interrupt < 0.0f) &&
-                     (s_velocity_interrupt < s_velocity_profile_target))
-            {
-                s_velocity_interrupt = s_velocity_profile_target;
-            }
+            float velocity = s_velocity_interrupt;
+            float acceleration = s_acceleration_interrupt;
+            f413_motion_profile_advance(&velocity, &acceleration,
+                                       s_velocity_profile_target, F413_CTRL_DT);
+            s_velocity_interrupt = velocity;
+            s_acceleration_interrupt = acceleration;
         }
-        s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
+        else
+        {
+            s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
+        }
+        const bool stop_profile_complete = f413_ctrl_stop_profile_complete();
+        if (stop_profile_complete)
+        {
+            /* Avoid a permanently short endpoint from discrete integration. */
+            s_target_distance = s_velocity_profile_end_distance;
+        }
+        else
+        {
+            s_target_distance += s_velocity_interrupt * F413_CTRL_DT;
+        }
 
         if (s_distance_feedback_enabled != 0U)
         {
@@ -1546,29 +1596,9 @@ void f413_ctrl_tick(void)
         s_target_velocity = (ff_d * s_velocity_interrupt) + s_distance_velocity_feedback;
         if (s_velocity_profile_clamp_enabled != 0U)
         {
-            if ((s_acceleration_interrupt > 0.0f) &&
-                (s_target_velocity > s_velocity_profile_target))
-            {
-                s_target_velocity = s_velocity_profile_target;
-            }
-            else if ((s_acceleration_interrupt < 0.0f) &&
-                     (s_target_velocity < s_velocity_profile_target))
-            {
-                s_target_velocity = s_velocity_profile_target;
-            }
-            else if (s_acceleration_interrupt == 0.0f)
-            {
-                if ((s_velocity_profile_target >= 0.0f) &&
-                    (s_target_velocity > s_velocity_profile_target))
-                {
-                    s_target_velocity = s_velocity_profile_target;
-                }
-                else if ((s_velocity_profile_target < 0.0f) &&
-                         (s_target_velocity < s_velocity_profile_target))
-                {
-                    s_target_velocity = s_velocity_profile_target;
-                }
-            }
+            s_target_velocity = f413_motion_profile_limit(s_target_velocity,
+                s_velocity_profile_target, s_velocity_profile_direction,
+                stop_profile_complete);
         }
 
         s_velocity_error = s_target_velocity - s_real_velocity;
@@ -1593,7 +1623,7 @@ void f413_ctrl_tick(void)
                 s_velocity_integral = v_i_next;
             }
             s_out_translation =
-                f413_ctrl_translation_ff_output(s_velocity_interrupt,
+                f413_ctrl_translation_ff_output(stop_profile_complete ? s_target_velocity : s_velocity_interrupt,
                                                 s_acceleration_interrupt,
                                                 ff_ts,
                                                 ff_tv,
@@ -1640,55 +1670,30 @@ void f413_ctrl_tick(void)
     duty_l = (uint32_t)fminf(fabsf(out_l), (float)F413_CTRL_PWM_MAX);
     duty_r = (uint32_t)fminf(fabsf(out_r), (float)F413_CTRL_PWM_MAX);
 
-    if (duty_l != 0U)
-    {
-        if (out_l >= 0.0f)
-        {
-            compare_l = duty_l;
-            in2_l = GPIO_PIN_RESET;
-        }
-        else
-        {
-            compare_l = F413_CTRL_PWM_MAX - duty_l;
-            in2_l = GPIO_PIN_SET;
-        }
-    }
-
-    if (duty_r != 0U)
-    {
-        if (out_r >= 0.0f)
-        {
-            compare_r = F413_CTRL_PWM_MAX - duty_r;
-            in2_r = GPIO_PIN_SET;
-        }
-        else
-        {
-            compare_r = duty_r;
-            in2_r = GPIO_PIN_RESET;
-        }
-    }
+    pwm_l = f413_motor_pwm_encode(true, out_l >= 0.0f, (uint16_t)duty_l);
+    pwm_r = f413_motor_pwm_encode(false, out_r >= 0.0f, (uint16_t)duty_r);
 
     /* ハードウェア配線: TIM2_CH1=左モータ, TIM2_CH3=右モータ
        MP6551 入力: PWM pin=IN1, DIR pin=IN2, STBY pin=EN1/EN2 */
-    if (in2_l == GPIO_PIN_SET)
+    if (pwm_l.in2_high)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, compare_l);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_l.compare);
         HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_SET);
     }
     else
     {
         HAL_GPIO_WritePin(MOTOR_L_DIR_GPIO_Port, MOTOR_L_DIR_Pin, GPIO_PIN_RESET);
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, compare_l);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pwm_l.compare);
     }
 
-    if (in2_r == GPIO_PIN_SET)
+    if (pwm_r.in2_high)
     {
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, compare_r);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_r.compare);
         HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_SET);
     }
     else
     {
         HAL_GPIO_WritePin(MOTOR_R_DIR_GPIO_Port, MOTOR_R_DIR_Pin, GPIO_PIN_RESET);
-        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, compare_r);
+        __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_3, pwm_r.compare);
     }
 }
