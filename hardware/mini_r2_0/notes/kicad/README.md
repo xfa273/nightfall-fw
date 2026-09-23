@@ -19,6 +19,7 @@
 
 ## JLCPCB 発注データ
 
+- 2026-09-21に本体基板の取付穴4か所をØ1.6 mmへ変更し、周辺配線を調整しました。[更新後の発注用ZIP・加工図](../../cad/export/jlcpcb/main_mount_1p6_20260921/README.md) を使用してください。以下の20260606候補は変更前です。詳細は [MAIN_MOUNT_HOLES.md](MAIN_MOUNT_HOLES.md) を参照してください。
 - 旧 Eagle 発注済み Gerber: `cad/export/reference/eagle_ordered_2026-03-22/HM_Nightfall-mini-2e_v1_eagle_ordered_2026-03-22.zip`
 - KiCad 正式候補 Gerber: `cad/export/jlcpcb/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606/HM_Nightfall-mini-2e_v1_kicad_jlcpcb_candidate_20260606.zip`
 - Eagle 参照アーカイブ: `cad/export/reference/eagle_archive_20260606/mini_r2_0_eagle_sources_20260606.zip` / `mini_r2_0_eagle_exports_20260606.zip`
@@ -34,6 +35,14 @@
 - 詳細な分類と優先度は `REVIEW.md` に記録します。
 
 ## サブ基板
+
+### 2026-09-21: エンコーダ端子の半穴化
+
+左右エンコーダ基板のKiCad PCBを編集正として、端の4端子を
+Ø0.30 mmのめっき半穴と表裏ランドへ変更しました。
+外形を維持するための特殊加工案です。寸法、DRC差分、製造照会条件は
+[ENCODER_CASTELLATED_PADS.md](ENCODER_CASTELLATED_PADS.md)を参照してください。
+以下の初回レポートとEagleアーカイブは変更前の記録です。
 
 以下の Eagle 原本は本体基板とは独立した小基板として、KiCad でも 1 基板 1 プロジェクトで管理します。
 
