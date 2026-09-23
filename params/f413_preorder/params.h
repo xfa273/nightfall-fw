@@ -83,10 +83,10 @@
 #endif
 
 #ifndef KP_VELOCITY_FAN_OFF
-#define KP_VELOCITY_FAN_OFF 1.2F
+#define KP_VELOCITY_FAN_OFF 1.3F
 #endif
 #ifndef KI_VELOCITY_FAN_OFF
-#define KI_VELOCITY_FAN_OFF 0.0F
+#define KI_VELOCITY_FAN_OFF 0.012F
 #endif
 #ifndef KD_VELOCITY_FAN_OFF
 #define KD_VELOCITY_FAN_OFF 0.0F
@@ -168,10 +168,10 @@
 #define KP_OMEGA_FAN_OFF 1.0F
 #endif
 #ifndef KI_OMEGA_FAN_OFF
-#define KI_OMEGA_FAN_OFF 0.03F
+#define KI_OMEGA_FAN_OFF 0.01F
 #endif
 #ifndef KD_OMEGA_FAN_OFF
-#define KD_OMEGA_FAN_OFF 2.0F
+#define KD_OMEGA_FAN_OFF 0.0F
 #endif
 
 #define FF_OMEGA 0.0F

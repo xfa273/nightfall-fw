@@ -88,7 +88,7 @@
 #define F413_IMU_GYRO_SENSITIVITY (0.14f)    /* FS=4000dps → 140mdps/LSB [deg/s/LSB] */
 #define F413_IMU_ACCEL_SENS_MG    (0.488f)
 #define F413_IMU_GRAVITY_MM_S2    (9.80665f)
-#define F413_IMU_OMEGA_LPF_TAU    (0.020f)   /* 角速度 LPF 時定数 [s] (振動ノイズ除去) */
+#define F413_IMU_OMEGA_LPF_TAU    (0.00f)   /* 角速度 LPF 時定数 [s] (振動ノイズ除去) */
 #define F413_IMU_ACCEL_LPF_TAU    (0.010f)
 #define F413_IMU_OFFSET_SAMPLES   (500U)     /* オフセット測定回数 */
 #define F413_IMU_OFFSET_SETTLE_MS (200U)     /* 静定待ち [ms] */
