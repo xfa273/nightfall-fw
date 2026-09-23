@@ -141,26 +141,26 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .turn_omega_max = 3000.0f,
     // 90deg
     .velocity_turn90 = 800.0f,
-    .alpha_turn90 = 64000.0f,
+    .alpha_turn90 = 48000.0f,
     .acceleration_turn = 0.0f,
     .dist_offset_in = 0.6f,
-    .dist_offset_out = 8.0f,
+    .dist_offset_out = 3.0f,
     .val_offset_in = 98.0f,
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
     .dist_wall_end = 0.0f,
     // Large 90deg
     .velocity_l_turn_90 = 1000.0f,
-    .alpha_l_turn_90 = 24500.0f,
+    .alpha_l_turn_90 = 20500.0f,
     .angle_l_turn_90 = 90.0f,
     .dist_l_turn_in_90 = 3.6f,
-    .dist_l_turn_out_90 = 13.0f,
+    .dist_l_turn_out_90 = 3.5f,
     // Large 180deg
     .velocity_l_turn_180 = 1000.0f,
-    .alpha_l_turn_180 = 18500.0f,
+    .alpha_l_turn_180 = 18000.0f,
     .angle_l_turn_180 = 180.0f,
     .dist_l_turn_in_180 = 1.0f,
-    .dist_l_turn_out_180 = 8.0f,
+    .dist_l_turn_out_180 = 3.0f,
     // Diagonal placeholders: defer use until mini_r2 validation.
     // 45deg In
     .velocity_turn45in = 1000.0f,
@@ -287,7 +287,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .turn_omega_max = 3000.0f,
     // 90deg
     .velocity_turn90 = 1000.0f,
-    .alpha_turn90 = 118000.0f,
+    .alpha_turn90 = 100000.0f,
     .acceleration_turn = 0.0f,
     .dist_offset_in = 0.8f,
     .dist_offset_out = 17.5f,
