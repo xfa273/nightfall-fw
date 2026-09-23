@@ -47,6 +47,20 @@ The safe helper uses lowercase `v` for bounded trace dumps. Use uppercase `V`
 only when an explicit task needs a full FRAM trace dump and the capture window
 is sized to wait for the firmware dump-completion marker.
 
+## Search distance accounting
+
+```sh
+sh tools/hil/run_f413_search_distance_tests.sh
+```
+
+Host-only ASan/UBSan regression using the production search primitives with both
+F413 machine profiles. An ideal 1 ms follower injects sensing, logging and
+decision delays; consecutive cell endpoints and the final stop must retain the
+nominal total distance. It also checks acceleration, both smooth turns, wall-end
+and front-wall corrections, wall alignment, spot turns, reverse/restart, aborts
+and odometry resets. This validates command geometry, not real motor tracking.
+See `docs/F413_SEARCH_DISTANCE_ACCOUNTING.md` for the log evidence and floor check.
+
 ## Motor checks
 
 Host-only PWM mapping regression (does not access hardware):

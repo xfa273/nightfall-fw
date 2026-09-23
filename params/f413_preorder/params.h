@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "f413pre-run-params-t0.2"
+#define PARAMS_TUNE_VERSION "f413pre-search-distance-t0.3"
 
 /*============================================================
     各種定数（パラメータ）設定

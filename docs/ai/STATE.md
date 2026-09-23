@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- F413探索の処理中移動距離を補正（2026-09-23 JST、mini_r2 t0.3 / mini_r3 t0.25）: mini_r1にはconf_routeでg_search_coast_mmを記録して次の直進/ターン入口/停止から引く既存対策がある。F413探索では現在位置+区間距離を毎回設定し、最新run003の公称730mmに対し目標756.387mmへ累積、ユーザ確認で壁接触→最終停止TIMEOUT。予定終点を区間間で引継ぎ、残距離だけprofileへ渡す方式を追加。壁切れイベント書込み中も補正、壁合わせ/旋回/後退resetは基準更新。次区間通過済みは停止。両profileの実探索関数を遅延0/3/8/20ms・7/15/60区画、左右ターン、壁補正、停止/再発進/中断でASan/UBSan検証。ゲイン/停止許容/F405/最短/NVM形式は維持。実機操作なし、同条件の730mm目標と壁非接触停止を要確認。詳細 docs/F413_SEARCH_DISTANCE_ACCOUNTING.md。
+
 - F413機体別params参照を修正（2026-09-23 JST、mini_r3 t0.24）: 共通TUのparams.hをboot選択専用facadeへ切替。全160scalar/探索2組/最短mode2..7各9case/LUTを機体profileで取得。GOAL/START全座標とMAZE_SIZEをschemaへ追加し、探索2配列/最短goal配列のstatic固定を撤去。sensor_distanceのF413用gain1固定も修正、DIR_*重複固定値はregistry参照へ。機体別異値fixtureでr3(0,8)直進最短/探索BFS/r2別goal/非zero start/GOAL9/センサgainをASan/UBSan検証。座標負値・範囲外・全goal未設定・共通binaryの16x16不一致は起動拒否。build時schema coverageと実52TU macro監査PASS。既存制御/吸引/機体/route試験、F413/F405 build PASS。実機操作・書込・NVM schema変更なし。ユーザのD_TIRE14.4/GOAL0,8や走行調整値を保持。詳細 docs/F413_MACHINE_CONFIG.md。
 - mini_r3ゴール座標反映漏れ調査（2026-09-23 JST、修正前の診断記録）: ユーザのparams/mini_r3_0/params.hはGOAL=(0,8)だが、共通F413 TUはf413_preorder/params.hの(1,0)を使用。GOAL_X/Y・GOAL1..9がruntime profile/aliasへ未接続で、探索2配列・最短route_preview・共有solverのpreprocessが(1,0)、現ローカルbuildの探索/最短オブジェクトも同じ。13:19ダンプrun004は(0,8)でstep11/forward、(0,9)でright。run008は(0,8)で到達扱いせずno_current_step。走行を含む直近run007(mode2case3)はdistance295mmからtarget角度-90°を指令。run009は672件全停止で右折なし。ゲイン起因ではなく経路側の機体別ゴール選択漏れ。次は探索/最短/solver共通のruntime goal設定・境界検証・r2/r3別値host試験が必要。今回は診断のみ、FW/params/実機操作なし。rawにはFW SHAが保存されず実機binary一致は未確認。ユーザ編集のD_TIRE14.4/GOAL0,8ほかを保持。
 
