@@ -17,7 +17,7 @@ class TurnLimitsTest(unittest.TestCase):
         for mode in range(2, 8):
             self.assertEqual(self.constants('f413_preorder', mode).omega_cap_deg_s, 0)
             self.assertEqual(self.constants('mini_r3_0', mode).omega_cap_deg_s,
-                             2200 if mode in (4, 6) else 0)
+                             3000 if mode in (3, 4, 5, 6, 7) else 0)
 
     def test_explicit_simulator_override_and_search(self):
         self.assertEqual(self.constants('mini_r3_0', 6, omega_max=0).omega_cap_deg_s, 0)
