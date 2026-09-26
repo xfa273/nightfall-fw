@@ -149,7 +149,9 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .val_offset_in = 98.0f, // Legacy F405 compatibility; unused by F413.
     .fwall_kx = 1.1f,      // Legacy F405 compatibility; unused by F413.
     .angle_turn_90 = 90.0f,
-    .dist_wall_end = 0.0f, // Provisional with 350/300 thresholds; see tuning note.
+    // Derivative-delay estimate: small-turn follow = 45 - 15 = 30 mm.
+    // Large turns add no forward distance for a nonpositive offset.
+    .dist_wall_end = -15.0f,
     // Large 90deg
     .velocity_l_turn_90 = 1000.0f,
     .alpha_l_turn_90 = 20500.0f,
@@ -197,10 +199,10 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    // 2026-09-26 trace estimate; left mirrors right pending measured cuts.
-    // docs/MINI_R3_MODE34_WALL_CORRECTION.md (case1/2 remain correction-off).
-    .wall_end_thr_r_high = 350, .wall_end_thr_r_low = 300,
-    .wall_end_thr_l_high = 350, .wall_end_thr_l_low = 300,
+    // Arm/raw fallback only, as mini_r2: primary detection is derivative < -200.
+    // docs/MINI_R3_MODE34_WALL_CORRECTION.md; left/large pending, case1/2 OFF.
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1000.0f
 };
@@ -298,7 +300,9 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .val_offset_in = 98.0f, // Legacy F405 compatibility; unused by F413.
     .fwall_kx = 0.6f,      // Legacy F405 compatibility; unused by F413.
     .angle_turn_90 = 90.0f,
-    .dist_wall_end = 0.0f, // Provisional with 350/300 thresholds; see tuning note.
+    // Derivative-delay estimate: small-turn follow = 45 - 15 = 30 mm.
+    // Large turns add no forward distance for a nonpositive offset.
+    .dist_wall_end = -15.0f,
     // Large 90deg
     .velocity_l_turn_90 = 1400.0f,
     .alpha_l_turn_90 = 40500.0f,
@@ -346,10 +350,10 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    // 2026-09-26 trace estimate; left mirrors right pending measured cuts.
-    // docs/MINI_R3_MODE34_WALL_CORRECTION.md (case1/2 remain correction-off).
-    .wall_end_thr_r_high = 350, .wall_end_thr_r_low = 300,
-    .wall_end_thr_l_high = 350, .wall_end_thr_l_low = 300,
+    // Arm/raw fallback only, as mini_r2: primary detection is derivative < -200.
+    // docs/MINI_R3_MODE34_WALL_CORRECTION.md; left/large pending, case1/2 OFF.
+    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
+    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
     .accel_switch_velocity = 1400.0f
 };
