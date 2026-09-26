@@ -145,10 +145,11 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .acceleration_turn = 0.0f,
     .dist_offset_in = 0.6f,
     .dist_offset_out = 1.0f,
-    .val_offset_in = 98.0f,
-    .fwall_kx = 1.1f,
+    // F413 front target = 45 + 45 - 0.6 = 89.4 mm (calibrated centre LUT).
+    .val_offset_in = 98.0f, // Legacy F405 compatibility; unused by F413.
+    .fwall_kx = 1.1f,      // Legacy F405 compatibility; unused by F413.
     .angle_turn_90 = 90.0f,
-    .dist_wall_end = 0.0f,
+    .dist_wall_end = 0.0f, // Provisional with 350/300 thresholds; see tuning note.
     // Large 90deg
     .velocity_l_turn_90 = 1000.0f,
     .alpha_l_turn_90 = 20500.0f,
@@ -196,8 +197,10 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
-    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
+    // 2026-09-26 trace estimate; left mirrors right pending measured cuts.
+    // docs/MINI_R3_MODE34_WALL_CORRECTION.md (case1/2 remain correction-off).
+    .wall_end_thr_r_high = 350, .wall_end_thr_r_low = 300,
+    .wall_end_thr_l_high = 350, .wall_end_thr_l_low = 300,
     // 加速度切り替え速度
     .accel_switch_velocity = 1000.0f
 };
@@ -291,10 +294,11 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .acceleration_turn = 0.0f,
     .dist_offset_in = 0.8f,
     .dist_offset_out = 1.2f,
-    .val_offset_in = 98.0f,
-    .fwall_kx = 0.6f,
+    // F413 front target = 45 + 45 - 0.8 = 89.2 mm (calibrated centre LUT).
+    .val_offset_in = 98.0f, // Legacy F405 compatibility; unused by F413.
+    .fwall_kx = 0.6f,      // Legacy F405 compatibility; unused by F413.
     .angle_turn_90 = 90.0f,
-    .dist_wall_end = 0.0f,
+    .dist_wall_end = 0.0f, // Provisional with 350/300 thresholds; see tuning note.
     // Large 90deg
     .velocity_l_turn_90 = 1400.0f,
     .alpha_l_turn_90 = 40500.0f,
@@ -342,8 +346,10 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .makepath_type_case3 = 0,
     .makepath_type_case47 = 1,
     // 壁切れ検出しきい値（ヒステリシス付き）
-    .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
-    .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
+    // 2026-09-26 trace estimate; left mirrors right pending measured cuts.
+    // docs/MINI_R3_MODE34_WALL_CORRECTION.md (case1/2 remain correction-off).
+    .wall_end_thr_r_high = 350, .wall_end_thr_r_low = 300,
+    .wall_end_thr_l_high = 350, .wall_end_thr_l_low = 300,
     // 加速度切り替え速度
     .accel_switch_velocity = 1400.0f
 };

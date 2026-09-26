@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- mini_r3 mode3/4壁補正の暫定設定（2026-09-26 JST、t0.26）: 16:10/16:13ダンプの独立3走行（3/1、4/1、4/2。4/1重複を除外）を解析。前壁は実PCHIPで小回り開始87.32〜99.28mm、既存目標89.4/89.2mmを維持。壁切れの旧100/1はLowへ届かず微分待ちとなるため左右High350/Low300へ。実検出処理の45mm監視窓再生と前壁基準で定速4箇所の追加距離-1.36〜+0.35mm、dist_wall_end=0を暫定維持。左・大回り・mode3case2は根拠不足。case1/2補正OFF、case3以降ONを維持。ログ途中2.1〜6.1秒欠落/live FW IDなし。ユーザのターン/速度/タイヤ径調整を保持し、関連host/両MCU build PASS。実機書込/走行なし。詳細 docs/MINI_R3_MODE34_WALL_CORRECTION.md。
+
 - F413探索の処理中移動距離を補正（2026-09-23 JST、mini_r2 t0.3 / mini_r3 t0.25）: mini_r1にはconf_routeでg_search_coast_mmを記録して次の直進/ターン入口/停止から引く既存対策がある。F413探索では現在位置+区間距離を毎回設定し、最新run003の公称730mmに対し目標756.387mmへ累積、ユーザ確認で壁接触→最終停止TIMEOUT。予定終点を区間間で引継ぎ、残距離だけprofileへ渡す方式を追加。壁切れイベント書込み中も補正、壁合わせ/旋回/後退resetは基準更新。次区間通過済みは停止。両profileの実探索関数を遅延0/3/8/20ms・7/15/60区画、左右ターン、壁補正、停止/再発進/中断でASan/UBSan検証。ゲイン/停止許容/F405/最短/NVM形式は維持。実機操作なし、同条件の730mm目標と壁非接触停止を要確認。詳細 docs/F413_SEARCH_DISTANCE_ACCOUNTING.md。
 
 - F413機体別params参照を修正（2026-09-23 JST、mini_r3 t0.24）: 共通TUのparams.hをboot選択専用facadeへ切替。全160scalar/探索2組/最短mode2..7各9case/LUTを機体profileで取得。GOAL/START全座標とMAZE_SIZEをschemaへ追加し、探索2配列/最短goal配列のstatic固定を撤去。sensor_distanceのF413用gain1固定も修正、DIR_*重複固定値はregistry参照へ。機体別異値fixtureでr3(0,8)直進最短/探索BFS/r2別goal/非zero start/GOAL9/センサgainをASan/UBSan検証。座標負値・範囲外・全goal未設定・共通binaryの16x16不一致は起動拒否。build時schema coverageと実52TU macro監査PASS。既存制御/吸引/機体/route試験、F413/F405 build PASS。実機操作・書込・NVM schema変更なし。ユーザのD_TIRE14.4/GOAL0,8や走行調整値を保持。詳細 docs/F413_MACHINE_CONFIG.md。

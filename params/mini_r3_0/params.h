@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-search-distance-t0.25"
+#define PARAMS_TUNE_VERSION "mini-r3-wall-correction-t0.26"
 
 /*============================================================
     各種定数（パラメータ）設定
