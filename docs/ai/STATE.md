@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- mini_r2走行とr3実験の分離（2026-09-27、mini-r2-aug29-compat-t0.4）: r2の走行policyを57a9c3b（8/29、r3立上げ前）へ復元。機体別F413_MOTION_FEATURESを追加しr2=0/r3=明示8bit、IMU・停止/FF・前壁復帰・探索距離・上限・case0・mode2case6を選択。r2 mode2case6は旧固定斜め検証pathへ戻る。実ソース差分試験でr2対8月版/r3対修正前の制御各8400、探索120/122、経路計画各1296、dispatch各126件一致。F413/F405 build PASS、実機書込/走行なし。ユーザの既存調整値は保持。再導入候補と物理検証条件は docs/MINI_R2_MOTION_ISOLATION.md。実走復旧は未確認。
+
 - mini_r3最新4ログと小回り前壁補正値を再確認（2026-09-27 13:14/13:17、t0.28維持）: 131430/131714の各run001はmode4/3 case2だが全行距離0・準備保持区間のみで走行比較に使えない（実走有無をユーザへ確認依頼）。各run002はmode4/3 case3。右微分検出は各1回、mode4 ADC28/-255・mode3 ADC35/-252。最初の小回り前壁はmode4=89.82mm（前回82.59から改善）、mode3約88.48mm（4ms保存の時間補間）、目標89.2/89.4付近なので壁切れ-23/-15維持。前壁補正の追加依頼にも実参照を確認し目標値維持、val_offset_in/fwall_kxはF413未参照。3回目はmode3=83.93、mode4=87.02で過進入、mode3は前ターン出口中に86.46で既に目標越え。新規壁切れなし・入口開始前のずれを目標値だけで吸収しない。case2走行本体不足でturn値変更もなし。mode4後半1129ms欠落・中断bitなし、mode3後半6601ms欠落・timeout/encoder共通0x0400あり。停止理由未特定、通常最短の厳密終点待ちは検討候補に留めコード不変。文書のみ、params/制御hash不変・diffcheck確認、build/実機操作なし。他作業のflashing/HIL/worklog変更保持。詳細 docs/MINI_R3_FOUR_LOG_RECHECK_20260927.md。
 
 - mini_r3 mode3/4 case3で壁補正再調整（2026-09-27 JST、t0.28）: 最新115010 run001=3/3、run002=4/3は両方右微分検出1回（ADC30、ラッチ-227/-243）と後追い約30mmを記録。最初の小回りはmode3が前壁約89mmで89.4mm目標付近なのでdist_wall_end=-15維持。mode4は前壁82.59mmで開始、実保存点の89.2mm通過d514.27→開始d522の7.73mmから8mm短縮し-23へ（小回り後追い22mm）。共通配置を変えた説明ではなく、同mode補正ON実測に基づく調整。前壁目標/微分200/High100 Low1/turn/速度/他profileは維持。右1事例ずつ、後続小回りずれは未分離、左/大回り未同定。3/3は大回り開始3msで記録終了、4/3は後半6069ms欠落とtimeout/encoder共通0x0400の7行あり、完走扱いにしない。実関数後追い24分岐、両profile全mode/case速度・制御、mode4 preflight、機体/LUT host、F413 build PASS。実機操作なし、新設定の床/迷路確認待ち。ユーザ編集保持。詳細 docs/MINI_R3_CASE3_WALL_CORRECTION.md。

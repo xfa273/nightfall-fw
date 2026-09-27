@@ -11,6 +11,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix='f413-runtime-params-') as directory:
     tmp = Path(directory)
+    shutil.copyfile(ROOT / "params/f413_motion_policy.h", tmp / "f413_motion_policy.h")
     profiles = []
     for name, rev in [('f413_preorder', 2), ('mini_r3_0', 3)]:
         target = tmp / name

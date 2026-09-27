@@ -173,9 +173,10 @@ static void check_start_runup_contract(void)
                                        &case8, &plan));
   CHECK(f413_path_run_make_test_terminal_profile(
       500.0f, &case6, &terminal_profile));
-  CHECK(close_value(terminal_profile.distance_mm, 125.0, 1.0e-9));
+  CHECK(close_value(terminal_profile.distance_mm,
+      F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS) ? 125.0 : 45.0, 1.0e-9));
   CHECK(close_value(terminal_profile.acceleration_mm_s2,
-                    -1000.0, 1.0e-6));
+      F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS) ? -1000.0 : -250000.0 / 90.0, 1.0e-6));
 }
 
 static void check_wall_end_approach_contract(void)

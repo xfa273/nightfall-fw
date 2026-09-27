@@ -824,8 +824,11 @@ static bool imu_init_ism330(void)
     imu_write_byte(F413_IMU_CTRL2_G, 0x71U);
     HAL_Delay(10U);
 
-    /* CTRL1_XL: ODR=833Hz, FS=±16g */
-    imu_write_byte(F413_IMU_CTRL1_XL, F413_IMU_CTRL1_XL_833HZ_16G);
+    /* CTRL1_XL: ODR=833Hz, machine-selected range. */
+    /* r2 keeps its August sensor scale until the 16g correction is requalified.
+     * Its historical 8g register / 16g conversion mismatch is intentional here. */
+    imu_write_byte(F413_IMU_CTRL1_XL, F413_MOTION_ENABLED(F413_MOTION_IMU_16G)
+        ? F413_IMU_CTRL1_XL_833HZ_16G : 0x7CU);
     HAL_Delay(10U);
 
     return true;
@@ -1015,7 +1018,8 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
 
 bool f413_ctrl_stop_profile_complete(void)
 {
-    return s_velocity_profile_clamp_enabled &&
+    return F413_MOTION_ENABLED(F413_MOTION_SETTLED_STOP) &&
+           s_velocity_profile_clamp_enabled &&
            s_velocity_profile_target == 0.0f &&
            s_velocity_interrupt == 0.0f && s_acceleration_interrupt == 0.0f;
 }
@@ -1319,8 +1323,10 @@ void f413_ctrl_tick(void)
     }
 
     s_accel_velocity = f413_ctrl_update_velocity_accel_comp(real_velocity_raw, accel_forward_for_comp);
-    /* Feedback must represent actual motion, including overspeed. Do not
-     * clip the estimate to a bring-up ceiling or the commanded velocity. */
+    if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+        s_accel_velocity = fmaxf(-1200.0f, fminf(s_accel_velocity, 1200.0f));
+    /* The opt-in policy represents actual overspeed; August r2 preserves
+     * the tuned estimate ceiling until separately requalified. */
 
     if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
     {
@@ -1482,9 +1488,10 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = f413_ctrl_clamp_omega_abs((kp_a * s_angle_error) +
-                                                                    (ki_a * s_angle_integral) +
-                                                                    (kd_a * s_angle_error_error),
+                        const bool parameter_gains = F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS);
+                        s_target_omega = f413_ctrl_clamp_omega_abs(((parameter_gains ? kp_a : 4.0f) * s_angle_error) +
+                                                                    ((parameter_gains ? ki_a : 0.0f) * s_angle_integral) +
+                                                                    ((parameter_gains ? kd_a : 0.0f) * s_angle_error_error),
                                                                     F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX);
                     }
                 }
@@ -1545,7 +1552,16 @@ void f413_ctrl_tick(void)
     {
         f413_ctrl_update_omega_profile();
 
-        if (s_velocity_profile_clamp_enabled)
+        if (!F413_MOTION_ENABLED(F413_MOTION_SETTLED_STOP))
+        {
+            /* 57a9c3b: retain acceleration FF after the velocity clamp. */
+            s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
+            if (s_velocity_profile_clamp_enabled &&
+                (((s_acceleration_interrupt > 0.0f) && (s_velocity_interrupt > s_velocity_profile_target)) ||
+                 ((s_acceleration_interrupt < 0.0f) && (s_velocity_interrupt < s_velocity_profile_target))))
+                s_velocity_interrupt = s_velocity_profile_target;
+        }
+        else if (s_velocity_profile_clamp_enabled)
         {
             float velocity = s_velocity_interrupt;
             float acceleration = s_acceleration_interrupt;

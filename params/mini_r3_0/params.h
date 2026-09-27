@@ -8,6 +8,10 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
+#include "../f413_motion_policy.h"
+/* Preserve r3's validated/under-tuning behavior; new features require opt-in. */
+#define F413_MOTION_FEATURES (F413_MOTION_IMU_16G | F413_MOTION_SETTLED_STOP | F413_MOTION_FRONT_RECOVERY | F413_MOTION_SEARCH_DISTANCE | F413_MOTION_PARAMETER_LIMITS | F413_MOTION_CASE0_TURN_SPEED | F413_MOTION_CASE0_LONG_R180 | F413_MOTION_MODE2_CASE6_SAVED_MAZE)
+
 #define PARAMS_TUNE_VERSION "mini-r3-wall-case3-t0.28"
 
 /*============================================================

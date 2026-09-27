@@ -11,6 +11,12 @@
 typedef enum { GPIO_PIN_RESET, GPIO_PIN_SET } GPIO_PinState;
 uint32_t HAL_GetTick(void);
 void HAL_Delay(uint32_t ms);
+#include "params.h"
+/* Exercise the distance opt-in on both parameter sets without changing the
+ * production profile defaults. August compatibility is tested against git. */
+static const unsigned configured_motion_features = F413_MOTION_FEATURES;
+#undef F413_MOTION_FEATURES
+#define F413_MOTION_FEATURES (configured_motion_features | F413_MOTION_SEARCH_DISTANCE | F413_MOTION_SETTLED_STOP | F413_MOTION_FRONT_RECOVERY)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_search_step.c"
 
 uint16_t map[MAZE_SIZE][MAZE_SIZE], smap[MAZE_SIZE][MAZE_SIZE], wall_info;
