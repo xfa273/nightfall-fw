@@ -8,7 +8,11 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "f413pre-search-distance-t0.3"
+#define PARAMS_TUNE_VERSION "mini-r2-aug29-compat-t0.4"
+
+#include "../f413_motion_policy.h"
+/* 57a9c3b motion baseline. Re-adopt each later change only after r2 validation. */
+#define F413_MOTION_FEATURES 0U
 
 /*============================================================
     各種定数（パラメータ）設定

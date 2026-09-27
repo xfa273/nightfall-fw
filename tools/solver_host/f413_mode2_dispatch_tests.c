@@ -1,3 +1,4 @@
+#include "params.h"
 #include "f413_mode2.h"
 #include "f413_mode_shortest.h"
 
@@ -87,6 +88,21 @@ static void check_saved_maze_planner(uint8_t selected_case)
 
   f413_mode2_run_case(selected_case);
 
+  if (selected_case == 6U && !F413_MOTION_ENABLED(F413_MOTION_MODE2_CASE6_SAVED_MAZE))
+  {
+    const uint16_t expected[] = {203,701,1001,802,1001,703,202};
+    CHECK(g_path_calls == 1U);
+    CHECK(g_config_calls == 0U);
+    CHECK(g_last_mode == 2U && g_last_case == 6U);
+    CHECK(g_last_code_count == 7U);
+    for (unsigned i = 0; i < 7; ++i) CHECK(g_last_codes[i] == expected[i]);
+    CHECK(!g_last_features.wall_control_enabled);
+    CHECK(!g_last_features.wall_end_correction_enabled);
+    CHECK(!g_last_features.front_wall_correction_enabled);
+    CHECK(g_last_features.angle_accum_mode);
+    CHECK(!g_last_features.test_mode_run);
+    return;
+  }
   CHECK(g_path_calls == 0U);
   CHECK(g_config_calls == 1U);
   CHECK(g_last_config.mode == 2U);

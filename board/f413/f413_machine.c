@@ -95,6 +95,10 @@ f413_machine_status_t f413_machine_resolve(
 #include "f413_param_fields.def"
 #undef X
   const f413_scalar_params_t *s = p->scalar;
+  if ((s->v_F413_MOTION_FEATURES & ~F413_MOTION_KNOWN_FEATURES) != 0U ||
+      ((s->v_F413_MOTION_FEATURES & F413_MOTION_FRONT_RECOVERY) != 0U &&
+       (s->v_F413_MOTION_FEATURES & F413_MOTION_SETTLED_STOP) == 0U))
+    return F413_MACHINE_CONFIG_INVALID;
   if (!maze_params_valid(s) || s->v_ENABLE_AUTO_VIDEO_CAPTURE > 1U ||
       s->v_D_TIRE <= 0.0 || s->v_DIST_HALF_SEC <= 0.0 || s->v_DIST_D_HALF_SEC <= 0.0 ||
       s->v_DIST_FIRST_SEC < 0.0 || s->v_VELOCITY_ACCEL_COMP_WINDOW_MS < 1U ||

@@ -161,6 +161,7 @@ static void f413_search_step_reset_distance(void)
 
 static float f413_search_step_remaining_distance(float planned_mm)
 {
+  if (!F413_MOTION_ENABLED(F413_MOTION_SEARCH_DISTANCE)) return planned_mm;
   const float current = f413_ctrl_get_distance();
   const float origin = g_search_distance_endpoint_valid
       ? g_search_distance_endpoint_mm : current;
@@ -171,7 +172,7 @@ static f413_run_session_abort_reason_t f413_search_step_begin_distance(
     float planned_mm, float* target_mm, float* remaining_mm)
 {
   const float current = f413_ctrl_get_distance();
-  const float origin = g_search_distance_endpoint_valid
+  const float origin = F413_MOTION_ENABLED(F413_MOTION_SEARCH_DISTANCE) && g_search_distance_endpoint_valid
       ? g_search_distance_endpoint_mm : current;
   const float target = origin + planned_mm;
   const float remaining = target - current;
@@ -1572,6 +1573,8 @@ static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn(float a
   }
 
   profile.omega_peak_deg_s = sqrtf((2.0f * alpha_deg_s2 * angle_abs) / 3.0f);
+  if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+    profile.omega_peak_deg_s = fminf(profile.omega_peak_deg_s, 2200.0f);
   if (profile.omega_peak_deg_s <= 0.0f)
   {
     return profile;
@@ -1583,6 +1586,8 @@ static f413_search_step_smooth_turn_t f413_search_step_build_smooth_turn(float a
   {
     profile.t_cruise_s = 0.0f;
     profile.omega_peak_deg_s = angle_abs / profile.t_acc_s;
+    if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+      profile.omega_peak_deg_s = fminf(profile.omega_peak_deg_s, 2200.0f);
     profile.t_cruise_s = (angle_abs / profile.omega_peak_deg_s) - profile.t_acc_s;
     if (profile.t_cruise_s < 0.0f)
     {
@@ -1763,7 +1768,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_segment_impl(float
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, remaining_distance);
   f413_ctrl_set_omega(0.0f);
 
-  reason = (target_velocity_mm_s == 0.0f)
+  reason = F413_MOTION_ENABLED(F413_MOTION_SETTLED_STOP) && (target_velocity_mm_s == 0.0f)
       ? f413_search_step_wait_stop_approach(target_distance, allow_wall_handoff, guard, trace_flags)
       : f413_search_step_wait_ctrl_target(target_distance, false, guard, trace_flags);
   *speed_now_mm_s = target_velocity_mm_s;
@@ -1802,6 +1807,14 @@ static bool f413_search_step_front_wall_strong_present(void)
   if (!f413_wall_distance_convert_snapshot(&wall, &distance))
   {
     return false;
+  }
+  if (!F413_MOTION_ENABLED(F413_MOTION_FRONT_RECOVERY))
+  {
+    if (!distance.front_valid)
+      return distance.fr_mm_unwarped < F_ALIGN_TOO_CLOSE_MM ||
+             distance.fl_mm_unwarped < F_ALIGN_TOO_CLOSE_MM;
+    return ((float)distance.adc.fr_delta > (float)WALL_BASE_FR * 1.5f) &&
+           ((float)distance.adc.fl_delta > (float)WALL_BASE_FL * 1.5f);
   }
   return f413_search_step_front_match_too_close(&distance) ||
          f413_search_step_front_match_wall_detected(&distance);
@@ -1922,10 +1935,18 @@ static void f413_search_step_front_match_sync_angle_target(
   }
 }
 
+static f413_run_session_abort_reason_t f413_search_step_match_front_position_aug29(
+    f413_run_session_guard_t*, f413_search_step_front_match_result_t*);
+static f413_run_session_abort_reason_t f413_search_step_front_match_continuous_aug29(
+    f413_run_session_guard_t*);
+
 static f413_run_session_abort_reason_t f413_search_step_match_front_position(
     f413_run_session_guard_t* guard,
     f413_search_step_front_match_result_t* result)
 {
+  if (!F413_MOTION_ENABLED(F413_MOTION_FRONT_RECOVERY))
+    return f413_search_step_match_front_position_aug29(guard, result);
+
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   f413_search_step_front_match_filter_t filter = {0};
   f413_front_match_controller_t controller;
@@ -2360,6 +2381,9 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_backoff_too_
 static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
     f413_run_session_guard_t* guard)
 {
+  if (!F413_MOTION_ENABLED(F413_MOTION_FRONT_RECOVERY))
+    return f413_search_step_front_match_continuous_aug29(guard);
+
   f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
   f413_search_step_front_match_filter_t filter = {0};
   f413_front_match_controller_t controller;
@@ -2513,6 +2537,8 @@ static f413_run_session_abort_reason_t f413_search_step_front_match_continuous(
   return reason;
 }
 
+#include "f413_search_front_aug29.inc"
+
 static void f413_search_step_apply_straight_runtime(uint16_t trace_flags)
 {
   if ((g_config.wall_control_apply_straight != NULL) &&
@@ -2593,7 +2619,8 @@ static f413_run_session_abort_reason_t f413_search_step_drive_front_wall_entry_s
 
   if (!front_reached && (WALL_END_EXTEND_MAX_MM > 0.0F))
   {
-    const float extend_target = target_distance + WALL_END_EXTEND_MAX_MM;
+    const float extend_target = (F413_MOTION_ENABLED(F413_MOTION_SEARCH_DISTANCE)
+        ? target_distance : f413_ctrl_get_distance()) + WALL_END_EXTEND_MAX_MM;
     extended = true;
     f413_ctrl_set_velocity(target_velocity_mm_s);
     while (fabsf(f413_ctrl_get_distance()) < fabsf(extend_target))

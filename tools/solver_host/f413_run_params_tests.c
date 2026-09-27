@@ -1,6 +1,13 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+/* Exercise the optional new parameter policy with both parameter sets.
+ * Default r2 caps/dispatch are checked against August production by the
+ * motion compatibility suite. */
+#include "params.h"
+static const unsigned configured_motion_features = F413_MOTION_FEATURES;
+#undef F413_MOTION_FEATURES
+#define F413_MOTION_FEATURES (configured_motion_features | F413_MOTION_PARAMETER_LIMITS | F413_MOTION_CASE0_TURN_SPEED)
 #define NIGHTFALL_F413_PATH_LINEAR_PLAN_HOST_TEST (1U)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c"
 

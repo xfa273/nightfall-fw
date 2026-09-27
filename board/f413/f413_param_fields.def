@@ -1,4 +1,5 @@
 /* X(type, name): runtime scalar schema. Values live in each profile's params.h. */
+X(uint32_t, F413_MOTION_FEATURES)
 X(uint32_t, ENABLE_AUTO_VIDEO_CAPTURE)
 X(int32_t, MAZE_SIZE)
 X(int32_t, START_X)

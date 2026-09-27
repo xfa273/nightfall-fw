@@ -1,0 +1,49 @@
+name: F413 machine motion compatibility
+
+on:
+  push:
+    paths:
+      - 'board/f413/**'
+      - 'params/**'
+      - 'platform/stm32f413/**'
+      - 'platform/stm32f405/Core/**'
+      - 'common/route/**'
+      - 'tools/hil/**'
+      - 'tools/solver_host/**'
+      - '.github/workflows/f413-motion-compat.yml'
+  pull_request:
+    paths:
+      - 'board/f413/**'
+      - 'params/**'
+      - 'platform/stm32f413/**'
+      - 'platform/stm32f405/Core/**'
+      - 'common/route/**'
+      - 'tools/hil/**'
+      - 'tools/solver_host/**'
+      - '.github/workflows/f413-motion-compat.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: f413-motion-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    env:
+      CC: clang
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The test compiles pinned historical production implementations.
+          fetch-depth: 0
+      - name: Audit machine parameter selection
+        run: python3 tools/hil/check_f413_param_coverage.py
+      - name: Verify immutable machine policy and identity selection
+        run: sh tools/hil/run_f413_machine_tests.sh
+      - name: Compare r2 August motion and r3 reference motion
+        run: python3 tools/hil/run_f413_motion_compat_tests.py

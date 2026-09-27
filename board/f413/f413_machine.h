@@ -7,6 +7,7 @@
 #include "nvm_identity.h"
 #include "search_run_params.h"
 #include "shortest_run_params.h"
+#include "../../params/f413_motion_policy.h"
 
 /* Current compact route planner/storage ABI supports a 16x16 maze.
  * Every profile declares MAZE_SIZE; a mismatch is rejected, never ignored. */
