@@ -103,6 +103,8 @@ f413_machine_status_t f413_machine_resolve(
       s->v_D_TIRE <= 0.0 || s->v_DIST_HALF_SEC <= 0.0 || s->v_DIST_D_HALF_SEC <= 0.0 ||
       s->v_DIST_FIRST_SEC < 0.0 || s->v_VELOCITY_ACCEL_COMP_WINDOW_MS < 1U ||
       s->v_VELOCITY_ACCEL_COMP_WINDOW_MS > 64U ||
+      s->v_FF_OMEGA_LEAD_MODE4_180_TIME_S < 0.0f ||
+      s->v_FF_OMEGA_LEAD_MODE4_180_TIME_S > 0.01f ||
       (id->family == NVM_FAMILY_MINI && s->v_DIST_HALF_SEC != 45.0) ||
       (id->family == NVM_FAMILY_CLASSIC && s->v_DIST_HALF_SEC != 90.0) ||
       (id->family != NVM_FAMILY_MINI && id->family != NVM_FAMILY_CLASSIC))

@@ -21,6 +21,9 @@ static float core_start[8], core_end[8];
 static float hit_after[8], valid_after[8], front_target;
 static unsigned abort_exit, stuck_exit;
 static f413_run_session_abort_reason_t injected_abort;
+static bool turn_lead, core_lead[8];
+static unsigned lead_begins, lead_ends, abort_core, abort_entry;
+static float lead_begin_pos[8], lead_end_pos[8], wall_end_after;
 
 uint32_t HAL_GetTick(void) { return tick; }
 void HAL_Delay(uint32_t ms) { tick += ms; }
@@ -37,7 +40,7 @@ void f413_hw_fan_stop(void) { fan = false; }
 void f413_hw_emit_video_sync_start_pattern(void) {}
 void f413_hw_emit_video_sync_stop_pattern(void) {}
 void f413_ctrl_start(void) { running = true; position = velocity = step_velocity = 0; }
-void f413_ctrl_stop(void) { running = false; }
+void f413_ctrl_stop(void) { running = false; turn_lead = false; }
 void f413_ctrl_set_velocity(float v) { velocity = step_velocity = v; stop_profile = false; }
 void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 {
@@ -48,10 +51,18 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
   stop_profile = end == 0.0f;
 }
 void f413_ctrl_set_omega(float v) { (void)v; }
+void f413_ctrl_set_mode4_180_lead(bool enabled)
+{
+  enabled = enabled && F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD);
+  if (enabled && !turn_lead) { assert(lead_begins < 8); lead_begin_pos[lead_begins++] = position; }
+  if (!enabled && turn_lead) { assert(lead_ends < 8); lead_end_pos[lead_ends++] = position; }
+  turn_lead = enabled;
+}
 void f413_ctrl_start_omega_profile(float p, float a, float c)
 {
   (void)p; (void)a; (void)c;
   assert(cores < 8);
+  core_lead[cores] = turn_lead;
   core_start[cores++] = position;
   in_core = true;
 }
@@ -77,6 +88,8 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(
 {
   (void)g;
   tick += ms;
+  if (in_core && cores == abort_core) return injected_abort;
+  if (!in_core && cores == 0 && abort_entry) return injected_abort;
   if (!in_core && cores != 0 && cores == abort_exit) return injected_abort;
   if (!in_core && cores != 0 && cores == stuck_exit) return F413_RUN_SESSION_ABORT_NONE;
   if (running)
@@ -99,7 +112,8 @@ void f413_wall_runtime_end_clear(void) {}
 void f413_wall_runtime_control_apply(bool b) { (void)b; }
 void f413_wall_runtime_poll_diagonal(bool b) { (void)b; }
 void f413_wall_runtime_poll_straight(bool b) { if (b) wall_polls++; }
-bool f413_wall_runtime_poll_wall_end(bool b) { (void)b; wall_end_polls++; return false; }
+bool f413_wall_runtime_poll_wall_end(bool b)
+{ (void)b; wall_end_polls++; return cores > 0 && position - core_end[cores - 1] >= wall_end_after; }
 bool f413_wall_distance_front_unwarped_mm(float* out)
 {
   front_reads++;
@@ -120,6 +134,9 @@ static void reset(void)
   wall_end_polls = 0;
   abort_exit = stuck_exit = 0;
   injected_abort = F413_RUN_SESSION_ABORT_NONE;
+  turn_lead = false; lead_begins = lead_ends = abort_core = abort_entry = 0;
+  wall_end_after = INFINITY;
+  memset(core_lead, 0, sizeof(core_lead));
   memset(path, 0, sizeof(path));
   memset(core_start, 0, sizeof(core_start));
   memset(core_end, 0, sizeof(core_end));
@@ -139,7 +156,7 @@ static f413_run_session_abort_reason_t run_turn(const f413_path_run_turn_t* turn
 {
   float speed = turn->velocity_mm_s;
   f413_run_session_guard_t guard = {0};
-  return f413_path_run_wait_smooth_turn_profile(turn, next, skip, next_skip,
+  return f413_path_run_wait_smooth_turn_profile(turn, next, false, skip, next_skip,
       -15, &speed, &guard, NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG);
 }
 static void pair_test(float hit, float valid, bool front_enabled, bool test_mode)
@@ -290,4 +307,5 @@ int main(void)
   session_tests();
   printf("chained front: policy=%#x, target crossing/boundary/invalid/bypass/guard, mode3/4 all 3-turn directions and separate straights PASS\n",
       (unsigned)F413_MOTION_FEATURES);
+  return 0;
 }

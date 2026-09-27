@@ -115,6 +115,7 @@ static volatile float s_target_omega = 0.0f;
 static volatile float s_heading_omega_correction = 0.0f;
 static volatile bool s_angle_target_enabled = false;
 static volatile bool s_omega_profile_active = false;
+static volatile bool s_mode4_180_lead = false;
 static volatile float s_omega_profile_peak = 0.0f;
 static volatile float s_omega_profile_t_acc = 0.0f;
 static volatile float s_omega_profile_t_cruise = 0.0f;
@@ -442,6 +443,7 @@ static void f413_ctrl_reset_pid_state(void)
 
 static void f413_ctrl_reset_profile_state(void)
 {
+    s_mode4_180_lead = false;
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = 0.0f;
     s_velocity_profile_target = 0.0f;
@@ -1064,6 +1066,11 @@ void f413_ctrl_stop_omega_profile(void)
     s_target_omega = 0.0f;
 }
 
+void f413_ctrl_set_mode4_180_lead(bool enabled)
+{
+    s_mode4_180_lead = enabled && F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD);
+}
+
 void f413_ctrl_set_angle_target(float angle_deg)
 {
     f413_ctrl_cancel_omega_profile();
@@ -1672,7 +1679,9 @@ void f413_ctrl_tick(void)
                                                           kd_o,
                                                           ff_o,
                                                           ff_oa,
-                                                          FF_OMEGA_LEAD_TIME_S);
+                                                          (s_mode4_180_lead && use_fan_on_gains) ?
+                                                              FF_OMEGA_LEAD_MODE4_180_TIME_S :
+                                                              FF_OMEGA_LEAD_TIME_S);
         }
     }
 

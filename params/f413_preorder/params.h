@@ -246,6 +246,10 @@
 #ifndef FF_OMEGA_LEAD_TIME_S
 #define FF_OMEGA_LEAD_TIME_S 0.004F
 #endif
+#ifndef FF_OMEGA_LEAD_MODE4_180_TIME_S
+/* Inactive unless this machine explicitly opts into MODE4_180_LEAD. */
+#define FF_OMEGA_LEAD_MODE4_180_TIME_S 0.004F
+#endif
 #ifndef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS 120.0F
 #endif

@@ -196,6 +196,8 @@
 #define FF_OMEGA_ACCEL_PWM_FAN_OFF (f413_machine_params()->scalar.v_FF_OMEGA_ACCEL_PWM_FAN_OFF)
 #undef FF_OMEGA_LEAD_TIME_S
 #define FF_OMEGA_LEAD_TIME_S (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_TIME_S)
+#undef FF_OMEGA_LEAD_MODE4_180_TIME_S
+#define FF_OMEGA_LEAD_MODE4_180_TIME_S (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S)
 #undef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_MAX_DPS)
 #undef KP_IMU
