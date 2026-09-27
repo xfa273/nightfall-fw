@@ -160,7 +160,9 @@ static void executor(void)
     assert(run_turn(&previous, bypass == 3 ? NULL : &next, true, &consumed) == 0);
     const bool enabled = F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) && bypass == 0;
     assert((prepare_reads > 0) == enabled);
-    assert(!g_short_end.active && g_short_end.count == 0);
+    assert(!g_short_end.active);
+    if (bypass != 3 || !F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL))
+      assert(g_short_end.count == 0);
     if (enabled)
     {
       assert(consumed && g_wall_end.short_detected_l);
@@ -207,8 +209,11 @@ static void recorded_waveforms(void)
     if (w >= 2) assert(detected <= -7 && detected >= -9);
   }
 }
+#ifndef ALL_SHORT_WALL_TESTS
 int main(void)
 {
   boundaries(); reject_invalid(); executor(); recorded_waveforms();
   puts("PASS: short 4ms derivative, thresholds, both sides, post-gate confirmations, wrap/jitter/stale/noise, trace tags/path lifecycle; 4 recorded waves x 3 phases, latest detection 7-9ms before original core");
 }
+
+#endif

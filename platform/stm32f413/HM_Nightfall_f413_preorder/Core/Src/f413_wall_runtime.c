@@ -204,7 +204,7 @@ static void f413_wall_runtime_short_update(const f413_wall_sensor_snapshot_t* wa
   }
   if (g_short_end.have_sample)
   {
-    if (gap > F413_WALL_RUNTIME_CHAINED_MAX_SAMPLE_GAP_MS)
+    if (gap > F413_WALL_RUNTIME_SHORT_MAX_SAMPLE_GAP_MS)
     {
       f413_wall_runtime_short_history_invalidate();
     }
@@ -232,12 +232,12 @@ static void f413_wall_runtime_short_update(const f413_wall_sensor_snapshot_t* wa
     const f413_wall_runtime_short_sample_t* recent = &g_short_end.history[i];
     const uint32_t old_age = now - old->ms;
     const uint32_t recent_age = now - recent->ms;
-    if ((old_age >= F413_WALL_RUNTIME_CHAINED_WINDOW_MS) &&
-        (recent_age <= F413_WALL_RUNTIME_CHAINED_WINDOW_MS))
+    if ((old_age >= F413_WALL_RUNTIME_SHORT_WINDOW_MS) &&
+        (recent_age <= F413_WALL_RUNTIME_SHORT_WINDOW_MS))
     {
       /* Interpolate only between fresh adjacent observations; no extrapolation
        * across missing updates. Unsigned ages also handle HAL tick wrap. */
-      const float fraction = (float)(old_age - F413_WALL_RUNTIME_CHAINED_WINDOW_MS) /
+      const float fraction = (float)(old_age - F413_WALL_RUNTIME_SHORT_WINDOW_MS) /
                              (float)(old_age - recent_age);
       past_r = (float)old->r + fraction * ((float)recent->r - (float)old->r);
       past_l = (float)old->l + fraction * ((float)recent->l - (float)old->l);
@@ -252,15 +252,15 @@ static void f413_wall_runtime_short_update(const f413_wall_sensor_snapshot_t* wa
     return;
   }
 
-  const bool fall_r = (past_r >= F413_WALL_RUNTIME_CHAINED_PRESENT_ADC) &&
-      (past_r - (float)wall->r_delta > F413_WALL_RUNTIME_CHAINED_DROP_ADC);
-  const bool fall_l = (past_l >= F413_WALL_RUNTIME_CHAINED_PRESENT_ADC) &&
-      (past_l - (float)wall->l_delta > F413_WALL_RUNTIME_CHAINED_DROP_ADC);
+  const bool fall_r = (past_r >= F413_WALL_RUNTIME_SHORT_PRESENT_ADC) &&
+      (past_r - (float)wall->r_delta > F413_WALL_RUNTIME_SHORT_DROP_ADC);
+  const bool fall_l = (past_l >= F413_WALL_RUNTIME_SHORT_PRESENT_ADC) &&
+      (past_l - (float)wall->l_delta > F413_WALL_RUNTIME_SHORT_DROP_ADC);
   g_short_end.confirm_r = fall_r ? (uint8_t)(g_short_end.confirm_r + 1U) : 0U;
   g_short_end.confirm_l = fall_l ? (uint8_t)(g_short_end.confirm_l + 1U) : 0U;
-  if (g_short_end.confirm_r >= F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES)
+  if (g_short_end.confirm_r >= F413_WALL_RUNTIME_SHORT_CONFIRM_SAMPLES)
   {
-    g_short_end.confirm_r = F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES;
+    g_short_end.confirm_r = F413_WALL_RUNTIME_SHORT_CONFIRM_SAMPLES;
     if (!g_wall_end.detected_r)
     {
       g_wall_end.detected_r = g_wall_end.short_detected_r = true;
@@ -270,9 +270,9 @@ static void f413_wall_runtime_short_update(const f413_wall_sensor_snapshot_t* wa
       g_wall_end.detected_deriv_r = g_wall_end.deriv_r;
     }
   }
-  if (g_short_end.confirm_l >= F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES)
+  if (g_short_end.confirm_l >= F413_WALL_RUNTIME_SHORT_CONFIRM_SAMPLES)
   {
-    g_short_end.confirm_l = F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES;
+    g_short_end.confirm_l = F413_WALL_RUNTIME_SHORT_CONFIRM_SAMPLES;
     if (!g_wall_end.detected_l)
     {
       g_wall_end.detected_l = g_wall_end.short_detected_l = true;
@@ -523,6 +523,37 @@ static void f413_wall_runtime_end_update(const f413_wall_sensor_snapshot_t* wall
   g_wall_end.prev_left_wall = left_wall;
 }
 
+/* Every existing wall-end gate uses the same detector. Merely polling wall
+ * control must not arm correction, or carry confirmations into a later gate. */
+static void f413_wall_runtime_update_wall_end(const f413_wall_sensor_snapshot_t* wall,
+                                              bool gate_on)
+{
+  const bool opening_gate = gate_on && !g_wall_end_gate_active;
+  g_wall_end_gate_active = gate_on;
+  f413_wall_runtime_end_update(wall, gate_on);
+  if (F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL))
+  {
+    if (!f413_run_features_wall_end_correction_enabled() ||
+        f413_run_features_test_mode_run())
+    {
+      f413_wall_runtime_chained_monitor_end();
+      return;
+    }
+    if (opening_gate || !gate_on)
+    {
+      g_short_end.confirm_r = g_short_end.confirm_l = 0U;
+    }
+    g_short_end.active = gate_on;
+    /* Unarmed straight observations prepare the baseline, never a hit. */
+    f413_wall_runtime_short_update(wall);
+    return;
+  }
+  if (g_short_end.active && gate_on)
+  {
+    f413_wall_runtime_short_update(wall);
+  }
+}
+
 static void f413_wall_runtime_control_reset(void)
 {
   g_wall_ctrl_angle_deg = 0.0f;
@@ -734,6 +765,18 @@ void f413_wall_runtime_end_clear(void)
   g_wall_end_gate_active = false;
 }
 
+void f413_wall_runtime_end_begin(void)
+{
+  if (F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL))
+  {
+    f413_wall_runtime_chained_monitor_begin();
+  }
+  else
+  {
+    f413_wall_runtime_end_clear();
+  }
+}
+
 void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
                                                uint16_t right_low,
                                                uint16_t left_high,
@@ -822,12 +865,7 @@ static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
     return false;
   }
 
-  g_wall_end_gate_active = wall_end_gate;
-  f413_wall_runtime_end_update(&wall, wall_end_gate);
-  if (g_short_end.active && wall_end_gate)
-  {
-    f413_wall_runtime_short_update(&wall);
-  }
+  f413_wall_runtime_update_wall_end(&wall, wall_end_gate);
   f413_wall_runtime_control_update(&wall,
                                    wall_control_gate &&
                                    f413_run_features_wall_control_enabled() &&
@@ -889,6 +927,13 @@ bool f413_wall_runtime_wall_end_detected(float* right_dist_mm, float* left_dist_
     *left_dist_mm = g_wall_end.detected_l ? g_wall_end.dist_l_mm : -1.0f;
   }
   return g_wall_end.detected_r || g_wall_end.detected_l;
+}
+
+bool f413_wall_runtime_wall_end_detected_by_short(void)
+{
+  return (g_wall_end.short_detected_r || g_wall_end.short_detected_l) &&
+      (!g_wall_end.detected_r || g_wall_end.short_detected_r) &&
+      (!g_wall_end.detected_l || g_wall_end.short_detected_l);
 }
 
 bool f413_wall_runtime_front_wall_reached(float ad_sum_threshold)
@@ -1048,9 +1093,13 @@ void f413_wall_runtime_run_end_monitor_once(void)
   f413_wall_sensor_snapshot_t wall;
   uint32_t start_ms;
   uint32_t now;
+  uint32_t last_print_ms;
   const uint32_t monitor_ms = f413_wall_runtime_monitor_ms();
   const uint32_t sample_ms = f413_wall_runtime_monitor_sample_ms();
+  const uint32_t poll_ms = F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL)
+      ? 1U : sample_ms;
 
+  f413_wall_runtime_end_clear();
   if (!f413_wall_runtime_read_snapshot(&wall))
   {
     trace_printf("[HW-TEST][WallEnd] FAIL(read initial)\r\n");
@@ -1067,17 +1116,27 @@ void f413_wall_runtime_run_end_monitor_once(void)
                (unsigned int)g_wall_end.left_wall);
 
   start_ms = f413_wall_runtime_tick();
+  last_print_ms = start_ms;
   do
   {
-    f413_wall_runtime_delay(sample_ms);
+    /* Keep human-readable output slow, but observe the same short window as
+     * motion. The old 50ms diagnostic cadence cannot resolve a 4ms fall. */
+    f413_wall_runtime_delay(poll_ms);
     now = f413_wall_runtime_tick();
     if (!f413_wall_runtime_read_snapshot(&wall))
     {
+      g_wall_end_gate_active = false;
+      f413_wall_runtime_chained_monitor_end();
       trace_printf("[HW-TEST][WallEnd] FAIL(read sample)\r\n");
       return;
     }
 
-    f413_wall_runtime_end_update(&wall, true);
+    f413_wall_runtime_update_wall_end(&wall, true);
+    if (((now - last_print_ms) < sample_ms) && ((now - start_ms) < monitor_ms))
+    {
+      continue;
+    }
+    last_print_ms = now;
     trace_printf("[HW-TEST][WallEnd] t=%lu R=%ld L=%ld dR=%ld dL=%ld wallR=%u wallL=%u endR=%u endL=%u\r\n",
                  (unsigned long)(now - start_ms),
                  (long)wall.r_delta,
@@ -1090,6 +1149,8 @@ void f413_wall_runtime_run_end_monitor_once(void)
                  (unsigned int)g_wall_end.detected_l);
   } while ((now - start_ms) < monitor_ms);
 
+  g_wall_end_gate_active = false;
+  f413_wall_runtime_chained_monitor_end();
   trace_printf("[HW-TEST][WallEnd] done endR=%u distR=%.0f endL=%u distL=%.0f\r\n",
                (unsigned int)g_wall_end.detected_r,
                (double)g_wall_end.dist_r_mm,

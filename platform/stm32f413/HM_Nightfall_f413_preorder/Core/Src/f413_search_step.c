@@ -2690,7 +2690,7 @@ static f413_run_session_abort_reason_t f413_search_step_drive_wallend_segment(
   segment_start_distance = f413_ctrl_get_distance();
   segment_start_ms = f413_search_step_tick();
   deadline = segment_start_ms + g_config.path_timeout_ms;
-  f413_wall_runtime_end_clear();
+  f413_wall_runtime_end_begin();
   f413_search_step_prepare_straight_angle_control();
   reason = f413_search_step_begin_distance(distance_mm, &target_distance, &remaining_distance);
   if (reason != F413_RUN_SESSION_ABORT_NONE) return reason;

@@ -4,7 +4,7 @@ TASK_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 TEST_OUT_DIR="$TASK_ROOT/build/hil_host"
 mkdir -p "$TEST_OUT_DIR"
 for profile in mini_r3_0 f413_preorder; do
-  for kind in offset offset_wall short_wall; do
+  for kind in offset offset_wall short_wall all_short; do
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Wno-unused-function -O1 -g -DSTM32F413xx \
       -fsanitize=address,undefined -fno-omit-frame-pointer \
       -I"$TASK_ROOT/params/$profile" -I"$TASK_ROOT/nvm" -I"$TASK_ROOT/common/route" \

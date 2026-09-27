@@ -18,7 +18,8 @@
 #define F413_MOTION_MODE4_180_TRAJECTORY_FF (1U << 10)
 #define F413_MOTION_CHAINED_OFFSET_WALL_END (1U << 11)
 #define F413_MOTION_CHAINED_SHORT_WALL_END  (1U << 12)
-#define F413_MOTION_KNOWN_FEATURES          (0x1FFFU)
+#define F413_MOTION_SHORT_WALL_END_ALL      (1U << 13)
+#define F413_MOTION_KNOWN_FEATURES          (0x3FFFU)
 
 /* params.h supplies either a literal host profile or the boot-selected alias. */
 #define F413_MOTION_ENABLED(feature) (((F413_MOTION_FEATURES) & (feature)) != 0U)

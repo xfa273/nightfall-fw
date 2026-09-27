@@ -241,6 +241,8 @@ def main():
             if variant == 'reference' and rev == BASE:
                 fixture = fixture.replace('f413_search_step_reset_distance();', 'f413_ctrl_reset_distance();')
             fixture = '#include "f413_motion_stop.h"\n' + fixture
+            # New window-start API preserves the fixture's original latch reset.
+            fixture += '\nvoid f413_wall_runtime_end_begin(void) { f413_wall_runtime_end_clear(); }\n'
             results['search'].append(compile_run(f'{profile}_search_{variant}', fixture + SEARCH_MAIN,
                 profile, extras=[SRC + 'f413_front_match.c', SRC + 'f413_run_features.c',
                                  f'params/{profile}/search_run_params_split.c']))

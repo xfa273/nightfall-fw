@@ -303,6 +303,9 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     // 2026-09-27 case3: shorten follow by 8 mm (front crossing to turn start).
     // Large turns add no forward distance for a nonpositive offset.
     .dist_wall_end = -23.0f,
+    // t0.34: normal approach short detection is about 9-12 mm earlier.
+    // Add only on a short-method hit; preserve fallback/chained turn timing.
+    .dist_wall_end_short_add = 10.0f,
     // Large 90deg
     .velocity_l_turn_90 = 1400.0f,
     .alpha_l_turn_90 = 40500.0f,

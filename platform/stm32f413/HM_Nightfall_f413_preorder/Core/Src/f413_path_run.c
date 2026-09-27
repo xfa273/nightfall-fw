@@ -1583,7 +1583,7 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
   }
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
-  f413_wall_runtime_end_clear();
+  f413_wall_runtime_end_begin();
   f413_path_run_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
@@ -2100,9 +2100,13 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
     }
     if (wall_end_found)
     {
-      const float follow_dist = next_is_small_turn
-          ? ((float)DIST_HALF_SEC + mode_params->dist_wall_end)
-          : mode_params->dist_wall_end;
+      /* Only newly enabled straight-approach short hits need this offset.
+       * Keep the already tuned chained turns and legacy fallback unchanged. */
+      const float short_add = F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL) &&
+          f413_wall_runtime_wall_end_detected_by_short()
+          ? mode_params->dist_wall_end_short_add : 0.0f;
+      const float follow_dist = (next_is_small_turn ? (float)DIST_HALF_SEC : 0.0f) +
+          mode_params->dist_wall_end + short_add;
       if (follow_dist > 0.0f)
       {
         /* A disappearing wall is not a reliable heading reference after detection. */
