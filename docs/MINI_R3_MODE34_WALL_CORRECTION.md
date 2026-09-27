@@ -1,6 +1,11 @@
-# mini_r3 mode3/4 壁補正の暫定値（2026-09-26訂正）
+# mini_r3 mode3/4 壁補正の暫定値（2026-09-27再評価）
 
-現行は `mini-r3-wall-derivative-t0.27`。
+現行コードは `mini-r3-wall-derivative-t0.27`（mode3/4とも-15mm）のまま。
+**r2との比較でr3だけ変更が必要とは確認できず、-15mmの採用判断は根拠不足。**
+左右センサ配置はユーザ確認でr2/r3共通。「機体固有なので転用しない」という
+前回の説明を撤回する。今回の依頼は比較・理由説明のためparamsは変更していない。
+詳細は [r2/r3比較記録](MINI_R2_R3_WALL_END_COMPARISON.md)。
+以下の-15mm推定は条件付きの診断記録で、確定した機体差ではない。
 **t0.26のHigh=350 / Low=300は撤回**し、mini_r2と同じ100/1へ戻す。
 Low=1は微分検出を主体にする補助設定であり、不具合ではなかった。
 前回は生ADCの閾値交差を主にする調整へ変えてしまった。
@@ -23,7 +28,9 @@ ADC・微分値は4レコードに1回の間引き保存で、同値の間も実
 
 - mini_r2は `params/f413_preorder` と共通の `f413_wall_runtime.c` を使用。
   mode3/4は左右High100/Low1、`WALL_END_DERIV_FALL_THR=200`。
-  `dist_wall_end`はmode3=1、mode4=0で、機体固有の距離なのでそのまま転用しない。
+  `dist_wall_end`はmode3=1、mode4=0。配置による基準はr3と共通として扱う。
+  ただしmode番号と走行速度は対応しない。速度・波形・検出窓履歴に由来する
+  実効検出位置の差は別に評価する必要がある。
 - classic_r1は `sensor.c:wall_end_update_deriv/detect_wall_end` を使用。
   `drive_reset_before_run()`がDERIVモードを選択する。mode3/4は左右High200/Low1、
   微分閾値200、`sensor_kx`で閾値を補正する。距離追加は両モード1mm。
