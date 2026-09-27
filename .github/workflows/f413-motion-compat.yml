@@ -47,7 +47,7 @@ jobs:
         run: sh tools/hil/run_f413_machine_tests.sh
       - name: Verify consecutive-turn front correction and machine opt-in
         run: sh tools/hil/run_f413_chained_front_tests.sh
-      - name: Verify mode4 large180 lead scope and control-state continuity
+      - name: Verify mode4 large180 lead/trajectory FF and control-state continuity
         run: sh tools/hil/run_f413_turn180_lead_tests.sh
       - name: Compare r2 August motion and r3 reference motion
         run: python3 tools/hil/run_f413_motion_compat_tests.py

@@ -250,6 +250,13 @@
 /* Inactive unless this machine explicitly opts into MODE4_180_LEAD. */
 #define FF_OMEGA_LEAD_MODE4_180_TIME_S 0.004F
 #endif
+#ifndef FF_OMEGA_TRAJECTORY_PWM_MODE4_180
+/* Inactive unless this machine opts into MODE4_180_TRAJECTORY_FF. */
+#define FF_OMEGA_TRAJECTORY_PWM_MODE4_180 0.0F
+#endif
+#ifndef FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180
+#define FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 0.0F
+#endif
 #ifndef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS 120.0F
 #endif

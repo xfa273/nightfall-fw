@@ -108,7 +108,7 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 void f413_ctrl_set_omega(float v) { (void)v; }
 void f413_ctrl_start_omega_profile(float p, float a, float c) { (void)p; (void)a; (void)c; }
 void f413_ctrl_stop_omega_profile(void) {}
-void f413_ctrl_set_mode4_180_lead(bool enabled) { (void)enabled; }
+void f413_ctrl_set_mode4_180_turn(bool enabled) { (void)enabled; }
 void f413_ctrl_reset_angle(void) { assert(!suction || profiles > 0); angle = 0; }
 void f413_ctrl_set_angle_target(float v) { assert(running && !fan && v == 0); holding = true; }
 void f413_ctrl_clear_angle_target(void) { holding = false; }

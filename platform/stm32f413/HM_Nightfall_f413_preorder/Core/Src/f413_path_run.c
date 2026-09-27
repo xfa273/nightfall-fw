@@ -1782,7 +1782,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
    * endpoint.
    */
   f413_ctrl_set_velocity(turn->velocity_mm_s);
-  f413_ctrl_set_mode4_180_lead(mode4_large180);
+  f413_ctrl_set_mode4_180_turn(mode4_large180);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
@@ -1801,8 +1801,11 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
+      /* An interrupted profile is not its planned deceleration. Disable
+       * trajectory FF before cancelling a potentially large planned rate. */
+      f413_ctrl_set_mode4_180_turn(false);
       f413_ctrl_stop_omega_profile();
-      goto restore_lead;
+      goto restore_turn_control;
     }
   }
 
@@ -1821,7 +1824,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     {
       reason = f413_path_run_drive_chained_front_exit(turn, front_target_mm,
           speed_now_mm_s, guard, straight_trace_flags, next_front_entry_reached);
-      goto restore_lead;
+      goto restore_turn_control;
     }
   }
   if (turn->large_turn && (next_turn != NULL) && next_turn->large_turn &&
@@ -1845,7 +1848,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                                    guard,
                                                    straight_trace_flags);
     }
-    goto restore_lead;
+    goto restore_turn_control;
   }
   if (turn->wall_control_offsets)
   {
@@ -1863,8 +1866,8 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                              guard,
                                              straight_trace_flags);
   }
-restore_lead:
-  f413_ctrl_set_mode4_180_lead(false);
+restore_turn_control:
+  f413_ctrl_set_mode4_180_turn(false);
   return reason;
 }
 
