@@ -21,6 +21,7 @@ static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updat
 static unsigned completed_sessions;
 static unsigned video_starts, video_stops, control_stops;
 static uint32_t trace_start_tick;
+static uint32_t trace_period_ms;
 static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
@@ -74,6 +75,7 @@ void f413_hw_emit_video_sync_stop_pattern(void)
 void f413_ctrl_start(void)
 {
   assert(!fan && !running); /* Includes the blocking IMU calibration. */
+  if (tracing) assert(trace_period_ms == 10U);
   if (suction) assert(flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
   tick += 1200; control_tick = tick; starts++; running = true;
   position = velocity = target = angle = omega = 0;
@@ -88,6 +90,7 @@ void f413_ctrl_set_velocity(float v)
 void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 {
   (void)start;
+  assert(trace_period_ms == 1U);
   stop_profile_done = false;
   if (profiles++ == 0)
   {
@@ -118,7 +121,9 @@ float f413_ctrl_get_real_omega(void) { return omega; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile_done; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
-void f413_trace_log_auto_start(void) { tracing = true; trace_start_tick = tick; }
+void f413_trace_log_auto_start(void)
+{ assert(trace_period_ms == 10U); tracing = true; trace_start_tick = tick; }
+void f413_trace_log_set_period_ms(uint32_t ms) { trace_period_ms = ms; }
 void f413_trace_log_auto_step(void) {}
 void f413_trace_log_set_mode_flags(uint16_t f) { flags = f; }
 void f413_trace_log_auto_stop_after_tail(uint32_t ms)
@@ -134,9 +139,11 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
       !fan ? LEAD : fan_duty < requested_duty ? RAMP : SPINUP;
   if (phase == LEAD || phase == RAMP || phase == SPINUP)
   {
+    if (tracing) assert(trace_period_ms == 10U);
     assert(running && holding && profiles == 0);
     assert(flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
   }
+  else if (tracing) assert(trace_period_ms == 1U);
   if (injected_abort && phase == abort_phase) return injected_abort;
   if (disturbed && (phase == RAMP || phase == SPINUP))
   {
@@ -170,6 +177,7 @@ static void reset(void)
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
   completed_sessions = 0;
   video_starts = video_stops = control_stops = trace_start_tick = test_auto_video_capture = 0;
+  trace_period_ms = 1U;
   selected_mode = 3; selected_case = 1; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
@@ -185,6 +193,7 @@ static void run(void)
   requested_duty = f413_path_run_mode_params(selected_mode)->fan_power;
   expected_ramp_ms = f413_path_run_suction_ramp_ms(requested_duty);
   f413_path_run_session_once(suction ? selected_mode : 2,selected_case,0,"host suction");
+  if (trace_stops) assert(trace_period_ms == 1U);
 }
 static void stopped(unsigned expected_fan_starts)
 {

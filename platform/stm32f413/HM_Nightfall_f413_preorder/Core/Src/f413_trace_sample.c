@@ -342,10 +342,13 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (unsigned long)MATCH_POS_TRACE_IDLE_PERIOD_MS);
   trace_printf("#front_match_reserved_i32=fr_mm_x1000,fl_mm_x1000,position_error_mm_x1000,yaw_error_mm_x1000\r\n");
   trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
-  trace_printf("#auto_ram_staging=fast_period_ms=1,slow_period_ms=%u,omega_quantum_mdps=%ld,fast_capacity=%u,seq_reconstructed=1,persistent_schema_unchanged=1\r\n",
+  trace_printf("#auto_ram_staging=default_fast_period_ms=1,slow_every_fast_records=%u,omega_quantum_mdps=%ld,fast_capacity=%u,seq_reconstructed=1,persistent_schema_unchanged=1\r\n",
                (unsigned int)F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS,
                (long)F413_TRACE_COMPACT_OMEGA_QUANTUM_MDPS,
                (unsigned int)F413_TRACE_COMPACT_USABLE_RECORDS);
+  trace_printf("#path_trace=prepare_period_ms=%u,motion_period_ms=%u,actual_period_from_timestamp=1\r\n",
+               (unsigned int)F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS,
+               (unsigned int)F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");
