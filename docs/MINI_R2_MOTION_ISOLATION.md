@@ -55,6 +55,9 @@ r2のbitを変更するときはtune version・検証記録を更新し、その
 `python3 tools/hil/run_f413_motion_compat_tests.py` はgit履歴の実コードを取得してコンパイルし、
 同じparams・入力を与えた結果を現在の実コードと完全一致で比較する。ASan/UBSan付き、実機アクセスなし。
 参照commitを含むgit履歴が必要。出力は無視対象 `build/hil_host/motion_compat/`。
+GitHub Actions `F413 machine motion compatibility` でも関連変更のpush/PR時に
+履歴取得・profile監査・machine試験・差分試験を自動実行する。意図的なr3処理変更でも
+参照との差は検出されるため、参照版更新は動作変更と検証結果をレビューして行う。
 
 | 比較対象 | r2 対8月版 | r3 対修正前 |
 | --- | ---: | ---: |
