@@ -83,6 +83,7 @@ float f413_ctrl_get_real_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile && position >= target; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
 void f413_trace_log_auto_start(void) { tracing = true; }
+void f413_trace_log_set_period_ms(uint32_t ms) { (void)ms; }
 void f413_trace_log_auto_step(void) {}
 void f413_trace_log_set_mode_flags(uint16_t f) { (void)f; }
 void f413_trace_log_auto_stop_after_tail(uint32_t ms) { (void)ms; tracing = false; }

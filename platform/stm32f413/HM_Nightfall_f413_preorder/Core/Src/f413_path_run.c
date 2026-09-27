@@ -1185,6 +1185,7 @@ static void f413_path_run_trace_on_run_start(void)
     HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
   }
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS);
   f413_trace_log_auto_start();
 }
 
@@ -2266,6 +2267,9 @@ void f413_path_run_session_once(uint8_t mode,
   {
     f413_ctrl_start();
   }
+  /* Calibration and powered fan preparation must not consume the 1 ms
+   * motion budget. Restore full-rate capture before the first command. */
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
 
@@ -2455,6 +2459,8 @@ void f413_path_run_session_once(uint8_t mode,
   }
 
 cleanup:
+  /* Also restore the default after any abort during preparation. */
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
   f413_ctrl_clear_angle_target();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);
