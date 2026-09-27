@@ -667,6 +667,9 @@ static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
                                    f413_run_features_wall_control_enabled() &&
                                    !f413_run_features_test_mode_run());
   f413_wall_runtime_control_apply(wall_control_gate);
+  /* control_apply(false) also closes the legacy gate. Detection-only offset
+   * monitoring must remain visible without enabling cardinal wall control. */
+  g_wall_end_gate_active = wall_end_gate;
 
   return wall_end_gate && (g_wall_end.detected_r || g_wall_end.detected_l);
 }
@@ -679,6 +682,11 @@ void f413_wall_runtime_poll_straight(bool wall_control_gate)
 bool f413_wall_runtime_poll_wall_end(bool straight_gate)
 {
   return f413_wall_runtime_poll_straight_internal(straight_gate, straight_gate);
+}
+
+bool f413_wall_runtime_poll_wall_end_with_control(bool wall_control_gate)
+{
+  return f413_wall_runtime_poll_straight_internal(wall_control_gate, true);
 }
 
 void f413_wall_runtime_poll_diagonal(bool diagonal_gate)

@@ -119,6 +119,7 @@ float f413_ctrl_get_distance(void) { return position; }
 float f413_ctrl_get_angle(void) { return angle; }
 float f413_ctrl_get_real_omega(void) { return omega; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
+float f413_ctrl_get_target_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile_done; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
 void f413_trace_log_auto_start(void)
@@ -170,6 +171,7 @@ void f413_wall_runtime_control_apply(bool b) { (void)b; }
 void f413_wall_runtime_poll_diagonal(bool b) { (void)b; }
 void f413_wall_runtime_poll_straight(bool b) { (void)b; }
 bool f413_wall_runtime_poll_wall_end(bool b) { (void)b; return false; }
+bool f413_wall_runtime_poll_wall_end_with_control(bool b) { (void)b; return false; }
 bool f413_wall_distance_front_unwarped_mm(float* out) { (void)out; return false; }
 static void reset(void)
 {

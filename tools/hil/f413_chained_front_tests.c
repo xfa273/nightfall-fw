@@ -80,6 +80,7 @@ float f413_ctrl_get_distance(void) { return position; }
 float f413_ctrl_get_angle(void) { return 0; }
 float f413_ctrl_get_real_omega(void) { return 0; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
+float f413_ctrl_get_target_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile && position >= target; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
 void f413_trace_log_auto_start(void) { tracing = true; }
@@ -110,6 +111,7 @@ uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reas
 { return (uint16_t)r; }
 const char* f413_run_session_abort_reason_to_text(f413_run_session_abort_reason_t r)
 { (void)r; return "injected"; }
+#ifndef CHAINED_REAL_WALL_RUNTIME
 void f413_wall_runtime_set_control_gains(float a, float b) { (void)a; (void)b; }
 void f413_wall_runtime_set_wall_end_thresholds(uint16_t a, uint16_t b, uint16_t c, uint16_t d)
 { (void)a; (void)b; (void)c; (void)d; }
@@ -121,6 +123,9 @@ void f413_wall_runtime_poll_diagonal(bool b) { (void)b; }
 void f413_wall_runtime_poll_straight(bool b) { if (b) wall_polls++; }
 bool f413_wall_runtime_poll_wall_end(bool b)
 { (void)b; wall_end_polls++; return cores > 0 && position - core_end[cores - 1] >= wall_end_after; }
+bool f413_wall_runtime_poll_wall_end_with_control(bool b)
+{ if (b) wall_polls++; return f413_wall_runtime_poll_wall_end(true); }
+#endif
 bool f413_wall_distance_front_unwarped_mm(float* out)
 {
   front_reads++;
@@ -180,12 +185,17 @@ static void pair_test(float hit, float valid, bool front_enabled, bool test_mode
   f413_run_features_set(&features);
   const bool enabled = F413_MOTION_ENABLED(F413_MOTION_CHAINED_FRONT_ENTRY) &&
       front_enabled && !test_mode;
+  const bool joined = F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) && !test_mode;
   const bool early = enabled && isfinite(hit) && fmaxf(hit, valid) <= turn.dist_out_mm;
   bool skip = true;
   assert(run_turn(&turn, &next, false, &skip) == F413_RUN_SESSION_ABORT_NONE);
-  assert(skip == early);
-  near(position - core_end[0], early ? fmaxf(0, fmaxf(hit, valid)) : turn.dist_out_mm);
-  if (early)
+  assert(skip == (early || joined));
+  const float nominal = turn.dist_out_mm + next.dist_in_mm;
+  const float joined_distance = front_enabled && isfinite(hit) ?
+      fminf(fmaxf(0, fmaxf(hit, valid)), nominal + WALL_END_EXTEND_MAX_MM) : nominal;
+  near(position - core_end[0], joined ? joined_distance :
+       early ? fmaxf(0, fmaxf(hit, valid)) : turn.dist_out_mm);
+  if (skip)
   {
     near(g_f413_path_run_distance_cursor.endpoint_mm, position);
     /* Reaching the target is latched even if the sensor disappears between calls. */
@@ -196,7 +206,7 @@ static void pair_test(float hit, float valid, bool front_enabled, bool test_mode
   bool unused;
   assert(run_turn(&next, NULL, skip, &unused) == F413_RUN_SESSION_ABORT_NONE);
   assert(!unused && cores == 2);
-  if (early) { near(core_start[1], end); assert(profiles == before + 1); }
+  if (early || joined) { near(core_start[1], end); assert(profiles == before + 1); }
   else if (!front_enabled || test_mode || !isfinite(hit))
     near(core_start[1] - end, next.dist_in_mm);
   else if (hit <= turn.dist_out_mm)
@@ -228,20 +238,25 @@ static void direct_tests(void)
   reset(); turn = test_turn(); next = turn; next.front_wall_entry = false;
   hit_after[0] = 0;
   assert(run_turn(&turn, &next, false, &skip) == F413_RUN_SESSION_ABORT_NONE);
-  assert(!skip && front_reads == 1); /* Only the current entry reads the front. */
-  near(position - core_end[0], turn.dist_out_mm);
+  assert(skip == F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END));
+  assert(front_reads == 1); /* Only the current entry reads the front. */
+  near(position - core_end[0], turn.dist_out_mm +
+       (F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) ? next.dist_in_mm : 0));
 
   /* Exit wall-control gating and the existing large-to-large wall-end path. */
   reset(); turn = test_turn(); next = turn;
   turn.front_wall_entry = turn.wall_control_offsets = false; turn.large_turn = true;
   hit_after[0] = 1;
   assert(run_turn(&turn, &next, false, &skip) == F413_RUN_SESSION_ABORT_NONE);
-  assert(wall_polls == 0 && wall_end_polls == 0);
+  assert(wall_polls == 0);
+  assert((wall_end_polls > 0) == F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END));
   assert(skip == F413_MOTION_ENABLED(F413_MOTION_CHAINED_FRONT_ENTRY));
   reset(); next = turn; hit_after[0] = 0;
   assert(run_turn(&turn, &next, false, &skip) == F413_RUN_SESSION_ABORT_NONE);
-  assert(!skip && front_reads == 0 && wall_polls == 0 && wall_end_polls > 0);
-  near(position - core_end[0], turn.dist_out_mm);
+  assert(skip == F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END));
+  assert(front_reads == 0 && wall_polls == 0 && wall_end_polls > 0);
+  near(position - core_end[0], turn.dist_out_mm +
+       (F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) ? next.dist_in_mm : 0));
 
   /* Preserve all abort reasons, including timeouts while the exit is stuck. */
   for (unsigned r = F413_RUN_SESSION_ABORT_SWITCH; r <= F413_RUN_SESSION_ABORT_TIMEOUT; r++)
