@@ -1,11 +1,20 @@
 # ST-LINK erase failure investigation, 2026-09-27
 
+**Recovered at 04:00 UTC using STLINK-V3MINIE and its dedicated cable.** The
+selected application was erased/programmed/verified successfully once, booted to
+OP mode0 idle, and full post-reset readback matched the build. Identity is
+unchanged; non-motor IMU/wall checks pass. Two WeAct Mini Debugger units sharing
+one adapter/SWD cable had inconsistent ROM reads. The faulty component within
+the WeAct path is not isolated; probe firmware/common compatibility also remains
+possible. Use the working V3MINIE path until the old adapter/cable can be tested.
+
 ## Scope and hardware
 
 User requested live investigation while `tools/flashing/flash_stlink` was failing.
 Application flash/reset and read-only diagnostics were used; motors/fan/run were
 not authorized or commanded. No mass erase, option-byte/protection change,
-identity write, FRAM access or calibration/maze/trace mutation was requested.
+identity write or calibration/maze/trace mutation was requested. The recovered
+application performs its normal boot-time FRAM loads.
 
 - Probe: ST-LINK V2-1, USB `0483:3752`, SN `066CFF545771485067013914`, FW `V2J43M28`.
 - Target: STM32F413/F423, device ID `0x463`, revision A, reported VDD 3.23–3.24 V.
@@ -59,8 +68,8 @@ issue is not isolated to the Python wrapper or native arm64 CLI. SWD wiring,
 probe, USB path and target electrical state still need separation. Reported VDD
 alone does not measure rail transients.
 
-Current recovery is incomplete; no successful application write or boot has been
-observed. Original Mac `ioreg -p IOUSB -w0` topology showed
+At the first pause (03:41 UTC), recovery was incomplete and no successful
+application write/boot had been observed. Original Mac `ioreg -p IOUSB -w0` topology showed
 three hub levels (`USB2.0 Hub` → `USB2.1 Hub` → `USB2.1 Hub`); direct connection
 was confirmed at `STM32 STLink@01100000` but did not cure read instability. Writes
 are paused. A spare probe is unavailable. Next: compare replacement SWD/USB
@@ -148,3 +157,72 @@ fallback is added to `flash_stlink`: it has not recovered this fault.
 The 1 MHz default and diagnostic logging change in draft PR
 [46](https://github.com/xfa273/nightfall-fw/pull/46) remains useful for capturing
 failures, but did not cure this live incident. Do not present it as a verified fix.
+
+## Resumed at 03:55 UTC: replacement WeAct probe
+
+User identified both V2-1 probes as WeAct Mini Debuggers. The earlier Mac-direct
+trial used a C-to-C cable, which the user reports has historically failed for this
+debugger; therefore it was not a controlled hub-only comparison. User subsequently
+changed to a different hub, different A-to-C cable and another WeAct unit, keeping
+the **same WeAct adapter PCB and target-side SWD cable**.
+
+- New probe SN `066BFF545771485067014053`, same FW `V2J43M28`, USB0483:3752.
+- New topology: one USB2.1 hub under a separate Mac controller; saved in
+  `new_probe_usb_topology.log`.
+- UR/HWrst at requested1000 kHz (actual950), CPU halt, target UID unchanged,
+  three4096-byte system-ROM reads differ by1177 and775 bytes from the first.
+  `stlink_20260927T035513Z_ux339xq1.log`, `rom_new_probe_{a,b,c}.bin`.
+- `identity_new_probe_before.bin` again matches the full initial identity backup.
+- Smaller transfers at requested400 kHz can agree: three reads each of64/256/512 B
+  from0x1fff0400 agree, while one1024 B read differs by59 B and4096 B reads differ
+  by1451/78 B. `rom_bulk_size_20260927.log`. This is not proof of a stable write
+  path or permission to retry erases. A separate512 B r8/r32 comparison also
+  agrees (`read_width_compare_20260927.log`).
+- No erase/write or UART/motor/fan operation in this resumed phase. Existing built
+  ELF remains byte-identical to the artifact recorded above.
+
+User has no replacement SWD cable for the WeAct setup, but has an STLINK-V3MINIE
+and its dedicated cable. The user switched to that complete debug path for the successful recovery below.
+This comparison changes the probe family **and** adapter/cable path, so success
+alone does not isolate one failed component of the old setup.
+
+## Recovery at 04:00 UTC: STLINK-V3MINIE
+
+- Probe SN `003B00273234511537333934`, FW `V3J16M8`, target VDD3.24 V,
+  same target UID and identity. UART now `/dev/cu.usbmodem11102` at921600 baud.
+- 03:59:15: UR/HWrst, requested/actual1000 kHz; three4096-byte system-ROM reads
+  agree exactly. `stlink_20260927T035915Z_v8n2i8uy.log`, `rom_v3_{a,b,c}.bin`.
+  All have SHA256 `7067109ca608556be1e742b9a1bd8e1401815b0c01ce4c00dfc2239afa8c2065`.
+  Full identity matches the initial backup (`identity_v3_before.bin`).
+- 04:00:22: one application programming attempt with the same previously built
+  and SHA256-checked ELF succeeds: erase only sectors0–6, download, verify, reset.
+  `stlink_20260927T040022Z_n5ydszlb.log`, `v3_recovery_flash_console.log`.
+  No repeat programming was needed on the V3MINIE path.
+- UART boot captured across the write/reset in `v3_recovery_boot.log`:
+  `GIT=dfbfc9e DIRTY=1`, machine `mini_r3_0_unit002`, tune
+  `mini-r3-wall-case3-t0.28`, `[NVM-GUARD] LOCKED`, wall ADC-DMA started,
+  control initialized, `[OP-UI] ready mode=0 idle`.
+- 04:00:59: HOTPLUG readback of the entire377052-byte app after reset exactly
+  matches `arm-none-eabi-objcopy -O binary` of the selected ELF. Both binaries
+  have SHA256 `ef21da10e0e9bd0ddc695c5ce67ac3d3abfb01bc03cd491ee4b7a6f22234cbde`.
+  Full128 KiB identity still matches the initial backup. Three more system-ROM
+  reads agree with all three before programming (six identical reads total).
+  `stlink_20260927T040059Z_89rzhgzu.log`, `app_v3_after.bin`,
+  `app_recovery_expected.bin`, `identity_v3_after.bin`, `rom_v3_after_{a,b,c}.bin`.
+- Final UART `i,w` only: WHO_AM_I0x6B and IMU control-register checks PASS,
+  wall measurement PASS with ready0x03. `v3_recovery_status.log`.
+  Application is left running; all capture/programmer processes are closed.
+  No motors/fan/run were authorized or commanded. No calibration/NVM test writes,
+  trace formatting, option-byte updates or protected-sector erase/write occurred.
+
+Successful recovery command (the ELF above was already successfully built):
+
+```sh
+python3 tools/flashing/flash_stlink --image build/Debug/nightfall_stm32f413.elf \
+  --sn 003B00273234511537333934 --freq 1000 --mode UR --reset-mode HWrst
+```
+
+For subsequent source changes, use `--build` instead of `--image ...` with the
+same V3MINIE connection/options. This outcome verifies one complete flash/boot
+and repeated readback; it does not measure the future failure rate, nor prove
+that the WeAct adapter alone is faulty. No WeAct or V3MINIE firmware was updated.

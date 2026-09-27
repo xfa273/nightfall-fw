@@ -101,6 +101,17 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 周波数変更だけで直ったとは判断せず、通信経路・プローブ・機体側を切り分けます。
 別実装の`st-flash`でも内容が変わらない内蔵ROMの読み出しが不一致となりました。
 この状態では消去を反復せず、ケーブルやプローブを交換して読み出しの安定性から確認します。
+同日、WeAct Mini Debuggerの別個体・別ハブ・別A–Cケーブルでも再現しましたが、
+STLINK-V3MINIEと専用ケーブルへの交換で消去・書き込み・照合・起動に成功しました。
+アプリ全域の読み戻し一致とidentity保全も確認済みです。WeAct用の共通変換基板・
+SWDケーブル、またはそのプローブ系統との組み合わせが未切り分けなので、
+当面は復旧確認済みのV3MINIE経路を使用します。確認済みの接続条件:
+
+```bash
+python3 tools/flashing/flash_stlink --build --freq 1000 --mode UR --reset-mode HWrst
+```
+
+このUR/HWrst条件はNRST接続済みの構成で確認しています。
 調査経過は [実機調査記録](../../docs/ai/STLINK_ERASE_FAILURE_20260927.md) を参照してください。
 
 参考: [CubeProgrammer UM2237（接続/リセット/ログ）](https://www.st.com/resource/en/user_manual/dm00403500-stm32cubeprogrammer-stmicroelectronics.pdf)、
