@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- 作業優先度の変更（2026-09-27 16:40 JST）: ユーザ報告で、mini_r2は8月版99e44d9／goal(0,1)へ戻すとある程度改善したが、不安定さは残る。ハード要因も候補だが原因未確定。ユーザ指示によりr2の調査・修正・r3変更の再導入を一旦保留し、mini_r3を優先する。r2は最後に書いた8月版のまま、保存データ・比較用branch/worktree・ログを保持。この方針変更に伴う追加の実機操作・コード変更なし。
+
 - mini_r2へ8月ソフト全体を再書込み（2026-09-27 16:25 JST）: ユーザがPR47互換修正を試すも不調継続。依頼により8/29の57a9c3bを別worktreeへ取得し、goalだけ(0,1)へ変更、生成table指紋更新。実機mini_r2 unit001/UID00250029-31335117-34313932へ99e44d9 DIRTY=0をflash/verify、全343548B読戻し一致・identity128KiB不変・mode0起動・壁取得PASS。保存センサoffset/base維持、モータ/fan/走行操作なし、実走結果待ち。ソースbranch exp/f413/20260927-r2-august-goal01、作業場所build/r2_august_goal01。現代版では保存距離warpの持込みfixtureが拒否される一方、旧版は読み得る差も確認したが、影響は未同定。詳細 docs/ai/MINI_R2_AUGUST_GOAL01_20260927.md。
 
 - mini_r2走行とr3実験の分離（2026-09-27、mini-r2-aug29-compat-t0.4）: r2の走行policyを57a9c3b（8/29、r3立上げ前）へ復元。機体別F413_MOTION_FEATURESを追加しr2=0/r3=明示8bit、IMU・停止/FF・前壁復帰・探索距離・上限・case0・mode2case6を選択。r2 mode2case6は旧固定斜め検証pathへ戻る。実ソース差分試験でr2対8月版/r3対修正前の制御各8400、探索120/122、経路計画各1296、dispatch各126件一致。F413/F405 build PASS、実機書込/走行なし。ユーザの既存調整値は保持。再導入候補と物理検証条件は docs/MINI_R2_MOTION_ISOLATION.md。実走復旧は未確認。

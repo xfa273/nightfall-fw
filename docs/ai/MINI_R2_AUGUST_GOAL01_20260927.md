@@ -4,6 +4,15 @@ User reports that the motion-policy restoration in PR47 did not fix physical
 exploration. At the user's explicit request, flashed the complete pre-r3
 August implementation with goal (0,1), not the newer binary's compatibility mode.
 
+## User follow-up / paused
+
+2026-09-27 16:40 JST: the user reports partial improvement with the August
+firmware, but continuing instability. Hardware is a possible contributor, not
+an established diagnosis. At the user's direction, pause r2 investigation,
+changes and selective adoption of r3 features; prioritize mini_r3. Retain the
+last-flashed August goal(0,1) image and all comparison artifacts. No additional
+hardware commands or firmware changes were performed for this status update.
+
 ## Exact image
 
 - Base: `57a9c3be207e368f0a4f57fd1688ab59e6f367b6`, 2026-08-29 17:31 JST.
