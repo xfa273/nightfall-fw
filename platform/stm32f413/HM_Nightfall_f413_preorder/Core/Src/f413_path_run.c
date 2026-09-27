@@ -1313,13 +1313,100 @@ static f413_run_session_abort_reason_t f413_path_run_settle_test_stop(
   }
 }
 
-static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float distance_mm,
+#define F413_PATH_RUN_GOAL_STOP_SETTLE_MAX_MS       (250U)
+#define F413_PATH_RUN_GOAL_STOP_STABLE_MS           (20U)
+#define F413_PATH_RUN_GOAL_STOP_VELOCITY_MM_S       (20.0f)
+#define F413_PATH_RUN_GOAL_STOP_POSITION_ERROR_MM   (3.0f)
+
+/* Only the final maze stop uses this tolerance. Intermediate path endpoints,
+ * turn offsets and case0 position trials keep their own completion rules.
+ * A profile finishing short of the endpoint must not spend five seconds
+ * creeping against static friction. Nor may an early encoder crossing end
+ * braking while the robot is still moving.
+ */
+static f413_run_session_abort_reason_t f413_path_run_wait_goal_stop(
+    float target, bool profile_required,
+    f413_run_session_guard_t* guard, uint16_t trace_flags,
+    bool wall_control_gate, bool diagonal_control_gate)
+{
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+  uint32_t settle_start = 0U;
+  uint32_t stable_start = 0U;
+  bool settling = false;
+  bool stable = false;
+
+  while (1)
+  {
+    const uint32_t now = HAL_GetTick();
+    const float position_error = target - f413_ctrl_get_distance();
+    const float velocity = f413_ctrl_get_real_velocity();
+    const bool profile_complete =
+        !profile_required || f413_ctrl_stop_profile_complete();
+    f413_run_session_abort_reason_t reason;
+
+    if (!g_f413_path_run_distance_cursor.active ||
+        !isfinite(position_error) || !isfinite(velocity))
+    {
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
+    if (profile_complete && !settling)
+    {
+      settling = true;
+      settle_start = now;
+    }
+    if (profile_complete &&
+        (fabsf(position_error) <= F413_PATH_RUN_GOAL_STOP_POSITION_ERROR_MM) &&
+        (fabsf(velocity) <= F413_PATH_RUN_GOAL_STOP_VELOCITY_MM_S))
+    {
+      if (!stable)
+      {
+        stable = true;
+        stable_start = now;
+      }
+      if ((uint32_t)(now - stable_start) >= F413_PATH_RUN_GOAL_STOP_STABLE_MS)
+      {
+        return F413_RUN_SESSION_ABORT_NONE;
+      }
+    }
+    else
+    {
+      stable = false;
+    }
+    if (((int32_t)(now - deadline) >= 0) ||
+        (settling && (uint32_t)(now - settle_start) >=
+                     F413_PATH_RUN_GOAL_STOP_SETTLE_MAX_MS))
+    {
+      return F413_RUN_SESSION_ABORT_TIMEOUT;
+    }
+    f413_trace_log_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (!settling && diagonal_control_gate)
+    {
+      f413_wall_runtime_poll_diagonal(true);
+    }
+    else if (!settling && wall_control_gate)
+    {
+      f413_wall_runtime_poll_straight(true);
+    }
+    else
+    {
+      f413_wall_runtime_control_apply(false);
+    }
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+  }
+}
+
+static f413_run_session_abort_reason_t f413_path_run_drive_segment_impl(float distance_mm,
                                                                       float target_velocity_mm_s,
                                                                       float* speed_now_mm_s,
                                                                       f413_run_session_guard_t* guard,
                                                                       uint16_t trace_flags,
                                                                       bool wall_control_gate,
-                                                                      bool diagonal_control_gate)
+                                                                      bool diagonal_control_gate,
+                                                                      bool goal_stop)
 {
   float start_velocity;
   float profile_distance;
@@ -1356,6 +1443,11 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
     f413_ctrl_set_velocity(target_velocity_mm_s);
     f413_ctrl_set_omega(0.0f);
     *speed_now_mm_s = target_velocity_mm_s;
+    if (goal_stop)
+    {
+      return f413_path_run_wait_goal_stop(target_distance, false, guard,
+          trace_flags, wall_control_gate, diagonal_control_gate);
+    }
     return F413_RUN_SESSION_ABORT_NONE;
   }
   f413_ctrl_set_velocity_profile(start_velocity,
@@ -1363,10 +1455,23 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
                                  profile_distance);
   f413_ctrl_set_omega(0.0f);
 
-  reason = f413_path_run_wait_ctrl_target(target_distance, false, guard, trace_flags,
-                                          wall_control_gate, diagonal_control_gate);
+  reason = goal_stop
+      ? f413_path_run_wait_goal_stop(target_distance, true, guard, trace_flags,
+                                    wall_control_gate, diagonal_control_gate)
+      : f413_path_run_wait_ctrl_target(target_distance, false, guard, trace_flags,
+                                      wall_control_gate, diagonal_control_gate);
   *speed_now_mm_s = target_velocity_mm_s;
   return reason;
+}
+
+static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(
+    float distance_mm, float target_velocity_mm_s, float* speed_now_mm_s,
+    f413_run_session_guard_t* guard, uint16_t trace_flags,
+    bool wall_control_gate, bool diagonal_control_gate)
+{
+  return f413_path_run_drive_segment_impl(distance_mm, target_velocity_mm_s,
+      speed_now_mm_s, guard, trace_flags, wall_control_gate,
+      diagonal_control_gate, false);
 }
 
 static f413_run_session_abort_reason_t f413_path_run_drive_segment(float distance_mm,
@@ -2599,7 +2704,7 @@ void f413_path_run_session_once(uint8_t mode,
 
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
-    abort_reason = f413_path_run_drive_segment_ex(
+    abort_reason = f413_path_run_drive_segment_impl(
         g_f413_path_run_prepared_path.stop_distance_mm,
         0.0f,
         &speed_now,
@@ -2608,7 +2713,9 @@ void f413_path_run_session_once(uint8_t mode,
                    NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
                    NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG),
         !diagonal,
-        diagonal);
+        diagonal,
+        F413_MOTION_ENABLED(F413_MOTION_PATH_GOAL_STOP) &&
+            !f413_run_features_test_mode_run());
   }
 
   if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
