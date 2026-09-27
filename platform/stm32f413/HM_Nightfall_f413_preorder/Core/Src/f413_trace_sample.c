@@ -349,6 +349,8 @@ void f413_trace_sample_emit_extra_csv_meta(void)
   trace_printf("#path_trace=prepare_period_ms=%u,motion_period_ms=%u,actual_period_from_timestamp=1\r\n",
                (unsigned int)F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS,
                (unsigned int)F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
+  trace_printf("#chained_offset_wall_end=%u,exit_plus_next_entry=1,front_target_priority=1\r\n",
+               F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) ? 1U : 0U);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");

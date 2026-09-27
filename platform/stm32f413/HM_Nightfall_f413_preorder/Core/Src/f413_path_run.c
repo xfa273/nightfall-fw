@@ -1700,12 +1700,133 @@ static f413_run_session_abort_reason_t f413_path_run_drive_chained_front_exit(
   return reason;
 }
 
+/* The exit and the immediately following entry are one physical straight.
+ * Own both here, keep one derivative history, and consume the next entry even
+ * when no correction fires. Never search past the nominal end for a side wall. */
+static f413_run_session_abort_reason_t f413_path_run_drive_chained_offsets(
+    const f413_path_run_turn_t* turn,
+    const f413_path_run_turn_t* next_turn,
+    float dist_wall_end_mm,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags,
+    bool* next_entry_consumed)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  const float start = f413_ctrl_get_distance();
+  const float exit_end = start + fmaxf(0.0f, turn->dist_out_mm);
+  const float nominal_end = exit_end + fmaxf(0.0f, next_turn->dist_in_mm);
+  const float front_target = F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - next_turn->dist_in_mm;
+  const bool watch_front = next_turn->front_wall_entry &&
+      (next_turn->dist_in_mm > 0.0f) && (front_target > 0.0f) &&
+      f413_run_features_front_wall_correction_enabled();
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+  float target = nominal_end;
+  bool wall_found = false;
+  bool front_extension = false;
+  bool profile_started = false;
+
+  *next_entry_consumed = false;
+  f413_wall_runtime_end_clear();
+  f413_path_run_prepare_straight_angle_control();
+  f413_ctrl_set_omega(0.0f);
+  f413_trace_log_set_mode_flags(trace_flags);
+
+  while (1)
+  {
+    float front_distance = 0.0f;
+    const bool front_valid = watch_front &&
+        f413_wall_distance_front_unwarped_mm(&front_distance);
+    const float current = f413_ctrl_get_distance();
+    const bool in_exit = current < exit_end;
+    const bool wall_control = in_exit ? turn->wall_control_offsets :
+                                       next_turn->wall_control_offsets;
+
+    /* A front target has priority, including during wall-end follow-through. */
+    if (front_valid && (front_distance <= front_target))
+    {
+      break;
+    }
+    if (!in_exit)
+    {
+      /* Preserve the previous 180's control scope through its own exit only. */
+      f413_ctrl_set_mode4_180_turn(false);
+    }
+    if (!wall_found &&
+        f413_wall_runtime_poll_wall_end_with_control(wall_control))
+    {
+      /* Same wall-edge reference as a preceding straight: small turns have
+       * a half-cell run-up. Include the next entry once, and clamp the sum
+       * so a negative correction never requests reverse motion. */
+      const float follow = (next_turn->front_wall_entry ? (float)DIST_HALF_SEC : 0.0f) +
+          dist_wall_end_mm + fmaxf(0.0f, next_turn->dist_in_mm);
+      wall_found = true;
+      target = current + fmaxf(0.0f, follow);
+      f413_wall_runtime_control_apply(false);
+      if (target > current)
+      {
+        f413_ctrl_set_velocity_profile(f413_ctrl_get_target_velocity(),
+            next_turn->velocity_mm_s, target - current);
+        profile_started = true;
+      }
+    }
+    if (current >= target)
+    {
+      /* Preserve the bounded small-turn front approach, but never extend
+       * solely to wait for a side-wall event or extend a corrected endpoint. */
+      if (!wall_found && !front_extension && front_valid &&
+          (WALL_END_EXTEND_MAX_MM > 0.0f))
+      {
+        front_extension = true;
+        target = current + WALL_END_EXTEND_MAX_MM;
+        f413_ctrl_set_velocity(next_turn->velocity_mm_s);
+        profile_started = true;
+      }
+      else
+      {
+        break;
+      }
+    }
+    if (front_extension && !front_valid)
+    {
+      break;
+    }
+    if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+    {
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
+      break;
+    }
+    if (!profile_started)
+    {
+      f413_ctrl_set_velocity_profile(*speed_now_mm_s, next_turn->velocity_mm_s,
+                                      target - current);
+      profile_started = true;
+    }
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+
+  f413_wall_runtime_control_apply(false);
+  f413_path_run_distance_cursor_reset(&g_f413_path_run_distance_cursor,
+                                       f413_ctrl_get_distance());
+  if (reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    *speed_now_mm_s = next_turn->velocity_mm_s;
+    f413_ctrl_set_velocity(next_turn->velocity_mm_s);
+    *next_entry_consumed = true;
+  }
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     const f413_path_run_turn_t* turn,
     const f413_path_run_turn_t* next_turn,
     bool mode4_large180,
-    bool skip_front_entry,
-    bool* next_front_entry_reached,
+    bool skip_entry,
+    bool* next_entry_consumed,
     float dist_wall_end_mm,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
@@ -1718,7 +1839,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   uint32_t start_ms;
   int8_t turn_sign;
 
-  *next_front_entry_reached = false;
+  *next_entry_consumed = false;
   if (turn == NULL)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
@@ -1737,10 +1858,10 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   turn_trace_flags = f413_path_run_motor_phase_flags(trace_flags,
                                                      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
 
-  if (skip_front_entry && turn->front_wall_entry)
+  if (skip_entry)
   {
-    /* The previous exit already reached this target. Do not re-read the
-     * sensor or issue an entry profile, even if the wall is now invalid. */
+    /* The preceding connector consumed this entry or reached its front
+     * target. Do not read it again or execute any part of it twice. */
     *speed_now_mm_s = turn->velocity_mm_s;
   }
   else if (turn->front_wall_entry)
@@ -1813,6 +1934,15 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   f413_ctrl_stop_omega_profile();
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
+  if (F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) &&
+      (next_turn != NULL) && f413_run_features_wall_end_correction_enabled() &&
+      !f413_run_features_test_mode_run())
+  {
+    reason = f413_path_run_drive_chained_offsets(turn, next_turn,
+        dist_wall_end_mm, speed_now_mm_s, guard, straight_trace_flags,
+        next_entry_consumed);
+    goto restore_turn_control;
+  }
   if (F413_MOTION_ENABLED(F413_MOTION_CHAINED_FRONT_ENTRY) &&
       (next_turn != NULL) && next_turn->front_wall_entry &&
       (next_turn->dist_in_mm > 0.0f) &&
@@ -1824,7 +1954,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     if (front_target_mm > 0.0f)
     {
       reason = f413_path_run_drive_chained_front_exit(turn, front_target_mm,
-          speed_now_mm_s, guard, straight_trace_flags, next_front_entry_reached);
+          speed_now_mm_s, guard, straight_trace_flags, next_entry_consumed);
       goto restore_turn_control;
     }
   }
@@ -2164,7 +2294,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
   bool diagonal = false;
-  bool next_front_entry_reached = false;
+  bool next_entry_consumed = false;
   uint16_t pi = 0U;
   uint16_t code;
   size_t prepared_linear_index = 0U;
@@ -2284,8 +2414,8 @@ void f413_path_run_session_once(uint8_t mode,
   for (pi = 0U; pi < NIGHTFALL_F413_PATH_MAX_CODES; pi++)
   {
     uint16_t next_code;
-    const bool skip_front_entry = next_front_entry_reached;
-    next_front_entry_reached = false;
+    const bool skip_entry = next_entry_consumed;
+    next_entry_consumed = false;
 
     if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
     {
@@ -2386,8 +2516,8 @@ void f413_path_run_session_once(uint8_t mode,
                                                               mode == 4U &&
                                                                   (code == NF_LEGACY_PATH_LARGE_RIGHT_180 ||
                                                                    code == NF_LEGACY_PATH_LARGE_LEFT_180),
-                                                              skip_front_entry,
-                                                              &next_front_entry_reached,
+                                                              skip_entry,
+                                                              &next_entry_consumed,
                                                               mode_params->dist_wall_end,
                                                               &speed_now,
                                                               &guard,
