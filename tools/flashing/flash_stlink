@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import re
+import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -54,6 +58,42 @@ def run(cmd: list, cwd: Optional[Path] = None) -> None:
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
 
 
+def run_programmer(cmd: list, cwd: Path) -> None:
+    """Keep vendor diagnostics and execute exactly once, including on erase failure."""
+    log_dir = cwd / "build/flashing_logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    fd, name = tempfile.mkstemp(prefix=f"stlink_{stamp}_", suffix=".log", dir=log_dir)
+    os.close(fd)
+    log_path = Path(name)
+    logged_cmd = [cmd[0], "-log", str(log_path), *cmd[1:]]
+    print(f"CubeProgrammer log: {log_path}", flush=True)
+    returncode = "not completed"
+    try:
+        run(logged_cmd, cwd=cwd)
+        # Some CLI failures can be reported in the log despite an exit code of 0.
+        output = log_path.read_text(encoding="utf-8", errors="replace")
+        if re.search(r"\berror\s*:", output, re.IGNORECASE):
+            raise subprocess.CalledProcessError(1, logged_cmd)
+        returncode = 0
+    except subprocess.CalledProcessError as exc:
+        returncode = exc.returncode
+        print(
+            "ST-LINK操作に失敗しました。詳細ログを確認してください。\n"
+            "接続不安定時は --freq 400、NRST接続済みなら "
+            "--mode UR --reset-mode HWrst を試してください。\n"
+            "USB通信エラーなら他のデバッガを終了し、USB直結・ケーブル交換・"
+            "ST-LINKの抜き差しを確認してください。\n"
+            "消去/書き込みの自動再試行や全消去は行いません。",
+            file=sys.stderr,
+        )
+        raise
+    finally:
+        with log_path.open("a", encoding="utf-8") as log:
+            log.write(f"\n[flash_stlink] command: {shlex.join(logged_cmd)}\n")
+            log.write(f"[flash_stlink] exit code: {returncode}\n")
+
+
 def build_connect_args(args: argparse.Namespace) -> list:
     conn = ["port=SWD", f"freq={args.freq}", f"mode={args.mode}", f"reset={args.reset_mode}"]
     if args.sn:
@@ -72,7 +112,7 @@ def main() -> int:
     ap.add_argument("--build", action="store_true", help="build Debug-stm32f413 before flashing")
     ap.add_argument("--cli", default=os.environ.get("STM32_PROGRAMMER_CLI"), help="path to STM32_Programmer_CLI")
     ap.add_argument("--sn", default=os.environ.get("STLINK_SN"), help="ST-LINK serial number")
-    ap.add_argument("--freq", default="4000", help="SWD frequency in kHz")
+    ap.add_argument("--freq", default="1000", help="SWD frequency in kHz (default: 1000; use 400 for troubleshooting)")
     ap.add_argument("--mode", default="NORMAL", choices=["NORMAL", "HOTPLUG", "UR", "POWERDOWN", "HWRSTPULSE"], help="CubeProgrammer connection mode")
     ap.add_argument("--reset-mode", default="SWrst", choices=["SWrst", "HWrst", "Crst"], help="CubeProgrammer reset mode")
     ap.add_argument("--no-verify", action="store_true", help="skip verify")
@@ -93,7 +133,7 @@ def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
         return 0
 
     if args.reset_only:
-        run([cli, *build_connect_args(args), "-rst"], cwd=repo_root)
+        run_programmer([cli, *build_connect_args(args), "-rst"], cwd=repo_root)
         print("SUCCESS")
         return 0
 
@@ -115,7 +155,7 @@ def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
         cmd.append("-rst")
 
     print(f"Image: {image} ({image.stat().st_size} bytes)")
-    run(cmd, cwd=repo_root)
+    run_programmer(cmd, cwd=repo_root)
     print("SUCCESS")
     return 0
 
