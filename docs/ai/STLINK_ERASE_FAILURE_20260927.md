@@ -1,0 +1,95 @@
+# ST-LINK erase failure investigation, 2026-09-27
+
+## Scope and hardware
+
+User requested live investigation while `tools/flashing/flash_stlink` was failing.
+Application flash/reset and read-only diagnostics were used; motors/fan/run were
+not authorized or commanded. No mass erase, option-byte/protection change,
+identity write, FRAM access or calibration/maze/trace mutation was requested.
+
+- Probe: ST-LINK V2-1, USB `0483:3752`, SN `066CFF545771485067013914`, FW `V2J43M28`.
+- Target: STM32F413/F423, device ID `0x463`, revision A, reported VDD 3.23–3.24 V.
+- Identity: `mini_r3_0`, unit 2, UID `001D0038-32345108-36383936`.
+- UART: `/dev/cu.usbmodem2124202`, 921600 baud; no boot output during failure.
+- Built with `cmake --build --preset Debug-stm32f413`: PASS, RAM 274264 B,
+  application Flash 377052 B. Build ID `dfbfc9e`, dirty 1,
+  build time `2026-09-27T03:13:00Z`.
+- ELF: `build/Debug/nightfall_stm32f413.elf`, SHA256
+  `c87754eb5d7b9df65689a6fb912c867e2f900c84a8b2e2c2463b23f46c2433c2`.
+  File-backed load segments occupy `0x08000000..0x0805c0db`, sectors 0–6.
+  Protected sectors 12–15 are outside this image.
+
+All raw logs/dumps below are local, ignored files under `build/flashing_logs/`.
+Source firmware, parameters and the user's existing worktree changes were not
+changed for this investigation.
+
+## Observations and attempted recovery
+
+Times below are UTC. CubeProgrammer 2.21 normally uses the existing native arm64
+runtime helper on this Mac; the direct x86_64 CLI also launched successfully in
+this session and was tested separately.
+
+| Time | Operation | Result / artifact |
+| --- | --- | --- |
+| 03:11:44 | User's original NORMAL/SWrst write, requested 1000 kHz (actual 950) | Loader initialization succeeds, then `failed to erase memory`, sectors 0–6. `stlink_20260927T031144Z_cb3ls4q7.log`. |
+| 03:14:06 | HOTPLUG read of status, UID and full identity sector | Valid identity saved as `identity_before_20260927.bin`; SR read as zero and option bytes show RDP AA. `stlink_20260927T031406Z_kckd5wwz.log`. |
+| 03:14–03:15 | Software reset/boot capture, then app-vector read | No UART boot; first 32 bytes at `0x08000000` all FF **before the agent's first write attempt**. `f413_boot_20260927_121445.log`, `stlink_20260927T031503Z_38tf6tkf.log`. |
+| 03:15:24 | Built ELF, UR/HWrst, 1000 kHz requested | Erase failure. `stlink_20260927T031524Z_g6vk7_6r.log`. |
+| 03:15:58 | Same ELF, UR/HWrst, 400 kHz requested (actual 240), UART closed | Erase failure. `stlink_20260927T031558Z_8g84un7b.log`. |
+| 03:16:28 | Same write after one exact-SN libusb reset/re-enumeration of 0483:3752 | Erase failure. `stlink_20260927T031628Z_tqsbaig9.log`. This was a diagnostic invocation, not a persistent change to V3-only auto recovery. |
+| 03:17:39 | Same write after user physically replugged USB | Erase failure. `stlink_20260927T031739Z_c11b19yr.log`. |
+| 03:18–03:19 | Halt/core registers and repeated reads of RAM loader | Some dumps differ from host loader by shifted/missing 32-bit words; another dump exactly matches its 2232-byte code section. Small direct read can match while an upload differs. This does **not** prove RAM contents are corrupt. |
+| 03:21:14 | Direct Intel CLI, same ELF/UR/HWrst/400 kHz | Erase failure; Intel RAM reads also differ. `stlink_20260927T032114Z_ejcn2rpt.log`. Identity read is identical to initial backup. |
+| 03:24–03:25 | Installed ST OpenOCD 0.12.0+dev-00623-g0ba753ca7, `stlink-dap.cfg`/`dapdirect_swd`, 400 kHz; `program ... verify reset exit` | Connects/detects target but fails reading `0x40023c10` while erasing sectors 0–6. `openocd_program_20260927.log`. OpenOCD RAM read also differs. No successful programming or verification. |
+| 03:26:16 | Cube HOTPLUG/CPU halt, 50 kHz; same 4096-byte RAM region read three times | Reads claim success but dumps differ by 1834 and 966 bytes from first. `ram_50_{a,b,c}.bin`, `stlink_20260927T032616Z__1udxr7m.log`. |
+| 03:27:10 | After user cycled machine power: UR/HWrst/halt at requested 400 kHz, three RAM reads plus full identity | RAM differs by 1237 and 1209 bytes from first. Identity remains identical. `ram_powercycle_{a,b,c}.bin`, `identity_powercycle.bin`, `stlink_20260927T032710Z_huf4hrkk.log`. |
+| 03:28:58 | After user disconnected both power sources and reseated SWD: same stopped RAM reads | Still differs by 1206 and 1572 bytes. `ram_reseat_{a,b,c}.bin`, `stlink_20260927T032858Z_xel5z9ky.log`. |
+| 03:30:32 | User moved ST-LINK directly to Mac USB controller (topology confirmed); same stopped RAM reads | Still differs by 1884 and 442 bytes. `ram_direct_{a,b,c}.bin`, `stlink_20260927T033032Z_h4vbr55k.log`. |
+
+The initial, Intel and post-power-cycle full 128 KiB identity reads have SHA256
+`ef710246e2824452ccde43cf5318fcd6b6127a345a30be7ccf1ad5dad8eafb79`.
+Identical reads support identity preservation; they do not establish general
+readback reliability (most of the sector is FF).
+
+The failed loader's saved exception frame has R0=1 and PC=`0x20000000`, its
+completion breakpoint. Loss of a debug completion event is one possible
+interpretation, but the inconsistent readbacks prevent a firm root-cause claim.
+Independent host tools failing and stopped-memory read instability mean the
+issue is not isolated to the Python wrapper or native arm64 CLI. SWD wiring,
+probe, USB path and target electrical state still need separation. Reported VDD
+alone does not measure rail transients.
+
+Current recovery is incomplete. Original Mac `ioreg -p IOUSB -w0` topology showed
+three hub levels (`USB2.0 Hub` → `USB2.1 Hub` → `USB2.1 Hub`); direct connection
+was confirmed at `STM32 STLink@01100000` but did not cure read instability. Writes
+are paused while requesting a different ST-LINK comparison. Next: repeat stopped
+RAM reads, then restore and verify the selected application only if communication
+is stable, compare identity and capture non-motor boot.
+
+## Reference commands
+
+Application attempt (build succeeded first):
+
+```sh
+python3 tools/flashing/flash_stlink --image build/Debug/nightfall_stm32f413.elf \
+  --sn 066CFF545771485067013914 --freq 400 --mode UR --reset-mode HWrst
+```
+
+Diagnostic CLI argument sequence, with the same exact probe serial:
+
+```text
+-c port=SWD freq=400 mode=UR reset=HWrst sn=066CFF545771485067013914
+-halt
+-u 0x20000000 4096 <ram-a.bin>
+-u 0x20000000 4096 <ram-b.bin>
+-u 0x20000000 4096 <ram-c.bin>
+-u 0x08160000 131072 <identity.bin>
+```
+
+OpenOCD uses the installed CubeIDE executable and matching ST scripts. Exact
+paths and command are preserved in `openocd_program_20260927.log`. No OpenOCD
+fallback is added to `flash_stlink`: it has not recovered this fault.
+
+The 1 MHz default and diagnostic logging change in draft PR
+[46](https://github.com/xfa273/nightfall-fw/pull/46) remains useful for capturing
+failures, but did not cure this live incident. Do not present it as a verified fix.
