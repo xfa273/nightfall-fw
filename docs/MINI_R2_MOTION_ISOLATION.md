@@ -50,6 +50,12 @@ r3専用のIMU取付符号／後方2.5 mm補正、吸引起動・FAN_ONゲイン
 `KNOWN_FEATURES`や機体番号比較をそのまま有効化maskに使わない。
 r2のbitを変更するときはtune version・検証記録を更新し、その意図に対応する互換試験の基準を見直す。
 
+2026-09-27の後続変更: r3 t0.29は独立bit8 `CHAINED_FRONT_ENTRY` を追加して
+連続ターンの前壁監視を前ターン出口から開始する。r3の現在maskは`0x000001FF`、
+r2は0のまま。この変更の専用production executor試験をCIへ追加した。
+上記8項目・r3参照commitは分離導入時の記録。
+詳細 [MINI_R3_CHAINED_FRONT_ENTRY.md](MINI_R3_CHAINED_FRONT_ENTRY.md)。
+
 ## ホスト検証
 
 `python3 tools/hil/run_f413_motion_compat_tests.py` はgit履歴の実コードを取得してコンパイルし、

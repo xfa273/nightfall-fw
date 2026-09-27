@@ -441,8 +441,10 @@ static void resolver_tests(void)
   scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 2U;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
   scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 1U;
-  scalar.v_F413_MOTION_FEATURES = 0x100U;
+  scalar.v_F413_MOTION_FEATURES = 0x80000000U;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_FRONT_ENTRY;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
   scalar.v_F413_MOTION_FEATURES = F413_MOTION_FRONT_RECOVERY;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
   scalar.v_F413_MOTION_FEATURES = F413_MOTION_FRONT_RECOVERY | F413_MOTION_SETTLED_STOP;
@@ -505,7 +507,7 @@ int main(int argc, char **argv)
       assert(FF_OMEGA_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_PWM_FAN_ON);
       assert(FF_OMEGA_ACCEL_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_ACCEL_PWM_FAN_ON);
     }
-    assert(F413_MOTION_FEATURES == (rev == 2U ? 0U : 0xFFU));
+    assert(F413_MOTION_FEATURES == (rev == 2U ? 0U : 0x1FFU));
     assert(VELOCITY_ACCEL_COMP_ENABLE_CONTROL == 1U);
     assert(VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U);
     assert(searchRunParams[0].velocity_turn90 == 300.0f);
