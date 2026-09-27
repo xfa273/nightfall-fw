@@ -13,6 +13,14 @@
 #define F413_WALL_RUNTIME_END_DERIV_DIVISOR          (9)
 #define F413_WALL_RUNTIME_END_DERIV_CONFIRM_SAMPLES  (2U)
 
+/* Short difference is an opt-in supplement for adjacent turn offsets only. */
+#define F413_WALL_RUNTIME_CHAINED_WINDOW_MS         (4U)
+#define F413_WALL_RUNTIME_CHAINED_DROP_ADC          (150)
+#define F413_WALL_RUNTIME_CHAINED_PRESENT_ADC       (300)
+#define F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES   (2U)
+#define F413_WALL_RUNTIME_CHAINED_PREPARE_MS        (8U)
+#define F413_WALL_RUNTIME_CHAINED_MAX_SAMPLE_GAP_MS (3U)
+
 #if F413_WALL_RUNTIME_END_DERIV_BUFFER_SAMPLES != \
     (2U * F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES)
 #error "wall-end derivative buffer must contain two equal windows"
@@ -37,6 +45,12 @@ typedef struct {
 
 void f413_wall_runtime_config(const f413_wall_runtime_config_t* config);
 void f413_wall_runtime_end_clear(void);
+/* Foreground only: collect history without correction in the final turn tail,
+ * then require fresh confirmations after entering the combined offsets. */
+void f413_wall_runtime_chained_prepare_begin(void);
+void f413_wall_runtime_chained_prepare_sample(void);
+void f413_wall_runtime_chained_monitor_begin(void);
+void f413_wall_runtime_chained_monitor_end(void);
 void f413_wall_runtime_set_wall_end_thresholds(uint16_t right_high,
                                                uint16_t right_low,
                                                uint16_t left_high,

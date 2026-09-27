@@ -50,9 +50,10 @@ int main(void)
     float speed = 1000; bool consumed; f413_run_session_guard_t guard = {0};
     assert(f413_path_run_drive_chained_offsets(&previous, &next, -23, &speed,
         &guard, 4, &consumed) == 0);
-    assert(consumed); near(position, 20); /* Two distinct updates below -200. */
+    assert(consumed); near(position, F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) ? 14 : 20);
     assert(drop_left ? g_wall_end.detected_l : g_wall_end.detected_r);
-    assert((drop_left ? g_wall_end.detected_deriv_l : g_wall_end.detected_deriv_r) == -311);
+    assert((drop_left ? g_wall_end.detected_deriv_l : g_wall_end.detected_deriv_r) ==
+        (F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) ? -124 : -311));
     if (!control) assert(heading_peak == 0); /* Diagonal offsets never enable cardinal control. */
     nvm_trace_log_record_t rec = {0};
     assert(f413_wall_runtime_fill_observe(&rec, 0));
@@ -62,7 +63,7 @@ int main(void)
      * wall sample must not cut the next pair short. */
     assert(f413_path_run_drive_chained_offsets(&previous, &next, -23, &speed,
         &guard, 4, &consumed) == 0);
-    assert(consumed); near(position, 53);
+    assert(consumed); near(position, F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) ? 47 : 53);
     assert(!g_wall_end.detected_l && !g_wall_end.detected_r);
 
     setup(); drop_left = side != 0; edge_mm = 12;
@@ -85,7 +86,7 @@ int main(void)
   assert(!g_wall_end_gate_active);
   /* Extending 13 mm by a 1 mm next entry cannot catch an arbitrarily late
    * edge. No hit must still finish at the combined endpoint, without creep. */
-  setup(); edge_mm = 12;
+  setup(); edge_mm = 14;
   f413_path_run_turn_t previous = test_turn(), next = test_turn();
   previous.front_wall_entry = next.front_wall_entry = false;
   previous.dist_out_mm = 13; next.dist_in_mm = 1;

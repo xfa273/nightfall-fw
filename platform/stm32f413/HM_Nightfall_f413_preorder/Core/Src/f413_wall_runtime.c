@@ -22,6 +22,9 @@
 #define F413_WALL_RUNTIME_TRACE_GATE_FLAG       (0x0100U)
 #define F413_WALL_RUNTIME_TRACE_CTRL_FLAG       (0x0200U)
 #define F413_WALL_RUNTIME_TRACE_DERIV_V2_FLAG   (0x0400U)
+#define F413_WALL_RUNTIME_TRACE_SHORT_GATE_FLAG (0x0800U)
+#define F413_WALL_RUNTIME_TRACE_SHORT_R_FLAG    (0x1000U)
+#define F413_WALL_RUNTIME_TRACE_SHORT_L_FLAG    (0x2000U)
 #define F413_WALL_RUNTIME_TRACE_ENABLED_FLAG    (0x8000U)
 
 #ifndef NIGHTFALL_F413_DISABLE_WALL_CONTROL
@@ -46,6 +49,8 @@ typedef struct
   bool prev_left_wall;
   bool detected_r;
   bool detected_l;
+  bool short_detected_r;
+  bool short_detected_l;
   float dist_r_mm;
   float dist_l_mm;
   int32_t deriv_r;
@@ -64,6 +69,26 @@ typedef struct
   uint8_t deriv_fall_count_l;
   bool initialized;
 } f413_wall_runtime_end_state_t;
+
+#define F413_WALL_RUNTIME_SHORT_HISTORY_SIZE (8U)
+typedef struct
+{
+  uint32_t ms;
+  uint16_t r;
+  uint16_t l;
+} f413_wall_runtime_short_sample_t;
+
+static struct
+{
+  f413_wall_runtime_short_sample_t history[F413_WALL_RUNTIME_SHORT_HISTORY_SIZE];
+  uint32_t last_sequence;
+  uint32_t last_ms;
+  uint8_t count;
+  uint8_t confirm_r;
+  uint8_t confirm_l;
+  bool have_sample;
+  bool active;
+} g_short_end;
 
 static f413_wall_runtime_config_t g_config;
 static f413_wall_runtime_end_state_t g_wall_end;
@@ -153,6 +178,141 @@ static uint16_t f413_wall_runtime_end_sample_value(int32_t value)
     return 65535U;
   }
   return (uint16_t)value;
+}
+
+static void f413_wall_runtime_short_history_invalidate(void)
+{
+  g_short_end.count = 0U;
+  g_short_end.confirm_r = 0U;
+  g_short_end.confirm_l = 0U;
+}
+
+/* A poll is not a sensor update. Use distinct sample sequences and elapsed
+ * time, not a fixed number of foreground calls, for the four-ms baseline. */
+static void f413_wall_runtime_short_update(const f413_wall_sensor_snapshot_t* wall)
+{
+  const uint32_t now = f413_wall_runtime_tick();
+  const uint32_t gap = now - g_short_end.last_ms;
+  float past_r = 0.0f;
+  float past_l = 0.0f;
+  bool have_past = false;
+
+  if ((wall == NULL) || wall->saturated || (g_config.get_tick_ms == NULL))
+  {
+    f413_wall_runtime_short_history_invalidate();
+    return;
+  }
+  if (g_short_end.have_sample)
+  {
+    if (gap > F413_WALL_RUNTIME_CHAINED_MAX_SAMPLE_GAP_MS)
+    {
+      f413_wall_runtime_short_history_invalidate();
+    }
+    if ((wall->sample_sequence == g_short_end.last_sequence) || (gap == 0U))
+    {
+      return;
+    }
+  }
+  g_short_end.have_sample = true;
+  g_short_end.last_sequence = wall->sample_sequence;
+  g_short_end.last_ms = now;
+  if (g_short_end.count == F413_WALL_RUNTIME_SHORT_HISTORY_SIZE)
+  {
+    memmove(&g_short_end.history[0], &g_short_end.history[1],
+            (F413_WALL_RUNTIME_SHORT_HISTORY_SIZE - 1U) * sizeof(g_short_end.history[0]));
+    g_short_end.count--;
+  }
+  g_short_end.history[g_short_end.count++] = (f413_wall_runtime_short_sample_t){
+      now, f413_wall_runtime_end_sample_value(wall->r_delta),
+      f413_wall_runtime_end_sample_value(wall->l_delta)};
+
+  for (uint8_t i = 1U; i < g_short_end.count; i++)
+  {
+    const f413_wall_runtime_short_sample_t* old = &g_short_end.history[i - 1U];
+    const f413_wall_runtime_short_sample_t* recent = &g_short_end.history[i];
+    const uint32_t old_age = now - old->ms;
+    const uint32_t recent_age = now - recent->ms;
+    if ((old_age >= F413_WALL_RUNTIME_CHAINED_WINDOW_MS) &&
+        (recent_age <= F413_WALL_RUNTIME_CHAINED_WINDOW_MS))
+    {
+      /* Interpolate only between fresh adjacent observations; no extrapolation
+       * across missing updates. Unsigned ages also handle HAL tick wrap. */
+      const float fraction = (float)(old_age - F413_WALL_RUNTIME_CHAINED_WINDOW_MS) /
+                             (float)(old_age - recent_age);
+      past_r = (float)old->r + fraction * ((float)recent->r - (float)old->r);
+      past_l = (float)old->l + fraction * ((float)recent->l - (float)old->l);
+      have_past = true;
+      break;
+    }
+  }
+  if (!g_short_end.active || !have_past)
+  {
+    g_short_end.confirm_r = 0U;
+    g_short_end.confirm_l = 0U;
+    return;
+  }
+
+  const bool fall_r = (past_r >= F413_WALL_RUNTIME_CHAINED_PRESENT_ADC) &&
+      (past_r - (float)wall->r_delta > F413_WALL_RUNTIME_CHAINED_DROP_ADC);
+  const bool fall_l = (past_l >= F413_WALL_RUNTIME_CHAINED_PRESENT_ADC) &&
+      (past_l - (float)wall->l_delta > F413_WALL_RUNTIME_CHAINED_DROP_ADC);
+  g_short_end.confirm_r = fall_r ? (uint8_t)(g_short_end.confirm_r + 1U) : 0U;
+  g_short_end.confirm_l = fall_l ? (uint8_t)(g_short_end.confirm_l + 1U) : 0U;
+  if (g_short_end.confirm_r >= F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES)
+  {
+    g_short_end.confirm_r = F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES;
+    if (!g_wall_end.detected_r)
+    {
+      g_wall_end.detected_r = g_wall_end.short_detected_r = true;
+      g_wall_end.right_wall = g_wall_end.prev_right_wall = false;
+      g_wall_end.dist_r_mm = f413_ctrl_get_distance();
+      /* Retain the existing long-window field meaning; method has its own bit. */
+      g_wall_end.detected_deriv_r = g_wall_end.deriv_r;
+    }
+  }
+  if (g_short_end.confirm_l >= F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES)
+  {
+    g_short_end.confirm_l = F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES;
+    if (!g_wall_end.detected_l)
+    {
+      g_wall_end.detected_l = g_wall_end.short_detected_l = true;
+      g_wall_end.left_wall = g_wall_end.prev_left_wall = false;
+      g_wall_end.dist_l_mm = f413_ctrl_get_distance();
+      g_wall_end.detected_deriv_l = g_wall_end.deriv_l;
+    }
+  }
+}
+
+void f413_wall_runtime_chained_prepare_begin(void)
+{
+  memset(&g_short_end, 0, sizeof(g_short_end));
+}
+
+void f413_wall_runtime_chained_prepare_sample(void)
+{
+  f413_wall_sensor_snapshot_t wall;
+  if (!f413_wall_runtime_read_snapshot(&wall))
+  {
+    f413_wall_runtime_short_history_invalidate();
+    return;
+  }
+  f413_wall_runtime_short_update(&wall);
+}
+
+void f413_wall_runtime_chained_monitor_begin(void)
+{
+  /* Clear the preceding event, not the short history prepared in the turn.
+   * No confirmation observed with correction disabled may count in this gate. */
+  memset(&g_wall_end, 0, sizeof(g_wall_end));
+  g_wall_end_gate_active = false;
+  g_short_end.confirm_r = g_short_end.confirm_l = 0U;
+  g_short_end.active = true;
+}
+
+void f413_wall_runtime_chained_monitor_end(void)
+{
+  g_short_end.active = false;
+  f413_wall_runtime_short_history_invalidate();
 }
 
 static void f413_wall_runtime_end_deriv_reset(const f413_wall_sensor_snapshot_t* wall)
@@ -570,6 +730,7 @@ void f413_wall_runtime_config(const f413_wall_runtime_config_t* config)
 void f413_wall_runtime_end_clear(void)
 {
   memset(&g_wall_end, 0, sizeof(g_wall_end));
+  f413_wall_runtime_chained_prepare_begin();
   g_wall_end_gate_active = false;
 }
 
@@ -655,6 +816,7 @@ static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
   if (!f413_wall_runtime_read_snapshot(&wall))
   {
     g_wall_end_gate_active = false;
+    f413_wall_runtime_short_history_invalidate();
     f413_wall_runtime_control_reset();
     f413_wall_runtime_apply_heading_correction(false, false);
     return false;
@@ -662,6 +824,10 @@ static bool f413_wall_runtime_poll_straight_internal(bool wall_control_gate,
 
   g_wall_end_gate_active = wall_end_gate;
   f413_wall_runtime_end_update(&wall, wall_end_gate);
+  if (g_short_end.active && wall_end_gate)
+  {
+    f413_wall_runtime_short_update(&wall);
+  }
   f413_wall_runtime_control_update(&wall,
                                    wall_control_gate &&
                                    f413_run_features_wall_control_enabled() &&
@@ -790,6 +956,18 @@ uint16_t f413_wall_runtime_trace_flags_from_snapshot(const f413_wall_sensor_snap
   if (gate_on)
   {
     flags |= F413_WALL_RUNTIME_TRACE_GATE_FLAG;
+  }
+  if (gate_on && g_short_end.active)
+  {
+    flags |= F413_WALL_RUNTIME_TRACE_SHORT_GATE_FLAG;
+  }
+  if (g_wall_end.short_detected_r)
+  {
+    flags |= F413_WALL_RUNTIME_TRACE_SHORT_R_FLAG;
+  }
+  if (g_wall_end.short_detected_l)
+  {
+    flags |= F413_WALL_RUNTIME_TRACE_SHORT_L_FLAG;
   }
 
   if (g_wall_ctrl_active || g_diagonal_ctrl_active)
