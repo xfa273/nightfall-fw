@@ -17,6 +17,7 @@ static uint32_t test_auto_video_capture;
 uint16_t path[ROUTE_MAX_LEN];
 typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
 static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
+static uint32_t fan_stop_tick;
 static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
 static unsigned completed_sessions;
 static unsigned video_starts, video_stops, control_stops;
@@ -32,6 +33,8 @@ static bool suction, disturbed, duty_fail;
 static bool stop_profile_done;
 static uint32_t stop_profile_finish_tick;
 static float position, velocity, target, angle, omega, peak_command;
+static float profile_target_velocity;
+static void (*drive_observer)(void);
 static f413_run_session_abort_reason_t injected_abort;
 static phase_t abort_phase;
 uint32_t HAL_GetTick(void) { return tick; }
@@ -67,7 +70,7 @@ bool f413_hw_fan_set_duty(uint16_t duty)
   }
   return true;
 }
-void f413_hw_fan_stop(void) { assert(!running); fan_stops++; fan = false; }
+void f413_hw_fan_stop(void) { assert(!running); fan_stop_tick = tick; fan_stops++; fan = false; }
 void f413_hw_emit_video_sync_start_pattern(void)
 { assert(ENABLE_AUTO_VIDEO_CAPTURE && !running && !fan); video_starts++; tick += 9750U; }
 void f413_hw_emit_video_sync_stop_pattern(void)
@@ -105,6 +108,7 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
     }
   }
   target = position + distance; velocity = end;
+  profile_target_velocity = end;
   if (start > peak_command) peak_command = start;
   if (end > peak_command) peak_command = end;
 }
@@ -154,9 +158,14 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
      */
     angle = 2.655f; omega = -1.0f; position = .666f; velocity = -3.0f;
   }
-  if (phase == DRIVE && !stuck) position = target;
+  if (phase == DRIVE && !stuck)
+  {
+    position = target;
+    stop_profile_done = profile_target_velocity == 0;
+  }
   if (phase == DRIVE && stop_profile_finish_tick && tick >= stop_profile_finish_tick)
     stop_profile_done = true;
+  if (phase == DRIVE && drive_observer) drive_observer();
   return F413_RUN_SESSION_ABORT_NONE;
 }
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t r) { return (uint16_t)r; }
@@ -182,6 +191,9 @@ bool f413_wall_distance_front_unwarped_mm(float* out) { (void)out; return false;
 static void reset(void)
 {
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
+  fan_stop_tick = 0;
+  profile_target_velocity = 0;
+  drive_observer = NULL;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
   completed_sessions = 0;
   video_starts = video_stops = control_stops = trace_start_tick = test_auto_video_capture = 0;
@@ -324,10 +336,12 @@ int main(void)
   assert(tick == 20 + F413_PATH_RUN_TEST_STOP_SETTLE_MAX_MS);
   position=100; velocity=30; /* Nor can completion ignore motion. */
   assert(f413_path_run_settle_test_stop(&guard,0) == F413_RUN_SESSION_ABORT_TIMEOUT);
-  /* Normal maze runs retain their original endpoint crossing behavior. */
+  /* Intermediate maze segments retain exact endpoint crossing. Only the
+   * explicitly selected final tail uses the separate goal-stop wait. */
   const f413_run_features_t maze_features={false,false,false,true,false};
   f413_run_features_set(&maze_features);
   position=99.5f; velocity=0;
   assert(f413_path_run_wait_ctrl_target(100,false,&guard,0,false,false) == F413_RUN_SESSION_ABORT_TIMEOUT);
   puts("suction session: hold before fan, 25/50/70/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
+  return 0;
 }
