@@ -45,6 +45,9 @@ void f413_ctrl_start_omega_profile(float signed_omega_peak_deg_s,
                                    float accel_time_s,
                                    float cruise_time_s);
 void f413_ctrl_stop_omega_profile(void);
+/* Path-owned context: core through exit, then false on every return path.
+ * Does not reset angle, integral, or reference history; start/stop reset it. */
+void f413_ctrl_set_mode4_180_lead(bool enabled);
 void f413_ctrl_set_angle_target(float angle_deg);
 void f413_ctrl_clear_angle_target(void);
 void f413_ctrl_set_heading_omega_correction(float omega_deg_s);

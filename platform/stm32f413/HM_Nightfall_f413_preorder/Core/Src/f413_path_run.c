@@ -1702,6 +1702,7 @@ static f413_run_session_abort_reason_t f413_path_run_drive_chained_front_exit(
 static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     const f413_path_run_turn_t* turn,
     const f413_path_run_turn_t* next_turn,
+    bool mode4_large180,
     bool skip_front_entry,
     bool* next_front_entry_reached,
     float dist_wall_end_mm,
@@ -1781,6 +1782,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
    * endpoint.
    */
   f413_ctrl_set_velocity(turn->velocity_mm_s);
+  f413_ctrl_set_mode4_180_lead(mode4_large180);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
@@ -1800,7 +1802,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
       f413_ctrl_stop_omega_profile();
-      return reason;
+      goto restore_lead;
     }
   }
 
@@ -1817,8 +1819,9 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
         F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - next_turn->dist_in_mm;
     if (front_target_mm > 0.0f)
     {
-      return f413_path_run_drive_chained_front_exit(turn, front_target_mm,
+      reason = f413_path_run_drive_chained_front_exit(turn, front_target_mm,
           speed_now_mm_s, guard, straight_trace_flags, next_front_entry_reached);
+      goto restore_lead;
     }
   }
   if (turn->large_turn && (next_turn != NULL) && next_turn->large_turn &&
@@ -1842,21 +1845,27 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                                    guard,
                                                    straight_trace_flags);
     }
-    return reason;
+    goto restore_lead;
   }
   if (turn->wall_control_offsets)
   {
-    return f413_path_run_drive_segment(turn->dist_out_mm,
+    reason = f413_path_run_drive_segment(turn->dist_out_mm,
                                        turn->velocity_mm_s,
                                        speed_now_mm_s,
                                        guard,
                                        straight_trace_flags);
   }
-  return f413_path_run_drive_segment_no_wall(turn->dist_out_mm,
+  else
+  {
+    reason = f413_path_run_drive_segment_no_wall(turn->dist_out_mm,
                                              turn->velocity_mm_s,
                                              speed_now_mm_s,
                                              guard,
                                              straight_trace_flags);
+  }
+restore_lead:
+  f413_ctrl_set_mode4_180_lead(false);
+  return reason;
 }
 
 static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
@@ -2367,6 +2376,9 @@ void f413_path_run_session_once(uint8_t mode,
             f413_path_run_turn_from_code(next_code, mode_params, &next_turn);
         abort_reason = f413_path_run_wait_smooth_turn_profile(&turn,
                                                               next_is_turn ? &next_turn : NULL,
+                                                              mode == 4U &&
+                                                                  (code == NF_LEGACY_PATH_LARGE_RIGHT_180 ||
+                                                                   code == NF_LEGACY_PATH_LARGE_LEFT_180),
                                                               skip_front_entry,
                                                               &next_front_entry_reached,
                                                               mode_params->dist_wall_end,
