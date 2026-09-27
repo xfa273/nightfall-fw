@@ -99,6 +99,8 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 消去失敗が継続し、別ツールのOpenOCDでも失敗しました。CPU停止中の同一RAMの
 繰り返し読み出しも不一致となり、50 kHzでも改善しませんでした。
 周波数変更だけで直ったとは判断せず、通信経路・プローブ・機体側を切り分けます。
+別実装の`st-flash`でも内容が変わらない内蔵ROMの読み出しが不一致となりました。
+この状態では消去を反復せず、ケーブルやプローブを交換して読み出しの安定性から確認します。
 調査経過は [実機調査記録](../../docs/ai/STLINK_ERASE_FAILURE_20260927.md) を参照してください。
 
 参考: [CubeProgrammer UM2237（接続/リセット/ログ）](https://www.st.com/resource/en/user_manual/dm00403500-stm32cubeprogrammer-stmicroelectronics.pdf)、

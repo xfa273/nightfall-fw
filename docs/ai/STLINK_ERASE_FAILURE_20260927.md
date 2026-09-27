@@ -46,7 +46,7 @@ this session and was tested separately.
 | 03:28:58 | After user disconnected both power sources and reseated SWD: same stopped RAM reads | Still differs by 1206 and 1572 bytes. `ram_reseat_{a,b,c}.bin`, `stlink_20260927T032858Z_xel5z9ky.log`. |
 | 03:30:32 | User moved ST-LINK directly to Mac USB controller (topology confirmed); same stopped RAM reads | Still differs by 1884 and 442 bytes. `ram_direct_{a,b,c}.bin`, `stlink_20260927T033032Z_h4vbr55k.log`. |
 
-The initial, Intel and post-power-cycle full 128 KiB identity reads have SHA256
+The initial, Intel, post-power-cycle and final full 128 KiB identity reads have SHA256
 `ef710246e2824452ccde43cf5318fcd6b6127a345a30be7ccf1ad5dad8eafb79`.
 Identical reads support identity preservation; they do not establish general
 readback reliability (most of the sector is FF).
@@ -59,12 +59,67 @@ issue is not isolated to the Python wrapper or native arm64 CLI. SWD wiring,
 probe, USB path and target electrical state still need separation. Reported VDD
 alone does not measure rail transients.
 
-Current recovery is incomplete. Original Mac `ioreg -p IOUSB -w0` topology showed
+Current recovery is incomplete; no successful application write or boot has been
+observed. Original Mac `ioreg -p IOUSB -w0` topology showed
 three hub levels (`USB2.0 Hub` → `USB2.1 Hub` → `USB2.1 Hub`); direct connection
 was confirmed at `STM32 STLink@01100000` but did not cure read instability. Writes
-are paused while requesting a different ST-LINK comparison. Next: repeat stopped
-RAM reads, then restore and verify the selected application only if communication
-is stable, compare identity and capture non-motor boot.
+are paused. A spare probe is unavailable. Next: compare replacement SWD/USB
+cables or another probe, and require stable immutable-ROM reads before another
+application write. Then verify the selected image, compare identity and capture
+non-motor boot.
+
+## Additional host diagnostics
+
+The user has no spare ST-LINK for comparison. Bundled libusb is 1.0.27 and
+Homebrew libusb is 1.0.30. A private copied Cube runtime with the latter library
+was rejected at launch by macOS library signature validation; no device operation
+occurred and no signature/security settings were changed
+(`stlink_20260927T033508Z_28r1hpza.log`).
+
+Installed Homebrew `stlink` 1.8.0 for an independent native/libusb 1.0.30 read test.
+No Homebrew firmware write has been performed. The install also ran Homebrew's
+normal auto-update/portable-Ruby update.
+
+The bundled official `STLinkUpgrade.jar -displayLastJtagVer` reports J46 for V2;
+`-sn 066CFF545771485067013914 -checkVer` failed with JNI error 0x1002. **No
+`-update` command was run.** After this version query, the probe appeared as
+0483:3748 with the same SN, and both Cube and stlink reported USB communication
+errors. One exact-SN software USB reset did not restore target access; a physical
+USB replug was requested to restore normal probe operation. Do not attempt a
+firmware update while the updater cannot reliably communicate with the probe.
+
+After the user's physical USB replug, Homebrew `st-flash` connected normally to
+STM32F413/F423 again. RAM reads at requested 400 kHz (actual 480 for this driver)
+still differed by 475 and 1213 bytes (`stflash_reads_replug_20260927.log`).
+
+To distinguish read-path instability from RAM changing, repeated **immutable
+system-ROM** reads at `0x1fff0000`, 4096 B, three separate `st-flash --hot-plug`
+invocations per frequency. Results against the first read in each group:
+
+| Requested SWD kHz | Second read: differing bytes | Third read: differing bytes |
+| --- | --- | --- |
+| 4000 | 1518 | 1312 |
+| 1800 | 2130 | 1602 |
+| 125 | 1742 | 772 |
+| 50 | 2155 | 1924 |
+
+Exact command/output: `stflash_rom_frequency_20260927.log`; dumps:
+`rom_stflash_<frequency>_{a,b,c}.bin`. All reads reported success. This confirms
+that successful tool exit status is not sufficient evidence of reliable readback
+in this incident. It does not identify whether probe hardware/firmware, SWD cable,
+USB path or target electrical/debug hardware is responsible. New libusb and the
+third independent driver did not resolve it. Further erase attempts are stopped.
+
+## State at 03:41 UTC
+
+Final Cube UR/HWrst read (`stlink_20260927T034102Z_v53o3hsb.log`) connects normally
+again with original ST-LINK FW V2J43M28 and VDD 3.24 V. The entire identity sector
+is byte-identical to the initial backup (`identity_final_20260927.bin`). App vectors
+remain all FF; **application recovery and boot are not complete**. The core was
+halted for this final read; no run/motor/fan command was sent. No additional erase
+is justified while immutable-ROM readback is inconsistent. Asked for the actual
+ST-LINK product/model and availability of replacement SWD/USB cables. A different
+probe/physical link comparison is still required to isolate the fault.
 
 ## Reference commands
 
