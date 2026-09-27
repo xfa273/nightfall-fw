@@ -1621,9 +1621,89 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
   return reason;
 }
 
+/* Consecutive turns share one straight approach. Watch the following turn's
+ * front target during this exit, without extending the exit if no wall is
+ * found. A hit consumes both the remaining exit and the following entry. */
+static f413_run_session_abort_reason_t f413_path_run_drive_chained_front_exit(
+    const f413_path_run_turn_t* turn,
+    float front_target_mm,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags,
+    bool* next_front_entry_reached)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  float target_distance;
+  float profile_distance;
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+
+  if ((speed_now_mm_s == NULL) ||
+      !f413_path_run_distance_cursor_advance(&g_f413_path_run_distance_cursor,
+          f413_ctrl_get_distance(), fmaxf(0.0f, turn->dist_out_mm),
+          &target_distance, &profile_distance))
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  if (!turn->wall_control_offsets)
+  {
+    f413_wall_runtime_control_clear();
+  }
+  f413_path_run_prepare_straight_angle_control();
+
+  /* Check even at a zero-length exit and before publishing a new straight
+   * profile: the first observation may already be at the next turn's target. */
+  while (1)
+  {
+    float front_distance_mm;
+    if (f413_wall_distance_front_unwarped_mm(&front_distance_mm) &&
+        (front_distance_mm <= front_target_mm))
+    {
+      *next_front_entry_reached = true;
+      f413_path_run_distance_cursor_reset(
+          &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
+      break;
+    }
+    if (fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance))
+    {
+      break;
+    }
+    if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+    {
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
+      break;
+    }
+    if (profile_distance > 0.0f)
+    {
+      f413_ctrl_set_velocity_profile(*speed_now_mm_s, turn->velocity_mm_s,
+                                      profile_distance);
+      f413_ctrl_set_omega(0.0f);
+      profile_distance = 0.0f;
+    }
+    f413_trace_log_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (turn->wall_control_offsets &&
+        ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U))
+    {
+      f413_wall_runtime_poll_straight(true);
+    }
+    else
+    {
+      f413_wall_runtime_control_apply(false);
+    }
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+  *speed_now_mm_s = turn->velocity_mm_s;
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     const f413_path_run_turn_t* turn,
-    bool next_is_large_turn,
+    const f413_path_run_turn_t* next_turn,
+    bool skip_front_entry,
+    bool* next_front_entry_reached,
     float dist_wall_end_mm,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
@@ -1636,6 +1716,7 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   uint32_t start_ms;
   int8_t turn_sign;
 
+  *next_front_entry_reached = false;
   if (turn == NULL)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
@@ -1654,7 +1735,13 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   turn_trace_flags = f413_path_run_motor_phase_flags(trace_flags,
                                                      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
 
-  if (turn->front_wall_entry)
+  if (skip_front_entry && turn->front_wall_entry)
+  {
+    /* The previous exit already reached this target. Do not re-read the
+     * sensor or issue an entry profile, even if the wall is now invalid. */
+    *speed_now_mm_s = turn->velocity_mm_s;
+  }
+  else if (turn->front_wall_entry)
   {
     reason = f413_path_run_drive_front_wall_entry_segment(turn->dist_in_mm,
                                                           turn->velocity_mm_s,
@@ -1720,7 +1807,21 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   f413_ctrl_stop_omega_profile();
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
-  if (turn->large_turn && next_is_large_turn &&
+  if (F413_MOTION_ENABLED(F413_MOTION_CHAINED_FRONT_ENTRY) &&
+      (next_turn != NULL) && next_turn->front_wall_entry &&
+      (next_turn->dist_in_mm > 0.0f) &&
+      f413_run_features_front_wall_correction_enabled() &&
+      !f413_run_features_test_mode_run())
+  {
+    const float front_target_mm =
+        F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - next_turn->dist_in_mm;
+    if (front_target_mm > 0.0f)
+    {
+      return f413_path_run_drive_chained_front_exit(turn, front_target_mm,
+          speed_now_mm_s, guard, straight_trace_flags, next_front_entry_reached);
+    }
+  }
+  if (turn->large_turn && (next_turn != NULL) && next_turn->large_turn &&
       f413_run_features_wall_end_correction_enabled() &&
       (turn->dist_out_mm > 0.0f))
   {
@@ -2050,6 +2151,7 @@ void f413_path_run_session_once(uint8_t mode,
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
   bool diagonal = false;
+  bool next_front_entry_reached = false;
   uint16_t pi = 0U;
   uint16_t code;
   size_t prepared_linear_index = 0U;
@@ -2166,6 +2268,8 @@ void f413_path_run_session_once(uint8_t mode,
   for (pi = 0U; pi < NIGHTFALL_F413_PATH_MAX_CODES; pi++)
   {
     uint16_t next_code;
+    const bool skip_front_entry = next_front_entry_reached;
+    next_front_entry_reached = false;
 
     if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
     {
@@ -2253,11 +2357,18 @@ void f413_path_run_session_once(uint8_t mode,
     else
     {
       f413_path_run_turn_t turn;
+      f413_path_run_turn_t next_turn;
 
       if (f413_path_run_turn_from_code(code, mode_params, &turn))
       {
+        /* Only the immediately adjacent code shares this exit. Never look
+         * through an explicit straight or diagonal straight segment. */
+        const bool next_is_turn =
+            f413_path_run_turn_from_code(next_code, mode_params, &next_turn);
         abort_reason = f413_path_run_wait_smooth_turn_profile(&turn,
-                                                              (next_code >= 500U) && (next_code < 700U),
+                                                              next_is_turn ? &next_turn : NULL,
+                                                              skip_front_entry,
+                                                              &next_front_entry_reached,
                                                               mode_params->dist_wall_end,
                                                               &speed_now,
                                                               &guard,

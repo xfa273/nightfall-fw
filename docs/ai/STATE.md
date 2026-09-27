@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- mini_r3連続ターンの前壁補正（2026-09-27、t0.29）: 前ターンの後オフセットから次ターンの前壁目標を監視し、到達時は出口残りと次入口を省略して旋回へ移る。到達は隣接する1ターンだけへ引継ぎ、距離基準を実測へ戻す。未到達時は既存入口へ、補正OFF/test mode/間に直進ありは従来動作。独立policy bit8をr3だけへ追加（r3=0x1FF、r2=0）。調整値は変更なし。production executorのr3/r2・mode3/4連続左右全組合せ・境界/無効/guard/timeout、既存互換・吸引・機体・path試験とF413/F405 build PASS。実機書込/駆動なし。詳細 [MINI_R3_CHAINED_FRONT_ENTRY.md](../MINI_R3_CHAINED_FRONT_ENTRY.md)。
+
 - 作業優先度の変更（2026-09-27 16:40 JST）: ユーザ報告で、mini_r2は8月版99e44d9／goal(0,1)へ戻すとある程度改善したが、不安定さは残る。ハード要因も候補だが原因未確定。ユーザ指示によりr2の調査・修正・r3変更の再導入を一旦保留し、mini_r3を優先する。r2は最後に書いた8月版のまま、保存データ・比較用branch/worktree・ログを保持。この方針変更に伴う追加の実機操作・コード変更なし。
 
 - mini_r2へ8月ソフト全体を再書込み（2026-09-27 16:25 JST）: ユーザがPR47互換修正を試すも不調継続。依頼により8/29の57a9c3bを別worktreeへ取得し、goalだけ(0,1)へ変更、生成table指紋更新。実機mini_r2 unit001/UID00250029-31335117-34313932へ99e44d9 DIRTY=0をflash/verify、全343548B読戻し一致・identity128KiB不変・mode0起動・壁取得PASS。保存センサoffset/base維持、モータ/fan/走行操作なし、実走結果待ち。ソースbranch exp/f413/20260927-r2-august-goal01、作業場所build/r2_august_goal01。現代版では保存距離warpの持込みfixtureが拒否される一方、旧版は読み得る差も確認したが、影響は未同定。詳細 docs/ai/MINI_R2_AUGUST_GOAL01_20260927.md。

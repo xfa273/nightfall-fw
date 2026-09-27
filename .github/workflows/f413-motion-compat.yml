@@ -45,5 +45,7 @@ jobs:
         run: python3 tools/hil/check_f413_param_coverage.py
       - name: Verify immutable machine policy and identity selection
         run: sh tools/hil/run_f413_machine_tests.sh
+      - name: Verify consecutive-turn front correction and machine opt-in
+        run: sh tools/hil/run_f413_chained_front_tests.sh
       - name: Compare r2 August motion and r3 reference motion
         run: python3 tools/hil/run_f413_motion_compat_tests.py

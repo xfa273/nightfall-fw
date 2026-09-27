@@ -13,7 +13,8 @@
 #define F413_MOTION_CASE0_TURN_SPEED        (1U << 5)
 #define F413_MOTION_CASE0_LONG_R180         (1U << 6)
 #define F413_MOTION_MODE2_CASE6_SAVED_MAZE   (1U << 7)
-#define F413_MOTION_KNOWN_FEATURES          (0xFFU)
+#define F413_MOTION_CHAINED_FRONT_ENTRY     (1U << 8)
+#define F413_MOTION_KNOWN_FEATURES          (0x1FFU)
 
 /* params.h supplies either a literal host profile or the boot-selected alias. */
 #define F413_MOTION_ENABLED(feature) (((F413_MOTION_FEATURES) & (feature)) != 0U)
