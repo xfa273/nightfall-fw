@@ -351,10 +351,18 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (unsigned int)F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
   trace_printf("#chained_offset_wall_end=%u,exit_plus_next_entry=1,front_target_priority=1\r\n",
                F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) ? 1U : 0U);
+  trace_printf("#chained_short_wall_end=%u,window_ms=%u,drop_adc=%u,past_min_adc=%u,confirm=%u,prepare_ms=%u\r\n",
+               F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) ? 1U : 0U,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_WINDOW_MS,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_DROP_ADC,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_PRESENT_ADC,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_CONFIRM_SAMPLES,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_PREPARE_MS);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");
   trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
+  trace_printf("#wall_trace_short_flags=active:0x0800,right:0x1000,left:0x2000,long_derivative_fields_unchanged=1\r\n");
   trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
   trace_printf("#wall_end_deriv=window=%u,total=%u,divisor=%d,fall_threshold=%u,confirm=%u\r\n",
                (unsigned int)F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES,

@@ -1725,9 +1725,17 @@ static f413_run_session_abort_reason_t f413_path_run_drive_chained_offsets(
   bool wall_found = false;
   bool front_extension = false;
   bool profile_started = false;
+  const bool short_wall_end = F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END);
 
   *next_entry_consumed = false;
-  f413_wall_runtime_end_clear();
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_begin();
+  }
+  else
+  {
+    f413_wall_runtime_end_clear();
+  }
   f413_path_run_prepare_straight_angle_control();
   f413_ctrl_set_omega(0.0f);
   f413_trace_log_set_mode_flags(trace_flags);
@@ -1809,6 +1817,10 @@ static f413_run_session_abort_reason_t f413_path_run_drive_chained_offsets(
     }
   }
 
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_end();
+  }
   f413_wall_runtime_control_apply(false);
   f413_path_run_distance_cursor_reset(&g_f413_path_run_distance_cursor,
                                        f413_ctrl_get_distance());
@@ -1838,6 +1850,10 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   uint16_t turn_trace_flags;
   uint32_t start_ms;
   int8_t turn_sign;
+  const bool short_wall_end = F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) &&
+      F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) &&
+      (next_turn != NULL) && f413_run_features_wall_end_correction_enabled() &&
+      !f413_run_features_test_mode_run();
 
   *next_entry_consumed = false;
   if (turn == NULL)
@@ -1909,6 +1925,10 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
   start_ms = HAL_GetTick();
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_prepare_begin();
+  }
 
   while (1)
   {
@@ -1917,6 +1937,11 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     if (t_s >= profile.t_total_s)
     {
       break;
+    }
+    if (short_wall_end &&
+        (t_s + 0.001f * (float)F413_WALL_RUNTIME_CHAINED_PREPARE_MS >= profile.t_total_s))
+    {
+      f413_wall_runtime_chained_prepare_sample();
     }
 
     f413_trace_log_set_mode_flags(turn_trace_flags);
@@ -1998,6 +2023,10 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                              straight_trace_flags);
   }
 restore_turn_control:
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_end();
+  }
   f413_ctrl_set_mode4_180_turn(false);
   return reason;
 }

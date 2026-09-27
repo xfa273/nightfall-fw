@@ -447,6 +447,10 @@ static void resolver_tests(void)
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
   scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_OFFSET_WALL_END;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_SHORT_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES |= F413_MOTION_CHAINED_OFFSET_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
   scalar.v_F413_MOTION_FEATURES = F413_MOTION_MODE4_180_LEAD;
   const float saved_lead = scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S;
   scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S = 0.0025f;
@@ -532,7 +536,7 @@ int main(int argc, char **argv)
       assert(FF_OMEGA_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_PWM_FAN_ON);
       assert(FF_OMEGA_ACCEL_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_ACCEL_PWM_FAN_ON);
     }
-    assert(F413_MOTION_FEATURES == (rev == 2U ? 0U : 0xFFFU));
+    assert(F413_MOTION_FEATURES == (rev == 2U ? 0U : 0x1FFFU));
     assert(FF_OMEGA_LEAD_MODE4_180_TIME_S == (rev == 2U ? 0.004f : 0.0025f));
     assert(FF_OMEGA_TRAJECTORY_PWM_MODE4_180 == (rev == 2U ? 0.0f : 0.045f));
     assert(FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 == (rev == 2U ? 0.0f : 0.0025f));
