@@ -9,6 +9,8 @@
 
 ## 現在の構成
 
+- mini_r2へ8月ソフト全体を再書込み（2026-09-27 16:25 JST）: ユーザがPR47互換修正を試すも不調継続。依頼により8/29の57a9c3bを別worktreeへ取得し、goalだけ(0,1)へ変更、生成table指紋更新。実機mini_r2 unit001/UID00250029-31335117-34313932へ99e44d9 DIRTY=0をflash/verify、全343548B読戻し一致・identity128KiB不変・mode0起動・壁取得PASS。保存センサoffset/base維持、モータ/fan/走行操作なし、実走結果待ち。ソースbranch exp/f413/20260927-r2-august-goal01、作業場所build/r2_august_goal01。現代版では保存距離warpの持込みfixtureが拒否される一方、旧版は読み得る差も確認したが、影響は未同定。詳細 docs/ai/MINI_R2_AUGUST_GOAL01_20260927.md。
+
 - mini_r2走行とr3実験の分離（2026-09-27、mini-r2-aug29-compat-t0.4）: r2の走行policyを57a9c3b（8/29、r3立上げ前）へ復元。機体別F413_MOTION_FEATURESを追加しr2=0/r3=明示8bit、IMU・停止/FF・前壁復帰・探索距離・上限・case0・mode2case6を選択。r2 mode2case6は旧固定斜め検証pathへ戻る。実ソース差分試験でr2対8月版/r3対修正前の制御各8400、探索120/122、経路計画各1296、dispatch各126件一致。F413/F405 build PASS、実機書込/走行なし。ユーザの既存調整値は保持。再導入候補と物理検証条件は docs/MINI_R2_MOTION_ISOLATION.md。実走復旧は未確認。
 
 - mini_r3最新4ログと小回り前壁補正値を再確認（2026-09-27 13:14/13:17、t0.28維持）: 131430/131714の各run001はmode4/3 case2だが全行距離0・準備保持区間のみで走行比較に使えない（実走有無をユーザへ確認依頼）。各run002はmode4/3 case3。右微分検出は各1回、mode4 ADC28/-255・mode3 ADC35/-252。最初の小回り前壁はmode4=89.82mm（前回82.59から改善）、mode3約88.48mm（4ms保存の時間補間）、目標89.2/89.4付近なので壁切れ-23/-15維持。前壁補正の追加依頼にも実参照を確認し目標値維持、val_offset_in/fwall_kxはF413未参照。3回目はmode3=83.93、mode4=87.02で過進入、mode3は前ターン出口中に86.46で既に目標越え。新規壁切れなし・入口開始前のずれを目標値だけで吸収しない。case2走行本体不足でturn値変更もなし。mode4後半1129ms欠落・中断bitなし、mode3後半6601ms欠落・timeout/encoder共通0x0400あり。停止理由未特定、通常最短の厳密終点待ちは検討候補に留めコード不変。文書のみ、params/制御hash不変・diffcheck確認、build/実機操作なし。他作業のflashing/HIL/worklog変更保持。詳細 docs/MINI_R3_FOUR_LOG_RECHECK_20260927.md。
