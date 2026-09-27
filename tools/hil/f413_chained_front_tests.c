@@ -118,6 +118,8 @@ void f413_wall_runtime_set_wall_end_thresholds(uint16_t a, uint16_t b, uint16_t 
 void f413_wall_runtime_reset_wall_end_thresholds(void) {}
 void f413_wall_runtime_control_clear(void) {}
 void f413_wall_runtime_end_clear(void) {}
+void f413_wall_runtime_end_begin(void) { f413_wall_runtime_end_clear(); }
+bool f413_wall_runtime_wall_end_detected_by_short(void) { return false; }
 void f413_wall_runtime_chained_prepare_begin(void) {}
 void f413_wall_runtime_chained_prepare_sample(void) {}
 void f413_wall_runtime_chained_monitor_begin(void) {}
