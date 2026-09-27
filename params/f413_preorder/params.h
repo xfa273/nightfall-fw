@@ -364,10 +364,10 @@
     探索系
 ------------------------------------------------------------*/
 #ifndef GOAL_X
-#define GOAL_X   1
+#define GOAL_X   0
 #endif
 #ifndef GOAL_Y
-#define GOAL_Y   0
+#define GOAL_Y   1
 #endif
 #ifndef MAZE_SIZE
 #define MAZE_SIZE 16
