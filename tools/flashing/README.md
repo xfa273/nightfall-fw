@@ -63,7 +63,48 @@ python3 tools/flashing/flash_stlink --build
 python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 ```
 
-既定値は `mode=NORMAL`, `freq=4000`, `reset=SWrst` です。`.bin` を指定した場合は、既定で `0x08000000` に書き込みます。
+既定値は `mode=NORMAL`, `freq=1000` (1 MHz), `reset=SWrst` です。
+接続余裕を増やすため、SWDの既定値を従来の4 MHzから下げています。
+速度を戻す場合は `--freq 4000` を指定できます。
+`.bin` を指定した場合は、既定で `0x08000000` に書き込みます。
+
+### `Error: failed to erase memory` が繰り返す場合
+
+この表示だけでは、USB通信、SWD信号、機体電源、Flash保護などのどれが
+原因かは判定できません。USB抜き差しで復帰するなら通信状態を優先して切り分けます。
+書き込みと `--reset-only` は毎回、CubeProgrammerの `-log` による詳細ログと
+実行コマンド・終了状態を `build/flashing_logs/stlink_*.log` に保存し、パスを表示します。
+エラー終了、またはログ内の `Error:` を検出した場合は失敗扱いにし、消去や書き込みを
+自動反復しません。CLIが起動できない場合のログはラッパー側の記録だけになります。
+
+1. まず通常の `python3 tools/flashing/flash_stlink --build` で1 MHzを試す。
+   まだ不安定なら `--freq 400` へ下げ、ログに出る実際のSWD周波数・電圧を確認する。
+2. ST-LINKのNRSTが機体のNRSTへ接続されている場合は、実行中のFWから制御を
+   取り戻すため次の接続を試す（NRST未接続では使えません）。
+
+   ```bash
+   python3 tools/flashing/flash_stlink --build --freq 400 --mode UR --reset-mode HWrst
+   ```
+
+3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDB等の
+   別デバッガ接続を終了し、USBハブを外した直結・別ケーブル・別ポートで比較する。
+   UART capture使用中のUSB抜き差しはVCPも切断するため、再接続後にcaptureを再開する。
+   このツールはUSBリセットを自動実行しない。
+4. 同じセクタで再現する場合は、失敗前のST-LINK FW、ターゲット電圧、SWD周波数、
+   sector番号とエラーをログで確認する。VDD/GND/SWDIO/SWCLK/NRSTの接触・配線も確認し、
+   ST-LINK firmwareは公式更新ツールで更新を検討する。保護解除や全消去を復旧手順にしない。
+
+機体IDや校正を消す `-e all`、RDP解除、option byte変更は追加しません。
+今回の周波数変更だけで実機の発生頻度が改善するかは、次回以降の書き込みで確認が必要です。
+
+参考: [CubeProgrammer UM2237（接続/リセット/ログ）](https://www.st.com/resource/en/user_manual/dm00403500-stm32cubeprogrammer-stmicroelectronics.pdf)、
+[ST-LINK RN0093（既知制約・FW更新）](https://www.st.com/resource/en/release_note/dm00107009-firmware-upgrade-for-stlink-stlinkv2-stlinkv21-and-stlinkv3-boards-stmicroelectronics.pdf)。
+
+書き込みの回帰テスト（プローブ接続なし）:
+
+```bash
+python3 -m unittest discover -s tools/flashing -p 'test_*.py' -v
+```
 
 ### 例: 識別ブロック生成
 
