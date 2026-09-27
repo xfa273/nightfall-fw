@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-wall-derivative-t0.27"
+#define PARAMS_TUNE_VERSION "mini-r3-wall-case3-t0.28"
 
 /*============================================================
     各種定数（パラメータ）設定
