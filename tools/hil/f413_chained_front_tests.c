@@ -51,9 +51,10 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
   stop_profile = end == 0.0f;
 }
 void f413_ctrl_set_omega(float v) { (void)v; }
-void f413_ctrl_set_mode4_180_lead(bool enabled)
+void f413_ctrl_set_mode4_180_turn(bool enabled)
 {
-  enabled = enabled && F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD);
+  enabled = enabled && (F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD) ||
+      F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF));
   if (enabled && !turn_lead) { assert(lead_begins < 8); lead_begin_pos[lead_begins++] = position; }
   if (!enabled && turn_lead) { assert(lead_ends < 8); lead_end_pos[lead_ends++] = position; }
   turn_lead = enabled;
@@ -66,7 +67,12 @@ void f413_ctrl_start_omega_profile(float p, float a, float c)
   core_start[cores++] = position;
   in_core = true;
 }
-void f413_ctrl_stop_omega_profile(void) { in_core = false; core_end[cores - 1] = position; }
+void f413_ctrl_stop_omega_profile(void)
+{
+  if (cores == abort_core) assert(!turn_lead);
+  else assert(turn_lead == core_lead[cores - 1]);
+  in_core = false; core_end[cores - 1] = position;
+}
 void f413_ctrl_reset_angle(void) {}
 void f413_ctrl_set_angle_target(float v) { (void)v; }
 void f413_ctrl_clear_angle_target(void) {}

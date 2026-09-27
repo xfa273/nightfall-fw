@@ -309,8 +309,13 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                    "accel_comp" : "encoder_lpf");
   trace_printf("#omega_ff_lead_time_s=%.6f\r\n", (double)FF_OMEGA_LEAD_TIME_S);
   trace_printf("#omega_ff_lead_mode4_180_time_s=%.6f\r\n#omega_ff_lead_mode4_180_meta_source=dump_time_profile\r\n",
-      (double)(F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD) ?
-          FF_OMEGA_LEAD_MODE4_180_TIME_S : FF_OMEGA_LEAD_TIME_S));
+      (double)(F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF) ? 0.0f :
+          (F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD) ?
+              FF_OMEGA_LEAD_MODE4_180_TIME_S : FF_OMEGA_LEAD_TIME_S)));
+  trace_printf("#omega_trajectory_ff_mode4_180=%u\r\n#omega_trajectory_ff_mode4_180_meta_source=dump_time_profile\r\n",
+      F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF) ? 1U : 0U);
+  trace_printf("#omega_trajectory_ff_pwm_mode4_180=%.6f\r\n#omega_trajectory_ff_accel_pwm_mode4_180=%.9f\r\n",
+      (double)FF_OMEGA_TRAJECTORY_PWM_MODE4_180, (double)FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180);
   trace_printf("#omega_ff_lead_max_dps=%.3f\r\n", (double)FF_OMEGA_LEAD_MAX_DPS);
   trace_printf("#omega_ff_pwm_fan_on=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_ON);
   trace_printf("#omega_ff_accel_pwm_fan_on=%.9f\r\n", (double)FF_OMEGA_ACCEL_PWM_FAN_ON);
