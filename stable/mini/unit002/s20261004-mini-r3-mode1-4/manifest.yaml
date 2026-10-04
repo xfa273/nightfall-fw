@@ -1,0 +1,78 @@
+stable_name: s20261004-mini-r3-mode1-4
+description: mini_r3 unit002のmode1〜4を概ね走行確認したユーザ調整値の保存点
+checkpoint_kind: parameter_baseline
+fw_tag: stable/mini/unit002/s20261004-mini-r3-mode1-4
+fw_base_commit: b6c83fb15afbbff7bb5364ad9a59f50fa3e0ba12
+fw_target: nightfall_stm32f413
+fw_build_type: Debug
+machine_name: mini_r3_0
+machine_unit: mini_r3_0_unit002
+family: mini
+hw_rev_major: 3
+hw_rev_minor: 0
+board_id: '0x00030000'
+unit_serial: 2
+mcu_uid: 001D0038-32345108-36383936
+params_profile: mini_r3_0
+params_profile_id: '0x00030001'
+params_tune_version: mini-r3-mode1-4-t0.36
+motion_features: '0x00007FFF'
+qualification:
+  date: '2026-10-04'
+  basis: user_report
+  status: usable_mode1_to_4_baseline
+  reported_modes:
+  - 1
+  - 2
+  - 3
+  - 4
+  report: 一通りmode1〜4でそれなりに走ることを確認
+  case_coverage: not_specified
+  course_and_repeat_count: not_specified
+  supply: not_reported_for_this_checkpoint
+  exact_tested_binary: not_captured
+  agent_hardware_operations: none
+build_options:
+  NIGHTFALL_TRACE_F413_USE_UART: 1
+  NIGHTFALL_F413_UART_BAUD_RATE: 921600
+  NIGHTFALL_F413_DESTRUCTIVE_NVM_DIAGNOSTICS: false
+nvm_schema_versions:
+  identity: '0x00010000'
+  sensor: '0x00010001'
+  distance: '0x00010000'
+  maze: '0x00010000'
+  trace: '0x00060000'
+source_sha256:
+  params/mini_r3_0/calibration/README.md: 9a03594255a2c727b5639a68ba4af61067622de7cf230f97bb8c9dd6c2ea6cfd
+  params/mini_r3_0/calibration/front_centre_20260906.csv: 00c68aec8f0be6c26508caed0a2e7e516c819a2978de60b3b32fce487020280e
+  params/mini_r3_0/calibration/front_centre_20260912.csv: 155601bf22662e954fa238d0f09274fdf7b91c247fcb7cc3767c471ae64e99ec
+  params/mini_r3_0/calibration/front_centre_20260921.csv: 05f38dedff807ebdac606e49937edefb50c837f165bf210717c24a8c04bef41d
+  params/mini_r3_0/calibration/front_centre_extension_20260921.csv: f11f0f043299d4495e4af50db4655fde985a3a5a9945ef2ae4255734d17b6c3b
+  params/mini_r3_0/calibration/side_centre_20260906.csv: f8b4ebdcf753d5b2a5526172aa5fea4c18f5a008cb8d2da500959f2c6f65972d
+  params/mini_r3_0/calibration/side_centre_20260912.csv: c33f0e62fba4527a508e63d1333b08171bdb4f589bdbc2759c8b3a2863ecf910
+  params/mini_r3_0/params.h: 2f5f6ff192e7301bce3e6bb8edff042e7784644cbc9fa211aa029a665350aec5
+  params/mini_r3_0/profile.c: 7bec57a602e6e594413b988bb2dc4dbadae1960c19baa3e8ddf09ffcb3abd988
+  params/mini_r3_0/search_run_params_split.c: dbb01bb82f7c7aeba024456038a00e5f74384e1ff94f77266b7520534fac1a57
+  params/mini_r3_0/sensor_distance_lut.c: ca4b7332723a5ffd719f1a56bc9f6281d7cd2d2d08a57c4fe1d69214ad3f3e3a
+  params/mini_r3_0/shortest_run_params_split.c: 68a06863c2809977cb4c80dc3a9afac9c0ab3af19deda9bae1d4b3445076b6ae
+  params/mini_r3_0/side_distance_lut.c: f868dd7c6120c7d3d87e739ad831928b50f29943ce22c9a471a738495abecad4
+  params/f413_motion_policy.h: 24ec0f2964f99992510e5e92ec7222a6c8b87af3cd64db888a1bde773212d73f
+  board/f413/f413_registry.c: 8b47dce1bbc0ed63c3d687ddca2de143f74c9a5adcfcbf1ed8b6dde7fc0b3d9f
+  board/f413/f413_machine.h: f36423a50f06757f1a6588b1a9f5f0eba9918261984a92b35d9416bf98fe1260
+calibration_note: Compiled LUTs and calibration source CSVs are hash-bound; existing
+  FRAM was neither read, modified nor newly backed up.
+host_validation:
+- sh tools/hil/run_f413_machine_tests.sh
+- sh tools/hil/run_f413_goal_stop_tests.sh
+- sh tools/route_precompute/run_tests.sh (14210 checks)
+- cmake --build --preset Debug-stm32f413
+- cmake --build --preset Debug-stm32f405
+- git diff --check
+known_limitations:
+- User acceptance covers mode1 through mode4 generally, not every case or course.
+- Current mode5/6 experimental values and mode7 are preserved without new run qualification.
+- No new diagonal, supply-range, or exhaustive high-speed qualification.
+- The shared profile also applies to unit001; this does not qualify its faulty hardware.
+- This is a source parameter checkpoint, not a firmware/identity/FRAM recovery image.
+- Runtime settings YAML is reference-only; compiled goals and gains require rebuilding.
+previous_checkpoint: stable/mini/unit002/s20260921-mini-r3-2s-fan-off
