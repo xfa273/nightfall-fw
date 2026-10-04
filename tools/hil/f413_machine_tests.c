@@ -28,18 +28,93 @@ bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t *out)
   return true;
 }
 
+static void r2_front_centre_tests(void)
+{
+  /* User's body-centre sweep: all knots, including low-signal far points. */
+  const uint16_t fr[] = {1922,1421,1058,799,621,490,402,331,277,237,199,174,149,130,112};
+  const uint16_t fl[] = {2442,1816,1374,1072,861,701,576,483,409,351,306,266,234,208,185};
+  const unsigned front_mask = F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL | F413_WALL_DISTANCE_CH_FSUM;
+  f413_wall_sensor_snapshot_t adc = {.front_wall = true};
+  f413_wall_distance_snapshot_t distance;
+  assert(sensor_distance_lut_size_fr() == 15U);
+  assert(sensor_distance_lut_size_front_sum() == 15U);
+  assert(WALL_BASE_FR == 160 && WALL_BASE_FL == 160);
+  for (unsigned i = 0; i < 15; ++i) {
+    adc.fr_delta = fr[i]; adc.fl_delta = fl[i];
+    adc.fr_on = fr[i] + 100; adc.fl_on = fl[i] + 100;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    const float mm = 40.0f + 5.0f * i;
+    assert(fabsf(distance.fr_mm - mm) < 0.001f);
+    assert(fabsf(distance.fl_mm - mm) < 0.001f);
+    assert(fabsf(distance.front_sum_mm - mm) < 0.001f);
+    assert(distance.fr_mm == distance.fr_mm_unwarped);
+    assert(distance.fl_mm == distance.fl_mm_unwarped);
+    assert(distance.front_sum_mm == distance.front_sum_mm_unwarped);
+    assert((distance.extrapolated_mask & front_mask) == 0U);
+    assert(f413_wall_distance_front_present(&distance) == (i < 12));
+    assert(((distance.valid_mask & F413_WALL_DISTANCE_CH_FR) != 0) == (i < 12));
+    assert((distance.valid_mask & F413_WALL_DISTANCE_CH_FL) != 0);
+    assert(((distance.valid_mask & F413_WALL_DISTANCE_CH_FSUM) != 0) == (i < 14));
+    s_test_wall_available = true; s_test_wall = adc;
+    float entry;
+    assert(f413_wall_distance_front_unwarped_mm(&entry) == (i < 12));
+    if (i < 12) assert(fabsf(entry - mm) < 0.001f);
+  }
+  float (*convert[])(uint16_t) = {sensor_distance_from_fr, sensor_distance_from_fl, sensor_distance_from_fsum};
+  bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_fr, sensor_distance_ad_in_range_fl, sensor_distance_ad_in_range_fsum};
+  const uint16_t low[] = {112,185,297}, high[] = {1922,2442,4364};
+  for (unsigned ch = 0; ch < 3; ++ch) {
+    float previous = 110.0f;
+    for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
+      const float mm = convert[ch]((uint16_t)ad);
+      assert(isfinite(mm) && mm >= 40.0f && mm <= previous);
+      assert(in_range[ch]((uint16_t)ad));
+      previous = mm;
+    }
+    assert(!in_range[ch](0) && !in_range[ch](low[ch] - 1));
+    assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
+  }
+  /* Approach crosses the82mm search entry exactly once between85 and80mm. */
+  bool crossed82 = false;
+  adc.fr_on = adc.fl_on = 1000;
+  for (unsigned sum = 588; sum <= 686; ++sum) {
+    adc.fr_delta = 237 + (int32_t)((sum - 588) * 40 / 98);
+    adc.fl_delta = (int32_t)sum - adc.fr_delta;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(f413_wall_distance_front_present(&distance));
+    if (distance.front_sum_mm_unwarped <= 82.0f) crossed82 = true;
+    else assert(!crossed82);
+  }
+  assert(crossed82);
+  const int32_t invalid[][2] = {{0,0}, {-1,-1}, {111,184}, {1923,2443}, {111,500}};
+  for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    adc.fr_delta = invalid[i][0]; adc.fl_delta = invalid[i][1];
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(!f413_wall_distance_front_present(&distance));
+  }
+  adc.fr_delta = 1421; adc.fl_delta = 1816;
+  adc.fr_on = 4090; adc.fl_on = 1916;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  adc.fr_on = 1521; adc.fl_on = 4090;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  adc.fl_on = 1916; adc.front_wall = false;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  s_test_wall_available = false;
+}
+
 static void front_distance_tests(unsigned rev)
 {
-  assert(f413_machine_front_distance_body_centre() == (rev == 3U));
-  assert(F_ALIGN_TARGET_MM == (rev == 3U ? 45.0f : 7.0f));
+  assert(f413_machine_front_distance_body_centre());
+  assert(F_ALIGN_TARGET_MM == 45.0f);
   assert(F_ALIGN_TOO_CLOSE_MM == F_ALIGN_TARGET_MM - 2.5f);
   f413_wall_distance_init();
   assert(sensor_distance_get_interpolation() == SENSOR_DISTANCE_INTERP_PCHIP);
-  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 15U : 13U));
+  assert(sensor_distance_lut_size_fl() == 15U);
   if (rev == 2U) {
-    assert(fabsf(sensor_distance_from_fr(1680) - 7.0f) < 0.001f);
-    assert(fabsf(sensor_distance_from_fl(2050) - 7.0f) < 0.001f);
-    assert(fabsf(sensor_distance_from_fsum(3730) - 7.0f) < 0.001f);
+    r2_front_centre_tests();
     return;
   }
   /* Shielded40..75mm (09-12), latest80..110mm (09-21); no averaging
@@ -143,7 +218,7 @@ static void front_distance_tests(unsigned rev)
   s_test_wall = adc;
   assert(!f413_wall_distance_front_unwarped_mm(&entry_distance));
   s_test_wall_available = false;
-  /* Loading the legacy front-only r2 table leaves side conversion untouched. */
+  /* Loading the front-only r2 table leaves side conversion untouched. */
   const float left = sensor_distance_from_l(1000), right = sensor_distance_from_r(1000);
   f413_profile_mini_r2.load_sensor_luts();
   assert(left == sensor_distance_from_l(1000) && right == sensor_distance_from_r(1000));
@@ -157,7 +232,8 @@ static void front_entry_reference_tests(void)
   const f413_param_profile_t *r2 = &f413_profile_mini_r2;
   const f413_param_profile_t *r3 = &f413_profile_mini_r3;
   const float datum_delta = r3->scalar->v_F_ALIGN_TARGET_MM - r2->scalar->v_F_ALIGN_TARGET_MM;
-  assert(datum_delta == 38.0f);
+  assert(datum_delta == 0.0f);
+  assert(r2->front_distance_body_centre && r3->front_distance_body_centre);
   assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
   const float search_targets[] = {82.0f, 80.0f};
   const float mode_targets[] = {82.8f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
@@ -198,8 +274,9 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - old_target - datum_delta - entry_change) < 0.001f);
     assert(fabsf(new_target - mode_targets[i]) < 0.001f);
   }
-  /* The nominal entry is90mm. The09-21 LUT extension covers both the entry
-   * and all80..89.4mm turn references; the runner's validity guard is unchanged. */
+  /* Both body-centre LUTs cover the nominal90mm entry and turn references;
+   * the runner's validity guard is unchanged. */
+  assert(r2->scalar->v_F_ALIGN_TARGET_MM + r2->scalar->v_DIST_HALF_SEC == 90.0);
   assert(r3->scalar->v_F_ALIGN_TARGET_MM + r3->scalar->v_DIST_HALF_SEC == 90.0);
 }
 

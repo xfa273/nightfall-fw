@@ -8,7 +8,7 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r2-aug29-compat-t0.4"
+#define PARAMS_TUNE_VERSION "mini-r2-front-centre-t0.5"
 
 #include "../f413_motion_policy.h"
 /* 57a9c3b motion baseline. Re-adopt each later change only after r2 validation. */
@@ -331,8 +331,9 @@
 
 #define WALL_ALIGN_ERR_THR  700
 
-#define F_ALIGN_TARGET_MM           7.0F
-#define F_ALIGN_TOO_CLOSE_MM        4.5F
+/* Body-centre-to-wall distance, matching calibration/front_centre_20261004.csv. */
+#define F_ALIGN_TARGET_MM           45.0F
+#define F_ALIGN_TOO_CLOSE_MM        42.5F
 
 #define MATCH_POS_KP_TRANS_MM       10.0F
 #define MATCH_POS_KP_ROT_MM         20.0F
