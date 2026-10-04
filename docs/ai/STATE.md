@@ -9,7 +9,7 @@
 
 ## 現在の構成
 
-- mini_r2前壁を機体中心基準へ移行（2026-10-04、t0.5）: ユーザ指定により8月復元版ではなく現行共通FWへ適用。FR/FL/合計15点40..110mm、45mm時1421/1816/3237、目標45mm・近接閾値42.5mm。旧v1距離warpは既存gateで読込適用せずFRAM保持。r2 policy0・側壁・ゲイン・goal、r3/F405維持。delta>160判定も維持するため100..110mmのFRは制御無効。機体/全点変換/範囲・信号・飽和/NVM warp/歴史互換/runtime goal/route14210、両MCU build PASS。実機書込み・走行・NVM操作なし、従来の不安定の解消は未確認。詳細 [r2校正記録](../../params/f413_preorder/calibration/README.md)。
+- mini_r2前壁を機体中心基準へ移行（2026-10-04、t0.5）: ユーザ指定により8月復元版ではなく現行共通FWへ適用。FR/FL/合計15点40..110mm、45mm時1421/1816/3237、目標45mm・近接閾値42.5mm。旧v1距離warpは既存gateで読込適用せずFRAM保持。r2 policy0・側壁・ゲイン・goal、r3/F405維持。delta>160判定も維持するため100..110mmのFRは制御無効。機体/全点変換/範囲・信号・飽和/NVM warp/歴史互換/runtime goal/route14210、両MCU build PASS。続いてユーザ依頼でunit001へf8f8441 DIRTY=1を書込み・全388996B照合・起動設定確認PASS。identity全sector/校正prefix保持、offset FR10/FL15/R12/L23維持。モータ/fan/走行なし、従来の不安定の解消は未確認。詳細 [r2校正記録](../../params/f413_preorder/calibration/README.md)。
 
 - mini_r3 mode1〜4のユーザ調整値を保存（2026-10-04、t0.36）: ユーザがmode1〜4を一通り概ね走行可能と報告。現在のD_TIRE14.3、mode2〜4加速度/ターン値、mode4短方式追加8mm・大90入口2mm・大180入口0mm等を追加調整せず保存。mode5/6の作業値もソースには保存するが実走確認の範囲外。unit002の保存点 `stable/mini/unit002/s20261004-mini-r3-mode1-4/` と同名Git tagにFW/全r3 profile/LUTとSHA256を固定、旧非吸引保存点維持。機体/ゴール停止host、route14210、F413/F405 build PASS。実走はユーザ報告、全case/斜め/電源条件は網羅未確認。実機操作・NVM読書きなし、無関係なr2/書込ツール/CAD等は除外。詳細 [保存記録](../../stable/mini/unit002/s20261004-mini-r3-mode1-4/notes.md)。
 

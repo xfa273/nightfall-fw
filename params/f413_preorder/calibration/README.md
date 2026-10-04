@@ -74,6 +74,38 @@ checks and both MCU builds. Compatibility comparisons use the same **current**
 parameters on both sides, verifying algorithm preservation, not old-calibration
 equivalence. F413 RAM274400 bytes / Flash388996 bytes in the working build.
 
-No ST-LINK/UART/flash/reset/motor/fan/NVM operation was performed. No physical
-alignment or floor run has validated this calibration; numeric knot agreement
-does not prove running stability or establish the cause of the earlier failure.
+The initial source-only validation performed no hardware operations. Numeric
+knot agreement does not prove running stability or establish the cause of the
+earlier failure. The subsequent requested application flash is recorded below.
+
+
+## Requested application flash, 2026-10-04 06:34 UTC
+
+User connected the machine and explicitly requested programming. Confirmed
+mini_r2_0_unit001 / MCU UID00250029-31335117-34313932 before writing. Rebuilt the
+current checkout and flashed `f8f8441 DIRTY=1` / t0.5, including the pre-existing
+local r2 mode2 case3/4 acceleration2000 edits (not an August restoration image).
+The firmware ELF/BIN and exact dirty-source patch are archived locally under
+`build/r2_front_flash_20261004/`, with a SHA256 manifest and raw evidence.
+
+Command sequence: probe/port listing; HOTPLUG1MHz read UID, full identity128KiB
+and old app1MiB; read-only UART `|`; application flash once using V3MINIE
+SN003B00273234511537333934, `--freq 1000 --mode UR --reset-mode HWrst`;
+post-reset full app/identity upload; UART `|`, `w`, `n` at921600 baud on
+`/dev/cu.usbmodem2124202`. Only app sectors0..6 were erased. Vendor verify and
+all388996 post-reset app bytes match the archived BIN (SHA256
+`51bc024f372a3cd6609d47c473e9bf55ce0b30236821d2251fa2887e335e7c63`).
+
+Boot confirms correct unit, t0.5, policy0, `front_distance_reference=body_centre`,
+target45.00/too-close42.50, NVM-GUARD LOCKED and OP mode0 idle. Wall acquisition
+passes with front/right/left absent and no saturation. Full identity sector and
+sensor/distance256B prefixes are byte-identical before/after. Saved offsets
+FR10/FL15/R12/L23 and basesL666/R787/F52 remain unchanged; do not restore older
+Sept27 values. NVM status remains sensorOK, distanceMISS (expected), mazeOK
+known107 and trace198 records. Maze/trace were checked by status/count, not full
+byte comparisons. UART is closed.
+
+No motor/fan/run command was authorized or sent; no identity/calibration/maze/
+trace-format write or mass erase. Physical alignment and running stability are
+still unverified. Vendor write log:
+`build/flashing_logs/stlink_20261004T063426Z_r7b81cln.log`.
