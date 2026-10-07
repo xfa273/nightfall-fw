@@ -14,3 +14,10 @@ F413 development records remain in the original worktree and are not imported.
 - Prediction uses the nominal motion model, not full F405 per-code execution equivalence. Old runner time/velocity/stop mapping, body clearance, F405 latency/stack high-water and staged real motion remain gates before enabling a run. 32x32 unsupported and rejected; no automatic tuning/fallback.
 - No ST-LINK/UART probe/reset/flash, motors/fan, NVM reads/writes or floor/maze runs. Original worktree's dirty F413 params, WORKLOG, flashing tools and other user files preserved.
 - Reproduction and return steps: `docs/CLASSIC_R1_2026_PREPARATION.md`, `tools/f405_time_planner/README.md`.
+
+### Follow-up: diagnose the 19 no-path configurations
+
+- All 19 stop at the initial state: 16MM2015CX forces a right turn after one northward cell, but the model's 43 + 90 mm acceleration distance cannot reach the configured small-turn velocity. Required distances are 245 mm (mode2), 180 mm (mode3/7), and 137.8 mm (mode4).
+- An ASan/UBSan diagnostic copy under ignored `build/f405_time_planner/` relaxes only the first connector's acceleration limit; all 19 then yield paths. Restricting the original model to small turns alone does not resolve any of them. No production code or params were changed.
+- The old runner directly changes the speed reference in the short wall-end buffer, and `driveA` derives acceleration from requested boundary speeds and distance. The shared nominal model instead treats profile acceleration as a hard bound. Reference agreement therefore does not establish old-runner equivalence. Qualify the F405 start/short-connector cost model before changing tuning or enabling motion.
+- No hardware access. Added the cause, numerical evidence and response order to the preparation document.
