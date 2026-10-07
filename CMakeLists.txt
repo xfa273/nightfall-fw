@@ -132,3 +132,23 @@ endfunction()
 
 nightfall_add_firmware(nightfall_mini_r1_0 mini_r1_0 ROBOT_MINI_R1_0)
 nightfall_add_firmware(nightfall_classic_r1_0 classic_r1_0 ROBOT_CLASSIC_R1_0)
+
+# Host-qualified preview only. The competition baseline and run_shortest()
+# remain unchanged until baseline HIL and explicit planner integration.
+option(NIGHTFALL_F405_ORTHOGONAL_PREVIEW "Link the 16x16 classic time planner preview" OFF)
+if(NIGHTFALL_F405_ORTHOGONAL_PREVIEW)
+    target_sources(nightfall_classic_r1_0 PRIVATE
+        common/route/compact_orthogonal.c
+        common/route/motion_time.c
+        platform/stm32f405/Core/Src/f405_orthogonal_preview.c)
+    target_include_directories(nightfall_classic_r1_0 PRIVATE common/route)
+    # Retain the preview API so the link map measures its REAL SRAM/Flash cost.
+    target_link_options(nightfall_classic_r1_0 PRIVATE -Wl,-u,f405_orthogonal_preview)
+    target_compile_options(nightfall_classic_r1_0 PRIVATE -fstack-usage)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_custom_command(TARGET nightfall_classic_r1_0 POST_BUILD
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/f405_time_planner/check_memory.py
+            --size-tool ${CMAKE_SIZE} --elf $<TARGET_FILE:nightfall_classic_r1_0>
+            --bin ${CMAKE_CURRENT_BINARY_DIR}/nightfall_classic_r1_0.bin
+        VERBATIM)
+endif()
