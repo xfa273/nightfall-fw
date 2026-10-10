@@ -23,9 +23,10 @@ firmware adapter instead uses the compiled classic start and goal macros.
 
 `--matrix` accepts multiple `.maze` files and checks all 54 classic mode/case
 profiles. For cases 3--9, which use nominal angles, it compares the objective
-against the existing general PC Dijkstra implementation. Cases 1/2 use the
-actual corrected profile angles, unsupported by that general reference, and
-are checked by independent legacy path replay instead. Tie paths may differ;
+against the existing general PC Dijkstra implementation. Cases 1/2 are checked
+by independent legacy path replay; mode 2 uses corrected profile angles there,
+which the general reference does not support. Modes 3..7 use nominal angles
+through their normal OP entries. Tie paths may differ;
 all successful objective comparisons agree to the microsecond. Only canonical
 orthogonal path codes are accepted by the independent replay.
 
@@ -56,8 +57,10 @@ The workspace is 36,876 bytes, with 3,073 maximum states and no heap allocation.
 The 1,536-byte connector cache is on the foreground stack. The `.su` files under
 the build tree expose static function frames; `check_memory.py` reserves at
 least 8 KiB beyond the original linker reservations and protects the calibration
-sector-9 boundary. The old control, logging, solver and calibration code is
-retained. Linking does not establish hardware behavior.
+sector-9 boundary. The old control, logging and calibration code is retained, and the legacy
+solver remains available in an OFF build. Unused legacy solver arrays are
+discarded by the linker in an enabled build. Linking does not establish
+hardware behavior.
 
 ## API and model contract
 
