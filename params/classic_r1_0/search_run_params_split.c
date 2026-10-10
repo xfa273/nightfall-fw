@@ -32,7 +32,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .wall_end_thr_r_high = 130, .wall_end_thr_r_low = 1,
         .wall_end_thr_l_high = 130, .wall_end_thr_l_low = 1,
 
-        .fan_duty = 100,
+        .fan_duty = 80,
         
         // フラグ
         .wall_align_enable = 1  // 壁合わせ有効
@@ -68,7 +68,7 @@ const SearchRunParams_t searchRunParams[2] = {
         .wall_end_thr_r_high = 130, .wall_end_thr_r_low = 1,
         .wall_end_thr_l_high = 130, .wall_end_thr_l_low = 1,
 
-        .fan_duty = 150,
+        .fan_duty = 110,
         
         // フラグ
         .wall_align_enable = 0  // 壁合わせ無効
