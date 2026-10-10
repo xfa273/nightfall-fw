@@ -15,6 +15,43 @@
 
 現行F413ファームでは、identityは内蔵Flash sector 15、distance/sensor/maze/traceは外付けFRAM backendで運用します。保護セクタ設定は、identity保護と旧暫定運用データの誤消去防止のため維持しています。
 
+## USB-UART経由のF413書き込み（mini_r2 / mini_r3）
+
+機体をUARTブートローダーモード（BOOT0をHighにしてリセット）へ入れてから実行します。
+ポート一覧は `python3 tools/logging/serial_terminal.py --list` で確認できます。
+2026-10-10のmini_r3接続ポートは `/dev/cu.usbserial-55670290851` です。
+同じポートを開いているログキャプチャ・シリアル端末は閉じてください。
+
+リポジトリルートでのビルドと書き込み:
+
+```bash
+cmake --build --preset Debug-stm32f413
+python3 tools/flashing/flash_uart \
+  --port /dev/cu.usbserial-55670290851 \
+  --bin build/Debug/nightfall_stm32f413.bin \
+  --erase app \
+  --timeout 45
+```
+
+初回で `build/Debug` がまだ無い場合は、先に `cmake --preset Debug` を実行します。
+ポート名は接続環境に合わせて変更してください。`--bin` は必ずF413の生成物を指定します
+（省略時の自動選択はF405イメージを優先するため）。
+
+ツールが書き込み用の115200bps・8E1を設定し、アプリが使うsectorだけを消去します。
+F413の保護sector12〜15は通常操作では消去せず、FRAMの校正・迷路・ログにも触れません。
+`--erase all` や `--allow-protected` は通常のFW更新には使用しません。
+`--timeout 45` はブートローダー接続待ち時間で、全書き込みの制限時間ではありません。
+
+通常は転送後にGOコマンドを送ります。ただし2026-10-10のmini_r3ではGOのACK後に
+正常なアプリ応答を確認できなかったため、書き込み後はBOOT0を通常のLowへ戻して
+リセットしてください。アプリのログ通信は921600bps・8N1で、書き込み用の設定とは異なります。
+`--no-go` を付けた場合はブートローダーに留まります。
+
+`flash_uart` の `SUCCESS` は各転送のACK確認までで、読み戻し比較は行いません。
+2026-10-10の実機作業では `--no-go` で転送後、別途CubeProgrammerのUART読み取りで
+アプリ全体の完全一致と機体ID領域の保持を確認しています。起動確認も含む実機結果は
+`docs/ai/WORKLOG.md` に記録します。
+
 ## ST-LINK V3 MINIE 経由のF413書き込み
 
 CubeProgrammerのCLI (`STM32_Programmer_CLI`) を使い、SWD経由で `build/Debug/nightfall_stm32f413.elf` を書き込みます。

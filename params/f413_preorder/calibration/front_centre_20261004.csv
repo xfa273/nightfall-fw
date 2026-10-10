@@ -1,0 +1,20 @@
+# User-supplied mini_r2 front-wall sweep, accepted 2026-10-04.
+# distance_mm is body-centre-to-wall distance, as explicitly confirmed by user.
+# UART column order; use FR/FL only. R/L are not lateral calibration knots.
+# Preserve supplied deltas; no additional offset subtraction or smoothing.
+distance_mm,fr_delta,fl_delta,r_delta,l_delta
+40,1922,2442,2604,2329
+45,1421,1816,1400,1396
+50,1058,1374,724,736
+55,799,1072,373,398
+60,621,861,146,180
+65,490,701,58,77
+70,402,576,12,33
+75,331,483,8,18
+80,277,409,8,17
+85,237,351,8,17
+90,199,306,8,17
+95,174,266,8,17
+100,149,234,8,17
+105,130,208,8,17
+110,112,185,8,17
