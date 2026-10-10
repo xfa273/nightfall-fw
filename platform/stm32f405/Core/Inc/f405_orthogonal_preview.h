@@ -11,6 +11,11 @@ NfRoutePlanStatus f405_orthogonal_preview(uint8_t mode, uint8_t case_index,
     const uint8_t *map_cells, size_t cell_count,
     uint16_t *output, size_t capacity, NfCompactResult *result);
 
+/* Runtime entry: use the actual angle-accumulation flag, not the OP label. */
+NfRoutePlanStatus f405_orthogonal_plan(uint8_t mode, uint8_t case_index, bool nominal_angles,
+    const uint8_t *map_cells, size_t cell_count,
+    uint16_t *output, size_t capacity, NfCompactResult *result);
+
 /* Public for host inspection/differential tests; no run parameters modified. */
 bool f405_orthogonal_config(uint8_t mode, uint8_t case_index,
                             NfOrthogonalPlannerConfig *config);

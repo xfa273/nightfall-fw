@@ -24,11 +24,11 @@ bool f405_orthogonal_config(uint8_t mode, uint8_t case_index,
             .accel_low_mm_s2=p->acceleration_straight,.accel_high_mm_s2=p->acceleration_straight_dash},
         .turn_environment={.omega_cap_deg_s=0,.rounding_scale=TURN_OMEGA_PROFILE_ROUNDING_SCALE},
         .small_90={true,m->velocity_turn90,m->alpha_turn90,
-            case_index<=2?m->angle_turn_90:90,m->dist_offset_in,m->dist_offset_out},
+            (mode==2 && case_index<=2)?m->angle_turn_90:90,m->dist_offset_in,m->dist_offset_out},
         .large_90={true,m->velocity_l_turn_90,m->alpha_l_turn_90,
-            case_index<=2?m->angle_l_turn_90:90,m->dist_l_turn_in_90,m->dist_l_turn_out_90},
+            (mode==2 && case_index<=2)?m->angle_l_turn_90:90,m->dist_l_turn_in_90,m->dist_l_turn_out_90},
         .large_180={true,m->velocity_l_turn_180,m->alpha_l_turn_180,
-            case_index<=2?m->angle_l_turn_180:180,m->dist_l_turn_in_180,m->dist_l_turn_out_180},
+            (mode==2 && case_index<=2)?m->angle_l_turn_180:180,m->dist_l_turn_in_180,m->dist_l_turn_out_180},
         .allow_large_turns=(case_index==1?m->makepath_type_case3:m->makepath_type_case47)>0};
     return true;
 }
@@ -39,7 +39,7 @@ static bool overlaps(const void *a,size_t na,const void *b,size_t nb)
     return x<=y ? y-x<na : x-y<nb;
 }
 
-NfRoutePlanStatus f405_orthogonal_preview(uint8_t mode,uint8_t case_index,
+NfRoutePlanStatus f405_orthogonal_plan(uint8_t mode,uint8_t case_index, bool nominal_angles,
     const uint8_t *map_cells,size_t cell_count,
     uint16_t *output,size_t capacity,NfCompactResult *result)
 {
@@ -49,6 +49,16 @@ NfRoutePlanStatus f405_orthogonal_preview(uint8_t mode,uint8_t case_index,
         overlaps(map_cells,cell_count,output,capacity*sizeof(*output)) ||
         overlaps(map_cells,cell_count,result,sizeof(*result)) ||
         !f405_orthogonal_config(mode,case_index,&config)) return NF_ROUTE_PLAN_INVALID_ARGUMENT;
+    if (nominal_angles) {
+        config.small_90.angle_deg=90; config.large_90.angle_deg=90; config.large_180.angle_deg=180;
+    } else {
+        const ShortestRunModeParams_t *modes[]={&shortestRunModeParams2,&shortestRunModeParams3,
+            &shortestRunModeParams4,&shortestRunModeParams5,&shortestRunModeParams6,&shortestRunModeParams7};
+        const ShortestRunModeParams_t *m=modes[mode-2];
+        config.small_90.angle_deg=m->angle_turn_90;
+        config.large_90.angle_deg=m->angle_l_turn_90;
+        config.large_180.angle_deg=m->angle_l_turn_180;
+    }
     memset(&maze,0,sizeof(maze)); maze.width=MAZE_SIZE; maze.height=MAZE_SIZE;
     for (unsigned y=0;y<MAZE_SIZE;++y) for (unsigned x=0;x<MAZE_SIZE;++x) {
         uint8_t value=map_cells[y*MAZE_SIZE+x];
@@ -77,4 +87,12 @@ NfRoutePlanStatus f405_orthogonal_preview(uint8_t mode,uint8_t case_index,
     }
     NfOrthogonalPlannerRequest request={START_X,START_Y,NF_ROUTE_DIR_NORTH};
     return nf_compact_orthogonal_plan(&maze,&config,&request,&workspace,output,capacity,result);
+}
+
+NfRoutePlanStatus f405_orthogonal_preview(uint8_t mode,uint8_t case_index,
+    const uint8_t *map_cells,size_t cell_count,
+    uint16_t *output,size_t capacity,NfCompactResult *result)
+{
+    return f405_orthogonal_plan(mode,case_index,mode!=2 || case_index>2,
+        map_cells,cell_count,output,capacity,result);
 }

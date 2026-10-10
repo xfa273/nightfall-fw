@@ -47,3 +47,15 @@ F413 development records remain in the original worktree and are not imported.
 - 他の走行パラメータ・制御コードは変更なし。時間ベース経路導出はこのブランチには未導入。
 - 検証: `cmake --build --preset Release --target nightfall_classic_r1_0` 成功（既存ビルドが最新）、`git diff --check` 成功。
 - 今回の保存作業では実機への書込み、モータ・ファン操作、NVM 操作なし。
+
+
+## 2026-10-10: classic時間ベース経路を最短走行へ接続
+
+- ユーザが実走行に問題なしと報告し、以前用意した直交時間プランナの適用を依頼。ファン調整済み `664d880` を取り込んだ。
+- classicのみ既定ON。既存solver入口を接続し、16bit map変換、実際の角度積算フラグ、失敗時path全消去、時間/経路表示を追加。小回り＋大回り、斜めなし。走行/制御/探索/OP/params/NVMは保存点のまま。miniと明示OFFは旧solver。
+- 公称コストモデルは維持。旧runnerとの時間・加速度差は明記し、既知の19 no-pathを自動緩和しない。新経路の物理的安全性と実時間最小性はホスト試験だけでは確認できない。
+- ASan/UBSan: compact 6,137 / 242参照比較、motion 1,195、9歴史迷路×54設定で467経路/19経路なし・378参照比較PASS。本番run/solverを使う駆動スタブ試験258,045チェックPASS（54設定、壁切れ有無、角度切替、失敗停止、斜め未呼出し、終端停止）。
+- Release classic/mini、新/旧solverビルドPASS。classic時間版RAM104,888 B / CCM60,024 B、RAM余裕26,184 B、Flash約186 KB。sector0..5の範囲に収まり、校正sector9を保護するビルド後検査PASS。
+- ビルドメタ情報を毎回生成し、worktree/新経路ソース/commit更新で古いSHAが残る問題を回避。
+- 実機接続・書込み・モータ/ファン操作・NVM操作なし。新経路の実機計算時間・スタック最大使用量・実走確認は未実施。
+- 再調整worktreeへの適用と両branchのpushで保存。詳細は `docs/CLASSIC_R1_2026_PREPARATION.md` と `tools/f405_time_planner/README.md`。

@@ -14,7 +14,8 @@ void solver_run(uint8_t mode, uint8_t case_index);
 
 // 最短走行で使用する経路を生成（path[] と path_cell[] を設定）
 // - map->maze の構築を内部で行います
-// - 生成後は simplifyPath(), convertLTurn(), convertDiagonal() など従来の後段処理を利用可能
+// - classic時間版は完成済み直交パスを返すため、追加の変換処理は行わない
+// - 時間版OFF/miniは従来の変換処理を内部で実施する
 // - 経路生成成功時 true、失敗時 false を返す
 bool solver_build_path(uint8_t mode, uint8_t case_index);
 

@@ -82,8 +82,10 @@ function(nightfall_add_firmware target variant variant_define)
         list(APPEND _git_deps "${CMAKE_SOURCE_DIR}/.git/packed-refs")
     endif()
 
-    add_custom_command(
-        OUTPUT ${build_info_h}
+    # .git is a file in linked worktrees. Regenerate on every build so HEAD,
+    # dirty state and newly added planner sources cannot leave stale metadata.
+    add_custom_target(build_info_${target}
+        BYPRODUCTS ${build_info_h}
         COMMAND ${CMAKE_COMMAND}
             -DOUTPUT_FILE=${build_info_h}
             -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
@@ -96,7 +98,6 @@ function(nightfall_add_firmware target variant variant_define)
         COMMENT "Generating build_info.h for ${target}"
     )
 
-    add_custom_target(build_info_${target} DEPENDS ${build_info_h})
     add_dependencies(${target} build_info_${target})
 
     target_sources(${target} PRIVATE ${NIGHTFALL_USER_SOURCES} ${_variant_src})
@@ -133,10 +134,14 @@ endfunction()
 nightfall_add_firmware(nightfall_mini_r1_0 mini_r1_0 ROBOT_MINI_R1_0)
 nightfall_add_firmware(nightfall_classic_r1_0 classic_r1_0 ROBOT_CLASSIC_R1_0)
 
-# Host-qualified preview only. The competition baseline and run_shortest()
-# remain unchanged until baseline HIL and explicit planner integration.
+# Classic only: retain the legacy solver as an explicit build-time fallback.
 option(NIGHTFALL_F405_ORTHOGONAL_PREVIEW "Link the 16x16 classic time planner preview" OFF)
-if(NIGHTFALL_F405_ORTHOGONAL_PREVIEW)
+option(NIGHTFALL_CLASSIC_TIME_PLANNER "Use orthogonal time planning for classic shortest runs" ON)
+if(NIGHTFALL_CLASSIC_TIME_PLANNER)
+    target_compile_definitions(nightfall_classic_r1_0 PRIVATE NIGHTFALL_CLASSIC_TIME_PLANNER=1)
+    target_sources(nightfall_classic_r1_0 PRIVATE platform/stm32f405/Core/Src/f405_time_path.c)
+endif()
+if(NIGHTFALL_F405_ORTHOGONAL_PREVIEW OR NIGHTFALL_CLASSIC_TIME_PLANNER)
     target_sources(nightfall_classic_r1_0 PRIVATE
         common/route/compact_orthogonal.c
         common/route/motion_time.c

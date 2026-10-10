@@ -1,9 +1,9 @@
-# F405 classic orthogonal time planner preview
+# F405 classic orthogonal time planner
 
 A fixed-memory, allocation-free 16x16 planner prepared on the `v1.0.0` classic
 competition baseline. It emits only straight, small 90, large 90 and large 180
-legacy path codes. Normal firmware still calls the original solver. This is a
-**preview API**, not an enabled motion mode. See
+legacy path codes. Classic shortest runs now use it by default via
+`solver_build_path()`. Mini retains the original solver. See
 [the preparation and hardware return plan](../../docs/CLASSIC_R1_2026_PREPARATION.md).
 
 ## Run host checks
@@ -11,6 +11,7 @@ legacy path codes. Normal firmware still calls the original solver. This is a
 ```sh
 tools/f405_time_planner/run.sh
 tools/solver_host/run_route_motion_tests.sh
+tools/f405_time_planner/run_integration.sh
 tools/f405_time_planner/run.sh tools/solver_host/testdata/16MM2014CX_kerilab.maze 2 4
 tools/f405_time_planner/run.sh --matrix tools/solver_host/testdata/16MM2014CX_kerilab.maze
 ```
@@ -44,9 +45,11 @@ cmake -S . -B build/classic-preview -G Ninja \
 cmake --build build/classic-preview --target nightfall_classic_r1_0
 ```
 
-The option defaults to OFF. When ON, the linker explicitly retains
+`NIGHTFALL_CLASSIC_TIME_PLANNER` defaults to ON for classic.
+`NIGHTFALL_F405_ORTHOGONAL_PREVIEW` remains an optional link-only switch (OFF).
+When either is ON, the linker explicitly retains
 `f405_orthogonal_preview`; memory figures therefore include the real planner
-workspace and code, even though no OP/UART/run entry invokes it. Mini's binary
+workspace and code. Mini's binary
 remains unaffected. There is no 32x32 compact implementation in this branch.
 
 The workspace is 36,876 bytes, with 3,073 maximum states and no heap allocation.
@@ -65,12 +68,15 @@ classic profile. It takes map bytes supplied by the caller and performs no
 NVM read/write, peripheral access or motion. Do not pass the active runner's
 path buffer while moving. Input/output/result regions must be disjoint.
 
-Success means a **nominal-model plan** was derived and encoded. It does not
-qualify that path for motor execution. Costs use first goal entry; output may
-continue along a known corridor to stop. Time equivalence to the original
-F405 runner's per-code acceleration/wall-end/terminal logic is not asserted.
-That adapter validation precedes future motion integration; it is intentionally
-not hidden behind an automatic switch to this planner.
+Success means a **nominal-model plan** was derived and encoded. Costs use first
+goal entry; output may continue along a known corridor to stop. Time equivalence
+to the original F405 runner's per-code acceleration/wall-end/terminal logic is
+not asserted. The production integration check runs the real `run_shortest`,
+`solver_build_path`, and `run` with drive/HAL primitives stubbed. It checks
+load/conversion of the 16-bit map, canonical dispatch, zero-speed termination,
+no diagonal calls and no motor/fan start after planning failure. It does not
+simulate controller dynamics or sensor correction. New-route hardware timing,
+clearance and floor running still require validation.
 
 Unknown and contradictory walls are closed by the F405 adapter. An already
 satisfied goal yields an empty path; the caller must not start a run. Failures
@@ -93,3 +99,36 @@ Only `motion_time.c` enters the optional MCU target. The compact implementation
 uses separate packed storage, queue, parent reconstruction and validation.
 The common motion arithmetic is deliberately shared, so differential tests
 establish search/encoding agreement, not independent physical model validation.
+
+## Use on the retuning branch
+
+```sh
+cd /Users/xfa273/workspace/micromouse/nightfall-fw-classic-baseline
+cmake --preset Release -DNIGHTFALL_CLASSIC_TIME_PLANNER=ON
+cmake --build --preset Release --target nightfall_classic_r1_0
+```
+
+After a successful build, use the existing USB-UART procedure. The integrated
+image is below 256 KiB, so the previously used sector 0..5 erase range still
+covers it. No device was flashed as part of integration.
+
+`[TimePath]` reports the nominal goal/stop times, computation milliseconds,
+expanded state count, goal, stopping extension and path codes. Failure clears
+all of `path[]`, reports the status and enters the existing pre-run error halt.
+Unknown/contradictory walls are closed. Cases 8/9 also remain orthogonal; no
+additional diagonal conversion is applied. Small-turn-only cases retain their
+existing restriction. The real angle-accumulation flag selects nominal versus
+corrected angles; mode 3..7 cases 1/2 also use nominal angles through the OP UI.
+
+The 19 previously documented 2015-maze no-path cases still reject the run.
+Acceleration is not relaxed and there is no silent speed/solver fallback.
+
+For an explicit comparison with the legacy solver, use a separate build:
+
+```sh
+cmake -S . -B build/classic-legacy -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DNIGHTFALL_CLASSIC_TIME_PLANNER=OFF -DNIGHTFALL_F405_ORTHOGONAL_PREVIEW=OFF
+cmake --build build/classic-legacy --target nightfall_classic_r1_0
+```
+
+The pre-integration, user-validated tuning is retained at commit `664d880`.
