@@ -59,3 +59,13 @@ F413 development records remain in the original worktree and are not imported.
 - ビルドメタ情報を毎回生成し、worktree/新経路ソース/commit更新で古いSHAが残る問題を回避。
 - 実機接続・書込み・モータ/ファン操作・NVM操作なし。新経路の実機計算時間・スタック最大使用量・実走確認は未実施。
 - 再調整worktreeへの適用と両branchのpushで保存。詳細は `docs/CLASSIC_R1_2026_PREPARATION.md` と `tools/f405_time_planner/README.md`。
+
+
+## 2026-10-10: 時間ベース経路の実走成功を保存
+
+- ユーザが適用後「上手くいきました」と報告し、ここまでの保存を依頼。
+- FWソース `5cf9f7d0e5e037833df84eb5a3c150fc720eebb7`、探索fan duty 80/110、時間プランナONを固定。追加のソース・params変更なし。
+- 保存点 `stable/classic/unit001/s20261010-classic-r1-time-planner/` と同名タグにmanifest、運用参照設定、ユーザ報告・検証範囲を記録。
+- ローカルbuildのBIN/ELF/HEX/build_infoを `../classic-r1-backups/s20261010-classic-r1-time-planner/` へコピーし、全ハッシュ一致を確認。BIN 185488 B / SHA256 `d32887b86e683894baa95f2b68b21b0725a3316127013a427f98658fafee412f`、埋込み5cf9f7d/dirty0。現在の実機ROMとの照合は未実施。
+- 実走のmode/case/コース/回数は未指定。既知19 no-path、実時間モデル差、実機計算時間・stack最大値未測定は継続。
+- 文書・保存情報のみのため再ビルドせず、既存成果物を保持。実機接続・モータ・ファン・NVM操作なし。
