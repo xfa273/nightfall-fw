@@ -1,0 +1,43 @@
+# JLCPCB BOM mapping for mini_r2_0 (HM_Nightfall-mini-2e main + Encoder-PCB-L/R).
+# Columns: ref_pattern, value, footprint, mpn, lcsc, status, note
+# A row matches a footprint when: ref_pattern is empty or matches the reference,
+# value is empty or equals the footprint value, and footprint is empty or is a
+# substring of the footprint name (trailing "_<digits>" export suffix stripped).
+# The first matching row wins, so keep the ref-specific rows before the passive rows.
+# status:
+#   ok   = LCSC carries the designed part
+#   alt  = substituted with an in-stock equivalent (the note says why)
+#   none = LCSC does not carry it: buy elsewhere, hand-solder or ship to JLCPCB
+#   prop = proposal the user must confirm (LED colour)
+# An empty LCSC code means no C-code, so JLCPCB lists that line as a
+# customer-supplied part.  LCSC stock numbers were read from the LCSC product
+# pages on 2026-10-11 and are planning information only - re-check at order time.
+IR_LED,,,SFH 4550,C2900376,ok,OSRAM 950nm IR LED, T-1 3/4 (3mm) 2.54mm pitch. LCSC stock 2473
+PT,,,ST-1KL3A,,none,KODENSHI phototransistor, TO-18 2-pin 2.54mm pitch. Not carried by LCSC, buy in Japan
+^LED\d+$,,,LTST-C190KFKT,C157740,prop,0603 orange LED; the colour is a proposal only, the board data carries none. LCSC stock 45600
+^P-LED\d*$,,,LTST-C190KFKT,C157740,prop,0603 orange LED; the colour is a proposal only, the board data carries none. LCSC stock 45600
+^U5$,,,STM32F413CHU6TR,C3227331,ok,UFQFPN-48. LCSC stock 0 on 2026-10-11 (tray part C1337761 had 5). Expect long lead
+,MP6551GQB-P,,MP6551GQB-P,,none,MPS motor driver. LCSC search returns 0 hits, source separately and ship to JLCPCB
+,ISM330DHCXTR,,ISM330DHCXTR,C2655101,ok,LCSC stock 640
+,CY15B108QI-20LPXC,,CY15B108QI-20LPXC,C2948632,ok,GQFN-8 FRAM. LCSC stock 0 on 2026-10-11. Long lead or FRAM substitute
+,2N7002TQ-7-F,,2N7002T,C22466871,alt,GOODWORK 2N7002T SOT-523 in stock 29000 replaces design MPN 2N7002TQ-7-F (C526327) whose LCSC stock was 0 on 2026-10-11
+,IRLML6402TRPBF,,IRLML6402TRPBF,C2593,ok,SOT-23 fan MOSFET. LCSC stock 1482
+,BAS16WT1GW,,BAS16WT1G,C157565,ok,SOT-323 switch diode. LCSC stock 100
+,AP2210N-3.3TRG1,,AP2210N-3.3TRG1,,none,Diodes Inc 3.3V LDO, SOT-223. LCSC search returns 0 hits, ship to JLCPCB
+,TL6330AF200Q,,TL6330AF200Q,,none,E-Switch tactile switch. LCSC 0 hits, footprint is part-specific
+,EG1215AA,,EG1215AA,,none,Slide power switch. LCSC 0 hits, footprint is part-specific
+,SMT-0540-S-R,,SMT-0540-S-R,,none,Kingstate SMT buzzer. LCSC 0 hits
+,62201021121,,HX PZ1.27-2x5P TP,C41376037,alt,hanxia 1.27mm 2x5 male header in stock 41490 replaces Wurth 62201021121 which is not carried by LCSC. Verify pitch/rows against the footprint before ordering
+^P1$,,,,B2B-PH-K-S(LF)(SN),C131337,ok,JST PH 2.0mm 2-pos through-hole header. LCSC stock 336300
+^IC\d$,,,NJL5820R-TE4,C3271782,ok,Nisshinbo reflective encoder sensor. LCSC stock 1 on 2026-10-11
+,0.1u,C0402,CC0402KRX7R8BB104,C105883,alt,Yageo 0402 100nF X7R 16V, LCSC stock 1247500. Design MPN CL05B104KO5NNNC (C1525) showed LCSC stock 0 on 2026-10-11
+,2.2u,C0402,CL05A225KA5NUNC,C307418,ok,LCSC stock 543120
+,4.7u,C0402,CL05A475MQ5NRNC,C307423,ok,LCSC stock 438500
+,10u,C0402,CL05A106MQ5NUNC,C15525,ok,LCSC stock 5995600
+,1u,C0402,CL05A105KP5NNNC,C14445,ok,LCSC stock 759100
+,0,R0402,RC0402JR-070RL,C60485,ok,Zero-ohm jumper. LCSC stock 8217700
+,10,R0402,RC0402FR-0710RL,C138066,ok,IR LED series resistor. LCSC stock 902700
+,1k,R0402,HP02WAF1001TCE,C2759536,alt,Uniroyal 0402 1k, LCSC stock 17600. Design MPN 0402WGF1001TCE (C11702) had stock 0
+,10k,R0402,RC0402FR-0710KL,C60490,ok,LCSC stock 3973900
+,22k,R0402,0402WGF2202TCE,C25768,ok,Uniroyal 0402 22k. LCSC stock 57000
+,180,R0402,RC0402FR-07180RL,C138045,ok,Encoder board LED resistor. LCSC stock 165000
