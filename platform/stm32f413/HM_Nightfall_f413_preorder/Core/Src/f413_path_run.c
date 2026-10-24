@@ -2450,6 +2450,7 @@ void f413_path_run_session_once(uint8_t mode,
   if (path[0] == 0U)
   {
     trace_printf("[RUN-TEST] path canceled(empty path)\r\n");
+    f413_hw_show_run_failure();
     return;
   }
   preflight = f413_path_run_preflight_prepare(
@@ -2464,6 +2465,7 @@ void f413_path_run_session_once(uint8_t mode,
         nf_legacy_path_status_name(preflight.legacy_status),
         (unsigned long)preflight.index,
         (unsigned int)preflight.code);
+    f413_hw_show_run_failure();
     return;
   }
   trace_printf("[RUN-TEST] path session start %s mode=%u case=%u v=%.0f diag_v=%.0f omega_max=%.0f stop_mm=%.3f, press switch to abort\r\n",
@@ -2478,6 +2480,7 @@ void f413_path_run_session_once(uint8_t mode,
   if (!f413_path_run_print_turn_profiles_before_run(mode_params))
   {
     trace_printf("[RUN-TEST] path canceled(turn profile preparation failed)\r\n");
+    f413_hw_show_run_failure();
     return;
   }
 
@@ -2759,6 +2762,11 @@ cleanup:
   f413_path_run_trace_on_run_stop();
   f413_run_session_guard_cleanup(&guard);
 
+  if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
+  {
+    f413_hw_show_run_failure();
+  }
+
   if (abort_reason == F413_RUN_SESSION_ABORT_SWITCH)
   {
     trace_printf("[RUN-TEST] path aborted by switch at code[%u]\r\n", (unsigned int)pi);
@@ -2798,11 +2806,13 @@ void f413_path_run_custom_path_session_once(const char* label,
   if ((codes == NULL) || (code_count == 0U))
   {
     trace_printf("[OP-UI][PATH-TEST] no sequence\r\n");
+    f413_hw_show_run_failure();
     return;
   }
   if (code_count >= NIGHTFALL_F413_PATH_MAX_CODES)
   {
     trace_printf("[OP-UI][PATH-TEST] too many codes(%u)\r\n", (unsigned int)code_count);
+    f413_hw_show_run_failure();
     return;
   }
 

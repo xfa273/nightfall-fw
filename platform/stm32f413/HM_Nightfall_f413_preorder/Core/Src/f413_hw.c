@@ -1,4 +1,5 @@
 #include "f413_hw.h"
+#include "f413_control.h"
 #include "f413_motor_pwm.h"
 
 #include "main.h"
@@ -80,6 +81,44 @@ void f413_hw_show_mode_leds(uint8_t mode)
   HAL_GPIO_WritePin(LED_1_GPIO_Port, LED_1_Pin, (mode & 0x01U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_2_GPIO_Port, LED_2_Pin, (mode & 0x02U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
   HAL_GPIO_WritePin(LED_3_GPIO_Port, LED_3_Pin, (mode & 0x04U) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+}
+
+void f413_hw_delay_before_run(uint32_t duration_ms)
+{
+  f413_hw_delay_with_led_blink((ENABLE_AUTO_VIDEO_CAPTURE == 0U)
+                                 ? F413_HW_LED_1_MASK : F413_HW_LED_REAR_RIGHT_MASK,
+                               duration_ms, F413_HW_LED_BLINK_TOGGLE_MS);
+}
+
+void f413_hw_show_wall_status_leds(bool valid, bool front, bool right, bool left)
+{
+  if (ENABLE_AUTO_VIDEO_CAPTURE != 0U)
+  {
+    return;
+  }
+
+  const uint8_t mask = valid
+      ? (uint8_t)((front ? F413_HW_LED_1_MASK : 0U) |
+                  (right ? F413_HW_LED_REAR_RIGHT_MASK : 0U) |
+                  (left ? F413_HW_LED_REAR_LEFT_MASK : 0U))
+      : 0U;
+  f413_hw_show_led_mask(mask);
+}
+
+void f413_hw_show_run_failure(void)
+{
+  if ((ENABLE_AUTO_VIDEO_CAPTURE != 0U) || f413_ctrl_is_running() ||
+      f413_hw_fan_is_running())
+  {
+    return;
+  }
+  for (uint8_t i = 0U; i < 10U; i++)
+  {
+    f413_hw_show_led_mask(F413_HW_LED_1_MASK);
+    HAL_Delay(70U);
+    f413_hw_show_led_mask(0U);
+    HAL_Delay(70U);
+  }
 }
 
 static void f413_hw_emit_video_sync_pattern(uint32_t payload_on_ms)

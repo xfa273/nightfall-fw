@@ -8,6 +8,23 @@ Builds and host-only tools are always allowed. Live hardware actions are allowed
 
 If a command can move motors, spin the fan, erase/write persistent NVM, overwrite identity/calibration/map data, or run search/shortest motion, stop and make sure the current user request explicitly calls for that class of operation.
 
+### Powered debugger / USB reconnect incident (2026-10-18)
+
+With mini_r3 running `fe78a5c DIRTY=1`, reconnecting the Mac-side USB of
+Anker 547 -> STLINK-V3MINIE while target power remained on caused unexpected
+wheel rotation, reported by the user. Saved trace confirms a new mode1/case4
+step with motor output; the maze was also updated. No host motion command was
+sent. The user reports the same symptom on earlier powered reconnects.
+
+Until a firmware command guard is implemented and validated, ordinary cable
+changes must be performed with target power OFF and probe target-power output
+disabled. Do not classify a powered reconnect as a green read-only action.
+Intentional reproduction requires explicit lifted/secured motor-test approval
+and consideration of maze/log writes; do not reproduce it merely to finish USB
+checks. Successful flash verification does not qualify powered hot-plug safety.
+The existing `[NVM-GUARD] LOCKED` diagnostic guard does not guard UART motion or
+normal run-related NVM writes. See WORKLOG `20261018-usb-p-reconnect-motion`.
+
 ### Destructive diagnostic build guard (2026-09-06)
 
 Normal F413 builds now reject `a/d/s/m/t/q/Q/r/k` before diagnostic writes or

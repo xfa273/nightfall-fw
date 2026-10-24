@@ -39,5 +39,6 @@ const f413_param_profile_t f413_profile_mini_r2 = {
   .modes = {&mini_r2_mode2, &mini_r2_mode3, &mini_r2_mode4, &mini_r2_mode5, &mini_r2_mode6, &mini_r2_mode7},
   .cases = {mini_r2_cases2, mini_r2_cases3, mini_r2_cases4, mini_r2_cases5, mini_r2_cases6, mini_r2_cases7},
   .route_precomputed_compatible = true,
+  .front_distance_body_centre = true,
   .load_sensor_luts = mini_r2_load_sensor_luts
 };

@@ -18,7 +18,12 @@ void f413_hw_set_all_leds(GPIO_PinState state);
 void f413_hw_show_led_mask(uint8_t mask);
 void f413_hw_show_led_blink(uint8_t mask, uint32_t now_ms, uint32_t toggle_ms);
 void f413_hw_delay_with_led_blink(uint8_t mask, uint32_t duration_ms, uint32_t toggle_ms);
+void f413_hw_delay_before_run(uint32_t duration_ms);
 void f413_hw_show_mode_leds(uint8_t mode);
+/* Manual-run/diagnostic wall indication; capture ON leaves the LEDs alone. */
+void f413_hw_show_wall_status_leds(bool valid, bool front, bool right, bool left);
+/* Ten front-LED flashes, only with capture OFF and drive/fan stopped. */
+void f413_hw_show_run_failure(void);
 /* No LED writes or delays when ENABLE_AUTO_VIDEO_CAPTURE is off. */
 void f413_hw_emit_video_sync_start_pattern(void);
 void f413_hw_emit_video_sync_stop_pattern(void);

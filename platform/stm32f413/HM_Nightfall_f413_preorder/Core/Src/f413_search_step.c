@@ -4414,6 +4414,10 @@ void f413_search_step_run_config_once(uint8_t op_case,
                (abort_reason != F413_RUN_SESSION_ABORT_NONE)
                    ? f413_run_session_abort_reason_to_text(abort_reason)
                    : "");
+  if (route_failed || (abort_reason != F413_RUN_SESSION_ABORT_NONE))
+  {
+    f413_hw_show_run_failure();
+  }
 }
 
 void f413_search_step_run_search_case_once(uint8_t op_case)
