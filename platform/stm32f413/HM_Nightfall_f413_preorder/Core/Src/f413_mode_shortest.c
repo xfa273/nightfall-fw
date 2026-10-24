@@ -4,6 +4,7 @@
 #include <stddef.h>
 
 #include "f413_path_run.h"
+#include "f413_hw.h"
 #include "f413_route_preview.h"
 #include "f413_run_features.h"
 #include "f413_trace_flags.h"
@@ -131,6 +132,7 @@ void f413_mode_shortest_run_config(const f413_shortest_case_config_t* config)
   if (config == NULL)
   {
     trace_printf("[RUN-TEST] shortest config missing\r\n");
+    f413_hw_show_run_failure();
     return;
   }
 
@@ -154,6 +156,7 @@ void f413_mode_shortest_run_config(const f413_shortest_case_config_t* config)
     trace_printf("[RUN-TEST] no path for shortest mode=%u case=%u\r\n",
                  (unsigned int)config->mode,
                  (unsigned int)config->op_case);
+    f413_hw_show_run_failure();
   }
   f413_run_features_reset();
 #else
@@ -213,6 +216,7 @@ void f413_mode_shortest_run_path_config(const char* label,
   {
     trace_printf("[OP-UI][PATH-TEST] rejected %s (features missing)\r\n",
                  (label != NULL) ? label : "unnamed");
+    f413_hw_show_run_failure();
     return;
   }
   if (validation != F413_CASE0_PATH_VALID)
@@ -225,6 +229,7 @@ void f413_mode_shortest_run_path_config(const char* label,
                  (unsigned int)invalid_index,
                  (unsigned int)invalid_code,
                  f413_mode_shortest_case0_validation_text(validation));
+    f413_hw_show_run_failure();
     return;
   }
 
