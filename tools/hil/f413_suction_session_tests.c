@@ -71,6 +71,7 @@ bool f413_hw_fan_set_duty(uint16_t duty)
   return true;
 }
 void f413_hw_fan_stop(void) { assert(!running); fan_stop_tick = tick; fan_stops++; fan = false; }
+void f413_hw_show_run_failure(void) { assert(!running && !fan && !tracing); }
 void f413_hw_emit_video_sync_start_pattern(void)
 { assert(ENABLE_AUTO_VIDEO_CAPTURE && !running && !fan); video_starts++; tick += 9750U; }
 void f413_hw_emit_video_sync_stop_pattern(void)

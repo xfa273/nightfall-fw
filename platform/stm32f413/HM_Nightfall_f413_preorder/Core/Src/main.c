@@ -592,6 +592,8 @@ static void nightfall_run_wall_sensor_monitor_once(void)
 
     if (nightfall_wall_sensor_read_snapshot(&wall))
     {
+      f413_hw_show_wall_status_leds(!wall.saturated,
+                                    wall.front_wall, wall.right_wall, wall.left_wall);
       trace_printf("[HW-TEST][Wall] t=%lu off R=%u L=%u FR=%u FL=%u on R=%u L=%u FR=%u FL=%u d R=%ld L=%ld FR=%ld FL=%ld det F=%u R=%u L=%u sat=%u VB=%u\r\n",
                    (unsigned long)HAL_GetTick(),
                    (unsigned int)wall.r_off,
@@ -614,6 +616,7 @@ static void nightfall_run_wall_sensor_monitor_once(void)
     }
     else
     {
+      f413_hw_show_wall_status_leds(false, false, false, false);
       trace_printf("[HW-TEST][Wall] FAIL(read snapshot)\r\n");
     }
 
@@ -734,7 +737,7 @@ static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
   f413_test_run_clear_arm();
   f413_trace_sample_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_test_run_run_now(test_id);
 }
 
@@ -793,13 +796,13 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
   }
 
   f413_trace_sample_set_context(9U, 0U, sub, (uint8_t)'0');
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_control_tune_run_once(axis, set, pattern);
 }
 static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 {
   f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
 
   switch (mode)
   {
@@ -835,13 +838,13 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
   {
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_search_trace_entry_once();
       f413_op_ui_lock_after_run_end();
       break;
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_shortest_trace_entry_once(mode, op_case);
       f413_op_ui_lock_after_run_end();
       break;
@@ -864,7 +867,8 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       nightfall_run_encoder_test_once();
       break;
     case F413_OP_UI_ACTION_WALL_SENSOR_TEST:
-      if ((mode == 9U) && (op_case == 3U))
+      if ((mode == 9U) && ((op_case == 3U) ||
+          ((op_case == 6U) && (ENABLE_AUTO_VIDEO_CAPTURE == 0U))))
       {
         nightfall_run_wall_sensor_monitor_once();
       }
@@ -902,12 +906,12 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       break;
     case F413_OP_UI_ACTION_SEARCH_CASE0_SUB:
       f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'T');
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       f413_mode1_run_case0_sub(sub);
       break;
     case F413_OP_UI_ACTION_SEARCH_RUN_CASE:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       f413_mode1_run_case(op_case);
       f413_op_ui_lock_after_run_end();
       break;
@@ -1035,8 +1039,12 @@ static bool nightfall_run_session_wall_sensor_ok(void)
 
   if (!nightfall_wall_sensor_read_snapshot(&wall))
   {
+    f413_hw_show_wall_status_leds(false, false, false, false);
     return false;
   }
+  /* Reuse the foreground guard sample: no extra ADC work, ISR or delay. */
+  f413_hw_show_wall_status_leds(!wall.saturated,
+                                wall.front_wall, wall.right_wall, wall.left_wall);
   return !wall.saturated;
 }
 
