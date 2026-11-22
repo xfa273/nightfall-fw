@@ -29,17 +29,17 @@
     <section>
       <label>迷路規格<select id="maze"><option value="half">ハーフ</option><option value="classic">クラシック</option></select></label>
       <p id="dimensions"></p>
-      <label>横位置 x［mm］・中心線から外側<input id="x" type="number" min="0" step="any" value="6"></label>
+      <label>右壁を見るセンサの横位置 x［mm］<br>右が正、左が負（クロス配置）<input id="x" type="number" step="any" value="6"></label>
       <label>前後位置 y［mm］・前方が正<input id="y" type="number" step="any" value="18"></label>
       <label>前倒し距離 Δy［mm］・0 で区画中心<input id="advance" type="number" min="0" step="any" value="0"></label>
       <label>光帯の全幅 w［mm］<input id="width" type="number" min="0" step="any" value="3"></label>
-      <div>前方軸から外向きの角度 θ</div>
+      <div>前方軸から右壁側への角度 θ</div>
       <output id="angle" aria-live="polite"></output>
       <p id="error" role="status"></p>
     </section>
     <figure>
-      <svg id="plan" role="img" aria-label="判定時の平面図。上が前方。センサからの光帯の後縁が右柱の奥角を通る。"></svg>
-      <figcaption>上が進行方向。破線は区画中心、青い十字は車軸中央、赤い点は光帯が最後に柱を離れる角です。左センサは左右対称に配置します。</figcaption>
+      <svg id="plan" role="img" aria-label="判定時の平面図。上が前方。左右対称のセンサから伸びる光帯の後縁が、それぞれの柱の奥角を通る。"></svg>
+      <figcaption>上が進行方向。破線は区画中心、青い十字は車軸中央です。左右の白い点はセンサ中心、赤い点は光帯が最後に柱を離れる角です。</figcaption>
     </figure>
   </article>
   <details><summary>計算式と作図の前提</summary>
@@ -57,14 +57,15 @@ const sizes = {
 
 function solve(pitch, post, x, y, advance, width) {
   if (![x, y, advance, width].every(Number.isFinite)) throw Error("各欄に数値を入力してください。");
-  if (Math.min(x, advance, width) < 0) throw Error("x、Δy、光帯幅は 0 以上で指定してください。");
-  const across = (pitch - post) / 2 - x;
+  if (Math.min(advance, width) < 0) throw Error("Δy、光帯幅は 0 以上で指定してください。");
+  const wallX = (pitch - post) / 2;
+  if (Math.abs(x) >= wallX) throw Error(`横位置 x は −${wallX} mm と +${wallX} mm の間に指定してください。`);
+  const across = wallX - x;
   const forward = (pitch + post) / 2 + advance - y;
-  if (across <= 0) throw Error("センサ中心を柱の通路側の面より内側に配置してください。");
   const range = Math.hypot(across, forward);
   const theta = Math.atan2(across, forward) - Math.asin(width / 2 / range);
   if (!(range > width / 2 && theta > 0 && theta < Math.PI / 2))
-    throw Error("この配置では前方から外向きに 0° より大きく 90° 未満となる解がありません。");
+    throw Error("この配置では前方から右壁側に 0° より大きく 90° 未満となる解がありません。");
   return theta;
 }
 
@@ -83,7 +84,7 @@ function draw(pitch, post, x, y, advance, width, theta) {
   const pad = pitch * .12;
   const top = Math.max(cornerY, endY - offsetY, sensorY - offsetY) + pad;
   const bottom = Math.min(-cornerY, -advance, sensorY + offsetY) - pad;
-  const right = Math.max(cornerY, x + offsetX, endX + offsetX) + pad;
+  const right = Math.max(cornerY, Math.abs(x) + offsetX, Math.abs(endX) + offsetX) + pad;
   plan.setAttribute("viewBox", [-right, -top, 2 * right, top - bottom].join(" "));
   const stroke = pitch * .004;
   const line = (x1, y1, x2, y2, color, dash = "") =>
@@ -97,12 +98,13 @@ function draw(pitch, post, x, y, advance, width, theta) {
   drawing += line(-half, 0, half, 0, "#b3c7be", "1 1");
   drawing += line(0, -advance - pad / 2, 0, Math.max(0, sensorY) + pad, "#6faeb8");
   drawing += line(-pad, -advance, pad, -advance, "#6faeb8");
-  drawing += `<polygon points="${x+offsetX},${sensorY+offsetY} ${endX+offsetX},${endY+offsetY} ${endX-offsetX},${endY-offsetY} ${x-offsetX},${sensorY-offsetY}" fill="#fb9777" fill-opacity=".35" stroke="#fb9777"/>`;
+  drawing += `<g id="right-wall-beam"><polygon points="${x+offsetX},${sensorY+offsetY} ${endX+offsetX},${endY+offsetY} ${endX-offsetX},${endY-offsetY} ${x-offsetX},${sensorY-offsetY}" fill="#fb9777" fill-opacity=".35" stroke="#fb9777"/>`;
   drawing += line(x, sensorY, endX, endY, "#ffd3b9", "1 1");
+  drawing += `<circle cx="${x}" cy="${sensorY}" r="${stroke*2.4}" fill="white"/><circle cx="${cornerX}" cy="${cornerY}" r="${stroke*3}" fill="#ff785c"/></g>`;
+  drawing += '<use href="#right-wall-beam" transform="scale(-1,1)"/>';
   const arcRadius = Math.min(pad, path / 2);
   drawing += line(x, sensorY, x, sensorY + arcRadius * 1.25, "#90c1cd");
   drawing += `<path d="M ${x} ${sensorY+arcRadius} A ${arcRadius} ${arcRadius} 0 0 0 ${x+arcRadius*sin} ${sensorY+arcRadius*cos}" fill="none" stroke="#90c1cd"/>`;
-  drawing += `<circle cx="${x}" cy="${sensorY}" r="${stroke*2.4}" fill="white"/><circle cx="${cornerX}" cy="${cornerY}" r="${stroke*3}" fill="#ff785c"/>`;
   let labels = "";
   if (advance > 0) {
     const dimensionX = -half * .45;
