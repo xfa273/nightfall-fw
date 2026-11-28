@@ -39,9 +39,30 @@ static const float diagonal_speeds[] = {1000,1400,1500,1500,1500};
 #define LARGE_SPEED large_speeds[TEST_MODE-3]
 #define DIAGONAL_SPEED diagonal_speeds[TEST_MODE-3]
 
-static unsigned calls, selected_sub;
+static unsigned calls, selected_sub, terminal_refusals;
 #if !LEGACY_PROFILE
 static const int fan_duties[] = {500,700,1000,1000,1000};
+/* Race fixtures for the hand-tuned orthogonal velocity and the two acceleration regimes. */
+static const struct { float velocity, acceleration, dash_acceleration; } kyushu_straight[3][9] = {
+  { /* mode 3 */
+    {800,20000,8000}, {1000,20000,12000}, {1600,25000,13000},
+    {2000,25000,14000}, {2500,25000,15000}, {1800,20000,16000},
+    {2000,20000,17000}, {2200,18000,18000}, {2400,19000,19000}
+  },
+  { /* mode 4 */
+    {1000,25000,12000}, {1400,25000,25000}, {2500,40000,25000},
+    {3000,40000,25000}, {4000,40000,25000}, {2200,25000,25000},
+    {2400,25000,25000}, {2600,28000,28000}, {2800,29000,29000}
+  },
+  { /* mode 5 */
+    {1200,30000,16000}, {1700,30000,33000}, {1900,30000,34000},
+    {2100,35000,35000}, {2300,36000,36000}, {2500,37000,37000},
+    {2700,38000,38000}, {2900,39000,39000}, {3100,40000,40000}
+  }
+};
+static const float mode4_diagonal_acceleration[9] = {
+  22000,25000,25000,25000,25000,25000,25000,28000,29000
+};
 static unsigned connections;
 static const uint16_t turns[] = {300,400,501,601,502,602,701,702,703,704,801,802,901,902,903,904};
 #endif
@@ -58,6 +79,17 @@ static void check_path(const uint16_t* codes, unsigned count, unsigned c, bool w
   f413_path_run_prepared_path_t prepared;
   f413_path_run_preflight_result_t r = f413_path_run_preflight_prepare(
       terminated, 20, &MODE_PARAMS, cp, initial, walls, test, &prepared);
+  /* A terminal large turn must stop in the implicit half-cell. The Kyushu
+     mode 5 case 2/3 tune needs 48.17 mm at 1700 mm/s and 30000 mm/s². */
+  if (!test && codes[count - 1] >= 500 && codes[count - 1] < 700 &&
+      LARGE_SPEED * LARGE_SPEED > 2.0f * DIST_HALF_SEC *
+          fminf(cp->acceleration_straight, cp->acceleration_straight_dash)) {
+    assert(TEST_MODE == 5 && (c == 2 || c == 3));
+    assert(r.status == F413_PATH_RUN_PREFLIGHT_INFEASIBLE_LINEAR);
+    assert(r.index == count && r.code == 0);
+    terminal_refusals++;
+    return;
+  }
   if (r.status != F413_PATH_RUN_PREFLIGHT_OK)
   {
     fprintf(stderr,"sub%u case%u walls%u test%u preflight=%u index=%zu code=%u path:",
@@ -85,7 +117,15 @@ static void check_path(const uint16_t* codes, unsigned count, unsigned c, bool w
         if (v > peak) peak = v;
       }
     }
-    assert(peak == expected); /* Enough run-up, no overspeed before/after turns. */
+    if (TEST_MODE == 4 && selected_sub == 9) {
+      /* The 405 mm straight has 180 mm above the switch speed before braking. */
+      const float switch_v = MODE_PARAMS.accel_switch_velocity;
+      const float attainable = sqrtf(switch_v * switch_v +
+          2.0f * cp->acceleration_straight_dash * 180.0f);
+      assert(attainable < expected && fabsf(peak - attainable) < 0.01f);
+    } else {
+      assert(peak == expected);
+    }
   }
   for (unsigned i=0; i<count; ++i)
   {
@@ -101,7 +141,13 @@ void f413_mode_shortest_run_case0_path(const char* label, uint8_t mode, uint8_t 
   assert(mode == TEST_MODE && c >= 1 && c <= 9);
 #if LEGACY_PROFILE
   assert(c == k_case0_subs[selected_sub].case_index);
-  assert(codes == k_case0_subs[selected_sub].codes);
+  for (unsigned i = 0; i < count; ++i) {
+    uint16_t expected = k_case0_subs[selected_sub].codes[i];
+    const unsigned r180_sub = TEST_MODE == 7 ? 7U : 2U;
+    if (i == 0U && selected_sub == r180_sub &&
+        !F413_MOTION_ENABLED(F413_MOTION_CASE0_LONG_R180)) expected -= 2U;
+    assert(codes[i] == expected);
+  }
   assert(count == k_case0_subs[selected_sub].code_count);
 #else
   assert(c == (selected_sub == 0 || selected_sub == 8 ? 1 :
@@ -136,19 +182,27 @@ int main(void)
     const float base_v = c == 1 ? SMALL_SPEED : LARGE_SPEED;
     const float base_a = ceilf(base_v * base_v / (2 * DIST_HALF_SEC) / 1000) * 1000;
     const unsigned step = c <= 2 ? 0 : c - 2;
-    assert(cp->velocity_straight == base_v + 200 * step);
-    assert(cp->acceleration_straight == base_a + 1000 * step);
-    assert(cp->acceleration_straight_dash == cp->acceleration_straight);
+    assert(cp->velocity_straight >= base_v);
+    if (TEST_MODE <= 5) {
+      assert(cp->velocity_straight == kyushu_straight[TEST_MODE - 3][c - 1].velocity);
+      assert(cp->acceleration_straight == kyushu_straight[TEST_MODE - 3][c - 1].acceleration);
+      assert(cp->acceleration_straight_dash == kyushu_straight[TEST_MODE - 3][c - 1].dash_acceleration);
+    } else {
+      assert(cp->velocity_straight == base_v + 200 * step);
+      assert(cp->acceleration_straight == base_a + 1000 * step);
+      assert(cp->acceleration_straight_dash == cp->acceleration_straight);
+    }
     assert(cp->velocity_d_straight == DIAGONAL_SPEED + 100 * step);
-    assert(cp->acceleration_d_straight == ceilf(DIAGONAL_SPEED * DIAGONAL_SPEED /
-        (2 * DIST_HALF_SEC) / 1000) * 1000 + 1000 * step);
+    const float expected_diagonal_acceleration = TEST_MODE == 4 ? mode4_diagonal_acceleration[c - 1] :
+        ceilf(DIAGONAL_SPEED * DIAGONAL_SPEED / (2 * DIST_HALF_SEC) / 1000) * 1000 + 1000 * step;
+    assert(cp->acceleration_d_straight == expected_diagonal_acceleration);
     assert(cp->acceleration_d_straight_dash == cp->acceleration_d_straight);
     if (c <= 2)
     {
       /* The next lower 1 m/s^2 step cannot stop this turn within half a cell. */
       ShortestRunCaseParams_t insufficient = *cp;
-      insufficient.acceleration_straight -= 1000;
-      insufficient.acceleration_straight_dash -= 1000;
+      insufficient.acceleration_straight = base_a - 1000;
+      insufficient.acceleration_straight_dash = base_a - 1000;
       const uint16_t path[] = {203,c == 1 ? 300 : 501,0};
       const float initial = f413_path_run_boundary_speed(&MODE_PARAMS,&insufficient,DIST_FIRST_SEC);
       assert(f413_path_run_preflight(path,3,&MODE_PARAMS,&insufficient,initial,false,false).status
@@ -178,7 +232,9 @@ int main(void)
         }
       }
   }
-  printf("mode%u suction: all 10 case0 paths and peak speeds, %u minimal start/connector/stop paths across 9 cases PASS\n",TEST_MODE,connections);
+  assert(terminal_refusals == (TEST_MODE == 5 ? 176U : 0U));
+  printf("mode%u suction: all 10 case0 paths, %u maze paths checked, "
+         "%u expected terminal braking refusals PASS\n", TEST_MODE, connections, terminal_refusals);
 #endif
   return 0;
 }

@@ -4,6 +4,9 @@
 #include "solver_params.h"
 #include "path.h"
 #include "shortest_run_params.h"
+#if defined(NIGHTFALL_CLASSIC_TIME_PLANNER) && NIGHTFALL_CLASSIC_TIME_PLANNER
+#include "f405_time_path.h"
+#endif
 
 #include <float.h>
 #include <math.h>
@@ -167,6 +170,9 @@ static int calc_goal_approach_straight(Pos2D *path_buf, int path_len) {
 }
 
 bool solver_build_path(uint8_t mode, uint8_t case_index) {
+#if defined(NIGHTFALL_CLASSIC_TIME_PLANNER) && NIGHTFALL_CLASSIC_TIME_PLANNER
+    return f405_time_build_path(mode, case_index);
+#endif
     // 最短走行パラメータからソルバプロファイルを設定
     const ShortestRunCaseParams_t* cp = NULL;
     uint8_t idx = (case_index >= 1) ? (case_index - 1) : 0;

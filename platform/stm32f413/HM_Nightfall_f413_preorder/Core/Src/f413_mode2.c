@@ -1,6 +1,7 @@
 #include "f413_mode2.h"
 
 #include "f413_mode_shortest.h"
+#include "params.h"
 
 typedef struct {
   uint8_t case_index;
@@ -74,6 +75,19 @@ void f413_mode2_run_case(uint8_t op_case)
 {
   f413_shortest_case_config_t config;
 
+  if (op_case == 6U && !F413_MOTION_ENABLED(F413_MOTION_MODE2_CASE6_SAVED_MAZE))
+  {
+    /* Exact pre-r3 open-floor calibration route; not saved-maze shortest. */
+    static const uint16_t codes[] = {203U, 701U, 1001U, 802U, 1001U, 703U, 202U};
+    const f413_run_features_t features = {
+        .angle_accum_mode = true, .test_mode_run = false};
+    f413_mode_shortest_run_path_config(
+        "mode2-case6 open-floor diagonal (wall corrections off)",
+        2U, 6U, codes, (uint16_t)(sizeof(codes) / sizeof(codes[0])), &features);
+    return;
+  }
+
+
   if ((op_case < 1U) || (op_case > 9U))
   {
     f413_mode_shortest_run_case(2U, op_case);
@@ -95,9 +109,12 @@ void f413_mode2_run_case0_sub(uint8_t sub)
     return;
   }
 
-  f413_mode_shortest_run_case0_path(k_case0_subs[sub].label,
+  f413_mode2_case0_sub_t selected = k_case0_subs[sub];
+  if (sub == 2U && !F413_MOTION_ENABLED(F413_MOTION_CASE0_LONG_R180))
+    selected.codes[0] -= 2U;
+  f413_mode_shortest_run_case0_path(selected.label,
                                     2U,
-                                    k_case0_subs[sub].case_index,
-                                    k_case0_subs[sub].codes,
-                                    k_case0_subs[sub].code_count);
+                                    selected.case_index,
+                                    selected.codes,
+                                    selected.code_count);
 }

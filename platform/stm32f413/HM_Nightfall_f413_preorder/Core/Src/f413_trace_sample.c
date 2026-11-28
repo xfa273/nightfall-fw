@@ -12,6 +12,7 @@
 #include "f413_trace_log.h"
 #include "f413_wall_runtime.h"
 #include "params.h"
+#include "shortest_run_params.h"
 #include "trace.h"
 
 static f413_trace_sample_config_t g_config;
@@ -308,6 +309,14 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                f413_ctrl_velocity_accel_comp_turn_control_enabled() ?
                    "accel_comp" : "encoder_lpf");
   trace_printf("#omega_ff_lead_time_s=%.6f\r\n", (double)FF_OMEGA_LEAD_TIME_S);
+  trace_printf("#omega_ff_lead_mode4_180_time_s=%.6f\r\n#omega_ff_lead_mode4_180_meta_source=dump_time_profile\r\n",
+      (double)(F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF) ? 0.0f :
+          (F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD) ?
+              FF_OMEGA_LEAD_MODE4_180_TIME_S : FF_OMEGA_LEAD_TIME_S)));
+  trace_printf("#omega_trajectory_ff_mode4_180=%u\r\n#omega_trajectory_ff_mode4_180_meta_source=dump_time_profile\r\n",
+      F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF) ? 1U : 0U);
+  trace_printf("#omega_trajectory_ff_pwm_mode4_180=%.6f\r\n#omega_trajectory_ff_accel_pwm_mode4_180=%.9f\r\n",
+      (double)FF_OMEGA_TRAJECTORY_PWM_MODE4_180, (double)FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180);
   trace_printf("#omega_ff_lead_max_dps=%.3f\r\n", (double)FF_OMEGA_LEAD_MAX_DPS);
   trace_printf("#omega_ff_pwm_fan_on=%.6f\r\n", (double)FF_OMEGA_PWM_FAN_ON);
   trace_printf("#omega_ff_accel_pwm_fan_on=%.9f\r\n", (double)FF_OMEGA_ACCEL_PWM_FAN_ON);
@@ -334,14 +343,36 @@ void f413_trace_sample_emit_extra_csv_meta(void)
                (unsigned long)MATCH_POS_TRACE_IDLE_PERIOD_MS);
   trace_printf("#front_match_reserved_i32=fr_mm_x1000,fl_mm_x1000,position_error_mm_x1000,yaw_error_mm_x1000\r\n");
   trace_printf("#front_match_reserved_u16=marker_or_phase,state_or_recovery_elapsed_ms\r\n");
-  trace_printf("#auto_ram_staging=fast_period_ms=1,slow_period_ms=%u,omega_quantum_mdps=%ld,fast_capacity=%u,seq_reconstructed=1,persistent_schema_unchanged=1\r\n",
+  trace_printf("#auto_ram_staging=default_fast_period_ms=1,slow_every_fast_records=%u,omega_quantum_mdps=%ld,fast_capacity=%u,seq_reconstructed=1,persistent_schema_unchanged=1\r\n",
                (unsigned int)F413_TRACE_COMPACT_SLOW_PERIOD_RECORDS,
                (long)F413_TRACE_COMPACT_OMEGA_QUANTUM_MDPS,
                (unsigned int)F413_TRACE_COMPACT_USABLE_RECORDS);
+  trace_printf("#path_trace=prepare_period_ms=%u,motion_period_ms=%u,actual_period_from_timestamp=1\r\n",
+               (unsigned int)F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS,
+               (unsigned int)F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
+  trace_printf("#chained_offset_wall_end=%u,exit_plus_next_entry=1,front_target_priority=1\r\n",
+               F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) ? 1U : 0U);
+  trace_printf("#short_wall_end_all=%u,scope=existing_wall_end_gates,long_window_fallback=1\r\n",
+               F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL) ? 1U : 0U);
+  trace_printf("#short_wall_end_straight_add_mm=mode2:%.1f,mode3:%.1f,mode4:%.1f,mode5:%.1f,mode6:%.1f,mode7:%.1f\r\n",
+               (double)shortestRunModeParams2.dist_wall_end_short_add,
+               (double)shortestRunModeParams3.dist_wall_end_short_add,
+               (double)shortestRunModeParams4.dist_wall_end_short_add,
+               (double)shortestRunModeParams5.dist_wall_end_short_add,
+               (double)shortestRunModeParams6.dist_wall_end_short_add,
+               (double)shortestRunModeParams7.dist_wall_end_short_add);
+  trace_printf("#chained_short_wall_end=%u,window_ms=%u,drop_adc=%u,past_min_adc=%u,confirm=%u,prepare_ms=%u\r\n",
+               F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) ? 1U : 0U,
+               (unsigned int)F413_WALL_RUNTIME_SHORT_WINDOW_MS,
+               (unsigned int)F413_WALL_RUNTIME_SHORT_DROP_ADC,
+               (unsigned int)F413_WALL_RUNTIME_SHORT_PRESENT_ADC,
+               (unsigned int)F413_WALL_RUNTIME_SHORT_CONFIRM_SAMPLES,
+               (unsigned int)F413_WALL_RUNTIME_CHAINED_PREPARE_MS);
 #if (NIGHTFALL_F413_DISABLE_WALL_TRACE_OBSERVE == 0U)
   trace_printf("#wall_trace_observe=%u\r\n", (unsigned int)F413_WALL_RUNTIME_TRACE_VERSION);
   trace_printf("#wall_trace_reserved_i32=deriv_r,deriv_l,detected_deriv_r,detected_deriv_l\r\n");
   trace_printf("#wall_trace_reserved_u16_0=flags\r\n");
+  trace_printf("#wall_trace_short_flags=active:0x0800,right:0x1000,left:0x2000,long_derivative_fields_unchanged=1\r\n");
   trace_printf("#wall_trace_reserved_u16_1=dist_q4_lr\r\n");
   trace_printf("#wall_end_deriv=window=%u,total=%u,divisor=%d,fall_threshold=%u,confirm=%u\r\n",
                (unsigned int)F413_WALL_RUNTIME_END_DERIV_WINDOW_SAMPLES,

@@ -8,13 +8,17 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "f413pre-search-distance-t0.3"
+#define PARAMS_TUNE_VERSION "mini-r2-front-centre-t0.5"
+
+#include "../f413_motion_policy.h"
+/* 57a9c3b motion baseline. Re-adopt each later change only after r2 validation. */
+#define F413_MOTION_FEATURES 0U
 
 /*============================================================
     各種定数（パラメータ）設定
 ============================================================*/
 /* 自動撮影: 0=OFF（手動調整）、1=ON（開始/終了LED信号と撮影用待機）。 */
-#define ENABLE_AUTO_VIDEO_CAPTURE 1U
+#define ENABLE_AUTO_VIDEO_CAPTURE 0U
 
 /*------------------------------------------------------------
     走行系
@@ -242,6 +246,17 @@
 #ifndef FF_OMEGA_LEAD_TIME_S
 #define FF_OMEGA_LEAD_TIME_S 0.004F
 #endif
+#ifndef FF_OMEGA_LEAD_MODE4_180_TIME_S
+/* Inactive unless this machine explicitly opts into MODE4_180_LEAD. */
+#define FF_OMEGA_LEAD_MODE4_180_TIME_S 0.004F
+#endif
+#ifndef FF_OMEGA_TRAJECTORY_PWM_MODE4_180
+/* Inactive unless this machine opts into MODE4_180_TRAJECTORY_FF. */
+#define FF_OMEGA_TRAJECTORY_PWM_MODE4_180 0.0F
+#endif
+#ifndef FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180
+#define FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 0.0F
+#endif
 #ifndef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS 120.0F
 #endif
@@ -316,8 +331,9 @@
 
 #define WALL_ALIGN_ERR_THR  700
 
-#define F_ALIGN_TARGET_MM           7.0F
-#define F_ALIGN_TOO_CLOSE_MM        4.5F
+/* Body-centre-to-wall distance, matching calibration/front_centre_20261004.csv. */
+#define F_ALIGN_TARGET_MM           45.0F
+#define F_ALIGN_TOO_CLOSE_MM        42.5F
 
 #define MATCH_POS_KP_TRANS_MM       10.0F
 #define MATCH_POS_KP_ROT_MM         20.0F
@@ -362,10 +378,10 @@
     探索系
 ------------------------------------------------------------*/
 #ifndef GOAL_X
-#define GOAL_X   1
+#define GOAL_X   7
 #endif
 #ifndef GOAL_Y
-#define GOAL_Y   0
+#define GOAL_Y   7
 #endif
 /* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
  * 単体host solverの32x32検証とは別の制約。 */
@@ -396,18 +412,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 7
+#define GOAL2_Y 8
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 8
+#define GOAL3_Y 7
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 8
+#define GOAL4_Y 8
 #endif
 
 #ifndef GOAL5_X
