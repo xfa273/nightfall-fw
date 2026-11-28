@@ -11,6 +11,12 @@
 typedef enum { GPIO_PIN_RESET, GPIO_PIN_SET } GPIO_PinState;
 uint32_t HAL_GetTick(void);
 void HAL_Delay(uint32_t ms);
+#include "params.h"
+/* Exercise the distance opt-in on both parameter sets without changing the
+ * production profile defaults. August compatibility is tested against git. */
+static const unsigned configured_motion_features = F413_MOTION_FEATURES;
+#undef F413_MOTION_FEATURES
+#define F413_MOTION_FEATURES (configured_motion_features | F413_MOTION_SEARCH_DISTANCE | F413_MOTION_SETTLED_STOP | F413_MOTION_FRONT_RECOVERY)
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_search_step.c"
 
 uint16_t map[MAZE_SIZE][MAZE_SIZE], smap[MAZE_SIZE][MAZE_SIZE], wall_info;
@@ -84,8 +90,10 @@ void f413_ctrl_start_omega_profile(float omega, float ta, float tc)
   spin_count++;
 }
 void f413_ctrl_stop_omega_profile(void) { angle = target_angle; angular_rate = 0; last_turn_exit = position; }
+#ifndef SEARCH_REAL_WALL_RUNTIME
 void f413_wall_runtime_control_clear(void) {}
 void f413_wall_runtime_end_clear(void) { edge_fired = false; }
+void f413_wall_runtime_end_begin(void) { f413_wall_runtime_end_clear(); }
 float f413_wall_runtime_latest_error(void) { return 0; }
 bool f413_wall_runtime_poll_wall_end(bool gate)
 {
@@ -93,6 +101,7 @@ bool f413_wall_runtime_poll_wall_end(bool gate)
   return false;
 }
 bool f413_wall_runtime_wall_end_detected(float *r, float *l) { *r = position; *l = -1; return edge_fired; }
+#endif
 static bool read_wall(f413_wall_sensor_snapshot_t *out) { advance(read_delay_ms); *out = wall; return true; }
 bool f413_wall_distance_front_unwarped_mm(float *out)
 { *out = front_wall_position - position; return front_available; }

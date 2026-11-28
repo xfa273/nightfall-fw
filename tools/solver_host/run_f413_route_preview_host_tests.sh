@@ -17,10 +17,14 @@ if [ "$SANITIZE" = "1" ]; then
 fi
 
 mkdir -p "$OUT_DIR"
+# The saved run-up map leads to (1,0). Pin its endpoints independently of race goals.
 # SANITIZER_FLAGS intentionally expands into separate compiler arguments.
 # shellcheck disable=SC2086
 "$CC_BIN" -std=c11 -Wall -Wextra -Werror -Wpedantic -O1 -g \
   $SANITIZER_FLAGS \
+  -DGOAL_X=1 -DGOAL_Y=0 -DGOAL2_X=0 -DGOAL2_Y=0 -DGOAL3_X=0 -DGOAL3_Y=0 \
+  -DGOAL4_X=0 -DGOAL4_Y=0 -DGOAL5_X=0 -DGOAL5_Y=0 -DGOAL6_X=0 -DGOAL6_Y=0 \
+  -DGOAL7_X=0 -DGOAL7_Y=0 -DGOAL8_X=0 -DGOAL8_Y=0 -DGOAL9_X=0 -DGOAL9_Y=0 \
   -I"$ROOT_DIR/common/route" \
   -I"$ROOT_DIR/tools/solver_host" \
   -I"$ROOT_DIR/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc" \

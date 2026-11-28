@@ -116,6 +116,17 @@ static void f413_op_ui_execute_case(uint8_t mode, uint8_t op_case)
 
   switch (mode)
   {
+    case 0U:
+      if (op_case == 0U)
+      {
+        f413_op_ui_execute_action(F413_OP_UI_ACTION_PHOTO_MODE, mode, op_case, 0xFFU);
+      }
+      else
+      {
+        trace_printf("[OP-UI] no-op: mode0 case%u is not assigned\r\n",
+                     (unsigned int)op_case);
+      }
+      break;
     case 1U:
       if ((op_case >= 1U) && (op_case <= 8U))
       {
@@ -288,6 +299,14 @@ const char* f413_op_ui_level_name(uint8_t level)
 
 const char* f413_op_ui_case_name(uint8_t mode, uint8_t op_case)
 {
+  if (mode == 0U)
+  {
+    switch (op_case)
+    {
+      case 0U: return "photo mode: all LEDs on";
+      default: return "not assigned";
+    }
+  }
   if (mode == 1U)
   {
     switch (op_case)

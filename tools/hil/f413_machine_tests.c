@@ -28,18 +28,93 @@ bool f413_wall_sensor_read_snapshot(f413_wall_sensor_snapshot_t *out)
   return true;
 }
 
+static void r2_front_centre_tests(void)
+{
+  /* User's body-centre sweep: all knots, including low-signal far points. */
+  const uint16_t fr[] = {1922,1421,1058,799,621,490,402,331,277,237,199,174,149,130,112};
+  const uint16_t fl[] = {2442,1816,1374,1072,861,701,576,483,409,351,306,266,234,208,185};
+  const unsigned front_mask = F413_WALL_DISTANCE_CH_FR | F413_WALL_DISTANCE_CH_FL | F413_WALL_DISTANCE_CH_FSUM;
+  f413_wall_sensor_snapshot_t adc = {.front_wall = true};
+  f413_wall_distance_snapshot_t distance;
+  assert(sensor_distance_lut_size_fr() == 15U);
+  assert(sensor_distance_lut_size_front_sum() == 15U);
+  assert(WALL_BASE_FR == 160 && WALL_BASE_FL == 160);
+  for (unsigned i = 0; i < 15; ++i) {
+    adc.fr_delta = fr[i]; adc.fl_delta = fl[i];
+    adc.fr_on = fr[i] + 100; adc.fl_on = fl[i] + 100;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    const float mm = 40.0f + 5.0f * i;
+    assert(fabsf(distance.fr_mm - mm) < 0.001f);
+    assert(fabsf(distance.fl_mm - mm) < 0.001f);
+    assert(fabsf(distance.front_sum_mm - mm) < 0.001f);
+    assert(distance.fr_mm == distance.fr_mm_unwarped);
+    assert(distance.fl_mm == distance.fl_mm_unwarped);
+    assert(distance.front_sum_mm == distance.front_sum_mm_unwarped);
+    assert((distance.extrapolated_mask & front_mask) == 0U);
+    assert(f413_wall_distance_front_present(&distance) == (i < 12));
+    assert(((distance.valid_mask & F413_WALL_DISTANCE_CH_FR) != 0) == (i < 12));
+    assert((distance.valid_mask & F413_WALL_DISTANCE_CH_FL) != 0);
+    assert(((distance.valid_mask & F413_WALL_DISTANCE_CH_FSUM) != 0) == (i < 14));
+    s_test_wall_available = true; s_test_wall = adc;
+    float entry;
+    assert(f413_wall_distance_front_unwarped_mm(&entry) == (i < 12));
+    if (i < 12) assert(fabsf(entry - mm) < 0.001f);
+  }
+  float (*convert[])(uint16_t) = {sensor_distance_from_fr, sensor_distance_from_fl, sensor_distance_from_fsum};
+  bool (*in_range[])(uint16_t) = {sensor_distance_ad_in_range_fr, sensor_distance_ad_in_range_fl, sensor_distance_ad_in_range_fsum};
+  const uint16_t low[] = {112,185,297}, high[] = {1922,2442,4364};
+  for (unsigned ch = 0; ch < 3; ++ch) {
+    float previous = 110.0f;
+    for (unsigned ad = low[ch]; ad <= high[ch]; ++ad) {
+      const float mm = convert[ch]((uint16_t)ad);
+      assert(isfinite(mm) && mm >= 40.0f && mm <= previous);
+      assert(in_range[ch]((uint16_t)ad));
+      previous = mm;
+    }
+    assert(!in_range[ch](0) && !in_range[ch](low[ch] - 1));
+    assert(!in_range[ch](high[ch] + 1) && !in_range[ch](UINT16_MAX));
+  }
+  /* Approach crosses the82mm search entry exactly once between85 and80mm. */
+  bool crossed82 = false;
+  adc.fr_on = adc.fl_on = 1000;
+  for (unsigned sum = 588; sum <= 686; ++sum) {
+    adc.fr_delta = 237 + (int32_t)((sum - 588) * 40 / 98);
+    adc.fl_delta = (int32_t)sum - adc.fr_delta;
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(f413_wall_distance_front_present(&distance));
+    if (distance.front_sum_mm_unwarped <= 82.0f) crossed82 = true;
+    else assert(!crossed82);
+  }
+  assert(crossed82);
+  const int32_t invalid[][2] = {{0,0}, {-1,-1}, {111,184}, {1923,2443}, {111,500}};
+  for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) {
+    adc.fr_delta = invalid[i][0]; adc.fl_delta = invalid[i][1];
+    assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+    assert(!f413_wall_distance_front_present(&distance));
+  }
+  adc.fr_delta = 1421; adc.fl_delta = 1816;
+  adc.fr_on = 4090; adc.fl_on = 1916;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  adc.fr_on = 1521; adc.fl_on = 4090;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  adc.fl_on = 1916; adc.front_wall = false;
+  assert(f413_wall_distance_convert_snapshot(&adc, &distance));
+  assert(!f413_wall_distance_front_present(&distance));
+  s_test_wall_available = false;
+}
+
 static void front_distance_tests(unsigned rev)
 {
-  assert(f413_machine_front_distance_body_centre() == (rev == 3U));
-  assert(F_ALIGN_TARGET_MM == (rev == 3U ? 45.0f : 7.0f));
+  assert(f413_machine_front_distance_body_centre());
+  assert(F_ALIGN_TARGET_MM == 45.0f);
   assert(F_ALIGN_TOO_CLOSE_MM == F_ALIGN_TARGET_MM - 2.5f);
   f413_wall_distance_init();
   assert(sensor_distance_get_interpolation() == SENSOR_DISTANCE_INTERP_PCHIP);
-  assert(sensor_distance_lut_size_fl() == (rev == 3U ? 15U : 13U));
+  assert(sensor_distance_lut_size_fl() == 15U);
   if (rev == 2U) {
-    assert(fabsf(sensor_distance_from_fr(1680) - 7.0f) < 0.001f);
-    assert(fabsf(sensor_distance_from_fl(2050) - 7.0f) < 0.001f);
-    assert(fabsf(sensor_distance_from_fsum(3730) - 7.0f) < 0.001f);
+    r2_front_centre_tests();
     return;
   }
   /* Shielded40..75mm (09-12), latest80..110mm (09-21); no averaging
@@ -143,7 +218,7 @@ static void front_distance_tests(unsigned rev)
   s_test_wall = adc;
   assert(!f413_wall_distance_front_unwarped_mm(&entry_distance));
   s_test_wall_available = false;
-  /* Loading the legacy front-only r2 table leaves side conversion untouched. */
+  /* Loading the front-only r2 table leaves side conversion untouched. */
   const float left = sensor_distance_from_l(1000), right = sensor_distance_from_r(1000);
   f413_profile_mini_r2.load_sensor_luts();
   assert(left == sensor_distance_from_l(1000) && right == sensor_distance_from_r(1000));
@@ -157,10 +232,11 @@ static void front_entry_reference_tests(void)
   const f413_param_profile_t *r2 = &f413_profile_mini_r2;
   const f413_param_profile_t *r3 = &f413_profile_mini_r3;
   const float datum_delta = r3->scalar->v_F_ALIGN_TARGET_MM - r2->scalar->v_F_ALIGN_TARGET_MM;
-  assert(datum_delta == 38.0f);
+  assert(datum_delta == 0.0f);
+  assert(r2->front_distance_body_centre && r3->front_distance_body_centre);
   assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
   const float search_targets[] = {82.0f, 80.0f};
-  const float mode_targets[] = {82.8f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
+  const float mode_targets[] = {82.0f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
   for (unsigned i = 0; i < 2; ++i) {
     assert(r2->search[i].dist_offset_in == r3->search[i].dist_offset_in);
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
@@ -178,7 +254,11 @@ static void front_entry_reference_tests(void)
     assert(r2->modes[i]->turn_omega_max == 0);
     assert(r3->modes[i]->turn_omega_max == (i == 0 ? 0 : 3000));
     if (i == 0) {
-      assert(memcmp(r2->modes[i], r3->modes[i], sizeof(*r2->modes[i])) == 0);
+      /* Kyushu mode 2 uses independent small-turn tunes. */
+      assert(r2->modes[i]->alpha_turn90 == 10200.0f);
+      assert(r3->modes[i]->alpha_turn90 == 9200.0f);
+      assert(r2->modes[i]->dist_offset_out == 8.0f);
+      assert(r3->modes[i]->dist_offset_out == 11.6f);
     } else {
       assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == fan[i]);
       assert(r3->modes[i]->velocity_turn90 == small_v[i]);
@@ -198,8 +278,9 @@ static void front_entry_reference_tests(void)
     assert(fabsf(new_target - old_target - datum_delta - entry_change) < 0.001f);
     assert(fabsf(new_target - mode_targets[i]) < 0.001f);
   }
-  /* The nominal entry is90mm. The09-21 LUT extension covers both the entry
-   * and all80..89.4mm turn references; the runner's validity guard is unchanged. */
+  /* Both body-centre LUTs cover the nominal90mm entry and turn references;
+   * the runner's validity guard is unchanged. */
+  assert(r2->scalar->v_F_ALIGN_TARGET_MM + r2->scalar->v_DIST_HALF_SEC == 90.0);
   assert(r3->scalar->v_F_ALIGN_TARGET_MM + r3->scalar->v_DIST_HALF_SEC == 90.0);
 }
 
@@ -207,7 +288,8 @@ static void side_distance_tests(unsigned rev)
 {
   assert(f413_machine_side_distance_body_centre() == (rev == 3U));
   f413_wall_distance_init();
-  assert(WALL_BASE_R == 300 && WALL_BASE_L == 300);
+  const int expected_wall_base = rev == 2U ? 300 : 220;
+  assert(WALL_BASE_R == expected_wall_base && WALL_BASE_L == expected_wall_base);
   if (rev == 2U) {
     assert(sensor_distance_lut_size_r() == 28U && sensor_distance_lut_size_l() == 28U);
     assert(fabsf(sensor_distance_from_r(576) - 20.0f) < 0.001f);
@@ -262,7 +344,7 @@ static void side_distance_tests(unsigned rev)
   assert(distance.right_valid && !distance.left_valid);
   /* A LUT update must not silently relax the existing low-signal safety gate. */
   adc.r_on = adc.l_on = 1000;
-  adc.r_delta = 300; adc.l_delta = 301;
+  adc.r_delta = expected_wall_base; adc.l_delta = expected_wall_base + 1;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(!distance.right_valid && distance.left_valid);
 }
@@ -441,6 +523,51 @@ static void resolver_tests(void)
   scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 2U;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
   scalar.v_ENABLE_AUTO_VIDEO_CAPTURE = 1U;
+  scalar.v_F413_MOTION_FEATURES = 0x80000000U;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_FRONT_ENTRY;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_OFFSET_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_CHAINED_SHORT_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES |= F413_MOTION_CHAINED_OFFSET_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_SHORT_WALL_END_ALL;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES |= F413_MOTION_CHAINED_SHORT_WALL_END | F413_MOTION_CHAINED_OFFSET_WALL_END;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_MODE4_180_LEAD;
+  const float saved_lead = scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S;
+  scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S = 0.0025f;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  const float invalid_lead[] = {-0.001f, 0.011f, NAN, INFINITY};
+  for (unsigned i = 0; i < sizeof(invalid_lead) / sizeof(invalid_lead[0]); ++i) {
+    scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S = invalid_lead[i];
+    assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  }
+  scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S = saved_lead;
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_MODE4_180_TRAJECTORY_FF;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  float* ff_fields[] = {&scalar.v_FF_OMEGA_TRAJECTORY_PWM_MODE4_180,
+      &scalar.v_FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180};
+  for (unsigned f = 0; f < 2; ++f) {
+    const float saved_ff = *ff_fields[f];
+    const float invalid_ff[] = {-0.001f, NAN, INFINITY};
+    for (unsigned i = 0; i < 3; ++i) {
+      *ff_fields[f] = invalid_ff[i];
+      assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+    }
+    *ff_fields[f] = saved_ff;
+  }
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_PATH_GOAL_STOP;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES |= F413_MOTION_SETTLED_STOP;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_FRONT_RECOVERY;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
+  scalar.v_F413_MOTION_FEATURES = F413_MOTION_FRONT_RECOVERY | F413_MOTION_SETTLED_STOP;
+  assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_OK);
   units[2].hardware_override = &hw;
   hw.imu_forward_offset_mm = NAN;
   assert(f413_machine_resolve(NVM_STATUS_OK, &bad, uid, boards, 1, units, 3, &out) == F413_MACHINE_CONFIG_INVALID);
@@ -470,7 +597,9 @@ int main(int argc, char **argv)
   } else {
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_OK);
     assert(f413_machine_has(F413_CAP_DRIVE));
-    assert(ENABLE_AUTO_VIDEO_CAPTURE == (rev == 2U ? 1U : 0U));
+    assert(ENABLE_AUTO_VIDEO_CAPTURE == 0U);
+    assert(GOAL1_X == 7 && GOAL1_Y == 7 && GOAL2_X == 7 && GOAL2_Y == 8);
+    assert(GOAL3_X == 8 && GOAL3_Y == 7 && GOAL4_X == 8 && GOAL4_Y == 8);
     assert(DIST_HALF_SEC == 45.0);
     assert(KP_VELOCITY_FAN_OFF == (rev == 3U ? 0.24f : 0.8f));
     assert(KI_VELOCITY_FAN_OFF == (rev == 3U ? 0.001f : 0.012f));
@@ -499,6 +628,10 @@ int main(int argc, char **argv)
       assert(FF_OMEGA_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_PWM_FAN_ON);
       assert(FF_OMEGA_ACCEL_PWM_FAN_ON == f413_profile_mini_r3.scalar->v_FF_OMEGA_ACCEL_PWM_FAN_ON);
     }
+    assert(F413_MOTION_FEATURES == (rev == 2U ? 0U : 0x7FFFU));
+    assert(FF_OMEGA_LEAD_MODE4_180_TIME_S == (rev == 2U ? 0.004f : 0.0025f));
+    assert(FF_OMEGA_TRAJECTORY_PWM_MODE4_180 == (rev == 2U ? 0.0f : 0.045f));
+    assert(FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 == (rev == 2U ? 0.0f : 0.0025f));
     assert(VELOCITY_ACCEL_COMP_ENABLE_CONTROL == 1U);
     assert(VELOCITY_ACCEL_COMP_ENABLE_DURING_OMEGA_PROFILE == 0U);
     assert(searchRunParams[0].velocity_turn90 == 300.0f);

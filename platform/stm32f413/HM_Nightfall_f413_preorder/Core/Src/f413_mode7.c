@@ -101,9 +101,14 @@ void f413_mode7_run_case0_sub(uint8_t sub)
 
   const f413_mode7_case0_sub_t* tests = (shortestRunModeParams7.fan_power > 0)
       ? k_suction_case0_subs : k_case0_subs;
-  f413_mode_shortest_run_case0_path(tests[sub].label,
+  f413_mode7_case0_sub_t selected = tests[sub];
+  /* Legacy mode7 puts R180 at sub7; suction mode7 uses sub2. */
+  const uint8_t r180_sub = (tests == k_suction_case0_subs) ? 2U : 7U;
+  if (sub == r180_sub && !F413_MOTION_ENABLED(F413_MOTION_CASE0_LONG_R180))
+    selected.codes[0] -= 2U;
+  f413_mode_shortest_run_case0_path(selected.label,
                                     7U,
-                                    tests[sub].case_index,
-                                    tests[sub].codes,
-                                    tests[sub].code_count);
+                                    selected.case_index,
+                                    selected.codes,
+                                    selected.code_count);
 }

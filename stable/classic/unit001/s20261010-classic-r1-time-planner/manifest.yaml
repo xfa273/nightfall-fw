@@ -1,0 +1,59 @@
+stable_name: s20261010-classic-r1-time-planner
+description: classic r1のファン調整と直交時間最短経路を実走成功後に保存
+fw_commit: 5cf9f7d0e5e037833df84eb5a3c150fc720eebb7
+fw_tag: stable/classic/unit001/s20261010-classic-r1-time-planner
+fw_target: nightfall_classic_r1_0
+fw_build_type: Release
+family: classic
+hw_rev_major: 1
+hw_rev_minor: 0
+board_id: classic_r1_0
+unit_serial: unit001
+params_profile: classic_r1_0
+params_tune_version: t1.0
+build_options:
+  NIGHTFALL_CLASSIC_TIME_PLANNER: true
+  NIGHTFALL_F405_ORTHOGONAL_PREVIEW: false
+qualification:
+  date: '2026-10-10'
+  basis: user_report
+  status: successful_run_after_time_planner_integration
+  report: 上手くいきました
+  modes_cases_course_repeat_count: not_specified
+  device_binary_readback: not_performed_for_this_checkpoint
+  agent_hardware_operations: none
+local_artifact:
+  directory: ../classic-r1-backups/s20261010-classic-r1-time-planner
+  build_time_utc: '2026-10-10T07:43:53Z'
+  source_dirty: false
+  binary_bytes: 185488
+  binary_sha256: d32887b86e683894baa95f2b68b21b0725a3316127013a427f98658fafee412f
+  note: 保存時のローカルビルド。今回、実機ROMとのバイト照合は行っていない。
+nvm_schema_version: n/a
+calibration_backup:
+  directory: ../classic-r1-backups/20261010-140208
+  full_flash_sha256: a8101bef1d1b6803653cffcfb29eb873039f05951356e1864b2579d8c1056564
+  note: 大会ROM書換え前の全Flash二重バックアップ。今回は校正・迷路を再読出ししていない。
+previous_fan_tuning_commit: 664d880
+previous_stable: stable/classic/unit001/s20260404-nationals
+known_limitations:
+  - 実走成功はユーザ報告。全mode/case・全迷路を網羅した確認ではない。
+  - 時間は公称モデルの推定値。旧F405 runnerの実時間最小性は保証しない。
+  - 既知の2015迷路19条件では経路なしとして走行前に停止する。
+  - runtime_settings.yamlは参照用で、現在のFWは自動適用しない。
+  - params_tune_versionは実走時のt1.0を維持。設定の識別にはfw_commitとsource_sha256を使う。
+source_sha256:
+  params/classic_r1_0/params.h: 39b3222e887ff5bda6a76c43a2a10a7f7ef7d4dd6f027e8142d0b8aa2d575ec4
+  params/classic_r1_0/search_run_params_split.c: fffadaa01467ec79571d5f53ded675e0a5eef3b0733a8bd4d346268b1ddd9072
+  params/classic_r1_0/shortest_run_params_split.c: 4da33b762d1262a0b7a641daa0895199290bcfd1e577bbde9be7099e03e9f44a
+  CMakeLists.txt: 7cc75d3b57f09db7554913db68ba10cbe7e10aaa821aeb8dd3ed003b6d147cdb
+  common/route/compact_orthogonal.c: 0a56cd6083b010dc7933724f7c294578f890e35c79bd87b20686451607a42552
+  common/route/compact_orthogonal.h: dfb3b7d1695fc31d485f5c7b937813201aa0ab02a631a0f3deb407b3a8402c8c
+  common/route/motion_time.c: 6525ad1466fe03a35686e218a02743fed44c5a3081b775389869f8dbc083da1a
+  common/route/motion_time.h: e51e837594771298b70006714f6b4d08e301548dff16e3062870e034482f6b0b
+  common/route/orthogonal_time_planner.h: 0c2391b5ad5c1fe925f26a75d60aae8a44dac42a1887d42844ab945d1628423e
+  platform/stm32f405/Core/Src/f405_orthogonal_preview.c: 0669c1ae7b034f05861c8bac69d757969fdaaebe6d237639694dd36125879363
+  platform/stm32f405/Core/Src/f405_time_path.c: 5804787ef88c526e09ee1cffa38bdd9e27f536a4e6eeac8a67cb01fd1c143c97
+  platform/stm32f405/Core/Src/solver.c: 3aca57903ff018a3cc7d1d2c4145610b141d83ea08bf7d807e616cf98fc78291
+  platform/stm32f405/Core/Src/run.c: d03f45685629dc888eff86575eb80e5c54530d4e62d83d9346f5205a8b43fc34
+  platform/stm32f405/Core/Src/drive.c: a90fcebb64242fc5f588cfe6a898c2d1df00b4152e12e610f2c45e0219212809

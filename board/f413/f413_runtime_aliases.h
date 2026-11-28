@@ -2,6 +2,8 @@
 #define F413_RUNTIME_ALIASES_H
 #include "f413_machine.h"
 /* Compatibility facade: algorithm code reads the immutable boot-selected values. */
+#undef F413_MOTION_FEATURES
+#define F413_MOTION_FEATURES (f413_machine_params()->scalar.v_F413_MOTION_FEATURES)
 #undef ENABLE_AUTO_VIDEO_CAPTURE
 #define ENABLE_AUTO_VIDEO_CAPTURE (f413_machine_params()->scalar.v_ENABLE_AUTO_VIDEO_CAPTURE)
 /* The array/storage geometry is a common-binary contract, validated against
@@ -194,6 +196,12 @@
 #define FF_OMEGA_ACCEL_PWM_FAN_OFF (f413_machine_params()->scalar.v_FF_OMEGA_ACCEL_PWM_FAN_OFF)
 #undef FF_OMEGA_LEAD_TIME_S
 #define FF_OMEGA_LEAD_TIME_S (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_TIME_S)
+#undef FF_OMEGA_LEAD_MODE4_180_TIME_S
+#define FF_OMEGA_LEAD_MODE4_180_TIME_S (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_MODE4_180_TIME_S)
+#undef FF_OMEGA_TRAJECTORY_PWM_MODE4_180
+#define FF_OMEGA_TRAJECTORY_PWM_MODE4_180 (f413_machine_params()->scalar.v_FF_OMEGA_TRAJECTORY_PWM_MODE4_180)
+#undef FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180
+#define FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 (f413_machine_params()->scalar.v_FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180)
 #undef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS (f413_machine_params()->scalar.v_FF_OMEGA_LEAD_MAX_DPS)
 #undef KP_IMU

@@ -21,8 +21,12 @@ int main(void)
           htim4.counter = F413_CTRL_ENCODER_CENTER - velocities[v] / 10;
           f413_ctrl_tick();
         }
-        assert(fabsf(s_accel_velocity - velocities[v]) < .01f);
-        assert(fabsf(f413_ctrl_get_real_velocity() - velocities[v]) < .01f);
+        const float expected = F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS)
+            ? velocities[v] : fmaxf(-1200.0f, fminf(velocities[v], 1200.0f));
+        assert(fabsf(s_accel_velocity - expected) < .01f);
+        /* Turning uses the encoder LPF even under the August policy. */
+        const float expected_feedback = turning ? velocities[v] : expected;
+        assert(fabsf(f413_ctrl_get_real_velocity() - expected_feedback) < .01f);
         assert(f413_ctrl_get_target_velocity() == target);
 
       }
