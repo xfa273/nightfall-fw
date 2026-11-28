@@ -293,8 +293,8 @@
 ------------------------------------------------------------*/
 #define WALL_BASE_FR  160
 #define WALL_BASE_FL  160
-#define WALL_BASE_R   300
-#define WALL_BASE_L   300
+#define WALL_BASE_R   220
+#define WALL_BASE_L   220
 #define K_SENSOR      1.00F
 
 #ifndef SENSOR_DIST_GAIN
@@ -393,10 +393,10 @@
     探索系
 ------------------------------------------------------------*/
 #ifndef GOAL_X
-#define GOAL_X   11
+#define GOAL_X   7
 #endif
 #ifndef GOAL_Y
-#define GOAL_Y   9
+#define GOAL_Y   7
 #endif
 /* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
  * 単体host solverの32x32検証とは別の制約。 */
@@ -427,18 +427,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 12
-#define GOAL2_Y 9
+#define GOAL2_X 7
+#define GOAL2_Y 8
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 12
-#define GOAL3_Y 10
+#define GOAL3_X 8
+#define GOAL3_Y 7
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 11
-#define GOAL4_Y 10
+#define GOAL4_X 8
+#define GOAL4_Y 8
 #endif
 
 #ifndef GOAL5_X

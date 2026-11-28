@@ -18,7 +18,7 @@
     各種定数（パラメータ）設定
 ============================================================*/
 /* 自動撮影: 0=OFF（手動調整）、1=ON（開始/終了LED信号と撮影用待機）。 */
-#define ENABLE_AUTO_VIDEO_CAPTURE 1U
+#define ENABLE_AUTO_VIDEO_CAPTURE 0U
 
 /*------------------------------------------------------------
     走行系
@@ -378,10 +378,10 @@
     探索系
 ------------------------------------------------------------*/
 #ifndef GOAL_X
-#define GOAL_X   1
+#define GOAL_X   7
 #endif
 #ifndef GOAL_Y
-#define GOAL_Y   0
+#define GOAL_Y   7
 #endif
 /* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
  * 単体host solverの32x32検証とは別の制約。 */
@@ -412,18 +412,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 7
+#define GOAL2_Y 8
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 8
+#define GOAL3_Y 7
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 8
+#define GOAL4_Y 8
 #endif
 
 #ifndef GOAL5_X

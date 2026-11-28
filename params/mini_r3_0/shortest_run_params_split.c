@@ -8,10 +8,10 @@
 const ShortestRunModeParams_t shortestRunModeParams2 = {
     // 90deg
     .velocity_turn90 = 300.0f,
-    .alpha_turn90 = 10200.0f,
+    .alpha_turn90 = 9200.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 7.2f,
-    .dist_offset_out = 11.1f,
+    .dist_offset_in = 8.0f,
+    .dist_offset_out = 11.6f,
     .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
@@ -84,20 +84,20 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     },
     // case3 (index 2)
     {
-        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 3000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 4000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case4 (index 3)
     {
-        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 3000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case5 (index 4)
     {
-        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 3500.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 3500.0f,
+        .velocity_straight = 3000.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case6 (index 5)
@@ -204,7 +204,7 @@ const ShortestRunModeParams_t shortestRunModeParams3 = {
     .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
     .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
-    .accel_switch_velocity = 1000.0f
+    .accel_switch_velocity = 2000.0f
 };
 
 /* case1: small90 only; case2: minimum large-turn connectors and stop.
@@ -229,24 +229,24 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode3[9] = {
     },
     // case3
     {
-        .acceleration_straight = 20000.0f, .acceleration_straight_dash = 13000.0f,
-        .velocity_straight = 1200.0f, .kp_wall = 0.15f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 13000.0f,
+        .velocity_straight = 1600.0f, .kp_wall = 0.15f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 13000.0f, .acceleration_d_straight_dash = 13000.0f,
         .velocity_d_straight = 1100.0f, .kp_diagonal = 0.0f
     },
     // case4
     {
-        .acceleration_straight = 20000.0f, .acceleration_straight_dash = 14000.0f,
-        .velocity_straight = 1400.0f, .kp_wall = 0.15f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 14000.0f,
+        .velocity_straight = 2000.0f, .kp_wall = 0.15f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 14000.0f, .acceleration_d_straight_dash = 14000.0f,
         .velocity_d_straight = 1200.0f, .kp_diagonal = 0.0f
     },
     // case5
     {
-        .acceleration_straight = 20000.0f, .acceleration_straight_dash = 15000.0f,
-        .velocity_straight = 1600.0f, .kp_wall = 0.15f,
+        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 15000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.15f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 15000.0f, .acceleration_d_straight_dash = 15000.0f,
         .velocity_d_straight = 1300.0f, .kp_diagonal = 0.0f
@@ -358,7 +358,7 @@ const ShortestRunModeParams_t shortestRunModeParams4 = {
     .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
     .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
-    .accel_switch_velocity = 1400.0f
+    .accel_switch_velocity = 2000.0f
 };
 
 /* case1: small90 only; case2: minimum large-turn connectors and stop.
@@ -383,24 +383,24 @@ const ShortestRunCaseParams_t shortestRunCaseParamsMode4[9] = {
     },
     // case3
     {
-        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 1600.0f, .kp_wall = 0.2f,
+        .acceleration_straight = 40000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 2500.0f, .kp_wall = 0.2f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
         .velocity_d_straight = 1500.0f, .kp_diagonal = 0.0f
     },
     // case4
     {
-        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 1800.0f, .kp_wall = 0.16f,
+        .acceleration_straight = 40000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 3000.0f, .kp_wall = 0.16f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
         .velocity_d_straight = 1600.0f, .kp_diagonal = 0.0f
     },
     // case5
     {
-        .acceleration_straight = 25000.0f, .acceleration_straight_dash = 25000.0f,
-        .velocity_straight = 2000.0f, .kp_wall = 0.14f,
+        .acceleration_straight = 40000.0f, .acceleration_straight_dash = 25000.0f,
+        .velocity_straight = 4000.0f, .kp_wall = 0.14f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG,
         .acceleration_d_straight = 25000.0f, .acceleration_d_straight_dash = 25000.0f,
         .velocity_d_straight = 1700.0f, .kp_diagonal = 0.0f
