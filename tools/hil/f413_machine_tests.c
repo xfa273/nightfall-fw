@@ -236,7 +236,7 @@ static void front_entry_reference_tests(void)
   assert(r2->front_distance_body_centre && r3->front_distance_body_centre);
   assert(r2->scalar->v_DIST_HALF_SEC == r3->scalar->v_DIST_HALF_SEC);
   const float search_targets[] = {82.0f, 80.0f};
-  const float mode_targets[] = {82.8f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
+  const float mode_targets[] = {82.0f, 89.4f, 89.2f, 89.1f, 89.1f, 88.6f};
   for (unsigned i = 0; i < 2; ++i) {
     assert(r2->search[i].dist_offset_in == r3->search[i].dist_offset_in);
     const float old_target = r2->scalar->v_F_ALIGN_TARGET_MM +
@@ -254,7 +254,11 @@ static void front_entry_reference_tests(void)
     assert(r2->modes[i]->turn_omega_max == 0);
     assert(r3->modes[i]->turn_omega_max == (i == 0 ? 0 : 3000));
     if (i == 0) {
-      assert(memcmp(r2->modes[i], r3->modes[i], sizeof(*r2->modes[i])) == 0);
+      /* Kyushu mode 2 uses independent small-turn tunes. */
+      assert(r2->modes[i]->alpha_turn90 == 10200.0f);
+      assert(r3->modes[i]->alpha_turn90 == 9200.0f);
+      assert(r2->modes[i]->dist_offset_out == 8.0f);
+      assert(r3->modes[i]->dist_offset_out == 11.6f);
     } else {
       assert(r2->modes[i]->fan_power == 0 && r3->modes[i]->fan_power == fan[i]);
       assert(r3->modes[i]->velocity_turn90 == small_v[i]);
@@ -284,7 +288,8 @@ static void side_distance_tests(unsigned rev)
 {
   assert(f413_machine_side_distance_body_centre() == (rev == 3U));
   f413_wall_distance_init();
-  assert(WALL_BASE_R == 300 && WALL_BASE_L == 300);
+  const int expected_wall_base = rev == 2U ? 300 : 220;
+  assert(WALL_BASE_R == expected_wall_base && WALL_BASE_L == expected_wall_base);
   if (rev == 2U) {
     assert(sensor_distance_lut_size_r() == 28U && sensor_distance_lut_size_l() == 28U);
     assert(fabsf(sensor_distance_from_r(576) - 20.0f) < 0.001f);
@@ -339,7 +344,7 @@ static void side_distance_tests(unsigned rev)
   assert(distance.right_valid && !distance.left_valid);
   /* A LUT update must not silently relax the existing low-signal safety gate. */
   adc.r_on = adc.l_on = 1000;
-  adc.r_delta = 300; adc.l_delta = 301;
+  adc.r_delta = expected_wall_base; adc.l_delta = expected_wall_base + 1;
   assert(f413_wall_distance_convert_snapshot(&adc, &distance));
   assert(!distance.right_valid && distance.left_valid);
 }
@@ -592,7 +597,9 @@ int main(int argc, char **argv)
   } else {
     assert(f413_machine_boot(NVM_STATUS_OK, &id, uid) == F413_MACHINE_OK);
     assert(f413_machine_has(F413_CAP_DRIVE));
-    assert(ENABLE_AUTO_VIDEO_CAPTURE == (rev == 2U ? 1U : 0U));
+    assert(ENABLE_AUTO_VIDEO_CAPTURE == 0U);
+    assert(GOAL1_X == 7 && GOAL1_Y == 7 && GOAL2_X == 7 && GOAL2_Y == 8);
+    assert(GOAL3_X == 8 && GOAL3_Y == 7 && GOAL4_X == 8 && GOAL4_Y == 8);
     assert(DIST_HALF_SEC == 45.0);
     assert(KP_VELOCITY_FAN_OFF == (rev == 3U ? 0.24f : 0.8f));
     assert(KI_VELOCITY_FAN_OFF == (rev == 3U ? 0.001f : 0.012f));

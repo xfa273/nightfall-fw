@@ -116,6 +116,9 @@ class FirmwareSourceParityTests(unittest.TestCase):
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "f413_motion_policy.h"
+static unsigned test_motion_features;
+#define F413_MOTION_FEATURES test_motion_features
 static float test_rounding;
 static float test_cap;
 #define TURN_OMEGA_PROFILE_ROUNDING_SCALE test_rounding
@@ -134,7 +137,9 @@ int main(int argc, char **argv) {
   if (argc != 8) return 2;
   float angle = atof(argv[1]), alpha = atof(argv[2]);
   test_cap = atof(argv[3]); test_rounding = atof(argv[4]);
-  f413_path_run_smooth_turn_t p = atoi(argv[7])
+  int search_revision = atoi(argv[7]);
+  test_motion_features = search_revision == 3 ? F413_MOTION_PARAMETER_LIMITS : 0U;
+  f413_path_run_smooth_turn_t p = search_revision
       ? f413_search_step_build_smooth_turn(angle, alpha)
       : f413_path_run_build_smooth_turn(angle, alpha, test_cap);
   s_omega_profile_peak = (angle < 0 ? -1 : 1) * p.omega_peak_deg_s;
@@ -149,8 +154,8 @@ int main(int argc, char **argv) {
 }
 """
         source.write_text(prelude + functions + main, encoding="utf-8")
-        subprocess.run([compiler, "-std=c99", "-O0", str(source), "-lm", "-o", str(cls.binary)],
-                       check=True, capture_output=True, text=True)
+        subprocess.run([compiler, "-std=c99", "-O0", "-I", str(ROOT / "params"),
+                        str(source), "-lm", "-o", str(cls.binary)], check=True)
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -163,13 +168,13 @@ int main(int argc, char **argv) {
                  (90.0, 10000.0, 2200.0, 0.01)]
         for angle, alpha, cap, rounding in cases:
             for fraction in (0.0, 0.1, 0.49, 0.65, 0.95, 1.0, 1.1):
-                for search in (0, 1):
-                    # Search has no omega cap; shortest uses its mode parameter.
+                for search_rev, expected_cap in ((0, cap), (2, 2200.0), (3, 0.0)):
+                    # R2 search retains the August cap. R3 search uses the uncapped profile.
                     profile = turn_tune.build_profile(
                         replace(example_turn(angle), alpha_deg_s2=alpha),
-                        turn_tune.Constants(rounding, 0.0 if search else cap))
-                    with self.subTest(angle=angle, alpha=alpha, rounding=rounding, fraction=fraction, search=search):
-                        args = [angle, alpha, cap, rounding, fraction, 1, search]
+                        turn_tune.Constants(rounding, expected_cap))
+                    with self.subTest(angle=angle, alpha=alpha, rounding=rounding, fraction=fraction, search_rev=search_rev):
+                        args = [angle, alpha, cap, rounding, fraction, 1, search_rev]
                         values = np.fromstring(subprocess.check_output([str(self.binary), *map(str, args)], text=True), sep=" ")
                         peak = math.copysign(profile.omega_peak_deg_s, angle)
                         expected = [profile.omega_peak_deg_s, profile.t_acc_s, profile.t_cruise_s,

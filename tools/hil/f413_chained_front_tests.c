@@ -37,6 +37,7 @@ bool f413_hw_stop_switch_pressed(void) { return false; }
 bool f413_hw_fan_start(uint16_t duty) { (void)duty; fan = true; return true; }
 bool f413_hw_fan_set_duty(uint16_t duty) { (void)duty; return true; }
 void f413_hw_fan_stop(void) { fan = false; }
+void f413_hw_show_run_failure(void) { assert(!running && !fan); }
 void f413_hw_emit_video_sync_start_pattern(void) {}
 void f413_hw_emit_video_sync_stop_pattern(void) {}
 void f413_ctrl_start(void) { running = true; position = velocity = step_velocity = 0; }

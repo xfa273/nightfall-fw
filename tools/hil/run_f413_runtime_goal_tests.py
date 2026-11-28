@@ -21,6 +21,8 @@ with tempfile.TemporaryDirectory(prefix='f413-runtime-params-') as directory:
         values = dict(GOAL_X=1 if rev == 2 else 0, GOAL_Y=0 if rev == 2 else 8,
                       START_X=2 if rev == 2 else 0, START_Y=3 if rev == 2 else 0,
                       GOAL9_X=15, GOAL9_Y=15, SENSOR_DIST_GAIN='1.25F' if rev == 2 else '2.0F')
+        # This fixture exercises the primary goal and slot 9 in isolation.
+        values.update({f"GOAL{slot}_{axis}": 0 for slot in range(2, 9) for axis in ("X", "Y")})
         for key, value in values.items():
             text, count = re.subn(rf'(^#define\s+{key})\s+[^\n]*', rf'\g<1> {value}', text, flags=re.M)
             assert count == 1, key
