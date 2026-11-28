@@ -1,0 +1,23 @@
+Drill report for Suction-Fan_Mount.kicad_pcb
+Created on 2026-08-14T18:37:22
+
+Copper Layer Stackup:
+    =============================================================
+    L1 :  F.Cu                      front
+    L2 :  B.Cu                      back
+
+
+Drill file 'Suction-Fan_Mount-PTH.drl' contains
+    plated through holes:
+    =============================================================
+
+    Total plated holes count 0
+
+
+Drill file 'Suction-Fan_Mount-NPTH.drl' contains
+    unplated through holes:
+    =============================================================
+    T1  1.600mm  0.0630"  (2 holes))
+    T2  2.300mm  0.0906"  (1 hole)
+
+    Total unplated holes count 3

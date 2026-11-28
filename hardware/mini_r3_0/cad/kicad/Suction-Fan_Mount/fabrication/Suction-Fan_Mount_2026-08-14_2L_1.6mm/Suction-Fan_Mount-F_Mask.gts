@@ -1,0 +1,28 @@
+%TF.GenerationSoftware,KiCad,Pcbnew,10.0.3*%
+%TF.CreationDate,2026-08-14T18:37:21+09:00*%
+%TF.ProjectId,Suction-Fan_Mount,53756374-696f-46e2-9d46-616e5f4d6f75,rev?*%
+%TF.SameCoordinates,Original*%
+%TF.FileFunction,Soldermask,Top*%
+%TF.FilePolarity,Negative*%
+%FSLAX46Y46*%
+G04 Gerber Fmt 4.6, Leading zero omitted, Abs format (unit mm)*
+G04 Created by KiCad (PCBNEW 10.0.3) date 2026-08-14 18:37:21*
+%MOMM*%
+%LPD*%
+G01*
+G04 APERTURE LIST*
+%ADD10C,2.300000*%
+%ADD11C,1.600000*%
+G04 APERTURE END LIST*
+D10*
+%TO.C,H1*%
+X96000000Y-100000000D03*
+%TD*%
+D11*
+%TO.C,H2*%
+X83750000Y-109750000D03*
+%TD*%
+%TO.C,H3*%
+X83750000Y-90250000D03*
+%TD*%
+M02*

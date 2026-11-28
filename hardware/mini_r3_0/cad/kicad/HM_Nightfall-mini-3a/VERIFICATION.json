@@ -1,0 +1,38 @@
+{
+  "board": "/Users/xfa273/workspace/micromouse/nightfall-fw/hardware/mini_r3_0/cad/kicad/HM_Nightfall-mini-3a/HM_Nightfall-mini-3a_v0.kicad_pcb",
+  "copper_layers": 4,
+  "footprints": 102,
+  "tracks": 0,
+  "vias": 0,
+  "zones": 0,
+  "erc_violations": 0,
+  "drc_violations": 71,
+  "drc_by_type": {
+    "lib_footprint_mismatch": 59,
+    "text_thickness": 11,
+    "text_height": 1
+  },
+  "physical_drc_violations": 0,
+  "unconnected_items": 228,
+  "schematic_parity": 1,
+  "schematic_parity_details": [
+    {
+      "description": "回路図のピン 49 (GND) のパッドが見つかりません",
+      "items": [
+        {
+          "description": "フットプリント U5",
+          "pos": {
+            "x": 148.501098,
+            "y": 114.7
+          },
+          "uuid": "ead53323-6976-467d-a197-2c46025ca526"
+        }
+      ],
+      "severity": "warning",
+      "type": "net_conflict"
+    }
+  ],
+  "u5_fpid": "Nightfall-Local:UFQFPN-48_7X7X0P55MM-M_noEP_hand_solder",
+  "u2_pad1_net": "/MOTOR_L_OUT1",
+  "u3_pad1_net": "/MOTOR_R_OUT1"
+}
