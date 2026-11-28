@@ -190,6 +190,23 @@ class ProbeRecoveryTests(unittest.TestCase):
         flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
         self.reset.assert_not_called()
 
+    def test_cube_dash_serial_during_usb_failure_requires_one_physical_probe(self):
+        # CubeProgrammer 2.21 prints this placeholder on the failing Mac-direct V3 path.
+        listing = "ST-LINK error (DEV_USB_COMM_ERR)\n" + self.probe(0, "-")
+        failed = subprocess.CompletedProcess([], 0, listing)
+        self.capture.side_effect = [failed, failed, self.ready]
+        flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.reset.assert_called_once_with("cli", "PROBE1", require_single=True)
+        self.assertEqual(self.capture.call_count, 3)
+
+    def test_missing_serial_is_never_a_healthy_probe(self):
+        for listing in (self.probe(0, "-"), "ST-LINK SN : -\n", "ST-LINK SN : \nST-LINK SN : PROBE1\n"):
+            with self.subTest(listing=listing):
+                self.capture.return_value = subprocess.CompletedProcess([], 0, listing)
+                with self.assertRaises(RuntimeError):
+                    flash.ensure_stlink_ready("cli", None, Path.cwd(), recover=True)
+        self.reset.assert_not_called()
+
     def test_healthy_list_with_multiple_probes_and_no_serial_needs_no_reset(self):
         self.capture.return_value = subprocess.CompletedProcess([], 0, self.probe(0, "A") + self.probe(1, "B"))
         flash.ensure_stlink_ready("cli", None, Path.cwd(), recover=True)
@@ -222,6 +239,7 @@ class ProbeRecoveryTests(unittest.TestCase):
                 (healthy + self.probe(1, "PROBE10", stalled=True), "ABSENT"),
                 (healthy + self.probe(1, "PROBE1", stalled=True), "PROBE1"),
                 (error + healthy + other, "PROBE1"),
+                (error + healthy + self.probe(1, "-"), "ABSENT"),
                 (healthy + error + other, "PROBE1"),
                 (healthy + other + "-------------------\r\nError: ST-LINK error (DEV_USB_COMM_ERR)\r\n", "PROBE10"),
                 (healthy + self.probe(1, "", stalled=True), "ABSENT")):
@@ -305,7 +323,8 @@ class UsbInventoryTests(unittest.TestCase):
             for peer_pid, single, serial, expected_device in (
                     (0x3748, True, "PROBE1", None), (0x3754, True, "PROBE1", None),
                     (None, True, "PROBE1", None), (0xDF11, True, "PROBE1", 1),
-                    (0xDF11, True, "ABSENT", None), (0x3754, False, "PROBE2", 2)):
+                    (0xDF11, True, "ABSENT", None), (0x3754, False, "PROBE2", 2),
+                    (0x3752, True, "PROBE1", None), (0x3752, False, "PROBE2", None)):
                 with self.subTest(peer=peer_pid, single=single, serial=serial):
                     lib.libusb_reset_device.reset_mock()
                     if expected_device is None:

@@ -78,6 +78,13 @@ python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
 
 ### ST-LINK認識確認
 
+プローブ単体で確認するときは、機体電源とプローブのターゲット給電をOFFにして機体側のケーブルを外し、
+プローブをUSBでMacにつなぎます。このMacでは次の接続で一覧取得が各20回中20回成功しました。
+
+- WeAct Mini Debugger（ST-LINK/V2-1、`0483:3752`）はUSB-CケーブルでMacに直結します。[WeAct単体の接続試験](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L23)
+- STLINK-V3MINIE（`0483:3754`）は **Mac → Anker 547 USBハブ → V3MINIE** で接続します。
+  Mac直結では機体を外した状態でも通信エラーが再現しました。STも一部のホストとの組み合わせで外部USB High-Speedハブを案内しています。[接続試験の記録](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L12-L15)・[STのFAQ](https://community.st.com/stm32-mcus-60/faq-possible-communication-failure-between-stlink-v3-and-some-recent-computers-141999)
+
 ```bash
 python3 tools/flashing/flash_stlink --list
 ```
@@ -91,9 +98,10 @@ mini R3では通電したままUSBを再接続した際に車輪が回り、迷�
 python3 tools/flashing/flash_stlink --recover-usb --sn <STLINK_SN>
 ```
 
-複数台接続時は `--sn` で復旧するV3 MINIEを指定します。CubeProgrammerの一覧を
-プローブごとに照合し、指定した機器が正常ならそのまま終了します。指定した機器に
-USB通信エラーがあるときは1回だけリセットし、同じシリアル番号が正常に再列挙されるか最大3回確認します。
+`--recover-usb --sn` のシリアル番号照合はWeActでも確認できます。指定した機器が
+正常ならそのまま終了します。USBリセットの対象はV3 MINIEです。複数台接続時は
+`--sn` で対象を指定します。対象のV3 MINIEにUSB通信エラーがあるときは1回だけリセットし、
+同じシリアル番号が正常に再列挙されるか最大3回確認します。
 libusbがシリアル番号を示さずエラーを報告する場合は、USB上で対象のST-LINKが1台だけと確認できたときに復旧します。
 発生元を特定できない場合は、機体電源とプローブのターゲット給電をOFFにした状態で対象の1台だけを接続してください。
 
@@ -138,10 +146,9 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
    python3 tools/flashing/flash_stlink --build --freq 400 --mode UR --reset-mode HWrst
    ```
 
-3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDB等の
-   別デバッガ接続を終了し、USBハブを外した直結・別ケーブル・別ポートで比較する。
-   UART capture使用中のUSB抜き差しはVCPも切断するため、再接続後にcaptureを再開する。
-   配線を変える前に機体電源とプローブのターゲット給電をOFFにする。`--recover-usb` はV3 MINIE用。
+3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDBやUART captureを終了する。
+   機体電源とプローブのターゲット給電をOFFにし、プローブごとの確認済み経路でケーブル・ポートを確認する。
+   再接続後に必要なcaptureを再開する。[ST-LINK認識確認](#st-link認識確認)
 4. 同じセクタで再現する場合は、失敗前のST-LINK FW、ターゲット電圧、SWD周波数、
    sector番号とエラーをログで確認する。VDD/GND/SWDIO/SWCLK/NRSTの接触・配線も確認し、
    ST-LINK firmwareは公式更新ツールで更新を検討する。保護解除や全消去を復旧手順にしない。
@@ -155,16 +162,15 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 この状態では消去を反復せず、ケーブルやプローブを交換して読み出しの安定性から確認します。
 同日、WeAct Mini Debuggerの別個体・別ハブ・別A–Cケーブルでも再現しましたが、
 STLINK-V3MINIEと専用ケーブルへの交換で消去・書き込み・照合・起動に成功しました。
-アプリ全域の読み戻し一致とidentity保全も確認済みです。WeAct用の共通変換基板・
-SWDケーブル、またはそのプローブ系統との組み合わせが未切り分けなので、
-当面は復旧確認済みのV3MINIE経路を使用します。確認済みの接続条件:
+アプリ全域の読み戻し一致とidentity保全も確認済みです。9月27日のV3MINIEでの接続条件は次のとおりです。
 
 ```bash
 python3 tools/flashing/flash_stlink --build --freq 1000 --mode UR --reset-mode HWrst
 ```
 
-このUR/HWrst条件はNRST接続済みの構成で確認しています。
-調査経過は [実機調査記録](../../docs/ai/STLINK_ERASE_FAILURE_20260927.md) を参照してください。
+このUR/HWrst条件はNRST接続済みの構成で確認しています。[9月27日の調査記録](../../docs/ai/STLINK_ERASE_FAILURE_20260927.md)
+10月18日には、WeActをMacに直結し、新しい変換基板・ケーブルでmini R3のアプリ書き込み、照合、
+起動と全域読み戻しが成功しました。この基板はNRST未接続で、接続条件は `NORMAL/SWrst`、要求周波数1 MHzです。[WeActの実機記録](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L7)
 
 参考: [CubeProgrammer UM2237（接続/リセット/ログ）](https://www.st.com/resource/en/user_manual/dm00403500-stm32cubeprogrammer-stmicroelectronics.pdf)、
 [ST-LINK RN0093（既知制約・FW更新）](https://www.st.com/resource/en/release_note/dm00107009-firmware-upgrade-for-stlink-stlinkv2-stlinkv21-and-stlinkv3-boards-stmicroelectronics.pdf)。

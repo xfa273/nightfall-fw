@@ -30,7 +30,7 @@ ANSI_CSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 STLINK_PROBE_HEADER = re.compile(r"^[ \t]*ST-Link Probe[ \t]+\d+[ \t]*:[ \t]*$", re.MULTILINE | re.IGNORECASE)
 STLINK_LIST_END = re.compile(r"^[ \t]*-{3,}[ \t]*$", re.MULTILINE)
 LIBUSB_LINE = re.compile(r"^[ \t]*libusb:.*$", re.MULTILINE | re.IGNORECASE)
-STLINK_SERIAL_LINE = re.compile(r"^[ \t]*ST-LINK SN[ \t]*:[ \t]*(\S+)[ \t]*$", re.MULTILINE | re.IGNORECASE)
+STLINK_SERIAL_LINE = re.compile(r"^[ \t]*ST-LINK SN[ \t]*:[ \t]*(\S*)[ \t]*$", re.MULTILINE | re.IGNORECASE)
 STLINK_USB_ERROR_MARKERS = (
     "DEV_USB_COMM_ERR",
     "device not responding",
@@ -123,6 +123,11 @@ def contains_stlink_usb_error(output: str) -> bool:
     return any(marker.lower() in lowered for marker in STLINK_USB_ERROR_MARKERS)
 
 
+def listed_probe_serials(output: str) -> list:
+    # An empty field or "-" is a probe of unknown identity in CubeProgrammer's listing.
+    return [None if sn in ("", "-") else sn for sn in STLINK_SERIAL_LINE.findall(output)]
+
+
 def probe_recovery_state(output: str, requested_sn: Optional[str]) -> Tuple[ProbeState, Optional[str]]:
     """Associate errors with numbered probe records; keep unscoped diagnostics separate."""
     output = "\n".join(ANSI_CSI.sub("", output).splitlines())
@@ -130,11 +135,11 @@ def probe_recovery_state(output: str, requested_sn: Optional[str]) -> Tuple[Prob
     driver_error = any(contains_stlink_usb_error(line) for line in LIBUSB_LINE.findall(output))
     preamble, *sections = STLINK_PROBE_HEADER.split(LIBUSB_LINE.sub("", output))
     # Some listings only print serial lines, without numbered probe headers.
-    probes = [(sn, False) for sn in STLINK_SERIAL_LINE.findall(preamble)]
+    probes = [(sn, False) for sn in listed_probe_serials(preamble)]
     unscoped_error = driver_error or contains_stlink_usb_error(preamble)
     for section in sections:
         details, *footer = STLINK_LIST_END.split(section, maxsplit=1)
-        serials = STLINK_SERIAL_LINE.findall(details)
+        serials = listed_probe_serials(details)
         if len(serials) > 1:
             return ProbeState.UNKNOWN, None
         probes.append((serials[0] if serials else None, contains_stlink_usb_error(details)))
@@ -295,7 +300,8 @@ def ensure_stlink_ready(cli: str, requested_sn: Optional[str], cwd: Path, *, rec
     completed = run_capture(list_cmd, cwd=cwd)
     if not recover:
         if contains_stlink_usb_error(ANSI_CSI.sub("", completed.stdout or "")):
-            raise RuntimeError("ST-LINK USB通信エラー。機体電源とプローブのターゲット給電をOFFにしてから --recover-usb を実行してください")
+            raise RuntimeError("ST-LINK USB通信エラー。機体電源とプローブのターゲット給電をOFFにしてUSB接続を確認してください。"
+                               "macOSのV3 MINIEでは --recover-usb が使えます")
         completed.check_returncode()
         return
 
@@ -347,8 +353,8 @@ def run_programmer(cmd: list, cwd: Path) -> None:
             "ST-LINK操作に失敗しました。詳細ログを確認してください。\n"
             "接続不安定時は --freq 400、NRST接続済みなら "
             "--mode UR --reset-mode HWrst を試してください。\n"
-            "USB通信エラーなら他のデバッガを終了し、USB直結・ケーブル交換・"
-            "機体電源とプローブのターゲット給電をOFFにしてからST-LINKの接続を確認してください。\n"
+            "USB通信エラーなら他のデバッガを終了し、機体電源とプローブのターゲット給電をOFFにして配線を確認してください。"
+            "MacのV3 MINIEではUSB High-Speedハブ経由を試してください。\n"
             "消去/書き込みの自動再試行や全消去は行いません。",
             file=sys.stderr,
         )
