@@ -1,0 +1,3 @@
+# Preserve the original CAD exports, including DXF line endings and indented blank lines in the schematic.
+source/*.DXF -text whitespace=trailing-space,space-before-tab,cr-at-eol
+CM_Nightfall-Air-2a_v0.kicad_sch -text whitespace=-blank-at-eol

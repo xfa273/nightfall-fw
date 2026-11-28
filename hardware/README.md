@@ -11,7 +11,7 @@
 - `hardware/<board_name>/bom/`: 部品表・発注情報
 - `hardware/<board_name>/notes/`: 設計メモ・確認結果
 
-`board_name` は `mini_r1_0` のように `<family>_r<major>_<minor>` を使用します。
+正式機のディレクトリ名は `mini_r1_0` のように `<family>_r<major>_<minor>`、試作案は `<family>_r<major>_p<NN>` とします。[機体と個体の命名規則](../docs/NIGHTFALL_FW_DEV_POLICY.md#2-リポジトリと命名)
 
 ## Git管理方針
 
@@ -28,5 +28,14 @@
 - `hardware/classic_r1_0/`: STM32F405 搭載クラシックサイズ最終版 / Eagle `CM_Nightfall-Air_v1`
 
 上記以外の Eagle プロジェクトは旧機体の参考資料として扱い、現役基板とは分けて保管します。
+
+## classic r2 の試作案
+
+| 試作案 | 大会登録名 | 基板の編集原本 |
+| --- | --- | --- |
+| [`classic_r2_p01`](classic_r2_p01/) | Nightfall Air 2 | [KiCad・配置配線中](classic_r2_p01/cad/kicad/CM_Nightfall-Air-2a/CM_Nightfall-Air-2a_v0.kicad_pro) |
+| [`classic_r2_p02`](classic_r2_p02/) | Nightfall 2 | [KiCad・新規設計](classic_r2_p02/cad/kicad/classic_r2_p02/classic_r2_p02.kicad_pro) |
+
+両案を比較し、採用した案に `classic_r2_0` を割り当てます。
 
 `_sandbox/` 配下は実験・一時作業用とし、正式成果物は本ディレクトリに集約します。

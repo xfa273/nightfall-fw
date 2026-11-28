@@ -1,0 +1,7 @@
+(fp_lib_table
+  (lib (name "HM_Nightfall-mini-2e_v1")(type "KiCad")(uri "${KIPRJMOD}/HM_Nightfall-mini-2e_v1.pretty")(options "")(descr "Legacy mini-2e footprints retained for schematic-to-PCB synchronization"))
+  (lib (name "Nightfall-Power")(type "KiCad")(uri "${KIPRJMOD}/Nightfall-Power.pretty")(options "")(descr "Project-local power footprints for CM_Nightfall-Air-2a"))
+  (lib (name "Nightfall-Local")(type "KiCad")(uri "${KIPRJMOD}/Nightfall-Local.pretty")(options "")(descr "Hand-solder footprint variants for CM_Nightfall-Air-2a"))
+  (lib (name "Nightfall-Mechanical")(type "KiCad")(uri "${KIPRJMOD}/Nightfall-Mechanical.pretty")(options "")(descr "Mechanical holes generated from Main-PCB.DXF"))
+  (lib (name "Nightfall-Sensor")(type "KiCad")(uri "${KIPRJMOD}/Nightfall-Sensor.pretty")(options "")(descr "Classic-size wall sensor and IR emitter footprints"))
+)
