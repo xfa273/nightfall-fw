@@ -53,6 +53,15 @@ Releaseのclassic/miniおよび旧solver比較ビルド成功。時間版classic
 
 ## ブランチと作業場所
 
+2026年11月28日に大会版との比較を終え、下表の作業ツリーを撤去した。再開時は、通常のリポジトリルートで必要な方を作成する。
+
+```sh
+git worktree add ../nightfall-fw-classic-baseline feature/classic-r1/competition-2026
+git worktree add ../nightfall-fw-classic-r1 feature/f405/orthogonal-time-planner
+```
+
+撤去前のビルド成果物とログは `../nightfall-fw-backups/20261128-periodic-073144Z/worktrees/` の `classic-baseline/` と `classic-planner/` に保存している。
+
 | 用途 | ブランチ | 作業ツリー |
 | --- | --- | --- |
 | 大会基準版の再調整 | `feature/classic-r1/competition-2026` | `../nightfall-fw-classic-baseline` |

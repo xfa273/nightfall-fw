@@ -11,6 +11,8 @@
 
 ## 2. ブランチ
 
+月1回を目安に未コミット差分、追跡先、worktree、stash、Draft PR の再開条件を見直す。統合済みのローカルブランチを片づける際は、未統合の先端・使用中の作業ツリー・保留中のPRの元と先・保存用参照を確認する。製造原本や実機ログなど、Git管理外の成果物も保存先と照合する。
+
 - `main` または detached `HEAD` から始める場合は `codex/<topic>` ブランチを作る。
 - 大きな実機移植作業や危険な同期前には、必要に応じて `backup/<timestamp>-<reason>` ブランチを作って push する。
 - 生成物、ログ、build directory、capture CSV はブランチに含めない。必要な結果は `docs/ai/WORKLOG.md` や専用READMEに要約する。

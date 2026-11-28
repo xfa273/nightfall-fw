@@ -22,6 +22,15 @@
 
 ## 記録
 
+### 2026-11-28 統合済みのローカル先端を保存
+
+下記2本は同名のリモートブランチより1コミット先にあり、どちらの先端も `main` の履歴に含まれていた。ローカル参照を整理する前に、その時点の先端をタグで保存した。
+
+| 以前のブランチ | 先端の内容 | 保存タグ |
+| --- | --- | --- |
+| `exp/omega-ref-test-b` | `143a325`。ファン有無の角度ゲイン、旋回形状、探索・最短設定の調整。 | `archive/20261128/omega-ref-test-b` |
+| `fix/temp-mute-buzzer-during-search` | `aad627f`。ローカルの追加1件は開発方針・計画・棚卸しの文書更新。 | `archive/20261128/temp-mute-buzzer-during-search` |
+
 - topic: phase2/trace-api-bootstrap
 - 目的: F413基板到着前に、F405(UART)とF413(SWO)を同じ呼び出しで扱える `trace_printf()` の土台を作る
 - ブランチ: main
