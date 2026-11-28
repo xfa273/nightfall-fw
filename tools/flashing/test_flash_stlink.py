@@ -1,6 +1,7 @@
 """Flash failure regression tests; no vendor executable or hardware is used."""
 
 import contextlib
+import ctypes
 import importlib.machinery
 import importlib.util
 import io
@@ -8,7 +9,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 loader = importlib.machinery.SourceFileLoader(
@@ -159,7 +160,7 @@ class ProbeRecoveryTests(unittest.TestCase):
         with patch.object(flash.sys, "platform", "darwin"):
             args = flash.argparse.Namespace(recover_usb=True, sn="PROBE1")
             self.assertEqual(flash.execute(args, "cli", Path.cwd()), 0)
-        self.reset.assert_called_once_with("cli", "PROBE1")
+        self.reset.assert_called_once_with("cli", "PROBE1", require_single=True)
         self.program.assert_not_called()
         self.assertEqual(self.capture.call_count, 3)
 
@@ -175,6 +176,73 @@ class ProbeRecoveryTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             flash.ensure_stlink_ready("cli", "PROBE2", Path.cwd(), recover=True)
         self.reset.assert_not_called()
+
+    @staticmethod
+    def probe(index, serial, *, stalled=False):
+        # CubeProgrammer 2.21.0 writes these SGR sequences even to a pipe.
+        return (f"ST-Link Probe {index} :\r\n"
+                f"\x1b[39;49m\x1b[0m\x1b[90m   ST-LINK SN  : {serial}\r\n"
+                "\x1b[39;49m\x1b[0m\x1b[90m   Board Name  : STLINK-V3MINIE\r\n"
+                + ("Error: ST-LINK error (DEV_USB_COMM_ERR)\r\n" if stalled else ""))
+
+    def test_colored_listing_recognizes_a_healthy_probe_without_reset(self):
+        self.capture.return_value = subprocess.CompletedProcess([], 0, self.probe(0, "PROBE1"))
+        flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.reset.assert_not_called()
+
+    def test_healthy_list_with_multiple_probes_and_no_serial_needs_no_reset(self):
+        self.capture.return_value = subprocess.CompletedProcess([], 0, self.probe(0, "A") + self.probe(1, "B"))
+        flash.ensure_stlink_ready("cli", None, Path.cwd(), recover=True)
+        self.reset.assert_not_called()
+
+    def test_peer_stall_does_not_reset_healthy_selected_probe_in_either_order(self):
+        for listing in (self.probe(0, "PROBE1") + self.probe(1, "PROBE10", stalled=True),
+                        self.probe(0, "PROBE10", stalled=True) + self.probe(1, "PROBE1")):
+            with self.subTest(listing=listing):
+                self.capture.return_value = subprocess.CompletedProcess([], 0, listing)
+                flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.reset.assert_not_called()
+
+    def test_reenumeration_confirms_only_the_reset_serial_even_while_peer_stays_stalled(self):
+        peer = self.probe(0, "PROBE10", stalled=True)
+        both_stalled = subprocess.CompletedProcess([], 0, peer + self.probe(1, "PROBE1", stalled=True))
+        recovered = subprocess.CompletedProcess([], 0, peer + self.probe(1, "PROBE1"))
+        self.capture.side_effect = [both_stalled, both_stalled, recovered]
+        flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.assertEqual(self.capture.call_count, 3)
+        self.reset.assert_called_once_with("cli", "PROBE1", require_single=False)
+        self.program.assert_not_called()
+
+    def test_ambiguous_listings_never_reset_a_probe(self):
+        healthy = self.probe(0, "PROBE1")
+        other = self.probe(1, "PROBE10")
+        error = "libusb: error: pipe is stalled\r\n"
+        for listing, requested in (
+                (healthy + self.probe(1, "PROBE10", stalled=True), None),
+                (healthy + self.probe(1, "PROBE10", stalled=True), "ABSENT"),
+                (healthy + self.probe(1, "PROBE1", stalled=True), "PROBE1"),
+                (error + healthy + other, "PROBE1"),
+                (healthy + error + other, "PROBE1"),
+                (healthy + other + "-------------------\r\nError: ST-LINK error (DEV_USB_COMM_ERR)\r\n", "PROBE10"),
+                (healthy + self.probe(1, "", stalled=True), "ABSENT")):
+            with self.subTest(listing=listing, requested=requested):
+                self.capture.return_value = subprocess.CompletedProcess([], 0, listing)
+                with self.assertRaises(RuntimeError):
+                    flash.ensure_stlink_ready("cli", requested, Path.cwd(), recover=True)
+                self.reset.assert_not_called()
+
+    def test_single_stalled_record_binds_reset_to_its_serial_without_sn_option(self):
+        self.capture.side_effect = [subprocess.CompletedProcess([], 0, self.probe(0, "PROBE1", stalled=True)),
+                                    self.ready]
+        flash.ensure_stlink_ready("cli", None, Path.cwd(), recover=True)
+        self.reset.assert_called_once_with("cli", "PROBE1", require_single=True)
+
+    def test_reenumeration_requires_successful_cli_exit(self):
+        failed = subprocess.CompletedProcess([], 1, self.probe(0, "PROBE1"))
+        self.capture.side_effect = [self.stall, failed, self.ready]
+        flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.assertEqual(self.capture.call_count, 3)
+        self.reset.assert_called_once_with("cli", "PROBE1", require_single=True)
 
     def test_recovery_rejects_combined_operations_before_opening_the_cli(self):
         for options in (["--build"], ["--reset-only"], ["--list"], ["--image", "fw.bin"]):
@@ -194,6 +262,60 @@ class ProbeRecoveryTests(unittest.TestCase):
                                 ([("", None), ("A", 2)], None), ([], None)):
             with self.subTest(matches=matches, serial=serial), self.assertRaises(RuntimeError):
                 flash.select_recovery_probe(matches, serial)
+
+
+class UsbInventoryTests(unittest.TestCase):
+    def test_reset_selection_checks_the_physical_usb_inventory(self):
+        lib = Mock()
+        devices = (ctypes.c_void_p * 2)(1, 2)
+        device_list = ctypes.POINTER(ctypes.c_void_p)
+
+        def list_devices(context, out):
+            ctypes.cast(out, ctypes.POINTER(device_list))[0] = ctypes.cast(devices, device_list)
+            return len(devices)
+
+        def descriptor(device, out):
+            if device == 2 and peer_pid is None:
+                return -1
+            desc = ctypes.cast(out, ctypes.POINTER(flash.LibusbDeviceDescriptor)).contents
+            desc.idVendor = flash.STLINK_USB_VID
+            desc.idProduct = flash.STLINK_V3_MINIE_PID if device == 1 else peer_pid
+            desc.iSerialNumber = 1
+            return 0
+
+        def open_device(device, out):
+            ctypes.cast(out, ctypes.POINTER(ctypes.c_void_p))[0] = device
+            return 0
+
+        def read_serial(handle, index, buf, size):
+            serial = f"PROBE{handle.value}".encode("ascii")
+            buf[:len(serial)] = serial
+            return len(serial)
+
+        lib.libusb_init.return_value = 0
+        lib.libusb_get_device_list.side_effect = list_devices
+        lib.libusb_get_device_descriptor.side_effect = descriptor
+        lib.libusb_open.side_effect = open_device
+        lib.libusb_get_string_descriptor_ascii.side_effect = read_serial
+        lib.libusb_reset_device.return_value = 0
+        with patch.object(flash.sys, "platform", "darwin"), patch.object(flash, "find_libusb", return_value="fake"), \
+                patch.object(ctypes, "CDLL", return_value=lib):
+            # A V2, a second MINIE, and an unreadable descriptor can hide the
+            # owner of a global error. An unrelated STM32 DFU device cannot.
+            for peer_pid, single, serial, expected_device in (
+                    (0x3748, True, "PROBE1", None), (0x3754, True, "PROBE1", None),
+                    (None, True, "PROBE1", None), (0xDF11, True, "PROBE1", 1),
+                    (0xDF11, True, "ABSENT", None), (0x3754, False, "PROBE2", 2)):
+                with self.subTest(peer=peer_pid, single=single, serial=serial):
+                    lib.libusb_reset_device.reset_mock()
+                    if expected_device is None:
+                        with self.assertRaises(RuntimeError):
+                            flash.reset_stlink_v3_minie_usb("cli", serial, require_single=single)
+                        lib.libusb_reset_device.assert_not_called()
+                    else:
+                        self.assertEqual(flash.reset_stlink_v3_minie_usb("cli", serial, require_single=single), serial)
+                        lib.libusb_reset_device.assert_called_once()
+                        self.assertEqual(lib.libusb_reset_device.call_args.args[0].value, expected_device)
 
 
 if __name__ == "__main__":

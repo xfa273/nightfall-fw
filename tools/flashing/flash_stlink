@@ -10,8 +10,9 @@ import sys
 import tempfile
 import time
 from datetime import datetime, timezone
+from enum import Enum, auto
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from cube_cli_runtime import cube_cli_runtime
 
@@ -22,12 +23,26 @@ CUBE_CLI_CANDIDATES = [
 ]
 STLINK_USB_VID = 0x0483
 STLINK_V3_MINIE_PID = 0x3754
+# Include the other probes in CubeProgrammer's 49-stlink*.rules when counting devices.
+STLINK_USB_PIDS = {0x3744, 0x3748, 0x374B, 0x374D, 0x374E, 0x374F,
+                   0x3752, 0x3753, STLINK_V3_MINIE_PID, 0x3755, 0x3757}
+ANSI_CSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+STLINK_PROBE_HEADER = re.compile(r"^[ \t]*ST-Link Probe[ \t]+\d+[ \t]*:[ \t]*$", re.MULTILINE | re.IGNORECASE)
+STLINK_LIST_END = re.compile(r"^[ \t]*-{3,}[ \t]*$", re.MULTILINE)
+LIBUSB_LINE = re.compile(r"^[ \t]*libusb:.*$", re.MULTILINE | re.IGNORECASE)
 STLINK_SERIAL_LINE = re.compile(r"^[ \t]*ST-LINK SN[ \t]*:[ \t]*(\S+)[ \t]*$", re.MULTILINE | re.IGNORECASE)
 STLINK_USB_ERROR_MARKERS = (
     "DEV_USB_COMM_ERR",
     "device not responding",
     "pipe is stalled",
 )
+
+
+class ProbeState(Enum):
+    READY = auto()
+    STALLED = auto()
+    UNATTRIBUTED_STALL = auto()
+    UNKNOWN = auto()
 
 
 class LibusbDeviceDescriptor(ctypes.Structure):
@@ -104,10 +119,51 @@ def run_capture(cmd: list, cwd: Optional[Path] = None) -> subprocess.CompletedPr
 
 
 def contains_stlink_usb_error(output: str) -> bool:
-    return any(marker.lower() in output.lower() for marker in STLINK_USB_ERROR_MARKERS)
+    lowered = output.lower()
+    return any(marker.lower() in lowered for marker in STLINK_USB_ERROR_MARKERS)
 
 
-def select_recovery_probe(matches: list, requested_sn: Optional[str]):
+def probe_recovery_state(output: str, requested_sn: Optional[str]) -> Tuple[ProbeState, Optional[str]]:
+    """Associate errors with numbered probe records; keep unscoped diagnostics separate."""
+    output = "\n".join(ANSI_CSI.sub("", output).splitlines())
+    # libusb writes to stderr without a probe number; it can interrupt a record.
+    driver_error = any(contains_stlink_usb_error(line) for line in LIBUSB_LINE.findall(output))
+    preamble, *sections = STLINK_PROBE_HEADER.split(LIBUSB_LINE.sub("", output))
+    # Some listings only print serial lines, without numbered probe headers.
+    probes = [(sn, False) for sn in STLINK_SERIAL_LINE.findall(preamble)]
+    unscoped_error = driver_error or contains_stlink_usb_error(preamble)
+    for section in sections:
+        details, *footer = STLINK_LIST_END.split(section, maxsplit=1)
+        serials = STLINK_SERIAL_LINE.findall(details)
+        if len(serials) > 1:
+            return ProbeState.UNKNOWN, None
+        probes.append((serials[0] if serials else None, contains_stlink_usb_error(details)))
+        if footer and contains_stlink_usb_error(footer[0]):
+            unscoped_error = True
+
+    # A stalled probe may never print its serial. Only a single physical probe
+    # can establish ownership of such an error before a USB reset.
+    if not probes:
+        return (ProbeState.UNATTRIBUTED_STALL if unscoped_error else ProbeState.UNKNOWN), requested_sn
+    if len(probes) == 1 and probes[0][0] is None and (probes[0][1] or unscoped_error):
+        return ProbeState.UNATTRIBUTED_STALL, requested_sn
+
+    if not requested_sn and not unscoped_error and all(sn and not stalled for sn, stalled in probes):
+        return ProbeState.READY, None
+    matches = [(sn, stalled) for sn, stalled in probes if not requested_sn or sn == requested_sn]
+    if len(matches) != 1 or not matches[0][0]:
+        return ProbeState.UNKNOWN, None
+    serial, stalled = matches[0]
+    if stalled:
+        return ProbeState.STALLED, serial
+    if unscoped_error:
+        return (ProbeState.UNATTRIBUTED_STALL if len(probes) == 1 else ProbeState.UNKNOWN), serial
+    return ProbeState.READY, serial
+
+
+def select_recovery_probe(matches: list, requested_sn: Optional[str], *, require_single: bool = False):
+    if require_single and len(matches) != 1:
+        raise RuntimeError("USB通信エラーの発生元を特定できません。復旧するST-LINKを1台だけ接続してください")
     if requested_sn:
         matches = [(serial, handle) for serial, handle in matches if serial == requested_sn]
     if len(matches) != 1 or not matches[0][0]:
@@ -140,7 +196,7 @@ def find_libusb(cli: str) -> Path:
     )
 
 
-def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
+def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str], *, require_single: bool) -> str:
     if sys.platform != "darwin":
         raise RuntimeError("ST-LINK USB自動復旧は現在macOSのみ対応しています")
 
@@ -190,8 +246,14 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
             device = device_list[index]
             descriptor = LibusbDeviceDescriptor()
             if lib.libusb_get_device_descriptor(device, ctypes.byref(descriptor)) != 0:
+                if require_single:
+                    matches.append(("", None))
                 continue
-            if descriptor.idVendor != STLINK_USB_VID or descriptor.idProduct != STLINK_V3_MINIE_PID:
+            if descriptor.idVendor != STLINK_USB_VID:
+                continue
+            if descriptor.idProduct != STLINK_V3_MINIE_PID:
+                if require_single and descriptor.idProduct in STLINK_USB_PIDS:
+                    matches.append(("", None))
                 continue
 
             handle = ctypes.c_void_p()
@@ -214,7 +276,7 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
                     serial = bytes(serial_buffer[:serial_length]).decode("ascii", errors="replace")
             matches.append((serial, handle))
 
-        serial, handle = select_recovery_probe(matches, requested_sn)
+        serial, handle = select_recovery_probe(matches, requested_sn, require_single=require_single)
         reset_rc = lib.libusb_reset_device(handle)
         # On macOS a successful re-enumeration can invalidate the old handle.
         if reset_rc not in (0, -4):
@@ -231,26 +293,29 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
 def ensure_stlink_ready(cli: str, requested_sn: Optional[str], cwd: Path, *, recover: bool = False) -> None:
     list_cmd = [cli, "-l", "stlink-only"]
     completed = run_capture(list_cmd, cwd=cwd)
-    if not contains_stlink_usb_error(completed.stdout or ""):
+    if not recover:
+        if contains_stlink_usb_error(ANSI_CSI.sub("", completed.stdout or "")):
+            raise RuntimeError("ST-LINK USB通信エラー。機体電源とプローブのターゲット給電をOFFにしてから --recover-usb を実行してください")
         completed.check_returncode()
-        if recover:
-            serials = STLINK_SERIAL_LINE.findall(completed.stdout or "")
-            if not serials or (requested_sn and requested_sn not in serials):
-                raise RuntimeError("対象ST-LINKの認識を確認できません")
         return
 
-    if not recover:
-        raise RuntimeError("ST-LINK USB通信エラー。機体電源とプローブのターゲット給電をOFFにしてから --recover-usb を実行してください")
-    reset_sn = reset_stlink_v3_minie_usb(cli, requested_sn)
+    state, serial = probe_recovery_state(completed.stdout or "", requested_sn)
+    if state is ProbeState.READY:
+        completed.check_returncode()
+        return
+    if state is ProbeState.UNKNOWN:
+        completed.check_returncode()
+        raise RuntimeError("対象ST-LINKの認識を確認できません。接続と --sn を確認してください")
+    require_single = state is ProbeState.UNATTRIBUTED_STALL or not requested_sn
+    reset_sn = reset_stlink_v3_minie_usb(cli, serial, require_single=require_single)
     print(f"ST-LINK USB reset: SN={reset_sn}", flush=True)
 
     for retry in range(1, 4):
         time.sleep(1.0)
         print(f"ST-LINK probe retry {retry}/3", flush=True)
         last = run_capture(list_cmd, cwd=cwd)
-        output = last.stdout or ""
-        serials = STLINK_SERIAL_LINE.findall(output)
-        if last.returncode == 0 and not contains_stlink_usb_error(output) and reset_sn in serials:
+        state, _ = probe_recovery_state(last.stdout or "", reset_sn)
+        if last.returncode == 0 and state is ProbeState.READY:
             return
 
     raise RuntimeError(
