@@ -82,11 +82,17 @@ python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
 python3 tools/flashing/flash_stlink --list
 ```
 
-macOSでST-LINK V3 MINIEのUSBコマンドendpointがstallし、
-CubeProgrammerが `DEV_USB_COMM_ERR` を返す場合は、書き込み前の認識確認で
-対象ST-LINKだけをUSBリセットして最大3回再試行します。機体のFlash/NVMには
-触れませんが、ST-LINKのVCPは一時的に再列挙されます。複数台接続時に自動復旧
-するには `--sn` で対象を指定してください。
+macOSでV3 MINIEのUSB通信が停止した場合、一覧表示・書き込み・ターゲットリセットは
+エラーで終了します。USBを再列挙するには、機体電源とプローブのターゲット給電を
+OFFにし、開いているVCP端末を閉じてから、次の復旧操作を単独で実行します。
+mini R3では通電したままUSBを再接続した際に車輪が回り、迷路が更新された記録があります。
+
+```sh
+python3 tools/flashing/flash_stlink --recover-usb --sn <STLINK_SN>
+```
+
+復旧はUSB通信エラーがあるときに対象V3 MINIEを1回だけリセットし、同じシリアル番号が
+再列挙されるか最大3回確認して終了します。複数台接続時は `--sn` で対象を指定します。
 
 ### ビルド済みF413ファームを書き込む
 
@@ -132,7 +138,7 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDB等の
    別デバッガ接続を終了し、USBハブを外した直結・別ケーブル・別ポートで比較する。
    UART capture使用中のUSB抜き差しはVCPも切断するため、再接続後にcaptureを再開する。
-   上述の自動USB復旧はV3 MINIE限定で、V2/V2-1には適用されない。
+   配線を変える前に機体電源とプローブのターゲット給電をOFFにする。`--recover-usb` はV3 MINIE用。
 4. 同じセクタで再現する場合は、失敗前のST-LINK FW、ターゲット電圧、SWD周波数、
    sector番号とエラーをログで確認する。VDD/GND/SWDIO/SWCLK/NRSTの接触・配線も確認し、
    ST-LINK firmwareは公式更新ツールで更新を検討する。保護解除や全消去を復旧手順にしない。

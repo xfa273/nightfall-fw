@@ -22,6 +22,7 @@ CUBE_CLI_CANDIDATES = [
 ]
 STLINK_USB_VID = 0x0483
 STLINK_V3_MINIE_PID = 0x3754
+STLINK_SERIAL_LINE = re.compile(r"^[ \t]*ST-LINK SN[ \t]*:[ \t]*(\S+)[ \t]*$", re.MULTILINE | re.IGNORECASE)
 STLINK_USB_ERROR_MARKERS = (
     "DEV_USB_COMM_ERR",
     "device not responding",
@@ -103,7 +104,15 @@ def run_capture(cmd: list, cwd: Optional[Path] = None) -> subprocess.CompletedPr
 
 
 def contains_stlink_usb_error(output: str) -> bool:
-    return any(marker in output for marker in STLINK_USB_ERROR_MARKERS)
+    return any(marker.lower() in output.lower() for marker in STLINK_USB_ERROR_MARKERS)
+
+
+def select_recovery_probe(matches: list, requested_sn: Optional[str]):
+    if requested_sn:
+        matches = [(serial, handle) for serial, handle in matches if serial == requested_sn]
+    if len(matches) != 1 or not matches[0][0]:
+        raise RuntimeError("復旧対象のV3 MINIEを一意に識別できません。接続と --sn を確認してください")
+    return matches[0]
 
 
 def find_libusb(cli: str) -> Path:
@@ -188,6 +197,7 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
             handle = ctypes.c_void_p()
             open_rc = lib.libusb_open(device, ctypes.byref(handle))
             if open_rc != 0:
+                matches.append(("", None))
                 continue
             handles.append(handle)
 
@@ -204,32 +214,12 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
                     serial = bytes(serial_buffer[:serial_length]).decode("ascii", errors="replace")
             matches.append((serial, handle))
 
-        if requested_sn:
-            targets = [(serial, handle) for serial, handle in matches if serial == requested_sn]
-            if not targets:
-                unreadable_targets = [(serial, handle) for serial, handle in matches if not serial]
-                if len(matches) == 1 and len(unreadable_targets) == 1:
-                    # A deeply stalled V3 can fail its serial-string request too.
-                    # With exactly one VID/PID match, resetting that physical probe
-                    # is still unambiguous; the retry output validates its SN.
-                    targets = unreadable_targets
-                else:
-                    found = ", ".join(serial or "<serial unreadable>" for serial, _ in matches) or "none"
-                    raise RuntimeError(f"指定ST-LINK SN={requested_sn}が見つかりません (found: {found})")
-        else:
-            targets = matches
-
-        if len(targets) != 1:
-            if not targets:
-                raise RuntimeError("USB復旧対象のST-LINK V3 MINIEが見つかりません")
-            raise RuntimeError("複数のST-LINK V3 MINIEがあります。--sn でUSB復旧対象を指定してください")
-
-        serial, handle = targets[0]
+        serial, handle = select_recovery_probe(matches, requested_sn)
         reset_rc = lib.libusb_reset_device(handle)
         # On macOS a successful re-enumeration can invalidate the old handle.
         if reset_rc not in (0, -4):
             raise RuntimeError(f"ST-LINK USBリセットに失敗しました: rc={reset_rc}")
-        return serial or requested_sn or "<serial unreadable>"
+        return serial
     finally:
         for handle in handles:
             lib.libusb_close(handle)
@@ -238,31 +228,33 @@ def reset_stlink_v3_minie_usb(cli: str, requested_sn: Optional[str]) -> str:
         lib.libusb_exit(context)
 
 
-def ensure_stlink_ready(cli: str, requested_sn: Optional[str], cwd: Path) -> None:
+def ensure_stlink_ready(cli: str, requested_sn: Optional[str], cwd: Path, *, recover: bool = False) -> None:
     list_cmd = [cli, "-l", "stlink-only"]
     completed = run_capture(list_cmd, cwd=cwd)
     if not contains_stlink_usb_error(completed.stdout or ""):
-        if completed.returncode != 0:
-            raise subprocess.CalledProcessError(completed.returncode, list_cmd)
+        completed.check_returncode()
+        if recover:
+            serials = STLINK_SERIAL_LINE.findall(completed.stdout or "")
+            if not serials or (requested_sn and requested_sn not in serials):
+                raise RuntimeError("対象ST-LINKの認識を確認できません")
         return
 
-    print("WARNING: ST-LINK USB通信エラーを検出したため、USBデバイスを再列挙します", flush=True)
+    if not recover:
+        raise RuntimeError("ST-LINK USB通信エラー。機体電源とプローブのターゲット給電をOFFにしてから --recover-usb を実行してください")
     reset_sn = reset_stlink_v3_minie_usb(cli, requested_sn)
     print(f"ST-LINK USB reset: SN={reset_sn}", flush=True)
 
-    last = completed
     for retry in range(1, 4):
         time.sleep(1.0)
         print(f"ST-LINK probe retry {retry}/3", flush=True)
         last = run_capture(list_cmd, cwd=cwd)
-        if not contains_stlink_usb_error(last.stdout or ""):
-            if last.returncode != 0:
-                raise subprocess.CalledProcessError(last.returncode, list_cmd)
+        output = last.stdout or ""
+        serials = STLINK_SERIAL_LINE.findall(output)
+        if last.returncode == 0 and not contains_stlink_usb_error(output) and reset_sn in serials:
             return
 
     raise RuntimeError(
-        "ST-LINK USB通信を自動復旧できませんでした。"
-        "ST-LINKのUSBを抜き差しし、機体電源とSWD配線を確認してください"
+        "USB復旧後に対象ST-LINKを認識できませんでした。機体電源とプローブのターゲット給電をOFFにして配線を確認してください"
     )
 
 
@@ -291,7 +283,7 @@ def run_programmer(cmd: list, cwd: Path) -> None:
             "接続不安定時は --freq 400、NRST接続済みなら "
             "--mode UR --reset-mode HWrst を試してください。\n"
             "USB通信エラーなら他のデバッガを終了し、USB直結・ケーブル交換・"
-            "ST-LINKの抜き差しを確認してください。\n"
+            "機体電源とプローブのターゲット給電をOFFにしてからST-LINKの接続を確認してください。\n"
             "消去/書き込みの自動再試行や全消去は行いません。",
             file=sys.stderr,
         )
@@ -328,13 +320,23 @@ def main() -> int:
     ap.add_argument("--shared", action="store_true", help="use ST-LINK shared mode")
     ap.add_argument("--list", action="store_true", help="list ST-LINK probes and exit")
     ap.add_argument("--reset-only", action="store_true", help="only connect and perform reset without flashing")
+    ap.add_argument("--recover-usb", action="store_true",
+                    help="recover a stalled macOS V3 MINIE probe and exit; turn target power and probe target supply OFF first")
     args = ap.parse_args()
+    if args.recover_usb and (args.list or args.reset_only or args.image or args.build):
+        ap.error("--recover-usb is a standalone probe operation")
 
     with cube_cli_runtime(find_cube_cli(args.cli)) as cli:
         return execute(args, cli, repo_root)
 
 
 def execute(args: argparse.Namespace, cli: str, repo_root: Path) -> int:
+
+    if args.recover_usb:
+        if sys.platform != "darwin":
+            raise RuntimeError("--recover-usb はmacOS用です")
+        ensure_stlink_ready(cli, args.sn, repo_root, recover=True)
+        return 0
 
     if args.list:
         ensure_stlink_ready(cli, args.sn, repo_root)

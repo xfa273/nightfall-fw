@@ -130,5 +130,71 @@ class FlashTests(unittest.TestCase):
         self.assertFalse((self.root / "build/flashing_logs").exists())
 
 
+class ProbeRecoveryTests(unittest.TestCase):
+    def setUp(self):
+        ctx = contextlib.ExitStack()
+        self.addCleanup(ctx.close)
+        self.capture = ctx.enter_context(patch.object(flash, "run_capture"))
+        self.reset = ctx.enter_context(patch.object(flash, "reset_stlink_v3_minie_usb", return_value="PROBE1"))
+        self.program = ctx.enter_context(patch.object(flash, "run_programmer"))
+        ctx.enter_context(patch.object(flash.time, "sleep"))
+        ctx.enter_context(contextlib.redirect_stdout(io.StringIO()))
+        self.stall = subprocess.CompletedProcess([], 0, "DEV_USB_COMM_ERR")
+        self.ready = subprocess.CompletedProcess([], 0, "ST-LINK SN  : PROBE1\n")
+
+    def test_list_and_normal_operations_stop_on_stall(self):
+        self.capture.return_value = self.stall
+        for list_only, reset_only in ((True, False), (False, True), (False, False)):
+            with self.subTest(list=list_only, reset=reset_only):
+                args = flash.argparse.Namespace(list=list_only, reset_only=reset_only, recover_usb=False,
+                                                build=False, image=__file__, sn="PROBE1")
+                with self.assertRaisesRegex(RuntimeError, "USB通信エラー"):
+                    flash.execute(args, "cli", Path.cwd())
+        self.reset.assert_not_called()
+        self.program.assert_not_called()
+
+    def test_explicit_recovery_only_rechecks_the_selected_probe(self):
+        other = subprocess.CompletedProcess([], 0, "ST-LINK SN : PROBE10\n")
+        self.capture.side_effect = [self.stall, other, self.ready]
+        with patch.object(flash.sys, "platform", "darwin"):
+            args = flash.argparse.Namespace(recover_usb=True, sn="PROBE1")
+            self.assertEqual(flash.execute(args, "cli", Path.cwd()), 0)
+        self.reset.assert_called_once_with("cli", "PROBE1")
+        self.program.assert_not_called()
+        self.assertEqual(self.capture.call_count, 3)
+
+    def test_missing_serial_after_reset_fails_after_three_checks(self):
+        self.capture.side_effect = [self.stall] + [subprocess.CompletedProcess([], 0, "no probes")] * 3
+        with self.assertRaisesRegex(RuntimeError, "認識できません"):
+            flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        self.reset.assert_called_once()
+
+    def test_healthy_probe_needs_no_reset(self):
+        self.capture.return_value = self.ready
+        flash.ensure_stlink_ready("cli", "PROBE1", Path.cwd(), recover=True)
+        with self.assertRaises(RuntimeError):
+            flash.ensure_stlink_ready("cli", "PROBE2", Path.cwd(), recover=True)
+        self.reset.assert_not_called()
+
+    def test_recovery_rejects_combined_operations_before_opening_the_cli(self):
+        for options in (["--build"], ["--reset-only"], ["--list"], ["--image", "fw.bin"]):
+            with self.subTest(options=options), patch.object(flash.sys, "argv", ["flash_stlink", "--recover-usb", *options]), \
+                    patch.object(flash, "find_cube_cli") as find, contextlib.redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as caught:
+                flash.main()
+            self.assertEqual(caught.exception.code, 2)
+            find.assert_not_called()
+        self.reset.assert_not_called()
+
+    def test_ambiguous_and_unreadable_serials_are_rejected(self):
+        probes = [("A", 1), ("B", 2)]
+        self.assertEqual(flash.select_recovery_probe(probes, "B"), ("B", 2))
+        self.assertEqual(flash.select_recovery_probe(probes[:1], None), ("A", 1))
+        for matches, serial in ((probes, None), (probes, "C"), ([("", 1)], "A"),
+                                ([("", None), ("A", 2)], None), ([], None)):
+            with self.subTest(matches=matches, serial=serial), self.assertRaises(RuntimeError):
+                flash.select_recovery_probe(matches, serial)
+
+
 if __name__ == "__main__":
     unittest.main()

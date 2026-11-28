@@ -129,7 +129,7 @@ class CommandTests(unittest.TestCase):
         self.image = self.root / "firmware.bin"
         self.image.write_bytes(b"not a firmware")
         self.args = argparse.Namespace(
-            list=False, reset_only=False, build=False, image=str(self.image),
+            list=False, reset_only=False, recover_usb=False, build=False, image=str(self.image),
             address="0x08000000", no_verify=False, no_reset=False,
             freq="4000", mode="NORMAL", reset_mode="SWrst", sn="test-probe", shared=False)
         self.contexts = contextlib.ExitStack()
