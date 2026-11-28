@@ -82,6 +82,12 @@ python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
 python3 tools/flashing/flash_stlink --list
 ```
 
+macOSでST-LINK V3 MINIEのUSBコマンドendpointがstallし、
+CubeProgrammerが `DEV_USB_COMM_ERR` を返す場合は、書き込み前の認識確認で
+対象ST-LINKだけをUSBリセットして最大3回再試行します。機体のFlash/NVMには
+触れませんが、ST-LINKのVCPは一時的に再列挙されます。複数台接続時に自動復旧
+するには `--sn` で対象を指定してください。
+
 ### ビルド済みF413ファームを書き込む
 
 ```bash
@@ -126,7 +132,7 @@ python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDB等の
    別デバッガ接続を終了し、USBハブを外した直結・別ケーブル・別ポートで比較する。
    UART capture使用中のUSB抜き差しはVCPも切断するため、再接続後にcaptureを再開する。
-   このツールはUSBリセットを自動実行しない。
+   上述の自動USB復旧はV3 MINIE限定で、V2/V2-1には適用されない。
 4. 同じセクタで再現する場合は、失敗前のST-LINK FW、ターゲット電圧、SWD周波数、
    sector番号とエラーをログで確認する。VDD/GND/SWDIO/SWCLK/NRSTの接触・配線も確認し、
    ST-LINK firmwareは公式更新ツールで更新を検討する。保護解除や全消去を復旧手順にしない。
