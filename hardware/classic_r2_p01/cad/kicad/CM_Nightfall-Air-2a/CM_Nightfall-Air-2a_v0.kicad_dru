@@ -1,0 +1,71 @@
+(version 1)
+
+# JLCPCB two-layer, 2 oz process guardrails.  The factory limit is tighter,
+# but 0.20/0.20 mm is used as the normal design floor for yield margin.
+(rule "JLCPCB 2 oz copper minimums"
+  (constraint track_width (min 0.16mm))
+  (constraint clearance (min 0.16mm)))
+
+(rule "1.27 mm programming connector pad clearance"
+  (constraint clearance (min 0.16mm))
+  (condition "(A.Reference == 'K1') && (B.Reference == 'K1')"))
+
+(rule "Mechanically constrained front-left sensor pair"
+  (constraint clearance (min 0.16mm))
+  (condition "((A.Reference == 'IR_LED_L0') && (B.Reference == 'PT_L0')) || ((A.Reference == 'PT_L0') && (B.Reference == 'IR_LED_L0'))"))
+
+(rule "High-current routed width"
+  (constraint track_width (min 0.25mm) (opt 0.80mm))
+  (constraint connection_width (min 0.30mm))
+  (condition "A.hasNetclass('HighCurrent') && (A.Layer == 'F.Cu' || A.Layer == 'B.Cu')"))
+
+(rule "High-current power via"
+  (constraint via_diameter (min 0.80mm))
+  (constraint hole_size (min 0.40mm))
+  (condition "A.Type == 'Via' && A.hasNetclass('HighCurrent') && A.NetName != '+5V' && A.NetName != 'GND2'"))
+
+(rule "5V distribution via"
+  (constraint via_diameter (min 0.60mm))
+  (constraint hole_size (min 0.30mm))
+  (condition "A.Type == 'Via' && A.NetName == '+5V'"))
+
+(rule "MPM3610 output-pin connection"
+  (constraint connection_width (min 0.25mm))
+  (condition "A.NetName == '+5V' && A.Reference == 'U7'"))
+
+# Keep the 2 MHz switch node away from feedback and other functional copper.
+(rule "Switch-node functional clearance"
+  (constraint clearance (min 0.50mm))
+  (condition "(A.hasNetclass('SwitchNode') || B.hasNetclass('SwitchNode')) && !((A.Reference == 'U7') && (B.Reference == 'U7'))"))
+
+# U7 pin 3 (AGND) is the adjacent 0.65 mm-pitch land.  It cannot escape to
+# GND2 with the general 0.50 mm switch-node clearance.  Custom rules are
+# evaluated from bottom to top, so this more-specific pair rule deliberately
+# overrides the rule above while retaining the normal 0.20 mm board clearance.
+(rule "MPM3610 AGND escape clearance"
+  (constraint clearance (min 0.20mm))
+  (condition "(A.hasNetclass('SwitchNode') && B.NetName == 'GND2') || (B.hasNetclass('SwitchNode') && A.NetName == 'GND2')"))
+
+# A two-spoke thermal cannot fit on the narrow AGND land beside the switch
+# pads.  Connect this one pad solidly to the GND2 pour so it is electrically
+# complete without weakening the general zone thermal settings.
+(rule "MPM3610 AGND solid zone connection"
+  (constraint zone_connection solid)
+  (condition "A.Reference == 'U7' && A.Pad_Number == '3'"))
+
+# The fan MOSFET source carries the full fan current, so do not neck it down
+# to a single thermal spoke.
+(rule "Fan MOSFET source solid zone connection"
+  (constraint zone_connection solid)
+  (condition "A.Reference == 'Q3' && A.Pad_Number == '2'"))
+
+# R30 is a low-current feedback divider and RESET0 has a second parallel GND
+# pad.  One 0.40 mm spoke is electrically sufficient and avoids asymmetric
+# solid-plane heating on the small solder joints.
+(rule "Low-current single-spoke thermals"
+  (constraint min_resolved_spokes 1)
+  (condition "((A.Reference == 'R30') && (A.Pad_Number == '2')) || ((A.Reference == 'RESET0') && (A.Pad_Number == '4'))"))
+
+(rule "Power-to-sensitive functional clearance"
+  (constraint clearance (min 0.40mm))
+  (condition "(A.hasNetclass('HighCurrent') && B.hasNetclass('Sensitive')) || (A.hasNetclass('Sensitive') && B.hasNetclass('HighCurrent'))"))

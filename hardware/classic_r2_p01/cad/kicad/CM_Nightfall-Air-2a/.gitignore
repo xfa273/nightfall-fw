@@ -1,0 +1,3 @@
+/verification/*
+!/verification/README.md
+/tools/__pycache__/
