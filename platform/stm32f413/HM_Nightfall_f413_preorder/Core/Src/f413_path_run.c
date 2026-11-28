@@ -200,6 +200,14 @@ static bool f413_path_run_make_linear_plan(float distance_mm,
                                out) == NF_MOTION_OK;
 }
 
+/* August r2 limits are part of the motion baseline, not r3 experiments. */
+static float f413_path_run_profile_limit(float value, float august_cap)
+{
+  if (F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS)) return value;
+  if (value < 0.0f) value = -value;
+  return value > august_cap ? august_cap : value;
+}
+
 static bool f413_path_run_is_straight_code(uint16_t code)
 {
   return (code > NF_LEGACY_PATH_STRAIGHT_BASE) &&
@@ -274,7 +282,7 @@ static bool f413_path_run_turn_velocity_from_code(
     default:
       return false;
   }
-  *out_velocity_mm_s = velocity;
+  *out_velocity_mm_s = f413_path_run_profile_limit(velocity, 500.0f);
   return isfinite(*out_velocity_mm_s) && (*out_velocity_mm_s > 0.0f);
 }
 
@@ -292,7 +300,7 @@ static inline ShortestRunCaseParams_t f413_path_run_session_case_params(
 {
   ShortestRunCaseParams_t selected = *case_params;
   float turn_speed = 0.0f;
-  if (test_mode_run && (codes != NULL))
+  if (F413_MOTION_ENABLED(F413_MOTION_CASE0_TURN_SPEED) && test_mode_run && (codes != NULL))
   {
     for (size_t i = 0U; (i < capacity) && (codes[i] != 0U); i++)
     {
@@ -328,7 +336,7 @@ static bool f413_path_run_straight_limits(
     return false;
   }
 
-  out->vmax_mm_s = case_params->velocity_straight;
+  out->vmax_mm_s = f413_path_run_profile_limit(case_params->velocity_straight, 1500.0f);
   out->switch_velocity_mm_s = mode_params->accel_switch_velocity;
   out->accel_low_mm_s2 = case_params->acceleration_straight;
   out->accel_high_mm_s2 = case_params->acceleration_straight_dash;
@@ -346,7 +354,7 @@ static bool f413_path_run_diagonal_limits(
     return false;
   }
 
-  out->vmax_mm_s = case_params->velocity_d_straight;
+  out->vmax_mm_s = f413_path_run_profile_limit(case_params->velocity_d_straight, 1000.0f);
   out->switch_velocity_mm_s = 0.0;
   out->accel_low_mm_s2 = case_params->acceleration_d_straight;
   out->accel_high_mm_s2 = case_params->acceleration_d_straight_dash;
@@ -359,6 +367,12 @@ static float f413_path_run_boundary_speed(
     const ShortestRunModeParams_t* mode_params,
     const ShortestRunCaseParams_t* case_params, float distance_mm)
 {
+  if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+  {
+    if (case_params == NULL) return 0.0f;
+    return fminf(sqrtf(fmaxf(0.0f, 2.0f * case_params->acceleration_straight * distance_mm)),
+        f413_path_run_profile_limit(case_params->velocity_straight, 1500.0f));
+  }
   NfLinearLimits limits;
   if (!f413_path_run_straight_limits(mode_params, case_params, &limits) ||
       !isfinite(limits.vmax_mm_s) || !isfinite(limits.switch_velocity_mm_s) ||
@@ -397,7 +411,7 @@ static float f413_path_run_next_straight_exit_velocity(
   }
   if (f413_path_run_is_straight_code(next_code) && (case_params != NULL))
   {
-    return case_params->velocity_straight;
+    return f413_path_run_profile_limit(case_params->velocity_straight, 1500.0f);
   }
   return 0.0f;
 }
@@ -417,7 +431,7 @@ static float f413_path_run_next_diagonal_exit_velocity(
   }
   if (f413_path_run_is_diagonal_code(next_code) && (case_params != NULL))
   {
-    return case_params->velocity_d_straight;
+    return f413_path_run_profile_limit(case_params->velocity_d_straight, 1000.0f);
   }
   if ((next_code == 0U) && isfinite(test_terminal_velocity_mm_s) &&
       (test_terminal_velocity_mm_s > 0.0f))
@@ -440,6 +454,16 @@ static bool f413_path_run_make_test_terminal_profile(
       (entry_velocity_mm_s < 0.0f))
   {
     return false;
+  }
+  if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+  {
+    NfLinearLimits terminal = *limits;
+    const double a = fmax(3000.0, fmax(limits->accel_low_mm_s2, limits->accel_high_mm_s2));
+    if (!isfinite(a) || a <= 0.0) return false;
+    terminal.switch_velocity_mm_s = 0.0;
+    terminal.accel_low_mm_s2 = terminal.accel_high_mm_s2 = a;
+    return nf_motion_constant_accel_profile(&terminal, (double)DIST_HALF_SEC,
+        entry_velocity_mm_s, 0.0, out) == NF_MOTION_OK;
   }
   /* A single monotonic stop must fit every acceleration regime it crosses.
    * Extend only the explicit case0 test's free-space tail, never raise the
@@ -748,7 +772,8 @@ static f413_path_run_preflight_result_t f413_path_run_preflight_prepare(
     NfConstantAccelProfile stop_profile;
     const bool valid_stop = test_mode_run
         ? f413_path_run_make_test_terminal_profile(
-              speed_now, diagonal ? &diagonal_limits : &straight_limits, &stop_profile)
+              speed_now, (F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS) && diagonal)
+                  ? &diagonal_limits : &straight_limits, &stop_profile)
         : (nf_motion_constant_accel_profile(
                &straight_limits, (double)DIST_HALF_SEC, (double)speed_now,
                0.0, &stop_profile) == NF_MOTION_OK);
@@ -1045,7 +1070,8 @@ static bool f413_path_run_turn_from_code(uint16_t code,
   }
   turn->signed_angle_deg = right ? -fabsf(angle) : fabsf(angle);
   turn->alpha_deg_s2 = alpha;
-  turn->omega_max_deg_s = params->turn_omega_max;
+  turn->omega_max_deg_s = F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS)
+      ? params->turn_omega_max : 2200.0f;
   turn->velocity_mm_s = velocity;
   return true;
 }
@@ -1159,6 +1185,7 @@ static void f413_path_run_trace_on_run_start(void)
     HAL_Delay(F413_HW_VIDEO_SYNC_START_GUARD_MS);
   }
   trace_printf("[TRACE-LOG] run-hook: start\r\n");
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS);
   f413_trace_log_auto_start();
 }
 
@@ -1286,13 +1313,100 @@ static f413_run_session_abort_reason_t f413_path_run_settle_test_stop(
   }
 }
 
-static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float distance_mm,
+#define F413_PATH_RUN_GOAL_STOP_SETTLE_MAX_MS       (250U)
+#define F413_PATH_RUN_GOAL_STOP_STABLE_MS           (20U)
+#define F413_PATH_RUN_GOAL_STOP_VELOCITY_MM_S       (20.0f)
+#define F413_PATH_RUN_GOAL_STOP_POSITION_ERROR_MM   (3.0f)
+
+/* Only the final maze stop uses this tolerance. Intermediate path endpoints,
+ * turn offsets and case0 position trials keep their own completion rules.
+ * A profile finishing short of the endpoint must not spend five seconds
+ * creeping against static friction. Nor may an early encoder crossing end
+ * braking while the robot is still moving.
+ */
+static f413_run_session_abort_reason_t f413_path_run_wait_goal_stop(
+    float target, bool profile_required,
+    f413_run_session_guard_t* guard, uint16_t trace_flags,
+    bool wall_control_gate, bool diagonal_control_gate)
+{
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+  uint32_t settle_start = 0U;
+  uint32_t stable_start = 0U;
+  bool settling = false;
+  bool stable = false;
+
+  while (1)
+  {
+    const uint32_t now = HAL_GetTick();
+    const float position_error = target - f413_ctrl_get_distance();
+    const float velocity = f413_ctrl_get_real_velocity();
+    const bool profile_complete =
+        !profile_required || f413_ctrl_stop_profile_complete();
+    f413_run_session_abort_reason_t reason;
+
+    if (!g_f413_path_run_distance_cursor.active ||
+        !isfinite(position_error) || !isfinite(velocity))
+    {
+      return F413_RUN_SESSION_ABORT_IMU_FAULT;
+    }
+    if (profile_complete && !settling)
+    {
+      settling = true;
+      settle_start = now;
+    }
+    if (profile_complete &&
+        (fabsf(position_error) <= F413_PATH_RUN_GOAL_STOP_POSITION_ERROR_MM) &&
+        (fabsf(velocity) <= F413_PATH_RUN_GOAL_STOP_VELOCITY_MM_S))
+    {
+      if (!stable)
+      {
+        stable = true;
+        stable_start = now;
+      }
+      if ((uint32_t)(now - stable_start) >= F413_PATH_RUN_GOAL_STOP_STABLE_MS)
+      {
+        return F413_RUN_SESSION_ABORT_NONE;
+      }
+    }
+    else
+    {
+      stable = false;
+    }
+    if (((int32_t)(now - deadline) >= 0) ||
+        (settling && (uint32_t)(now - settle_start) >=
+                     F413_PATH_RUN_GOAL_STOP_SETTLE_MAX_MS))
+    {
+      return F413_RUN_SESSION_ABORT_TIMEOUT;
+    }
+    f413_trace_log_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (!settling && diagonal_control_gate)
+    {
+      f413_wall_runtime_poll_diagonal(true);
+    }
+    else if (!settling && wall_control_gate)
+    {
+      f413_wall_runtime_poll_straight(true);
+    }
+    else
+    {
+      f413_wall_runtime_control_apply(false);
+    }
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      return reason;
+    }
+  }
+}
+
+static f413_run_session_abort_reason_t f413_path_run_drive_segment_impl(float distance_mm,
                                                                       float target_velocity_mm_s,
                                                                       float* speed_now_mm_s,
                                                                       f413_run_session_guard_t* guard,
                                                                       uint16_t trace_flags,
                                                                       bool wall_control_gate,
-                                                                      bool diagonal_control_gate)
+                                                                      bool diagonal_control_gate,
+                                                                      bool goal_stop)
 {
   float start_velocity;
   float profile_distance;
@@ -1329,6 +1443,11 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
     f413_ctrl_set_velocity(target_velocity_mm_s);
     f413_ctrl_set_omega(0.0f);
     *speed_now_mm_s = target_velocity_mm_s;
+    if (goal_stop)
+    {
+      return f413_path_run_wait_goal_stop(target_distance, false, guard,
+          trace_flags, wall_control_gate, diagonal_control_gate);
+    }
     return F413_RUN_SESSION_ABORT_NONE;
   }
   f413_ctrl_set_velocity_profile(start_velocity,
@@ -1336,10 +1455,23 @@ static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(float dist
                                  profile_distance);
   f413_ctrl_set_omega(0.0f);
 
-  reason = f413_path_run_wait_ctrl_target(target_distance, false, guard, trace_flags,
-                                          wall_control_gate, diagonal_control_gate);
+  reason = goal_stop
+      ? f413_path_run_wait_goal_stop(target_distance, true, guard, trace_flags,
+                                    wall_control_gate, diagonal_control_gate)
+      : f413_path_run_wait_ctrl_target(target_distance, false, guard, trace_flags,
+                                      wall_control_gate, diagonal_control_gate);
   *speed_now_mm_s = target_velocity_mm_s;
   return reason;
+}
+
+static f413_run_session_abort_reason_t f413_path_run_drive_segment_ex(
+    float distance_mm, float target_velocity_mm_s, float* speed_now_mm_s,
+    f413_run_session_guard_t* guard, uint16_t trace_flags,
+    bool wall_control_gate, bool diagonal_control_gate)
+{
+  return f413_path_run_drive_segment_impl(distance_mm, target_velocity_mm_s,
+      speed_now_mm_s, guard, trace_flags, wall_control_gate,
+      diagonal_control_gate, false);
 }
 
 static f413_run_session_abort_reason_t f413_path_run_drive_segment(float distance_mm,
@@ -1556,7 +1688,7 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
   }
 
   target_distance = f413_ctrl_get_distance() + distance_mm;
-  f413_wall_runtime_end_clear();
+  f413_wall_runtime_end_begin();
   f413_path_run_prepare_straight_angle_control();
   f413_ctrl_set_velocity_profile(*speed_now_mm_s, target_velocity_mm_s, distance_mm);
   f413_ctrl_set_omega(0.0f);
@@ -1595,9 +1727,223 @@ static f413_run_session_abort_reason_t f413_path_run_drive_wallend_segment(
   return reason;
 }
 
+/* Consecutive turns share one straight approach. Watch the following turn's
+ * front target during this exit, without extending the exit if no wall is
+ * found. A hit consumes both the remaining exit and the following entry. */
+static f413_run_session_abort_reason_t f413_path_run_drive_chained_front_exit(
+    const f413_path_run_turn_t* turn,
+    float front_target_mm,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags,
+    bool* next_front_entry_reached)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  float target_distance;
+  float profile_distance;
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+
+  if ((speed_now_mm_s == NULL) ||
+      !f413_path_run_distance_cursor_advance(&g_f413_path_run_distance_cursor,
+          f413_ctrl_get_distance(), fmaxf(0.0f, turn->dist_out_mm),
+          &target_distance, &profile_distance))
+  {
+    return F413_RUN_SESSION_ABORT_IMU_FAULT;
+  }
+  if (!turn->wall_control_offsets)
+  {
+    f413_wall_runtime_control_clear();
+  }
+  f413_path_run_prepare_straight_angle_control();
+
+  /* Check even at a zero-length exit and before publishing a new straight
+   * profile: the first observation may already be at the next turn's target. */
+  while (1)
+  {
+    float front_distance_mm;
+    if (f413_wall_distance_front_unwarped_mm(&front_distance_mm) &&
+        (front_distance_mm <= front_target_mm))
+    {
+      *next_front_entry_reached = true;
+      f413_path_run_distance_cursor_reset(
+          &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
+      break;
+    }
+    if (fabsf(f413_ctrl_get_distance()) >= fabsf(target_distance))
+    {
+      break;
+    }
+    if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+    {
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
+      break;
+    }
+    if (profile_distance > 0.0f)
+    {
+      f413_ctrl_set_velocity_profile(*speed_now_mm_s, turn->velocity_mm_s,
+                                      profile_distance);
+      f413_ctrl_set_omega(0.0f);
+      profile_distance = 0.0f;
+    }
+    f413_trace_log_set_mode_flags(trace_flags);
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (turn->wall_control_offsets &&
+        ((trace_flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG) != 0U))
+    {
+      f413_wall_runtime_poll_straight(true);
+    }
+    else
+    {
+      f413_wall_runtime_control_apply(false);
+    }
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+  *speed_now_mm_s = turn->velocity_mm_s;
+  return reason;
+}
+
+/* The exit and the immediately following entry are one physical straight.
+ * Own both here, keep one derivative history, and consume the next entry even
+ * when no correction fires. Never search past the nominal end for a side wall. */
+static f413_run_session_abort_reason_t f413_path_run_drive_chained_offsets(
+    const f413_path_run_turn_t* turn,
+    const f413_path_run_turn_t* next_turn,
+    float dist_wall_end_mm,
+    float* speed_now_mm_s,
+    f413_run_session_guard_t* guard,
+    uint16_t trace_flags,
+    bool* next_entry_consumed)
+{
+  f413_run_session_abort_reason_t reason = F413_RUN_SESSION_ABORT_NONE;
+  const float start = f413_ctrl_get_distance();
+  const float exit_end = start + fmaxf(0.0f, turn->dist_out_mm);
+  const float nominal_end = exit_end + fmaxf(0.0f, next_turn->dist_in_mm);
+  const float front_target = F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - next_turn->dist_in_mm;
+  const bool watch_front = next_turn->front_wall_entry &&
+      (next_turn->dist_in_mm > 0.0f) && (front_target > 0.0f) &&
+      f413_run_features_front_wall_correction_enabled();
+  const uint32_t deadline = HAL_GetTick() + NIGHTFALL_F413_PATH_TIMEOUT_MS;
+  float target = nominal_end;
+  bool wall_found = false;
+  bool front_extension = false;
+  bool profile_started = false;
+  const bool short_wall_end = F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END);
+
+  *next_entry_consumed = false;
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_begin();
+  }
+  else
+  {
+    f413_wall_runtime_end_clear();
+  }
+  f413_path_run_prepare_straight_angle_control();
+  f413_ctrl_set_omega(0.0f);
+  f413_trace_log_set_mode_flags(trace_flags);
+
+  while (1)
+  {
+    float front_distance = 0.0f;
+    const bool front_valid = watch_front &&
+        f413_wall_distance_front_unwarped_mm(&front_distance);
+    const float current = f413_ctrl_get_distance();
+    const bool in_exit = current < exit_end;
+    const bool wall_control = in_exit ? turn->wall_control_offsets :
+                                       next_turn->wall_control_offsets;
+
+    /* A front target has priority, including during wall-end follow-through. */
+    if (front_valid && (front_distance <= front_target))
+    {
+      break;
+    }
+    if (!in_exit)
+    {
+      /* Preserve the previous 180's control scope through its own exit only. */
+      f413_ctrl_set_mode4_180_turn(false);
+    }
+    if (!wall_found &&
+        f413_wall_runtime_poll_wall_end_with_control(wall_control))
+    {
+      /* Same wall-edge reference as a preceding straight: small turns have
+       * a half-cell run-up. Include the next entry once, and clamp the sum
+       * so a negative correction never requests reverse motion. */
+      const float follow = (next_turn->front_wall_entry ? (float)DIST_HALF_SEC : 0.0f) +
+          dist_wall_end_mm + fmaxf(0.0f, next_turn->dist_in_mm);
+      wall_found = true;
+      target = current + fmaxf(0.0f, follow);
+      f413_wall_runtime_control_apply(false);
+      if (target > current)
+      {
+        f413_ctrl_set_velocity_profile(f413_ctrl_get_target_velocity(),
+            next_turn->velocity_mm_s, target - current);
+        profile_started = true;
+      }
+    }
+    if (current >= target)
+    {
+      /* Preserve the bounded small-turn front approach, but never extend
+       * solely to wait for a side-wall event or extend a corrected endpoint. */
+      if (!wall_found && !front_extension && front_valid &&
+          (WALL_END_EXTEND_MAX_MM > 0.0f))
+      {
+        front_extension = true;
+        target = current + WALL_END_EXTEND_MAX_MM;
+        f413_ctrl_set_velocity(next_turn->velocity_mm_s);
+        profile_started = true;
+      }
+      else
+      {
+        break;
+      }
+    }
+    if (front_extension && !front_valid)
+    {
+      break;
+    }
+    if ((int32_t)(HAL_GetTick() - deadline) >= 0)
+    {
+      reason = F413_RUN_SESSION_ABORT_TIMEOUT;
+      break;
+    }
+    if (!profile_started)
+    {
+      f413_ctrl_set_velocity_profile(*speed_now_mm_s, next_turn->velocity_mm_s,
+                                      target - current);
+      profile_started = true;
+    }
+    reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
+    if (reason != F413_RUN_SESSION_ABORT_NONE)
+    {
+      break;
+    }
+  }
+
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_end();
+  }
+  f413_wall_runtime_control_apply(false);
+  f413_path_run_distance_cursor_reset(&g_f413_path_run_distance_cursor,
+                                       f413_ctrl_get_distance());
+  if (reason == F413_RUN_SESSION_ABORT_NONE)
+  {
+    *speed_now_mm_s = next_turn->velocity_mm_s;
+    f413_ctrl_set_velocity(next_turn->velocity_mm_s);
+    *next_entry_consumed = true;
+  }
+  return reason;
+}
+
 static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     const f413_path_run_turn_t* turn,
-    bool next_is_large_turn,
+    const f413_path_run_turn_t* next_turn,
+    bool mode4_large180,
+    bool skip_entry,
+    bool* next_entry_consumed,
     float dist_wall_end_mm,
     float* speed_now_mm_s,
     f413_run_session_guard_t* guard,
@@ -1609,7 +1955,12 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   uint16_t turn_trace_flags;
   uint32_t start_ms;
   int8_t turn_sign;
+  const bool short_wall_end = F413_MOTION_ENABLED(F413_MOTION_CHAINED_SHORT_WALL_END) &&
+      F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) &&
+      (next_turn != NULL) && f413_run_features_wall_end_correction_enabled() &&
+      !f413_run_features_test_mode_run();
 
+  *next_entry_consumed = false;
   if (turn == NULL)
   {
     return F413_RUN_SESSION_ABORT_IMU_FAULT;
@@ -1628,7 +1979,13 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
   turn_trace_flags = f413_path_run_motor_phase_flags(trace_flags,
                                                      NIGHTFALL_F413_TRACE_MODE_MOTOR_REV_FLAG);
 
-  if (turn->front_wall_entry)
+  if (skip_entry)
+  {
+    /* The preceding connector consumed this entry or reached its front
+     * target. Do not read it again or execute any part of it twice. */
+    *speed_now_mm_s = turn->velocity_mm_s;
+  }
+  else if (turn->front_wall_entry)
   {
     reason = f413_path_run_drive_front_wall_entry_segment(turn->dist_in_mm,
                                                           turn->velocity_mm_s,
@@ -1668,10 +2025,15 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
    * endpoint.
    */
   f413_ctrl_set_velocity(turn->velocity_mm_s);
+  f413_ctrl_set_mode4_180_turn(mode4_large180);
   f413_ctrl_start_omega_profile((float)turn_sign * profile.omega_peak_deg_s,
                                 profile.t_acc_s,
                                 profile.t_cruise_s);
   start_ms = HAL_GetTick();
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_prepare_begin();
+  }
 
   while (1)
   {
@@ -1681,20 +2043,52 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
     {
       break;
     }
+    if (short_wall_end &&
+        (t_s + 0.001f * (float)F413_WALL_RUNTIME_CHAINED_PREPARE_MS >= profile.t_total_s))
+    {
+      f413_wall_runtime_chained_prepare_sample();
+    }
 
     f413_trace_log_set_mode_flags(turn_trace_flags);
     reason = f413_run_session_wait_with_auto_step_guarded(1U, guard);
     if (reason != F413_RUN_SESSION_ABORT_NONE)
     {
+      /* An interrupted profile is not its planned deceleration. Disable
+       * trajectory FF before cancelling a potentially large planned rate. */
+      f413_ctrl_set_mode4_180_turn(false);
       f413_ctrl_stop_omega_profile();
-      return reason;
+      goto restore_turn_control;
     }
   }
 
   f413_ctrl_stop_omega_profile();
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
-  if (turn->large_turn && next_is_large_turn &&
+  if (F413_MOTION_ENABLED(F413_MOTION_CHAINED_OFFSET_WALL_END) &&
+      (next_turn != NULL) && f413_run_features_wall_end_correction_enabled() &&
+      !f413_run_features_test_mode_run())
+  {
+    reason = f413_path_run_drive_chained_offsets(turn, next_turn,
+        dist_wall_end_mm, speed_now_mm_s, guard, straight_trace_flags,
+        next_entry_consumed);
+    goto restore_turn_control;
+  }
+  if (F413_MOTION_ENABLED(F413_MOTION_CHAINED_FRONT_ENTRY) &&
+      (next_turn != NULL) && next_turn->front_wall_entry &&
+      (next_turn->dist_in_mm > 0.0f) &&
+      f413_run_features_front_wall_correction_enabled() &&
+      !f413_run_features_test_mode_run())
+  {
+    const float front_target_mm =
+        F_ALIGN_TARGET_MM + (float)DIST_HALF_SEC - next_turn->dist_in_mm;
+    if (front_target_mm > 0.0f)
+    {
+      reason = f413_path_run_drive_chained_front_exit(turn, front_target_mm,
+          speed_now_mm_s, guard, straight_trace_flags, next_entry_consumed);
+      goto restore_turn_control;
+    }
+  }
+  if (turn->large_turn && (next_turn != NULL) && next_turn->large_turn &&
       f413_run_features_wall_end_correction_enabled() &&
       (turn->dist_out_mm > 0.0f))
   {
@@ -1715,21 +2109,31 @@ static f413_run_session_abort_reason_t f413_path_run_wait_smooth_turn_profile(
                                                    guard,
                                                    straight_trace_flags);
     }
-    return reason;
+    goto restore_turn_control;
   }
   if (turn->wall_control_offsets)
   {
-    return f413_path_run_drive_segment(turn->dist_out_mm,
+    reason = f413_path_run_drive_segment(turn->dist_out_mm,
                                        turn->velocity_mm_s,
                                        speed_now_mm_s,
                                        guard,
                                        straight_trace_flags);
   }
-  return f413_path_run_drive_segment_no_wall(turn->dist_out_mm,
+  else
+  {
+    reason = f413_path_run_drive_segment_no_wall(turn->dist_out_mm,
                                              turn->velocity_mm_s,
                                              speed_now_mm_s,
                                              guard,
                                              straight_trace_flags);
+  }
+restore_turn_control:
+  if (short_wall_end)
+  {
+    f413_wall_runtime_chained_monitor_end();
+  }
+  f413_ctrl_set_mode4_180_turn(false);
+  return reason;
 }
 
 static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
@@ -1801,9 +2205,13 @@ static f413_run_session_abort_reason_t f413_path_run_run_straight_steps(
     }
     if (wall_end_found)
     {
-      const float follow_dist = next_is_small_turn
-          ? ((float)DIST_HALF_SEC + mode_params->dist_wall_end)
-          : mode_params->dist_wall_end;
+      /* Only newly enabled straight-approach short hits need this offset.
+       * Keep the already tuned chained turns and legacy fallback unchanged. */
+      const float short_add = F413_MOTION_ENABLED(F413_MOTION_SHORT_WALL_END_ALL) &&
+          f413_wall_runtime_wall_end_detected_by_short()
+          ? mode_params->dist_wall_end_short_add : 0.0f;
+      const float follow_dist = (next_is_small_turn ? (float)DIST_HALF_SEC : 0.0f) +
+          mode_params->dist_wall_end + short_add;
       if (follow_dist > 0.0f)
       {
         /* A disappearing wall is not a reliable heading reference after detection. */
@@ -2016,13 +2424,15 @@ void f413_path_run_session_once(uint8_t mode,
       path, NIGHTFALL_F413_PATH_MAX_CODES, mode_params,
       f413_path_run_case_params(mode, case_index), f413_run_features_test_mode_run());
   const ShortestRunCaseParams_t* case_params = &selected_case_params;
-  const float straight_velocity = case_params->velocity_straight;
-  const float diagonal_velocity = case_params->velocity_d_straight;
-  const float first_speed = f413_path_run_boundary_speed(
-      mode_params, case_params, (float)DIST_FIRST_SEC);
+  const float straight_velocity = f413_path_run_profile_limit(case_params->velocity_straight, 1500.0f);
+  const float diagonal_velocity = f413_path_run_profile_limit(case_params->velocity_d_straight, 1000.0f);
+  const float first_speed = F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS)
+      ? f413_path_run_boundary_speed(mode_params, case_params, (float)DIST_FIRST_SEC)
+      : fminf(sqrtf(fmaxf(0.0f, 2.0f * case_params->acceleration_straight * (float)DIST_FIRST_SEC)), 1500.0f);
   f413_path_run_preflight_result_t preflight;
   float speed_now = 0.0f;
   bool diagonal = false;
+  bool next_entry_consumed = false;
   uint16_t pi = 0U;
   uint16_t code;
   size_t prepared_linear_index = 0U;
@@ -2125,6 +2535,9 @@ void f413_path_run_session_once(uint8_t mode,
   {
     f413_ctrl_start();
   }
+  /* Calibration and powered fan preparation must not consume the 1 ms
+   * motion budget. Restore full-rate capture before the first command. */
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
   f413_path_run_distance_cursor_reset(
       &g_f413_path_run_distance_cursor, f413_ctrl_get_distance());
 
@@ -2139,6 +2552,8 @@ void f413_path_run_session_once(uint8_t mode,
   for (pi = 0U; pi < NIGHTFALL_F413_PATH_MAX_CODES; pi++)
   {
     uint16_t next_code;
+    const bool skip_entry = next_entry_consumed;
+    next_entry_consumed = false;
 
     if (abort_reason != F413_RUN_SESSION_ABORT_NONE)
     {
@@ -2226,11 +2641,21 @@ void f413_path_run_session_once(uint8_t mode,
     else
     {
       f413_path_run_turn_t turn;
+      f413_path_run_turn_t next_turn;
 
       if (f413_path_run_turn_from_code(code, mode_params, &turn))
       {
+        /* Only the immediately adjacent code shares this exit. Never look
+         * through an explicit straight or diagonal straight segment. */
+        const bool next_is_turn =
+            f413_path_run_turn_from_code(next_code, mode_params, &next_turn);
         abort_reason = f413_path_run_wait_smooth_turn_profile(&turn,
-                                                              (next_code >= 500U) && (next_code < 700U),
+                                                              next_is_turn ? &next_turn : NULL,
+                                                              mode == 4U &&
+                                                                  (code == NF_LEGACY_PATH_LARGE_RIGHT_180 ||
+                                                                   code == NF_LEGACY_PATH_LARGE_LEFT_180),
+                                                              skip_entry,
+                                                              &next_entry_consumed,
                                                               mode_params->dist_wall_end,
                                                               &speed_now,
                                                               &guard,
@@ -2279,7 +2704,7 @@ void f413_path_run_session_once(uint8_t mode,
 
   if (abort_reason == F413_RUN_SESSION_ABORT_NONE)
   {
-    abort_reason = f413_path_run_drive_segment_ex(
+    abort_reason = f413_path_run_drive_segment_impl(
         g_f413_path_run_prepared_path.stop_distance_mm,
         0.0f,
         &speed_now,
@@ -2288,7 +2713,9 @@ void f413_path_run_session_once(uint8_t mode,
                    NIGHTFALL_F413_TRACE_MODE_SOLVER_PATH_FLAG |
                    NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG),
         !diagonal,
-        diagonal);
+        diagonal,
+        F413_MOTION_ENABLED(F413_MOTION_PATH_GOAL_STOP) &&
+            !f413_run_features_test_mode_run());
   }
 
   if ((abort_reason == F413_RUN_SESSION_ABORT_NONE) &&
@@ -2302,6 +2729,8 @@ void f413_path_run_session_once(uint8_t mode,
   }
 
 cleanup:
+  /* Also restore the default after any abort during preparation. */
+  f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
   f413_ctrl_clear_angle_target();
   f413_ctrl_set_velocity(0.0f);
   f413_ctrl_set_omega(0.0f);

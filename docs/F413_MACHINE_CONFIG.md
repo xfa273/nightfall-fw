@@ -70,8 +70,11 @@ unit002の非吸引負荷時ゲインはユーザ調整済み。有効タイヤ�
 側壁距離は診断表示用で、横壁制御・壁切れ判定は引き続きADC deltaを使用する。
 生値閾値・ゲイン・FRAMの側壁基準値は変更しない。距離有効判定のdelta>300も保持するため、
 測定範囲内でもL/Rとも65..80mmの点はlow-signalとなる。
-新規の距離テーブルは機体中心基準で採取する。mini_r2は旧基準のLUT/目標7mmを保持し、
-旧測定原点が不明なら中心基準で再測定してから移行する。
+新規の距離テーブルは機体中心基準で採取する。mini_r2も2026-10-04のユーザ再測定で
+前壁を中心基準40..110mmの15点へ移行した（t0.5、目標45mm／近接閾値42.5mm）。
+45mm時のFR/FLは1421/1816。既存delta>160判定により100..110mmのFRは無効となる。
+側壁LUT・基準・走行policy0は維持。測定元と適用範囲は
+`params/f413_preorder/calibration/README.md` を参照。
 基準や元LUTの識別子を持たない既存v1 FRAM warpは中心基準profileでは読込適用しない
 （`distance=MISS` / `params=0` が正常）。FRAMの内容は消さず、壁オフセットも保持する。
 測定元と再生成手順は `params/mini_r3_0/calibration/README.md`、実機確認は
@@ -117,7 +120,7 @@ board GPIO・motor/fan timer・制御IRQ・OP UIは初期化しない。復旧�
 新しいscalarを加える際は両方と全profileの定義・host試験を更新する。
 2026-09-23、共通アプリの `params.h` を `board/f413/runtime/params.h` に変更した。
 共通コードには特定機体の数値ヘッダをincludeせず、`profile.c` だけが隣の機体ヘッダを読む。
-全160 scalar（寸法、PID/FF、フィルタ、壁閾値、GOAL_X/Y・GOAL1..9・START_X/Y、撮影設定等）、
+全161 scalar（motion policy、寸法、PID/FF、フィルタ、壁閾値、GOAL_X/Y・GOAL1..9・START_X/Y、撮影設定等）、
 探索2組、最短mode2..7各9case、機体LUTが選択対象となる。
 共有 `sensor_distance.c` のF413用SENSOR_DIST_GAIN=1固定も撤去した。
 DIR_*の重複した旧固定値は削除し、互換名も選択済み機種/個体hardwareを参照する。
@@ -158,7 +161,9 @@ classicをmini扱いするfallbackは存在しない。まだclassic実機のピ
 現在のKERI mode2 case6..9用テーブルはr2専用である。
 `route_precomputed_compatible` はr2のみtrue、r3はfalse。
 別profileでUART `K`、保存迷路からのKERI経路生成を要求すると拒否し、r2用テーブルを流用しない。
-mode2 case6の固定検証pathは撤去済み。case6..9は保存迷路と対応profileのテーブルが必要。
+2026-09-27のr2互換復旧により、r2 mode2 case6は8月の固定検証pathへ戻した。
+r3は保存迷路方式を維持する。case7..9は保存迷路と対応profileのテーブルが必要。
+走行動作の機体別opt-inと再導入判断は `MINI_R2_MOTION_ISOLATION.md` を参照。
 新機種へのKERI対応はprofile別のgeometry/timeテーブル生成・選択と実測確認が必要。
 r2値を変更した場合も `tools/route_precompute/generate.py` / `--check` を必ず実行する。
 

@@ -75,6 +75,7 @@ typedef struct {
     // 加速度切り替え速度（低速/高速域で加速度を切り替え）
     float accel_switch_velocity;      ///< 加速度切り替え速度 (mm/s)
     float turn_omega_max;             ///< F413角速度プロファイル上限 (deg/s)、0: 上限なし
+    float dist_wall_end_short_add;    ///< F413通常直進の短時間差分検出だけの追加後追い(mm)。連続ターンには不適用
 } ShortestRunModeParams_t;
 
 /**

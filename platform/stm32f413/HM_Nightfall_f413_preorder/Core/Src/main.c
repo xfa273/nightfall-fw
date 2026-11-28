@@ -1330,6 +1330,8 @@ int main(void)
       f413_machine_hardware()->imu_forward_accel_sign,
       (double)f413_machine_hardware()->imu_forward_offset_mm,
       (double)f413_machine_hardware()->battery_divider_ratio);
+  trace_printf("[MOTION] baseline=57a9c3b opt_in=0x%08lX\r\n",
+      (unsigned long)F413_MOTION_FEATURES);
   nightfall_boot_buzzer_pattern();
 
   trace_printf("[MACHINE] front_distance_reference=%s align_target_mm=%.2f too_close_mm=%.2f\r\n",

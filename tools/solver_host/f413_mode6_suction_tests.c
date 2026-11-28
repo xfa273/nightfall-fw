@@ -101,7 +101,13 @@ void f413_mode_shortest_run_case0_path(const char* label, uint8_t mode, uint8_t 
   assert(mode == TEST_MODE && c >= 1 && c <= 9);
 #if LEGACY_PROFILE
   assert(c == k_case0_subs[selected_sub].case_index);
-  assert(codes == k_case0_subs[selected_sub].codes);
+  for (unsigned i = 0; i < count; ++i) {
+    uint16_t expected = k_case0_subs[selected_sub].codes[i];
+    const unsigned r180_sub = TEST_MODE == 7 ? 7U : 2U;
+    if (i == 0U && selected_sub == r180_sub &&
+        !F413_MOTION_ENABLED(F413_MOTION_CASE0_LONG_R180)) expected -= 2U;
+    assert(codes[i] == expected);
+  }
   assert(count == k_case0_subs[selected_sub].code_count);
 #else
   assert(c == (selected_sub == 0 || selected_sub == 8 ? 1 :

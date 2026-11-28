@@ -31,7 +31,8 @@ typedef enum {
   F413_OP_UI_ACTION_CONTROL_TUNE_SUB,
   F413_OP_UI_ACTION_PATH_CASE0_SUB,
   F413_OP_UI_ACTION_SEARCH_CASE0_SUB,
-  F413_OP_UI_ACTION_SEARCH_RUN_CASE
+  F413_OP_UI_ACTION_SEARCH_RUN_CASE,
+  F413_OP_UI_ACTION_PHOTO_MODE
 } f413_op_ui_action_t;
 
 typedef void (*f413_op_ui_execute_action_fn)(f413_op_ui_action_t action,

@@ -13,10 +13,12 @@ if [ "$SANITIZE" = "1" ]; then
 fi
 
 mkdir -p "$OUT_DIR"
+for PROFILE in f413_preorder mini_r3_0; do
 # SANITIZER_FLAGS intentionally expands into separate compiler arguments.
 # shellcheck disable=SC2086
 "$CC_BIN" -std=c11 -Wall -Wextra -Werror -Wpedantic -O1 -g \
   $SANITIZER_FLAGS \
+  -I"$ROOT_DIR/params/$PROFILE" \
   -I"$ROOT_DIR/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc" \
   "$ROOT_DIR/tools/solver_host/f413_mode2_dispatch_tests.c" \
   "$ROOT_DIR/platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_mode2.c" \
@@ -29,3 +31,4 @@ if [ "$SANITIZE" = "1" ]; then
 else
   "$OUT_BIN"
 fi
+done

@@ -115,6 +115,57 @@ static void finalize(nvm_trace_log_header_t* h)
   h->crc = 0;
   for (size_t i = 16; i < sizeof(*h); ++i) h->crc += bytes[i];
 }
+static void check_path_staging(uint32_t prepare_period, uint32_t retained)
+{
+  /* Durations from the 2026-09-27 18:37 mode4/case3 capture. Even an empty
+   * FRAM cannot prevent RAM overflow when preparation is sampled at 1 ms. */
+  const uint32_t prepare_ms = 2371U, motion_ms = 2880U, start_ms = 10000U;
+  const uint32_t prepare_count = (prepare_ms + prepare_period - 1U) / prepare_period;
+  uint32_t expected = prepare_count + motion_ms;
+  const bool overflow = expected > F413_TRACE_COMPACT_USABLE_RECORDS;
+  if (overflow) expected = F413_TRACE_COMPACT_USABLE_RECORDS;
+  area_bytes = sizeof(storage);
+  assert(nvm_trace_log_format() == NVM_STATUS_OK);
+  f413_trace_log_set_period_ms(1U);
+  capture(3, 1000U, retained);
+
+  output_len = 0;
+  mode = 4;
+  unsigned saved_writes = writes, saved_erases = erases;
+  f413_trace_log_set_period_ms(prepare_period);
+  f413_trace_log_auto_start();
+  assert(f413_trace_log_auto_is_enabled());
+  f413_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
+  for (uint32_t i = 0; i < prepare_ms + motion_ms; ++i)
+  {
+    if (i == prepare_ms)
+    {
+      f413_trace_log_set_period_ms(F413_TRACE_LOG_PATH_MOTION_PERIOD_MS);
+      f413_trace_log_set_mode_flags(NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG);
+    }
+    f413_trace_log_auto_tick_sample(start_ms + i);
+    f413_trace_log_auto_step();
+  }
+  assert(writes == saved_writes && erases == saved_erases);
+  f413_trace_log_auto_stop();
+  assert(strstr((char*)output, overflow ? "overflow=1" : "overflow=0") != NULL);
+  nvm_trace_log_header_t h;
+  assert(nvm_trace_log_get_header(&h) == NVM_STATUS_OK);
+  assert(h.total_records == retained + expected);
+  for (uint32_t i = 0; i < expected; ++i)
+  {
+    nvm_trace_log_record_t rec;
+    assert(nvm_trace_log_read_latest(expected - 1U - i, &rec) == NVM_STATUS_OK);
+    assert(rec.op_mode == 4 && rec.seq == i);
+    const uint32_t elapsed = i < prepare_count ? i * prepare_period :
+        prepare_ms + i - prepare_count;
+    assert(rec.timestamp_ms == start_ms + elapsed);
+    if (i >= prepare_count)
+      assert(rec.flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_FWD_FLAG);
+  }
+  printf("PASS: path staging prepare=%ums retained=%u accepted=%u overflow=%u\n",
+         (unsigned)prepare_period, (unsigned)retained, (unsigned)expected, overflow);
+}
 int main(int argc, char** argv)
 {
   assert(argc == 2);
@@ -206,6 +257,11 @@ int main(int argc, char** argv)
   }
   assert(nvm_trace_log_commit_header(&h) == NVM_STATUS_OK);
   save_dump(argv[1], "capacity.raw", true);
+  check_path_staging(1U, 0U);
+  check_path_staging(1U, F413_TRACE_COMPACT_USABLE_RECORDS);
+  check_path_staging(F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS, 0U);
+  check_path_staging(F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS,
+                     F413_TRACE_COMPACT_USABLE_RECORDS);
   puts("PASS: trace retention, auto capture, blank/corrupt/reboot/wrap/I/O and full dumps");
   return 0;
 }

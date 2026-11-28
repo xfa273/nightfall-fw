@@ -8,7 +8,11 @@
 #ifndef INC_PARAMS_H_
 #define INC_PARAMS_H_
 
-#define PARAMS_TUNE_VERSION "mini-r3-search-distance-t0.25"
+#include "../f413_motion_policy.h"
+/* Preserve r3's validated/under-tuning behavior; new features require opt-in. */
+#define F413_MOTION_FEATURES (F413_MOTION_IMU_16G | F413_MOTION_SETTLED_STOP | F413_MOTION_FRONT_RECOVERY | F413_MOTION_SEARCH_DISTANCE | F413_MOTION_PARAMETER_LIMITS | F413_MOTION_CASE0_TURN_SPEED | F413_MOTION_CASE0_LONG_R180 | F413_MOTION_MODE2_CASE6_SAVED_MAZE | F413_MOTION_CHAINED_FRONT_ENTRY | F413_MOTION_MODE4_180_LEAD | F413_MOTION_MODE4_180_TRAJECTORY_FF | F413_MOTION_CHAINED_OFFSET_WALL_END | F413_MOTION_CHAINED_SHORT_WALL_END | F413_MOTION_SHORT_WALL_END_ALL | F413_MOTION_PATH_GOAL_STOP)
+
+#define PARAMS_TUNE_VERSION "mini-r3-mode1-4-t0.36"
 
 /*============================================================
     各種定数（パラメータ）設定
@@ -19,7 +23,7 @@
 /*------------------------------------------------------------
     走行系
 ------------------------------------------------------------*/
-#define D_TIRE            14.13
+#define D_TIRE            14.3
 #define DIST_HALF_SEC     45.0
 #define DIST_D_HALF_SEC   67.279
 #define ROBOT_REAR_OVERHANG 35.0
@@ -256,6 +260,17 @@
 #ifndef FF_OMEGA_LEAD_TIME_S
 #define FF_OMEGA_LEAD_TIME_S 0.004F
 #endif
+#ifndef FF_OMEGA_LEAD_MODE4_180_TIME_S
+/* t0.30 fallback when trajectory FF is disabled: large R/L180 core and exit. */
+#define FF_OMEGA_LEAD_MODE4_180_TIME_S 0.0025F
+#endif
+#ifndef FF_OMEGA_TRAJECTORY_PWM_MODE4_180
+/* t0.31: planned omega/alpha only, with reference lead disabled. */
+#define FF_OMEGA_TRAJECTORY_PWM_MODE4_180 0.045F
+#endif
+#ifndef FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180
+#define FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 0.0025F
+#endif
 #ifndef FF_OMEGA_LEAD_MAX_DPS
 #define FF_OMEGA_LEAD_MAX_DPS 120.0F
 #endif
@@ -378,10 +393,10 @@
     探索系
 ------------------------------------------------------------*/
 #ifndef GOAL_X
-#define GOAL_X   1
+#define GOAL_X   11
 #endif
 #ifndef GOAL_Y
-#define GOAL_Y   0
+#define GOAL_Y   9
 #endif
 /* 共通F413 binaryの配列/経路形式は16x16。異なるサイズは起動時に拒否する。
  * 単体host solverの32x32検証とは別の制約。 */
@@ -412,18 +427,18 @@
 #endif
 
 #ifndef GOAL2_X
-#define GOAL2_X 0
-#define GOAL2_Y 0
+#define GOAL2_X 12
+#define GOAL2_Y 9
 #endif
 
 #ifndef GOAL3_X
-#define GOAL3_X 0
-#define GOAL3_Y 0
+#define GOAL3_X 12
+#define GOAL3_Y 10
 #endif
 
 #ifndef GOAL4_X
-#define GOAL4_X 0
-#define GOAL4_Y 0
+#define GOAL4_X 11
+#define GOAL4_Y 10
 #endif
 
 #ifndef GOAL5_X

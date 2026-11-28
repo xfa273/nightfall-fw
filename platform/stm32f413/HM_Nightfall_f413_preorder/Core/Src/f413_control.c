@@ -115,6 +115,7 @@ static volatile float s_target_omega = 0.0f;
 static volatile float s_heading_omega_correction = 0.0f;
 static volatile bool s_angle_target_enabled = false;
 static volatile bool s_omega_profile_active = false;
+static volatile bool s_mode4_180_turn = false;
 static volatile float s_omega_profile_peak = 0.0f;
 static volatile float s_omega_profile_t_acc = 0.0f;
 static volatile float s_omega_profile_t_cruise = 0.0f;
@@ -151,6 +152,9 @@ static volatile float s_previous_omega_error = 0.0f;
 static volatile float s_omega_integral = 0.0f;
 static float s_previous_omega_ref = 0.0f;
 static bool s_previous_omega_ref_valid = false;
+static float s_previous_omega_plan = 0.0f;
+static float s_omega_plan_accel = 0.0f;
+static bool s_previous_omega_plan_valid = false;
 static volatile float s_out_translation = 0.0f;
 static volatile float s_out_rotate = 0.0f;
 static volatile int16_t s_motor_out_l = 0;
@@ -329,6 +333,9 @@ static void f413_ctrl_reset_velocity_accel_comp(void)
 
 static void f413_ctrl_reset_omega_ff_state(void)
 {
+    s_previous_omega_plan = 0.0f;
+    s_omega_plan_accel = 0.0f;
+    s_previous_omega_plan_valid = false;
     s_previous_omega_ref = 0.0f;
     s_previous_omega_ref_valid = false;
     s_omega_ref_accel = 0.0f;
@@ -442,6 +449,7 @@ static void f413_ctrl_reset_pid_state(void)
 
 static void f413_ctrl_reset_profile_state(void)
 {
+    s_mode4_180_turn = false;
     s_acceleration_interrupt = 0.0f;
     s_velocity_interrupt = 0.0f;
     s_velocity_profile_target = 0.0f;
@@ -561,7 +569,8 @@ static float f413_ctrl_update_omega_output(float omega_ref,
                                            float kd_o,
                                            float ff_omega,
                                            float ff_omega_accel,
-                                           float lead_time_s)
+                                           float lead_time_s,
+                                           bool trajectory_ff)
 {
     float omega_ref_control;
     float omega_lead_term;
@@ -579,12 +588,24 @@ static float f413_ctrl_update_omega_output(float omega_ref,
     }
     s_previous_omega_ref = omega_ref;
 
-    omega_lead_term = lead_time_s * s_omega_ref_accel;
+    /* Track the planned rate even outside the experimental context so
+     * transitions never differentiate a stale profile or feedback term.
+     * stop_omega_profile() supplies zero on the next tick: retain the small
+     * final deceleration sample rather than erasing its history. */
+    s_omega_plan_accel = s_previous_omega_plan_valid ?
+        (s_omega_interrupt - s_previous_omega_plan) / F413_CTRL_DT : 0.0f;
+    s_previous_omega_plan = s_omega_interrupt;
+    s_previous_omega_plan_valid = true;
+
+    omega_lead_term = trajectory_ff ? 0.0f : lead_time_s * s_omega_ref_accel;
     omega_lead_term = f413_ctrl_clamp_omega_abs(omega_lead_term, FF_OMEGA_LEAD_MAX_DPS);
     omega_ref_control = omega_ref + omega_lead_term;
     s_omega_ref_lead = omega_ref_control;
 
-    rotate_ff = -((ff_omega * omega_ref) + (ff_omega_accel * s_omega_ref_accel));
+    rotate_ff = trajectory_ff ?
+        -((FF_OMEGA_TRAJECTORY_PWM_MODE4_180 * s_omega_interrupt) +
+          (FF_OMEGA_TRAJECTORY_ACCEL_PWM_MODE4_180 * s_omega_plan_accel)) :
+        -((ff_omega * omega_ref) + (ff_omega_accel * s_omega_ref_accel));
 
     s_omega_error = s_real_omega - omega_ref_control;
     o_i_next = s_omega_integral + s_omega_error;
@@ -824,8 +845,11 @@ static bool imu_init_ism330(void)
     imu_write_byte(F413_IMU_CTRL2_G, 0x71U);
     HAL_Delay(10U);
 
-    /* CTRL1_XL: ODR=833Hz, FS=±16g */
-    imu_write_byte(F413_IMU_CTRL1_XL, F413_IMU_CTRL1_XL_833HZ_16G);
+    /* CTRL1_XL: ODR=833Hz, machine-selected range. */
+    /* r2 keeps its August sensor scale until the 16g correction is requalified.
+     * Its historical 8g register / 16g conversion mismatch is intentional here. */
+    imu_write_byte(F413_IMU_CTRL1_XL, F413_MOTION_ENABLED(F413_MOTION_IMU_16G)
+        ? F413_IMU_CTRL1_XL_833HZ_16G : 0x7CU);
     HAL_Delay(10U);
 
     return true;
@@ -1015,7 +1039,8 @@ void f413_ctrl_set_velocity_profile(float start_velocity_mm_s,
 
 bool f413_ctrl_stop_profile_complete(void)
 {
-    return s_velocity_profile_clamp_enabled &&
+    return F413_MOTION_ENABLED(F413_MOTION_SETTLED_STOP) &&
+           s_velocity_profile_clamp_enabled &&
            s_velocity_profile_target == 0.0f &&
            s_velocity_interrupt == 0.0f && s_acceleration_interrupt == 0.0f;
 }
@@ -1058,6 +1083,13 @@ void f413_ctrl_stop_omega_profile(void)
     f413_ctrl_cancel_omega_profile();
     s_omega_interrupt = 0.0f;
     s_target_omega = 0.0f;
+}
+
+void f413_ctrl_set_mode4_180_turn(bool enabled)
+{
+    s_mode4_180_turn = enabled &&
+        (F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD) ||
+         F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF));
 }
 
 void f413_ctrl_set_angle_target(float angle_deg)
@@ -1319,8 +1351,10 @@ void f413_ctrl_tick(void)
     }
 
     s_accel_velocity = f413_ctrl_update_velocity_accel_comp(real_velocity_raw, accel_forward_for_comp);
-    /* Feedback must represent actual motion, including overspeed. Do not
-     * clip the estimate to a bring-up ceiling or the commanded velocity. */
+    if (!F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS))
+        s_accel_velocity = fmaxf(-1200.0f, fminf(s_accel_velocity, 1200.0f));
+    /* The opt-in policy represents actual overspeed; August r2 preserves
+     * the tuned estimate ceiling until separately requalified. */
 
     if (VELOCITY_ACCEL_COMP_ENABLE_CONTROL != 0U)
     {
@@ -1482,9 +1516,10 @@ void f413_ctrl_tick(void)
                         s_angle_integral += s_angle_error;
                         s_angle_error_error = s_angle_error - s_previous_angle_error;
                         s_previous_angle_error = s_angle_error;
-                        s_target_omega = f413_ctrl_clamp_omega_abs((kp_a * s_angle_error) +
-                                                                    (ki_a * s_angle_integral) +
-                                                                    (kd_a * s_angle_error_error),
+                        const bool parameter_gains = F413_MOTION_ENABLED(F413_MOTION_PARAMETER_LIMITS);
+                        s_target_omega = f413_ctrl_clamp_omega_abs(((parameter_gains ? kp_a : 4.0f) * s_angle_error) +
+                                                                    ((parameter_gains ? ki_a : 0.0f) * s_angle_integral) +
+                                                                    ((parameter_gains ? kd_a : 0.0f) * s_angle_error_error),
                                                                     F413_CTRL_TUNE_STRAIGHT_ANGLE_OMEGA_MAX);
                     }
                 }
@@ -1531,7 +1566,7 @@ void f413_ctrl_tick(void)
                                                               kd_o,
                                                               ff_o,
                                                               ff_oa,
-                                                              FF_OMEGA_LEAD_TIME_S);
+                                                              FF_OMEGA_LEAD_TIME_S, false);
             }
 
             s_tune_tick++;
@@ -1545,7 +1580,16 @@ void f413_ctrl_tick(void)
     {
         f413_ctrl_update_omega_profile();
 
-        if (s_velocity_profile_clamp_enabled)
+        if (!F413_MOTION_ENABLED(F413_MOTION_SETTLED_STOP))
+        {
+            /* 57a9c3b: retain acceleration FF after the velocity clamp. */
+            s_velocity_interrupt += s_acceleration_interrupt * F413_CTRL_DT;
+            if (s_velocity_profile_clamp_enabled &&
+                (((s_acceleration_interrupt > 0.0f) && (s_velocity_interrupt > s_velocity_profile_target)) ||
+                 ((s_acceleration_interrupt < 0.0f) && (s_velocity_interrupt < s_velocity_profile_target))))
+                s_velocity_interrupt = s_velocity_profile_target;
+        }
+        else if (s_velocity_profile_clamp_enabled)
         {
             float velocity = s_velocity_interrupt;
             float acceleration = s_acceleration_interrupt;
@@ -1656,7 +1700,12 @@ void f413_ctrl_tick(void)
                                                           kd_o,
                                                           ff_o,
                                                           ff_oa,
-                                                          FF_OMEGA_LEAD_TIME_S);
+                                                          (s_mode4_180_turn && use_fan_on_gains &&
+                                                           F413_MOTION_ENABLED(F413_MOTION_MODE4_180_LEAD)) ?
+                                                              FF_OMEGA_LEAD_MODE4_180_TIME_S :
+                                                              FF_OMEGA_LEAD_TIME_S,
+                                                          s_mode4_180_turn && use_fan_on_gains &&
+                                                              F413_MOTION_ENABLED(F413_MOTION_MODE4_180_TRAJECTORY_FF));
         }
     }
 

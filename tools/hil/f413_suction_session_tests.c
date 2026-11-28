@@ -17,10 +17,12 @@ static uint32_t test_auto_video_capture;
 uint16_t path[ROUTE_MAX_LEN];
 typedef enum { LEAD, RAMP, SPINUP, DRIVE, CLEANUP } phase_t;
 static uint32_t tick, control_tick, fan_tick, full_duty_tick, first_drive_tick;
+static uint32_t fan_stop_tick;
 static unsigned starts, fan_starts, fan_stops, trace_stops, profiles, duty_updates;
 static unsigned completed_sessions;
 static unsigned video_starts, video_stops, control_stops;
 static uint32_t trace_start_tick;
+static uint32_t trace_period_ms;
 static unsigned wait_extra_ms;
 static uint16_t fan_duty, requested_duty;
 static uint32_t expected_ramp_ms;
@@ -31,6 +33,8 @@ static bool suction, disturbed, duty_fail;
 static bool stop_profile_done;
 static uint32_t stop_profile_finish_tick;
 static float position, velocity, target, angle, omega, peak_command;
+static float profile_target_velocity;
+static void (*drive_observer)(void);
 static f413_run_session_abort_reason_t injected_abort;
 static phase_t abort_phase;
 uint32_t HAL_GetTick(void) { return tick; }
@@ -66,7 +70,7 @@ bool f413_hw_fan_set_duty(uint16_t duty)
   }
   return true;
 }
-void f413_hw_fan_stop(void) { assert(!running); fan_stops++; fan = false; }
+void f413_hw_fan_stop(void) { assert(!running); fan_stop_tick = tick; fan_stops++; fan = false; }
 void f413_hw_emit_video_sync_start_pattern(void)
 { assert(ENABLE_AUTO_VIDEO_CAPTURE && !running && !fan); video_starts++; tick += 9750U; }
 void f413_hw_emit_video_sync_stop_pattern(void)
@@ -74,6 +78,7 @@ void f413_hw_emit_video_sync_stop_pattern(void)
 void f413_ctrl_start(void)
 {
   assert(!fan && !running); /* Includes the blocking IMU calibration. */
+  if (tracing) assert(trace_period_ms == 10U);
   if (suction) assert(flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
   tick += 1200; control_tick = tick; starts++; running = true;
   position = velocity = target = angle = omega = 0;
@@ -88,6 +93,7 @@ void f413_ctrl_set_velocity(float v)
 void f413_ctrl_set_velocity_profile(float start, float end, float distance)
 {
   (void)start;
+  assert(trace_period_ms == 1U);
   stop_profile_done = false;
   if (profiles++ == 0)
   {
@@ -102,12 +108,14 @@ void f413_ctrl_set_velocity_profile(float start, float end, float distance)
     }
   }
   target = position + distance; velocity = end;
+  profile_target_velocity = end;
   if (start > peak_command) peak_command = start;
   if (end > peak_command) peak_command = end;
 }
 void f413_ctrl_set_omega(float v) { (void)v; }
 void f413_ctrl_start_omega_profile(float p, float a, float c) { (void)p; (void)a; (void)c; }
 void f413_ctrl_stop_omega_profile(void) {}
+void f413_ctrl_set_mode4_180_turn(bool enabled) { (void)enabled; }
 void f413_ctrl_reset_angle(void) { assert(!suction || profiles > 0); angle = 0; }
 void f413_ctrl_set_angle_target(float v) { assert(running && !fan && v == 0); holding = true; }
 void f413_ctrl_clear_angle_target(void) { holding = false; }
@@ -115,9 +123,12 @@ float f413_ctrl_get_distance(void) { return position; }
 float f413_ctrl_get_angle(void) { return angle; }
 float f413_ctrl_get_real_omega(void) { return omega; }
 float f413_ctrl_get_real_velocity(void) { return velocity; }
+float f413_ctrl_get_target_velocity(void) { return velocity; }
 bool f413_ctrl_stop_profile_complete(void) { return stop_profile_done; }
 bool f413_trace_log_auto_is_enabled(void) { return tracing; }
-void f413_trace_log_auto_start(void) { tracing = true; trace_start_tick = tick; }
+void f413_trace_log_auto_start(void)
+{ assert(trace_period_ms == 10U); tracing = true; trace_start_tick = tick; }
+void f413_trace_log_set_period_ms(uint32_t ms) { trace_period_ms = ms; }
 void f413_trace_log_auto_step(void) {}
 void f413_trace_log_set_mode_flags(uint16_t f) { flags = f; }
 void f413_trace_log_auto_stop_after_tail(uint32_t ms)
@@ -133,9 +144,11 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
       !fan ? LEAD : fan_duty < requested_duty ? RAMP : SPINUP;
   if (phase == LEAD || phase == RAMP || phase == SPINUP)
   {
+    if (tracing) assert(trace_period_ms == 10U);
     assert(running && holding && profiles == 0);
     assert(flags & NIGHTFALL_F413_TRACE_MODE_MOTOR_COAST_FLAG);
   }
+  else if (tracing) assert(trace_period_ms == 1U);
   if (injected_abort && phase == abort_phase) return injected_abort;
   if (disturbed && (phase == RAMP || phase == SPINUP))
   {
@@ -145,9 +158,14 @@ f413_run_session_abort_reason_t f413_run_session_wait_with_auto_step_guarded(uin
      */
     angle = 2.655f; omega = -1.0f; position = .666f; velocity = -3.0f;
   }
-  if (phase == DRIVE && !stuck) position = target;
+  if (phase == DRIVE && !stuck)
+  {
+    position = target;
+    stop_profile_done = profile_target_velocity == 0;
+  }
   if (phase == DRIVE && stop_profile_finish_tick && tick >= stop_profile_finish_tick)
     stop_profile_done = true;
+  if (phase == DRIVE && drive_observer) drive_observer();
   return F413_RUN_SESSION_ABORT_NONE;
 }
 uint16_t f413_run_session_abort_reason_to_trace_flag(f413_run_session_abort_reason_t r) { return (uint16_t)r; }
@@ -158,17 +176,28 @@ void f413_wall_runtime_set_wall_end_thresholds(uint16_t a, uint16_t b, uint16_t 
 void f413_wall_runtime_reset_wall_end_thresholds(void) {}
 void f413_wall_runtime_control_clear(void) {}
 void f413_wall_runtime_end_clear(void) {}
+void f413_wall_runtime_end_begin(void) { f413_wall_runtime_end_clear(); }
+bool f413_wall_runtime_wall_end_detected_by_short(void) { return false; }
+void f413_wall_runtime_chained_prepare_begin(void) {}
+void f413_wall_runtime_chained_prepare_sample(void) {}
+void f413_wall_runtime_chained_monitor_begin(void) {}
+void f413_wall_runtime_chained_monitor_end(void) {}
 void f413_wall_runtime_control_apply(bool b) { (void)b; }
 void f413_wall_runtime_poll_diagonal(bool b) { (void)b; }
 void f413_wall_runtime_poll_straight(bool b) { (void)b; }
 bool f413_wall_runtime_poll_wall_end(bool b) { (void)b; return false; }
+bool f413_wall_runtime_poll_wall_end_with_control(bool b) { (void)b; return false; }
 bool f413_wall_distance_front_unwarped_mm(float* out) { (void)out; return false; }
 static void reset(void)
 {
   tick = control_tick = fan_tick = full_duty_tick = first_drive_tick = 0;
+  fan_stop_tick = 0;
+  profile_target_velocity = 0;
+  drive_observer = NULL;
   starts = fan_starts = fan_stops = trace_stops = profiles = duty_updates = flags = 0;
   completed_sessions = 0;
   video_starts = video_stops = control_stops = trace_start_tick = test_auto_video_capture = 0;
+  trace_period_ms = 1U;
   selected_mode = 3; selected_case = 1; wait_extra_ms = 0; fan_duty = 0; requested_duty = 500; expected_ramp_ms = 600;
   running = fan = tracing = pressed = fan_fail = stuck = holding = cleanup = false;
   disturbed = duty_fail = false; suction = true;
@@ -184,6 +213,7 @@ static void run(void)
   requested_duty = f413_path_run_mode_params(selected_mode)->fan_power;
   expected_ramp_ms = f413_path_run_suction_ramp_ms(requested_duty);
   f413_path_run_session_once(suction ? selected_mode : 2,selected_case,0,"host suction");
+  if (trace_stops) assert(trace_period_ms == 1U);
 }
 static void stopped(unsigned expected_fan_starts)
 {
@@ -306,10 +336,12 @@ int main(void)
   assert(tick == 20 + F413_PATH_RUN_TEST_STOP_SETTLE_MAX_MS);
   position=100; velocity=30; /* Nor can completion ignore motion. */
   assert(f413_path_run_settle_test_stop(&guard,0) == F413_RUN_SESSION_ABORT_TIMEOUT);
-  /* Normal maze runs retain their original endpoint crossing behavior. */
+  /* Intermediate maze segments retain exact endpoint crossing. Only the
+   * explicitly selected final tail uses the separate goal-stop wait. */
   const f413_run_features_t maze_features={false,false,false,true,false};
   f413_run_features_set(&maze_features);
   position=99.5f; velocity=0;
   assert(f413_path_run_wait_ctrl_target(100,false,&guard,0,false,false) == F413_RUN_SESSION_ABORT_TIMEOUT);
   puts("suction session: hold before fan, 25/50/70/75/100 percent slew rate, 300 ms post-ramp wait, observed yaw regression, all-phase aborts, cleanup and fan-off PASS");
+  return 0;
 }

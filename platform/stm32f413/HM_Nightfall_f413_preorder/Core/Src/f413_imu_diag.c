@@ -157,7 +157,7 @@ static bool f413_imu_diag_config_for_gyro(void)
   HAL_Delay(10U);
 
   if (!f413_imu_diag_write_reg(F413_IMU_DIAG_CTRL1_XL,
-                               F413_IMU_DIAG_CTRL1_XL_833HZ_16G))
+                               (F413_MOTION_ENABLED(F413_MOTION_IMU_16G) ? F413_IMU_DIAG_CTRL1_XL_833HZ_16G : 0x7CU)))
   {
     trace_printf("[HW-TEST][IMU-ANGLE] FAIL(write CTRL1_XL)\r\n");
     return false;
@@ -408,8 +408,9 @@ void f413_imu_diag_run_whoami_test_once(void)
       f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL2_G, &gyro) &&
       f413_imu_diag_read_reg(F413_IMU_DIAG_CTRL3_C, &ctrl3))
   {
-    trace_printf("[HW-TEST][IMU] CTRL1_XL=0x%02X CTRL2_G=0x%02X CTRL3_C=0x%02X expected=74,71,44 => %s\r\n",
-        xl, gyro, ctrl3, (xl == 0x74U && gyro == 0x71U && ctrl3 == 0x44U) ? "PASS" : "FAIL");
+    trace_printf("[HW-TEST][IMU] CTRL1_XL=0x%02X CTRL2_G=0x%02X CTRL3_C=0x%02X expected=%02X,71,44 => %s\r\n",
+        xl, gyro, ctrl3, F413_MOTION_ENABLED(F413_MOTION_IMU_16G) ? 0x74U : 0x7CU,
+        (xl == (F413_MOTION_ENABLED(F413_MOTION_IMU_16G) ? 0x74U : 0x7CU) && gyro == 0x71U && ctrl3 == 0x44U) ? "PASS" : "FAIL");
   }
   else trace_printf("[HW-TEST][IMU] FAIL(config read)\r\n");
 }
