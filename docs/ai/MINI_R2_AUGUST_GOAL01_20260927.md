@@ -15,6 +15,12 @@ hardware commands or firmware changes were performed for this status update.
 
 ## Exact image
 
+On 2026-11-28 the `99e44d9` comparison worktree moved to
+`../nightfall-fw-mini-r2-august-goal01` and was rebuilt there. The paths in the
+September command record below are historical. The original flashed ELF and BIN
+are in `../nightfall-fw-backups/20261128-periodic-073144Z/worktrees/mini-r2-august/build/Debug/`;
+both match the September hashes listed below.
+
 - Base: `57a9c3be207e368f0a4f57fd1688ab59e6f367b6`, 2026-08-29 17:31 JST.
 - Image commit: `99e44d9`, branch `exp/f413/20260927-r2-august-goal01` (pushed).
 - Separate worktree: `build/r2_august_goal01`; current development checkout and
