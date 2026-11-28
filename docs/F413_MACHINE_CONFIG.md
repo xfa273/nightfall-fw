@@ -167,6 +167,10 @@ r3は保存迷路方式を維持する。case7..9は保存迷路と対応profile
 新機種へのKERI対応はprofile別のgeometry/timeテーブル生成・選択と実測確認が必要。
 r2値を変更した場合も `tools/route_precompute/generate.py` / `--check` を必ず実行する。
 
+2026年10月25日の九州大会版では大会当時のr2用テーブルを保持している。
+大会の走行設定から再生成すると14,210項目中516項目で数値が異なり、上記の照合は失敗する。
+対象はr2の保存迷路を用いるmode2 case7〜9とUART経路プレビュー。再生成版の検証は [#62](https://github.com/xfa273/nightfall-fw/issues/62) で追跡する。
+
 ## 初回ID登録（現在接続機を必ず確認）
 
 通常のapp更新ではidentityを保持する。新機体は先にcommon appを書き込み、未登録SAFEを確認する。
