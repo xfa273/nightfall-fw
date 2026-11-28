@@ -69,3 +69,6 @@ tools/logging/logs/
 /.venv-vision/
 /sessions/
 /output/pdf/
+
+__pycache__/
+/out/exploration_sim/viewer_*.html
