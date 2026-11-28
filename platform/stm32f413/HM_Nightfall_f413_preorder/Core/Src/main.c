@@ -147,8 +147,8 @@ static void MX_USART1_UART_Init(void);
 
 /* ---------- 調整用テストモード定数 ---------- */
 #define NIGHTFALL_F413_OP_MODE_MAX        (9U)
-#define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (150)
-#define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
+#define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (300)
+#define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (600)
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM ((float)(DIST_HALF_SEC * 2.0))
@@ -304,6 +304,24 @@ static void nightfall_trace_log_on_run_stop(void)
 static void nightfall_op_led_show_mode(uint8_t mode)
 {
   f413_hw_show_mode_leds(mode);
+}
+
+/*
+ * Photo mode (mode0 case0): all LEDs on, no other action, wait forever.
+ * Used to photograph the machine while it is powered and stationary.
+ */
+static void nightfall_op_photo_mode_all_leds_wait(void)
+{
+  trace_printf("[PHOTO] mode0 case0: all LEDs on; motors/fan stopped; waiting forever\r\n");
+  f413_ctrl_stop();
+  f413_hw_motor_set(false, true, true, 0U, 0U);
+  f413_hw_fan_stop();
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  while (1)
+  {
+    f413_hw_set_all_leds(GPIO_PIN_SET);
+    HAL_Delay(100U);
+  }
 }
 
 static void nightfall_boot_buzzer_pattern(void)
@@ -836,6 +854,9 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
 {
   switch (action)
   {
+    case F413_OP_UI_ACTION_PHOTO_MODE:
+      nightfall_op_photo_mode_all_leds_wait();
+      break;
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
       f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
