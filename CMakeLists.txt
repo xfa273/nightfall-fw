@@ -212,3 +212,26 @@ add_dependencies(nightfall_stm32f413 check_f413_param_coverage)
 add_custom_target(nightfall_stm32f405
     DEPENDS nightfall_mini_r1_0 nightfall_classic_r1_0
 )
+
+# Classic only: retain the legacy solver as an explicit build-time fallback.
+option(NIGHTFALL_F405_ORTHOGONAL_PREVIEW "Link the 16x16 classic time planner preview" OFF)
+option(NIGHTFALL_CLASSIC_TIME_PLANNER "Use orthogonal time planning for classic shortest runs" ON)
+if(NIGHTFALL_CLASSIC_TIME_PLANNER)
+    target_compile_definitions(nightfall_classic_r1_0 PRIVATE NIGHTFALL_CLASSIC_TIME_PLANNER=1)
+    target_sources(nightfall_classic_r1_0 PRIVATE platform/stm32f405/Core/Src/f405_time_path.c)
+endif()
+if(NIGHTFALL_F405_ORTHOGONAL_PREVIEW OR NIGHTFALL_CLASSIC_TIME_PLANNER)
+    target_sources(nightfall_classic_r1_0 PRIVATE
+        common/route/compact_orthogonal.c
+        common/route/motion_time.c
+        platform/stm32f405/Core/Src/f405_orthogonal_preview.c)
+    target_include_directories(nightfall_classic_r1_0 PRIVATE common/route)
+    # Retain the preview API so the link map measures its REAL SRAM/Flash cost.
+    target_link_options(nightfall_classic_r1_0 PRIVATE -Wl,-u,f405_orthogonal_preview)
+    target_compile_options(nightfall_classic_r1_0 PRIVATE -fstack-usage)
+    add_custom_command(TARGET nightfall_classic_r1_0 POST_BUILD
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/f405_time_planner/check_memory.py
+            --size-tool ${CMAKE_SIZE} --elf $<TARGET_FILE:nightfall_classic_r1_0>
+            --bin ${CMAKE_CURRENT_BINARY_DIR}/nightfall_classic_r1_0.bin
+        VERBATIM)
+endif()

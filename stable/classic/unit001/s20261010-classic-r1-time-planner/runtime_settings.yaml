@@ -1,0 +1,14 @@
+# 運用参照用。現在のFWでは変更に再ビルド・書込みが必要。
+settings_application: compile_time_reference_only
+maze_size: 16
+start: [0, 0]
+start_heading: north
+goals:
+  - [7, 7]
+  - [7, 8]
+  - [8, 7]
+  - [8, 8]
+shortest_planner: orthogonal_nominal_time
+allowed_motion: [straight, small90, large90, large180]
+search_fan_duty: [80, 110]
+verified_mode_cases: not_specified
