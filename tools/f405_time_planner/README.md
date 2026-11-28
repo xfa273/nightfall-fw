@@ -105,8 +105,11 @@ establish search/encoding agreement, not independent physical model validation.
 
 ## Use on the retuning branch
 
+Start in the regular repository root. If the Classic comparison checkout is
+absent, recreate it using the [worktree instructions](../../docs/CLASSIC_R1_2026_PREPARATION.md#ブランチと作業場所).
+
 ```sh
-cd /Users/xfa273/workspace/micromouse/nightfall-fw-classic-baseline
+cd ../nightfall-fw-classic-baseline
 cmake --preset Release -DNIGHTFALL_CLASSIC_TIME_PLANNER=ON
 cmake --build --preset Release --target nightfall_classic_r1_0
 ```
