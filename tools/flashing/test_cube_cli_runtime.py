@@ -129,7 +129,7 @@ class CommandTests(unittest.TestCase):
         self.image = self.root / "firmware.bin"
         self.image.write_bytes(b"not a firmware")
         self.args = argparse.Namespace(
-            list=False, reset_only=False, build=False, image=str(self.image),
+            list=False, reset_only=False, recover_usb=False, build=False, image=str(self.image),
             address="0x08000000", no_verify=False, no_reset=False,
             freq="4000", mode="NORMAL", reset_mode="SWrst", sn="test-probe", shared=False)
         self.contexts = contextlib.ExitStack()
@@ -152,7 +152,9 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(len(commands), 2)
         self.assertEqual(commands[0],
                          ["cmake", "--build", "--preset", "Debug-stm32f413"])
-        self.assertEqual(commands[1], [
+        self.assertEqual(commands[1][1], "-log")
+        self.assertTrue(Path(commands[1][2]).is_file())
+        self.assertEqual([commands[1][0], *commands[1][3:]], [
             "native-cli", "-c", "port=SWD", "freq=4000", "mode=NORMAL", "reset=SWrst",
             "sn=test-probe", "-w", str(self.image), "0x08000000", "-v", "-rst"])
 

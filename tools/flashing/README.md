@@ -78,9 +78,32 @@ python3 -m unittest discover -s tools/flashing -p 'test_cube_cli_runtime.py' -v
 
 ### ST-LINK認識確認
 
+プローブ単体で確認するときは、機体電源とプローブのターゲット給電をOFFにして機体側のケーブルを外し、
+プローブをUSBでMacにつなぎます。このMacでは次の接続で一覧取得が各20回中20回成功しました。
+
+- WeAct Mini Debugger（ST-LINK/V2-1、`0483:3752`）はUSB-CケーブルでMacに直結します。[WeAct単体の接続試験](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L23)
+- STLINK-V3MINIE（`0483:3754`）は **Mac → Anker 547 USBハブ → V3MINIE** で接続します。
+  Mac直結では機体を外した状態でも通信エラーが再現しました。STも一部のホストとの組み合わせで外部USB High-Speedハブを案内しています。[接続試験の記録](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L12-L15)・[STのFAQ](https://community.st.com/stm32-mcus-60/faq-possible-communication-failure-between-stlink-v3-and-some-recent-computers-141999)
+
 ```bash
 python3 tools/flashing/flash_stlink --list
 ```
+
+macOSでV3 MINIEのUSB通信が停止した場合、一覧表示・書き込み・ターゲットリセットは
+エラーで終了します。USBを再列挙するには、機体電源とプローブのターゲット給電を
+OFFにし、開いているVCP端末を閉じてから、次の復旧操作を単独で実行します。
+mini R3では通電したままUSBを再接続した際に車輪が回り、迷路が更新された記録があります。
+
+```sh
+python3 tools/flashing/flash_stlink --recover-usb --sn <STLINK_SN>
+```
+
+`--recover-usb --sn` のシリアル番号照合はWeActでも確認できます。指定した機器が
+正常ならそのまま終了します。USBリセットの対象はV3 MINIEです。複数台接続時は
+`--sn` で対象を指定します。対象のV3 MINIEにUSB通信エラーがあるときは1回だけリセットし、
+同じシリアル番号が正常に再列挙されるか最大3回確認します。
+libusbがシリアル番号を示さずエラーを報告する場合は、USB上で対象のST-LINKが1台だけと確認できたときに復旧します。
+発生元を特定できない場合は、機体電源とプローブのターゲット給電をOFFにした状態で対象の1台だけを接続してください。
 
 ### ビルド済みF413ファームを書き込む
 
@@ -100,7 +123,63 @@ python3 tools/flashing/flash_stlink --build
 python3 tools/flashing/flash_stlink --sn 003B00273234511537333934
 ```
 
-既定値は `mode=NORMAL`, `freq=4000`, `reset=SWrst` です。`.bin` を指定した場合は、既定で `0x08000000` に書き込みます。
+既定値は `mode=NORMAL`, `freq=1000` (1 MHz), `reset=SWrst` です。
+接続余裕を増やすため、SWDの既定値を従来の4 MHzから下げています。
+速度を戻す場合は `--freq 4000` を指定できます。
+`.bin` を指定した場合は、既定で `0x08000000` に書き込みます。
+
+### `Error: failed to erase memory` が繰り返す場合
+
+この表示だけでは、USB通信、SWD信号、機体電源、Flash保護などのどれが
+原因かは判定できません。USB抜き差しで復帰するなら通信状態を優先して切り分けます。
+書き込みと `--reset-only` は毎回、CubeProgrammerの `-log` による詳細ログと
+実行コマンド・終了状態を `build/flashing_logs/stlink_*.log` に保存し、パスを表示します。
+エラー終了、またはログ内の `Error:` を検出した場合は失敗扱いにし、消去や書き込みを
+自動反復しません。CLIが起動できない場合のログはラッパー側の記録だけになります。
+
+1. まず通常の `python3 tools/flashing/flash_stlink --build` で1 MHzを試す。
+   まだ不安定なら `--freq 400` へ下げ、ログに出る実際のSWD周波数・電圧を確認する。
+2. ST-LINKのNRSTが機体のNRSTへ接続されている場合は、実行中のFWから制御を
+   取り戻すため次の接続を試す（NRST未接続では使えません）。
+
+   ```bash
+   python3 tools/flashing/flash_stlink --build --freq 400 --mode UR --reset-mode HWrst
+   ```
+
+3. `DEV_USB_COMM_ERR`、USB timeout、SN読取り失敗を伴う場合は、IDE/GDBやUART captureを終了する。
+   機体電源とプローブのターゲット給電をOFFにし、プローブごとの確認済み経路でケーブル・ポートを確認する。
+   再接続後に必要なcaptureを再開する。[ST-LINK認識確認](#st-link認識確認)
+4. 同じセクタで再現する場合は、失敗前のST-LINK FW、ターゲット電圧、SWD周波数、
+   sector番号とエラーをログで確認する。VDD/GND/SWDIO/SWCLK/NRSTの接触・配線も確認し、
+   ST-LINK firmwareは公式更新ツールで更新を検討する。保護解除や全消去を復旧手順にしない。
+
+機体IDや校正を消す `-e all`、RDP解除、option byte変更は追加しません。
+2026-09-27の実機調査では、V2-1で1 MHz/240 kHz、UR接続、USB抜き差しでも
+消去失敗が継続し、別ツールのOpenOCDでも失敗しました。CPU停止中の同一RAMの
+繰り返し読み出しも不一致となり、50 kHzでも改善しませんでした。
+周波数変更だけで直ったとは判断せず、通信経路・プローブ・機体側を切り分けます。
+別実装の`st-flash`でも内容が変わらない内蔵ROMの読み出しが不一致となりました。
+この状態では消去を反復せず、ケーブルやプローブを交換して読み出しの安定性から確認します。
+同日、WeAct Mini Debuggerの別個体・別ハブ・別A–Cケーブルでも再現しましたが、
+STLINK-V3MINIEと専用ケーブルへの交換で消去・書き込み・照合・起動に成功しました。
+アプリ全域の読み戻し一致とidentity保全も確認済みです。9月27日のV3MINIEでの接続条件は次のとおりです。
+
+```bash
+python3 tools/flashing/flash_stlink --build --freq 1000 --mode UR --reset-mode HWrst
+```
+
+このUR/HWrst条件はNRST接続済みの構成で確認しています。[9月27日の調査記録](../../docs/ai/STLINK_ERASE_FAILURE_20260927.md)
+10月18日には、WeActをMacに直結し、新しい変換基板・ケーブルでmini R3のアプリ書き込み、照合、
+起動と全域読み戻しが成功しました。この基板はNRST未接続で、接続条件は `NORMAL/SWrst`、要求周波数1 MHzです。[WeActの実機記録](https://github.com/xfa273/nightfall-fw/blob/4b17110f581c0bb06b15b7e14d9d2960f7ce6c0a/docs/ai/WORKLOG.md#L7)
+
+参考: [CubeProgrammer UM2237（接続/リセット/ログ）](https://www.st.com/resource/en/user_manual/dm00403500-stm32cubeprogrammer-stmicroelectronics.pdf)、
+[ST-LINK RN0093（既知制約・FW更新）](https://www.st.com/resource/en/release_note/dm00107009-firmware-upgrade-for-stlink-stlinkv2-stlinkv21-and-stlinkv3-boards-stmicroelectronics.pdf)。
+
+書き込みの回帰テスト（プローブ接続なし）:
+
+```bash
+python3 -m unittest discover -s tools/flashing -p 'test_*.py' -v
+```
 
 ### 例: 識別ブロック生成
 
