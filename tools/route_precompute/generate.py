@@ -30,6 +30,7 @@ INPUTS = (
     ROOT / "common/route/motion_time.h",
     ROOT / "common/route/motion_time.c",
     ROOT / "platform/stm32f413/HM_Nightfall_f413_preorder/Core/Inc/f413_path_run.h",
+    ROOT / "params/f413_motion_policy.h",
     ROOT / "platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_path_run.c",
     ROOT / "platform/stm32f405/Core/Inc/shortest_run_params.h",
     ROOT / "params/f413_preorder/params.h",

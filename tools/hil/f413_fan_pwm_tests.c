@@ -42,27 +42,117 @@ static uint32_t test_auto_video_capture;
 #undef ENABLE_AUTO_VIDEO_CAPTURE
 #define ENABLE_AUTO_VIDEO_CAPTURE test_auto_video_capture
 #include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_hw.c"
+#include "../../platform/stm32f413/HM_Nightfall_f413_preorder/Core/Src/f413_op_ui.c"
 TIM_HandleTypeDef htim2,htim10,htim11;
-static bool capable=true, pressed, fail, active;
+static bool capable=true, pressed, fail, active, control_running;
 static unsigned pwm_starts, pwm_stops;
-static uint32_t tick, delays[16];
+static uint32_t tick, delays[256];
+static uint8_t delay_led_masks[256];
 static unsigned delay_count, gpio_writes;
+static uint8_t led_mask;
 bool f413_machine_has(uint32_t c) { (void)c; return capable; }
+int trace_printf(const char* format, ...) { (void)format; return 0; }
+bool f413_ctrl_is_running(void) { return control_running; }
 const f413_hardware_config_t* f413_machine_hardware(void)
 { static const f413_hardware_config_t config={0}; return &config; }
 uint32_t HAL_GetTick(void) { return tick; }
 void HAL_Delay(uint32_t ms)
-{ assert(delay_count < 16); delays[delay_count++] = ms; tick += ms; }
+{
+ assert(delay_count < 256);
+ delay_led_masks[delay_count] = led_mask;
+ delays[delay_count++] = ms;
+ tick += ms;
+}
 GPIO_PinState HAL_GPIO_ReadPin(unsigned p,unsigned n)
 { (void)p; (void)n; return pressed ? GPIO_PIN_RESET : GPIO_PIN_SET; }
 void HAL_GPIO_WritePin(unsigned p,unsigned n,GPIO_PinState s)
-{ (void)p; (void)n; (void)s; gpio_writes++; }
+{
+ uint8_t bit = 0;
+ if (p == LED_1_GPIO_Port && n == LED_1_Pin) bit = F413_HW_LED_1_MASK;
+ if (p == LED_2_GPIO_Port && n == LED_2_Pin) bit = F413_HW_LED_2_MASK;
+ if (p == LED_3_GPIO_Port && n == LED_3_Pin) bit = F413_HW_LED_3_MASK;
+ if (s == GPIO_PIN_SET) led_mask |= bit;
+ else led_mask &= (uint8_t)~bit;
+ gpio_writes++;
+}
 HAL_StatusTypeDef HAL_TIM_PWM_Start(TIM_HandleTypeDef* h,unsigned c)
 { (void)c; assert(h == &htim10); pwm_starts++; active=true; return fail ? HAL_ERROR : HAL_OK; }
 HAL_StatusTypeDef HAL_TIM_PWM_Stop(TIM_HandleTypeDef* h,unsigned c)
 { (void)c; assert(h == &htim10); pwm_stops++; active=false; return HAL_OK; }
 int main(void)
 {
+ for (unsigned enabled = 0; enabled <= 1; ++enabled)
+ {
+   test_auto_video_capture = enabled;
+   tick = delay_count = gpio_writes = 0;
+   f413_hw_delay_before_run(2000U);
+   assert(tick == 2000U && delay_count == 200U && led_mask == 0U);
+   for (unsigned i = 0; i < delay_count; ++i)
+   {
+     assert(delays[i] == 10U);
+     assert(delay_led_masks[i] == (((i * 10U / 250U) & 1U)
+         ? (enabled ? F413_HW_LED_REAR_RIGHT_MASK : F413_HW_LED_1_MASK) : 0U));
+   }
+ }
+ puts("pre-run LEDs: front blink when capture OFF, original rear blink ON, 2 s unchanged PASS");
+ for (unsigned enabled = 0; enabled <= 1; ++enabled)
+ for (unsigned drive = 0; drive <= 1; ++drive)
+ for (unsigned fan = 0; fan <= 1; ++fan)
+ {
+   test_auto_video_capture = enabled;
+   control_running = drive;
+   s_fan_running = fan;
+   tick = delay_count = gpio_writes = 0;
+   led_mask = 5;
+   f413_hw_show_run_failure();
+   const bool flash = !enabled && !drive && !fan;
+   assert(tick == (flash ? 1400U : 0U));
+   assert(delay_count == (flash ? 20U : 0U));
+   assert(gpio_writes == (flash ? 60U : 0U));
+   assert(led_mask == (flash ? 0U : 5U));
+   for (unsigned i = 0; i < delay_count; ++i)
+   {
+     assert(delays[i] == 70U);
+     assert(delay_led_masks[i] == ((i & 1U) ? 0U : F413_HW_LED_1_MASK));
+   }
+ }
+ control_running = s_fan_running = false;
+ puts("run failure LEDs: ten flashes; capture ON/drive/fan active cause no writes or waits PASS");
+ /* Every wall combination, invalid/saturated samples and both capture modes.
+  * The enabled path must preserve even a partially lit optical/UI pattern. */
+ for (unsigned enabled = 0; enabled <= 1; ++enabled)
+ {
+   test_auto_video_capture = enabled;
+   for (unsigned valid = 0; valid <= 1; ++valid)
+   for (unsigned walls = 0; walls < 8; ++walls)
+   {
+     led_mask = 5U;
+     tick = delay_count = gpio_writes = 0;
+     f413_hw_show_wall_status_leds(valid, walls & 1U, walls & 2U, walls & 4U);
+     assert(led_mask == (enabled ? 5U : (valid ? walls : 0U)));
+     assert(gpio_writes == (enabled ? 0U : 3U));
+     assert(tick == 0 && delay_count == 0);
+   }
+ }
+ puts("wall status LEDs: F/R/L mapping, invalid clear, capture ON preservation PASS");
+ for (unsigned enabled = 0; enabled <= 1; ++enabled)
+ {
+   test_auto_video_capture = enabled;
+   tick = s_next_ui_poll_ms = 0;
+   f413_op_ui_lock_after_run_end();
+   assert(led_mask == F413_HW_LED_REAR_RIGHT_MASK);
+   for (unsigned phase = 1; phase <= 4; ++phase)
+   {
+     tick = phase * 400U;
+     f413_op_ui_step(tick);
+     assert(led_mask == ((phase & 1U) ? F413_HW_LED_REAR_LEFT_MASK
+                                    : F413_HW_LED_REAR_RIGHT_MASK));
+   }
+   f413_op_ui_uart_push_once();
+   f413_op_ui_uart_enter_once();
+   assert(f413_op_ui_get_mode() == 0 && s_run_end_locked);
+ }
+ puts("run-end wait: alternating rear LEDs at 400 ms, input locked in both capture modes PASS");
  /* OFF must not alter the current UI LEDs or wait, including explicit UART
   * token tests. ON preserves the decoder's complete START/STOP waveform. */
  for (unsigned enabled = 0; enabled <= 1; ++enabled)

@@ -110,9 +110,12 @@ void f413_mode6_run_case0_sub(uint8_t sub)
 
   const f413_mode6_case0_sub_t* tests = (shortestRunModeParams6.fan_power > 0)
       ? k_suction_case0_subs : k_case0_subs;
-  f413_mode_shortest_run_case0_path(tests[sub].label,
+  f413_mode6_case0_sub_t selected = tests[sub];
+  if (sub == 2U && !F413_MOTION_ENABLED(F413_MOTION_CASE0_LONG_R180))
+    selected.codes[0] -= 2U;
+  f413_mode_shortest_run_case0_path(selected.label,
                                     6U,
-                                    tests[sub].case_index,
-                                    tests[sub].codes,
-                                    tests[sub].code_count);
+                                    selected.case_index,
+                                    selected.codes,
+                                    selected.code_count);
 }

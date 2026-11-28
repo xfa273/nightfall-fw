@@ -22,6 +22,10 @@ typedef void (*f413_trace_log_fill_control_sample_fn)(nvm_trace_log_record_t* ou
 typedef void (*f413_trace_log_void_callback_t)(void);
 
 #define F413_TRACE_LOG_STOP_TAIL_MS_DEFAULT (500U)
+/* Save staging capacity during path-run IMU calibration and fan spinup.
+ * The controller still runs at 1 kHz in both phases. */
+#define F413_TRACE_LOG_PATH_PREPARE_PERIOD_MS (10U)
+#define F413_TRACE_LOG_PATH_MOTION_PERIOD_MS (1U)
 
 void f413_trace_log_config(f413_trace_log_fill_control_sample_fn fill_control_sample,
                            f413_trace_log_void_callback_t update_observe_cache,

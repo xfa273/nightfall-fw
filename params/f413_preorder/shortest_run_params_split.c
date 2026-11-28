@@ -9,8 +9,8 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .velocity_turn90 = 300.0f,
     .alpha_turn90 = 10200.0f,
     .acceleration_turn = 0.0f,
-    .dist_offset_in = 7.2f,
-    .dist_offset_out = 11.1f,
+    .dist_offset_in = 8.0f,
+    .dist_offset_out = 8.0f,
     .val_offset_in = 630.0f,  // F413 uses calibrated distance; compatibility only
     .fwall_kx = 1.1f,
     .angle_turn_90 = 90.0f,
@@ -65,38 +65,38 @@ const ShortestRunModeParams_t shortestRunModeParams2 = {
     .wall_end_thr_r_high = 100, .wall_end_thr_r_low = 1,
     .wall_end_thr_l_high = 100, .wall_end_thr_l_low = 1,
     // 加速度切り替え速度
-    .accel_switch_velocity = 2000.0f
+    .accel_switch_velocity = 1500.0f
 };
 
 const ShortestRunCaseParams_t shortestRunCaseParamsMode2[9] = {
     // case1 (index 0): independent (initially same as former case3)
     {
-        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 2000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.06f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 2000.0f,
+        .velocity_straight = 500.0f, .kp_wall = 0.06f,
         .solver_profile = SOLVER_PROFILE_STANDARD
     },
     // case2 (index 1): independent (initially same as former case4)
     {
-        .acceleration_straight = 2000.0f, .acceleration_straight_dash = 2000.0f,
-        .velocity_straight = 1500.0f, .kp_wall = 0.06f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 2000.0f,
+        .velocity_straight = 500.0f, .kp_wall = 0.06f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case3 (index 2)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3000.0f,
-        .velocity_straight = 3000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 500.0f, .kp_wall = 0.06f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case4 (index 3)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3000.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 3000.0f,
+        .velocity_straight = 3000.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case5 (index 4)
     {
-        .acceleration_straight = 1000.0f, .acceleration_straight_dash = 3500.0f,
-        .velocity_straight = 4000.0f, .kp_wall = 0.025f,
+        .acceleration_straight = 5000.0f, .acceleration_straight_dash = 3500.0f,
+        .velocity_straight = 3000.0f, .kp_wall = 0.025f,
         .solver_profile = SOLVER_PROFILE_STRAIGHT_STRONG
     },
     // case6 (index 5)

@@ -4,32 +4,32 @@
 void sensor_distance_load_profile_luts(void)
 {
   static const uint16_t s_fr_mm[] = {
-    2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57,
-    62
+    40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
+    100, 105, 110
   };
   static const uint16_t s_fr_ad[] = {
-    2220, 1680, 1275, 981, 768, 623, 511, 418, 351, 297, 255, 220,
-    178
+    1922, 1421, 1058, 799, 621, 490, 402, 331, 277, 237, 199, 174,
+    149, 130, 112
   };
   (void)sensor_distance_set_lut_fr(s_fr_mm, s_fr_ad, sizeof(s_fr_mm) / sizeof(s_fr_mm[0]));
 
   static const uint16_t s_fl_mm[] = {
-    2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57,
-    62
+    40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
+    100, 105, 110
   };
   static const uint16_t s_fl_ad[] = {
-    2700, 2050, 1554, 1219, 974, 785, 642, 542, 462, 393, 340, 297,
-    263
+    2442, 1816, 1374, 1072, 861, 701, 576, 483, 409, 351, 306, 266,
+    234, 208, 185
   };
   (void)sensor_distance_set_lut_fl(s_fl_mm, s_fl_ad, sizeof(s_fl_mm) / sizeof(s_fl_mm[0]));
 
   static const uint16_t s_front_sum_mm[] = {
-    2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57,
-    62
+    40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95,
+    100, 105, 110
   };
   static const uint16_t s_front_sum_ad[] = {
-    4920, 3730, 2828, 2200, 1743, 1408, 1153, 960, 813, 690, 595, 517,
-    441
+    4364, 3237, 2432, 1871, 1482, 1191, 978, 814, 686, 588, 505, 440,
+    383, 338, 297
   };
   (void)sensor_distance_set_lut_front_sum(s_front_sum_mm, s_front_sum_ad, sizeof(s_front_sum_mm) / sizeof(s_front_sum_mm[0]));
 }

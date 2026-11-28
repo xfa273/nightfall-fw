@@ -147,8 +147,8 @@ static void MX_USART1_UART_Init(void);
 
 /* ---------- 調整用テストモード定数 ---------- */
 #define NIGHTFALL_F413_OP_MODE_MAX        (9U)
-#define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (150)
-#define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (250)
+#define NIGHTFALL_F413_OP_ENTER_DELTA_ADC (300)
+#define NIGHTFALL_F413_OP_ENTER_RELEASE_ADC (600)
 #define NIGHTFALL_F413_OP_START_DELAY_MS  (2000U)
 #define NIGHTFALL_F413_SEARCH_STEP_VELOCITY_MM_S (150.0f)
 #define NIGHTFALL_F413_SEARCH_STEP_TARGET_MM ((float)(DIST_HALF_SEC * 2.0))
@@ -304,6 +304,24 @@ static void nightfall_trace_log_on_run_stop(void)
 static void nightfall_op_led_show_mode(uint8_t mode)
 {
   f413_hw_show_mode_leds(mode);
+}
+
+/*
+ * Photo mode (mode0 case0): all LEDs on, no other action, wait forever.
+ * Used to photograph the machine while it is powered and stationary.
+ */
+static void nightfall_op_photo_mode_all_leds_wait(void)
+{
+  trace_printf("[PHOTO] mode0 case0: all LEDs on; motors/fan stopped; waiting forever\r\n");
+  f413_ctrl_stop();
+  f413_hw_motor_set(false, true, true, 0U, 0U);
+  f413_hw_fan_stop();
+  f413_hw_set_all_leds(GPIO_PIN_SET);
+  while (1)
+  {
+    f413_hw_set_all_leds(GPIO_PIN_SET);
+    HAL_Delay(100U);
+  }
 }
 
 static void nightfall_boot_buzzer_pattern(void)
@@ -592,6 +610,8 @@ static void nightfall_run_wall_sensor_monitor_once(void)
 
     if (nightfall_wall_sensor_read_snapshot(&wall))
     {
+      f413_hw_show_wall_status_leds(!wall.saturated,
+                                    wall.front_wall, wall.right_wall, wall.left_wall);
       trace_printf("[HW-TEST][Wall] t=%lu off R=%u L=%u FR=%u FL=%u on R=%u L=%u FR=%u FL=%u d R=%ld L=%ld FR=%ld FL=%ld det F=%u R=%u L=%u sat=%u VB=%u\r\n",
                    (unsigned long)HAL_GetTick(),
                    (unsigned int)wall.r_off,
@@ -614,6 +634,7 @@ static void nightfall_run_wall_sensor_monitor_once(void)
     }
     else
     {
+      f413_hw_show_wall_status_leds(false, false, false, false);
       trace_printf("[HW-TEST][Wall] FAIL(read snapshot)\r\n");
     }
 
@@ -734,7 +755,7 @@ static void nightfall_op_run_test_after_delay(uint8_t test_id)
 {
   f413_test_run_clear_arm();
   f413_trace_sample_set_context(8U, f413_op_ui_get_case(), 0xFFU, test_id);
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_test_run_run_now(test_id);
 }
 
@@ -793,13 +814,13 @@ static void nightfall_op_run_tune_sub_after_delay(uint8_t sub)
   }
 
   f413_trace_sample_set_context(9U, 0U, sub, (uint8_t)'0');
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
   f413_control_tune_run_once(axis, set, pattern);
 }
 static void nightfall_op_run_case0_sub_after_delay(uint8_t mode, uint8_t sub)
 {
   f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'P');
-  nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+  f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
 
   switch (mode)
   {
@@ -833,15 +854,18 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
 {
   switch (action)
   {
+    case F413_OP_UI_ACTION_PHOTO_MODE:
+      nightfall_op_photo_mode_all_leds_wait();
+      break;
     case F413_OP_UI_ACTION_SEARCH_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_search_trace_entry_once();
       f413_op_ui_lock_after_run_end();
       break;
     case F413_OP_UI_ACTION_SHORTEST_TRACE_ENTRY:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       nightfall_run_shortest_trace_entry_once(mode, op_case);
       f413_op_ui_lock_after_run_end();
       break;
@@ -864,7 +888,8 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       nightfall_run_encoder_test_once();
       break;
     case F413_OP_UI_ACTION_WALL_SENSOR_TEST:
-      if ((mode == 9U) && (op_case == 3U))
+      if ((mode == 9U) && ((op_case == 3U) ||
+          ((op_case == 6U) && (ENABLE_AUTO_VIDEO_CAPTURE == 0U))))
       {
         nightfall_run_wall_sensor_monitor_once();
       }
@@ -902,12 +927,12 @@ static void nightfall_op_execute_action(f413_op_ui_action_t action, uint8_t mode
       break;
     case F413_OP_UI_ACTION_SEARCH_CASE0_SUB:
       f413_trace_sample_set_context(mode, 0U, sub, (uint8_t)'T');
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       f413_mode1_run_case0_sub(sub);
       break;
     case F413_OP_UI_ACTION_SEARCH_RUN_CASE:
       f413_trace_sample_set_context(mode, op_case, 0xFFU, 0U);
-      nightfall_op_busy_delay_ms(NIGHTFALL_F413_OP_START_DELAY_MS);
+      f413_hw_delay_before_run(NIGHTFALL_F413_OP_START_DELAY_MS);
       f413_mode1_run_case(op_case);
       f413_op_ui_lock_after_run_end();
       break;
@@ -1035,8 +1060,12 @@ static bool nightfall_run_session_wall_sensor_ok(void)
 
   if (!nightfall_wall_sensor_read_snapshot(&wall))
   {
+    f413_hw_show_wall_status_leds(false, false, false, false);
     return false;
   }
+  /* Reuse the foreground guard sample: no extra ADC work, ISR or delay. */
+  f413_hw_show_wall_status_leds(!wall.saturated,
+                                wall.front_wall, wall.right_wall, wall.left_wall);
   return !wall.saturated;
 }
 
@@ -1330,6 +1359,8 @@ int main(void)
       f413_machine_hardware()->imu_forward_accel_sign,
       (double)f413_machine_hardware()->imu_forward_offset_mm,
       (double)f413_machine_hardware()->battery_divider_ratio);
+  trace_printf("[MOTION] baseline=57a9c3b opt_in=0x%08lX\r\n",
+      (unsigned long)F413_MOTION_FEATURES);
   nightfall_boot_buzzer_pattern();
 
   trace_printf("[MACHINE] front_distance_reference=%s align_target_mm=%.2f too_close_mm=%.2f\r\n",
